@@ -65,14 +65,15 @@ public class InMemoryPostRepository : IPostRepository
 
     public InMemoryPostRepository()
     {
+        var user = new User { Id = "user123", Name = "Robert Wetzler" };
         // Add some sample data
-        _posts.Add(new Post
+        this._posts.Add(new Post
         {
-            Id = "example",
-            User = new User { Id = "user123", Name = "John Doe" },
+            Id = "postId12345678",
+            UserId = user.Id,
+            User = user,
             Date = DateTime.UtcNow,
-            Type = "text",
-            Content = new TextContent { Text = "This is an example post content." }
+            Text = "This is awesome"
         });
     }
 
@@ -100,8 +101,8 @@ public class InMemoryPostRepository : IPostRepository
         {
             existingPost.User = post.User;
             existingPost.Date = post.Date;
-            existingPost.Type = post.Type;
-            existingPost.Content = post.Content;
+            existingPost.Text = post.Text;
+            existingPost.Viewers = post.Viewers;
         }
         return Task.FromResult(existingPost);
     }

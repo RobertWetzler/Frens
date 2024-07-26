@@ -1,0 +1,16 @@
+version: '3.8'
+services:
+  db:
+    image: postgres:13
+    environment:
+      POSTGRES_DB: cliq_database
+      POSTGRES_USER: cliq_api_user
+      #POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_PASSWORD: bc27bedf-a383-40eb-8793-029e36dae2b7
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
+volumes:
+  postgres_data:
