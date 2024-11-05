@@ -45,10 +45,12 @@ export default defineConfig({
         }
     },
     server: {
+        host: '0.0.0.0',
         proxy: {
             '^/weatherforecast': {
-                target: 'https://localhost:7188/',
-                secure: false
+                target: 'https://0.0.0.0:7188/',
+                secure: false,
+                changeOrigin: true
             }
         },
         port: 5173,

@@ -6,7 +6,14 @@ builder.Services.AddControllers();
 // Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
-
+builder.Services.AddCors(options =>
+{
+    options.AddPolicy("AllowViteClient",
+        builder => builder
+            .SetIsOriginAllowed(_ => true) // Be careful with this in production
+            .AllowAnyHeader()
+            .AllowAnyMethod());
+});
 var app = builder.Build();
 
 app.UseDefaultFiles();
