@@ -1,0 +1,33 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 17
+VisualStudioVersion = 17.8.34316.72
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Cliq.Server", "Cliq.Server\Cliq.Server.csproj", "{CB05950F-9F49-44DF-A042-8214E0CABFF2}"
+EndProject
+Project("{54A90642-561A-4BB1-A94E-469ADEE60C69}") = "cliq.client", "cliq.client\cliq.client.esproj", "{A5588309-DE22-472E-9FC7-38730E152605}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{CB05950F-9F49-44DF-A042-8214E0CABFF2}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{CB05950F-9F49-44DF-A042-8214E0CABFF2}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{CB05950F-9F49-44DF-A042-8214E0CABFF2}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{CB05950F-9F49-44DF-A042-8214E0CABFF2}.Release|Any CPU.Build.0 = Release|Any CPU
+		{A5588309-DE22-472E-9FC7-38730E152605}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{A5588309-DE22-472E-9FC7-38730E152605}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{A5588309-DE22-472E-9FC7-38730E152605}.Debug|Any CPU.Deploy.0 = Debug|Any CPU
+		{A5588309-DE22-472E-9FC7-38730E152605}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{A5588309-DE22-472E-9FC7-38730E152605}.Release|Any CPU.Build.0 = Release|Any CPU
+		{A5588309-DE22-472E-9FC7-38730E152605}.Release|Any CPU.Deploy.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {4A689931-687F-4F45-919F-14BED72A5953}
+	EndGlobalSection
+EndGlobal
