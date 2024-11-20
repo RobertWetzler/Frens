@@ -1,8 +1,16 @@
+using Cliq.Server.Data;
+using Cliq.Server.Services;
+using Microsoft.EntityFrameworkCore;
+
 var builder = WebApplication.CreateBuilder(args);
 
 // Add services to the container.
-
+builder.Services.AddDbContext<CliqDbContext>(options =>
+{
+    options.UseNpgsql(builder.Configuration.GetConnectionString("DefaultConnection"));
+});
 builder.Services.AddControllers();
+builder.Services.AddPostServices();
 // Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
@@ -24,6 +32,14 @@ if (app.Environment.IsDevelopment())
 {
     app.UseSwagger();
     app.UseSwaggerUI();
+    using (var scope = app.Services.CreateScope())
+    {
+        var db = scope.ServiceProvider.GetRequiredService<CliqDbContext>();
+        //db.Database.EnsureDeleted(); // Drops the database if it exists
+        //db.Database.EnsureCreated(); // Creates the database and schema
+        // Or use migrations instead:
+        db.Database.Migrate();
+    }
 }
 
 app.UseHttpsRedirection();

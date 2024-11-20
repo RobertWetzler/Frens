@@ -4,3 +4,5 @@ GET {{Cliq.Server_HostAddress}}/weatherforecast/
 Accept: application/json
 
 ###
+GET {{Cliq.Server_HostAddress}}/api/Post
+Accept: application/json
