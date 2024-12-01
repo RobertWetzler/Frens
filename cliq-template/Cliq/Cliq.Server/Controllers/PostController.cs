@@ -16,7 +16,7 @@ public class PostController : ControllerBase
     }
 
     [HttpGet("{id}")]
-    public async Task<ActionResult<Post>> GetPost(string id)
+    public async Task<ActionResult<PostDto>> GetPost(string id)
     {
         var post = await _postService.GetPostByIdAsync(id);
         if (post == null)
@@ -28,7 +28,7 @@ public class PostController : ControllerBase
 
     
     [HttpGet]
-    public async Task<ActionResult<IEnumerable<Post>>> GetAllPosts()
+    public async Task<ActionResult<IEnumerable<PostDto>>> GetAllPosts()
     {
         var posts = await _postService.GetAllPostsAsync();
         return Ok(posts);
@@ -36,21 +36,17 @@ public class PostController : ControllerBase
     
 
     [HttpPost]
-    public async Task<ActionResult<Post>> CreatePost(Post post)
+    public async Task<ActionResult<PostDto>> CreatePost(string userId, string text)
     {
-        var createdPost = await _postService.CreatePostAsync(post);
+        var createdPost = await _postService.CreatePostAsync(userId, text);
         return CreatedAtAction(nameof(GetPost), new { id = createdPost.Id }, createdPost);
     }
 
+    // TODO: Authorize userId matches that of postId
     [HttpPut("{id}")]
-    public async Task<IActionResult> UpdatePost(string id, Post post)
+    public async Task<IActionResult> UpdatePost(string id, string newText)
     {
-        if (id != post.Id)
-        {
-            return BadRequest();
-        }
-
-        var updatedPost = await _postService.UpdatePostAsync(id, post.Text);
+        var updatedPost = await _postService.UpdatePostAsync(id, newText);
         if (updatedPost == null)
         {
             return NotFound();

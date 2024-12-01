@@ -13,3 +13,12 @@ public class Post
 
     public ICollection<User> Viewers { get; set; } = new List<User>();
 }
+
+public class PostDto
+{
+    public required string Id { get; set; }
+    public required string UserId { get; set; }
+    public required DateTime Date { get; set; }
+    public required string Text { get; set; }
+    public UserDto User { get; set; } = null!;
+}

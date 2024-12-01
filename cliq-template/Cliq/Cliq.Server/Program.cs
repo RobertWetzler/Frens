@@ -1,5 +1,7 @@
+using AutoMapper;
 using Cliq.Server.Data;
 using Cliq.Server.Services;
+using Cliq.Server.Utilities;
 using Microsoft.EntityFrameworkCore;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -10,6 +12,10 @@ builder.Services.AddDbContext<CliqDbContext>(options =>
     options.UseNpgsql(builder.Configuration.GetConnectionString("DefaultConnection"));
 });
 builder.Services.AddControllers();
+// AutoMapper used for mapping entity classes to DataTransfer Objects (DTOs) visible to user
+var mapperConfig = new MapperConfiguration(c => c.AddProfile(new MappingProfile()));
+builder.Services.AddSingleton<IMapper>(mapperConfig.CreateMapper());
+
 builder.Services.AddPostServices();
 // Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle
 builder.Services.AddEndpointsApiExplorer();

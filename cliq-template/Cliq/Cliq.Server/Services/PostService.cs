@@ -1,6 +1,11 @@
-﻿using Cliq.Server.Data;
+﻿using AutoMapper;
+using Cliq.Server.Data;
 using Cliq.Server.Models;
+using Cliq.Server.Utilities;
+using Microsoft.AspNetCore.Http.HttpResults;
+using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
+using Microsoft.AspNetCore.Server.IIS;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.ChangeTracking;
 
@@ -8,12 +13,12 @@ namespace Cliq.Server.Services;
 
 public interface IPostService
 {
-    Task<Post?> GetPostByIdAsync(string id);
-    Task<IEnumerable<Post>> GetFeedForUserAsync(string userId, int page = 1, int pageSize = 20);
-    Task<IEnumerable<Post>> GetAllPostsAsync();
-    Task<IEnumerable<Post>> GetUserPostsAsync(string userId, int page = 1, int pageSize = 20);
-    Task<Post> CreatePostAsync(Post post);
-    Task<Post?> UpdatePostAsync(string id, string newText);
+    Task<PostDto?> GetPostByIdAsync(string id);
+    Task<IEnumerable<PostDto>> GetFeedForUserAsync(string userId, int page = 1, int pageSize = 20);
+    Task<IEnumerable<PostDto>> GetAllPostsAsync();
+    Task<IEnumerable<PostDto>> GetUserPostsAsync(string userId, int page = 1, int pageSize = 20);
+    Task<PostDto> CreatePostAsync(string userId, string text);
+    Task<PostDto?> UpdatePostAsync(string id, string newText);
     Task<bool> DeletePostAsync(string id);
     Task<bool> AddViewerAsync(string postId, string userId);
     Task<bool> RemoveViewerAsync(string postId, string userId);
@@ -25,24 +30,28 @@ public interface IPostService
 public class PostService : IPostService
 {
     private readonly CliqDbContext _dbContext;
+    private readonly IMapper _mapper;
     private readonly ILogger<PostService> _logger;
 
     public PostService(
         CliqDbContext dbContext,
+        IMapper mapper,
         ILogger<PostService> logger)
     {
         _dbContext = dbContext;
+        _mapper = mapper;
         _logger = logger;
     }
 
-    public async Task<Post?> GetPostByIdAsync(string id)
+    public async Task<PostDto?> GetPostByIdAsync(string id)
     {
         try
         {
-            return await _dbContext.Posts
+            var posts =  await _dbContext.Posts
                 .Include(p => p.User)
                 .Include(p => p.Viewers)
                 .FirstOrDefaultAsync(p => p.Id == id);
+            return this._mapper.Map<PostDto>(posts);
         }
         catch (Exception ex)
         {
@@ -51,11 +60,11 @@ public class PostService : IPostService
         }
     }
 
-    public async Task<IEnumerable<Post>> GetFeedForUserAsync(string userId, int page = 1, int pageSize = 20)
+    public async Task<IEnumerable<PostDto>> GetFeedForUserAsync(string userId, int page = 1, int pageSize = 20)
     {
         try
         {
-            return await _dbContext.Posts
+            var posts =  await _dbContext.Posts
                 .Include(p => p.User)
                 .Include(p => p.Viewers)
                 .Where(p => p.UserId == userId || p.Viewers.Any(v => v.Id == userId))
@@ -63,6 +72,7 @@ public class PostService : IPostService
                 .Skip((page - 1) * pageSize)
                 .Take(pageSize)
                 .ToListAsync();
+            return this._mapper.Map<PostDto[]>(posts);
         }
         catch (Exception ex)
         {
@@ -71,14 +81,15 @@ public class PostService : IPostService
         }
     }
 
-    public async Task<IEnumerable<Post>> GetAllPostsAsync()
+    public async Task<IEnumerable<PostDto>> GetAllPostsAsync()
     {
         try
         {
-            return await _dbContext.Posts
+            var posts =  await _dbContext.Posts
                 .Include(p => p.User)
                 .Include(p => p.Viewers)
                 .ToListAsync();
+            return this._mapper.Map<PostDto[]>(posts);
         }
         catch (Exception ex)
         {
@@ -86,11 +97,11 @@ public class PostService : IPostService
             throw;
         }
     }
-    public async Task<IEnumerable<Post>> GetUserPostsAsync(string userId, int page = 1, int pageSize = 20)
+    public async Task<IEnumerable<PostDto>> GetUserPostsAsync(string userId, int page = 1, int pageSize = 20)
     {
         try
         {
-            return await _dbContext.Posts
+            var posts =  await _dbContext.Posts
                 .Include(p => p.User)
                 .Include(p => p.Viewers)
                 .Where(p => p.UserId == userId)
@@ -98,6 +109,7 @@ public class PostService : IPostService
                 .Skip((page - 1) * pageSize)
                 .Take(pageSize)
                 .ToListAsync();
+            return this._mapper.Map<PostDto[]>(posts);
         }
         catch (Exception ex)
         {
@@ -106,24 +118,24 @@ public class PostService : IPostService
         }
     }
 
-    public async Task<Post> CreatePostAsync(Post post)
+    // TODO: Should FromBody be used to force JSON body request (POST semantic)?
+    public async Task<PostDto> CreatePostAsync([FromBody] string userId, [FromBody] string text)
     {
-        if (post == null)
-            throw new ArgumentNullException(nameof(post));
+        // TODO: Use a method from UserService for finding User by ID
+        if (await this._dbContext.Users.FirstOrDefaultAsync(u => u.Id == userId) == null)
+        {
+            throw new Microsoft.AspNetCore.Http.BadHttpRequestException($"Cannot create post for invalid user {userId}");
+        }
 
         try
         {
-            // Ensure Id is set if not provided
-            if (string.IsNullOrEmpty(post.Id))
+            var post = new Post
             {
-                post.Id = Guid.NewGuid().ToString();
-            }
-
-            // Ensure date is set
-            if (post.Date == default)
-            {
-                post.Date = DateTime.UtcNow;
-            }
+                Id = Guid.NewGuid().ToString(),
+                UserId = userId,
+                Text = text,
+                Date = DateTime.UtcNow
+            };
 
             var entry = await _dbContext.Posts.AddAsync(post);
             await SaveChangesAsync();
@@ -137,27 +149,28 @@ public class PostService : IPostService
                 .Collection(p => p.Viewers)
                 .LoadAsync();
 
-            return entry.Entity;
+            return this._mapper.Map<PostDto>(entry.Entity);
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error creating post for user: {UserId}", post.UserId);
+            _logger.LogError(ex, "Error creating post for user: {UserId}", userId);
             throw;
         }
     }
 
-    public async Task<Post?> UpdatePostAsync(string id, string newText)
+    public async Task<PostDto?> UpdatePostAsync(string id, string newText)
     {
         try
         {
-            var post = await GetPostByIdAsync(id);
+            var post = await this._dbContext.Posts
+                        .FirstOrDefaultAsync(p => p.Id == id);
             if (post == null) return null;
 
             post.Text = newText;
             _dbContext.Posts.Update(post);
             await SaveChangesAsync();
 
-            return post;
+            return this._mapper.Map<PostDto>(post);
         }
         catch (Exception ex)
         {
