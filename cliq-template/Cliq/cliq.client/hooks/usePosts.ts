@@ -1,15 +1,16 @@
 import { useState, useEffect } from 'react';
-import { PostService, PostType } from '../services/postService';
+import { Post } from '../services/generated/generatedClient';
+import { ApiClient } from 'services/apiClient';
 
 export function usePosts() {
-    const [posts, setPosts] = useState<PostType[]>([]);
+    const [posts, setPosts] = useState<Post[]>([]);
     const [isLoading, setIsLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
 
     const loadPosts = async () => {
         try {
             setIsLoading(true);
-            const {posts} = await PostService.fetchPosts();
+            const posts = await ApiClient.Instance.postAll();
             setPosts(posts);
             setError(null);
         } catch (err) {

@@ -1,6 +1,6 @@
 import React from 'react';
 import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
-import { PostType } from '../services/postService';
+import { Post as PostType} from 'services/generated/generatedClient'
 
 interface PostProps {
   post: PostType,
@@ -11,8 +11,8 @@ const Post: React.FC<PostProps> = ({ post, navigation }) => {
   return (
     <View style={styles.container}>
       <View style={styles.header}>
-        <Text style={styles.author}>{post.userName}</Text>
-        <Text style={styles.date}>{post.date}</Text>
+        <Text style={styles.author}>{post.user.name}</Text>
+        <Text style={styles.date}>{post.date.toLocaleString()}</Text>
       </View>
       <Text style={styles.content}>{post.text}</Text>
       <TouchableOpacity

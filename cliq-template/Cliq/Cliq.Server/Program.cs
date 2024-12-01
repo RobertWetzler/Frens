@@ -21,12 +21,19 @@ builder.Services.AddCors(options =>
             .SetIsOriginAllowed(_ => true) // Be careful with this in production
             .AllowAnyHeader()
             .AllowAnyMethod());
+    options.AddPolicy("ExpoApp",
+        builder => builder
+        // TODO: Update to prod domain, only use localhost CORS in dev-env
+            .WithOrigins("http://localhost:8081", "exp://localhost:19006")
+            .AllowAnyMethod()
+            .AllowAnyHeader()
+    );
 });
 var app = builder.Build();
 
 app.UseDefaultFiles();
 app.UseStaticFiles();
-
+app.UseCors("ExpoApp");
 // Configure the HTTP request pipeline.
 if (app.Environment.IsDevelopment())
 {
@@ -42,7 +49,8 @@ if (app.Environment.IsDevelopment())
     }
 }
 
-app.UseHttpsRedirection();
+// TODO: RE-INTRODUCE! After getting https working in dev-env for API server
+//app.UseHttpsRedirection();
 
 app.UseAuthorization();
 
