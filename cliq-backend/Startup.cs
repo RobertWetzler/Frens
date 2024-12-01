@@ -19,7 +19,9 @@ public class Startup
         services.AddPostServices();
         services.AddDbContext<ApplicationDbContext>(options =>
         {
-            var connectionString = Environment.ExpandEnvironmentVariables(Configuration.GetConnectionString("DefaultConnection"));
+            //var connectionString = Environment.ExpandEnvironmentVariables(Configuration.GetConnectionString("DefaultConnection"));
+            //var connectionString = Configuration.GetConnectionString("DefaultConnection");
+            var connectionString = "Host=localhost;Port=5432;Password=password";
             options.UseNpgsql(connectionString);
         });
     services.AddEndpointsApiExplorer();

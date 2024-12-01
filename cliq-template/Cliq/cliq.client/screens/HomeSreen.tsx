@@ -1,9 +1,9 @@
-import React from 'react';
-import { View, FlatList, StyleSheet, SafeAreaView } from 'react-native';
+import React, { useEffect } from 'react';
+import { Text, View, FlatList, StyleSheet, SafeAreaView, ActivityIndicator } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Post from '../components/Post';
+import { usePosts } from 'hooks/usePosts';
 import AnimatedBackground from '../components/AnimatedBackground';
-import { apiGet, apiPost } from '../services/api';
 
 const dummyPosts = [
   { id: '1', content: 'Hello, close friends!', author: 'Alice', circle: 'Best Friends' },
@@ -12,12 +12,40 @@ const dummyPosts = [
 ];
 
 const HomeScreen = ({ navigation }) => {
+    const { posts, isLoading, error, loadPosts } = usePosts();
+    // Useful for debugging hook transitions
+    useEffect(() => {
+        console.log('Posts state:', posts);
+        console.log('Is Loading:', isLoading);
+        console.log('Error:', error);
+    }, [posts, isLoading, error]);
+    
   const insets = useSafeAreaInsets();
+   // Render loading state
+   if (isLoading) {
+    return (
+      <SafeAreaView style={styles.container}>
+        <AnimatedBackground />
+        <ActivityIndicator size="large" color="#0000ff" />
+      </SafeAreaView>
+    );
+  }
+
+  // Render error state
+  if (error) {
+    return (
+      <SafeAreaView style={styles.container}>
+        <AnimatedBackground />
+        <Text style={styles.errorText}>{error}</Text>
+      </SafeAreaView>
+    );
+  }
+
   return (
     <SafeAreaView style={styles.container}>
       <AnimatedBackground />
       <FlatList
-        data={dummyPosts}
+        data={posts}
         renderItem={({ item }) => (
           <Post post={item} navigation={navigation} />
         )}
@@ -26,6 +54,17 @@ const HomeScreen = ({ navigation }) => {
           styles.listContent,
           { paddingBottom: insets.bottom + 60 } // Add extra padding for the tab bar
         ]}
+        // Add these props for better UX
+        refreshing={isLoading}
+        onRefresh={() => {
+          // Implement pull-to-refresh functionality
+          loadPosts();
+        }}
+        ListEmptyComponent={() => (
+          <View style={styles.emptyContainer}>
+            <Text style={styles.emptyText}>No posts found</Text>
+          </View>
+        )}
       />
     </SafeAreaView>
   );
@@ -39,6 +78,21 @@ const styles = StyleSheet.create({
   listContent: {
     paddingTop: 16,
     paddingHorizontal: 16,
+  },
+  errorText: {
+    color: 'red',
+    textAlign: 'center',
+    marginTop: 20,
+  },
+  emptyContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginTop: 50,
+  },
+  emptyText: {
+    fontSize: 18,
+    color: '#888',
   },
 });
 

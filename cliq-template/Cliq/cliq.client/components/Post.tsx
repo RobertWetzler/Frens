@@ -1,13 +1,9 @@
 import React from 'react';
 import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
+import { PostType } from '../services/postService';
 
 interface PostProps {
-  post: {
-    id: string;
-    content: string;
-    author: string;
-    circle: string;
-  };
+  post: PostType,
   navigation: any;
 }
 
@@ -15,10 +11,10 @@ const Post: React.FC<PostProps> = ({ post, navigation }) => {
   return (
     <View style={styles.container}>
       <View style={styles.header}>
-        <Text style={styles.author}>{post.author}</Text>
-        <Text style={styles.circle}>{post.circle}</Text>
+        <Text style={styles.author}>{post.userName}</Text>
+        <Text style={styles.date}>{post.date}</Text>
       </View>
-      <Text style={styles.content}>{post.content}</Text>
+      <Text style={styles.content}>{post.text}</Text>
       <TouchableOpacity
         style={styles.commentButton}
         onPress={() => navigation.navigate('Comments', { postId: post.id })}
@@ -51,7 +47,7 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     fontSize: 16,
   },
-  circle: {
+  date: {
     color: '#666',
     fontSize: 14,
   },
