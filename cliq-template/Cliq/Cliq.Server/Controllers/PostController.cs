@@ -16,9 +16,9 @@ public class PostController : ControllerBase
     }
 
     [HttpGet("{id}")]
-    public async Task<ActionResult<PostDto>> GetPost(string id)
+    public async Task<ActionResult<PostDto>> GetPost(string id, bool includeCommentTree = true)
     {
-        var post = await _postService.GetPostByIdAsync(id);
+        var post = await _postService.GetPostByIdAsync(id, includeCommentTree);
         if (post == null)
         {
             return NotFound();

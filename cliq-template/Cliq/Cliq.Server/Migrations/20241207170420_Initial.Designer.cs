@@ -12,18 +12,82 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace Cliq.Server.Migrations
 {
     [DbContext(typeof(CliqDbContext))]
-    [Migration("20241115054400_InitialCreate")]
-    partial class InitialCreate
+    [Migration("20241207170420_Initial")]
+    partial class Initial
     {
         /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
+                .HasDefaultSchema("public")
                 .HasAnnotation("ProductVersion", "8.0.10")
                 .HasAnnotation("Relational:MaxIdentifierLength", 63);
 
             NpgsqlModelBuilderExtensions.UseIdentityByDefaultColumns(modelBuilder);
+
+            modelBuilder.Entity("Cliq.Server.Models.Comment", b =>
+                {
+                    b.Property<string>("Id")
+                        .HasColumnType("text");
+
+                    b.Property<DateTime>("Date")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("ParentCommentId")
+                        .HasColumnType("text");
+
+                    b.Property<string>("ParentPostId")
+                        .HasColumnType("text");
+
+                    b.Property<string>("Text")
+                        .IsRequired()
+                        .HasMaxLength(4000)
+                        .HasColumnType("character varying(4000)");
+
+                    b.Property<string>("UserId")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ParentCommentId");
+
+                    b.HasIndex("ParentPostId");
+
+                    b.HasIndex("UserId");
+
+                    b.ToTable("Comments", "public", t =>
+                        {
+                            t.HasCheckConstraint("CK_Comment_HasOneParent", "(\"ParentPostId\" IS NOT NULL AND \"ParentCommentId\" IS NULL) OR (\"ParentPostId\" IS NULL AND \"ParentCommentId\" IS NOT NULL)");
+                        });
+
+                    b.HasData(
+                        new
+                        {
+                            Id = "comment1",
+                            Date = new DateTime(2024, 12, 7, 17, 4, 19, 940, DateTimeKind.Utc).AddTicks(9882),
+                            ParentPostId = "post1",
+                            Text = "I am bob and I am commenting on a post",
+                            UserId = "user3"
+                        },
+                        new
+                        {
+                            Id = "childComment2",
+                            Date = new DateTime(2024, 12, 7, 17, 4, 19, 940, DateTimeKind.Utc).AddTicks(9887),
+                            ParentCommentId = "comment1",
+                            Text = "I am John responding to Bob",
+                            UserId = "user1"
+                        },
+                        new
+                        {
+                            Id = "comment3",
+                            Date = new DateTime(2024, 12, 7, 17, 4, 19, 940, DateTimeKind.Utc).AddTicks(9890),
+                            ParentPostId = "post1",
+                            Text = "I am Jane and I am commenting on Bob's post",
+                            UserId = "user2"
+                        });
+                });
 
             modelBuilder.Entity("Cliq.Server.Models.Post", b =>
                 {
@@ -46,27 +110,27 @@ namespace Cliq.Server.Migrations
 
                     b.HasIndex("UserId");
 
-                    b.ToTable("Posts");
+                    b.ToTable("Posts", "public");
 
                     b.HasData(
                         new
                         {
                             Id = "post1",
-                            Date = new DateTime(2024, 11, 14, 5, 43, 59, 776, DateTimeKind.Utc).AddTicks(5481),
+                            Date = new DateTime(2024, 12, 6, 17, 4, 19, 940, DateTimeKind.Utc).AddTicks(9767),
                             Text = "Hello world! This is my first post.",
                             UserId = "user1"
                         },
                         new
                         {
                             Id = "post2",
-                            Date = new DateTime(2024, 11, 14, 17, 43, 59, 776, DateTimeKind.Utc).AddTicks(5510),
+                            Date = new DateTime(2024, 12, 7, 5, 4, 19, 940, DateTimeKind.Utc).AddTicks(9788),
                             Text = "Excited to join this platform!",
                             UserId = "user2"
                         },
                         new
                         {
                             Id = "post3",
-                            Date = new DateTime(2024, 11, 14, 23, 43, 59, 776, DateTimeKind.Utc).AddTicks(5513),
+                            Date = new DateTime(2024, 12, 7, 11, 4, 19, 940, DateTimeKind.Utc).AddTicks(9791),
                             Text = "Another day, another post. #coding",
                             UserId = "user1"
                         });
@@ -95,7 +159,7 @@ namespace Cliq.Server.Migrations
 
                     b.HasKey("Id");
 
-                    b.ToTable("Users");
+                    b.ToTable("Users", "public");
 
                     b.HasData(
                         new
@@ -103,7 +167,7 @@ namespace Cliq.Server.Migrations
                             Id = "user1",
                             Email = "john@example.com",
                             Name = "John Doe",
-                            Password = "$2a$11$S.nyCZtkt89uQPm1.8t/hedPUrgh5GoQk3hsh3SMYikVg/DQKy79q",
+                            Password = "$2a$11$mYNNrhJ3UXAEq.GSiwQuKel1e8SvWWX8m97a0z9S3klPeQjBRB/mK",
                             Username = "johndoe"
                         },
                         new
@@ -111,7 +175,7 @@ namespace Cliq.Server.Migrations
                             Id = "user2",
                             Email = "jane@example.com",
                             Name = "Jane Smith",
-                            Password = "$2a$11$VUB4LfbHhr/aQhUpxbDEXe1X7yb/qDs0CK8jRcTv6/j.8SS00mHha",
+                            Password = "$2a$11$wO5McvqbwyfAynTs028Akuyw8auYcZQOUdOncJIzD.d5psBRj6Hv2",
                             Username = "janesmith"
                         },
                         new
@@ -119,7 +183,7 @@ namespace Cliq.Server.Migrations
                             Id = "user3",
                             Email = "bob@example.com",
                             Name = "Bob Wilson",
-                            Password = "$2a$11$BtLENedQGOkSALOZB4zMnObefixI/GmmrWWx6oLntoJdtIt/xNxr6",
+                            Password = "$2a$11$zp99clQpriv/Qekw.HHGSudntEX4q05IkHEvFaYMIUmjrUyjd7/3K",
                             Username = "bobwilson"
                         });
                 });
@@ -136,7 +200,7 @@ namespace Cliq.Server.Migrations
 
                     b.HasIndex("ViewersId");
 
-                    b.ToTable("PostUser");
+                    b.ToTable("PostUser", "public");
 
                     b.HasData(
                         new
@@ -159,6 +223,31 @@ namespace Cliq.Server.Migrations
                             PostId = "post2",
                             ViewersId = "user3"
                         });
+                });
+
+            modelBuilder.Entity("Cliq.Server.Models.Comment", b =>
+                {
+                    b.HasOne("Cliq.Server.Models.Comment", "ParentComment")
+                        .WithMany("Replies")
+                        .HasForeignKey("ParentCommentId")
+                        .OnDelete(DeleteBehavior.Cascade);
+
+                    b.HasOne("Cliq.Server.Models.Post", "Post")
+                        .WithMany("Comments")
+                        .HasForeignKey("ParentPostId")
+                        .OnDelete(DeleteBehavior.Cascade);
+
+                    b.HasOne("Cliq.Server.Models.User", "User")
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("ParentComment");
+
+                    b.Navigation("Post");
+
+                    b.Navigation("User");
                 });
 
             modelBuilder.Entity("Cliq.Server.Models.Post", b =>
@@ -185,6 +274,16 @@ namespace Cliq.Server.Migrations
                         .HasForeignKey("ViewersId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
+                });
+
+            modelBuilder.Entity("Cliq.Server.Models.Comment", b =>
+                {
+                    b.Navigation("Replies");
+                });
+
+            modelBuilder.Entity("Cliq.Server.Models.Post", b =>
+                {
+                    b.Navigation("Comments");
                 });
 #pragma warning restore 612, 618
         }

@@ -17,6 +17,7 @@ var mapperConfig = new MapperConfiguration(c => c.AddProfile(new MappingProfile(
 builder.Services.AddSingleton<IMapper>(mapperConfig.CreateMapper());
 
 builder.Services.AddPostServices();
+builder.Services.AddCommentServices();
 // Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
@@ -48,10 +49,10 @@ if (app.Environment.IsDevelopment())
     using (var scope = app.Services.CreateScope())
     {
         var db = scope.ServiceProvider.GetRequiredService<CliqDbContext>();
-        //db.Database.EnsureDeleted(); // Drops the database if it exists
-        //db.Database.EnsureCreated(); // Creates the database and schema
+        db.Database.EnsureDeleted(); // Drops the database if it exists
+        db.Database.EnsureCreated(); // Creates the database and schema
         // Or use migrations instead:
-        db.Database.Migrate();
+        //db.Database.Migrate();
     }
 }
 

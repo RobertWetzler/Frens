@@ -3,6 +3,9 @@
 GET {{Cliq.Server_HostAddress}}/weatherforecast/
 Accept: application/json
 
-###
+### Get all posts
 GET {{Cliq.Server_HostAddress}}/api/Post
+Accept: application/json
+### Get post by Id
+GET {{Cliq.Server_HostAddress}}/api/Post/seedPost1
 Accept: application/json

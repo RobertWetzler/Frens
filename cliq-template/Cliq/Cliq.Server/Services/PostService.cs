@@ -8,12 +8,13 @@ using Microsoft.AspNetCore.Mvc.RazorPages;
 using Microsoft.AspNetCore.Server.IIS;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.ChangeTracking;
+using Microsoft.Extensions.Hosting;
 
 namespace Cliq.Server.Services;
 
 public interface IPostService
 {
-    Task<PostDto?> GetPostByIdAsync(string id);
+    Task<PostDto?> GetPostByIdAsync(string id, bool includeCommentTree = false, int maxDepth = 3);
     Task<IEnumerable<PostDto>> GetFeedForUserAsync(string userId, int page = 1, int pageSize = 20);
     Task<IEnumerable<PostDto>> GetAllPostsAsync();
     Task<IEnumerable<PostDto>> GetUserPostsAsync(string userId, int page = 1, int pageSize = 20);
@@ -30,35 +31,40 @@ public interface IPostService
 public class PostService : IPostService
 {
     private readonly CliqDbContext _dbContext;
+    private readonly ICommentService _commentService;
     private readonly IMapper _mapper;
     private readonly ILogger<PostService> _logger;
 
     public PostService(
         CliqDbContext dbContext,
+        ICommentService commentService,
         IMapper mapper,
         ILogger<PostService> logger)
     {
         _dbContext = dbContext;
+        _commentService = commentService;
         _mapper = mapper;
         _logger = logger;
     }
 
-    public async Task<PostDto?> GetPostByIdAsync(string id)
+    public async Task<PostDto?> GetPostByIdAsync(string id, bool includeCommentTree = true, int maxDepth = 3)
     {
-        try
+        var post = await _dbContext.Posts
+            .Include(p => p.User)
+            .Include(p => p.Viewers)
+            .FirstOrDefaultAsync(p => p.Id == id);
+
+        if (post == null) return null;
+
+        var dto = this._mapper.Map<PostDto>(post);
+        if (includeCommentTree)
         {
-            var posts =  await _dbContext.Posts
-                .Include(p => p.User)
-                .Include(p => p.Viewers)
-                .FirstOrDefaultAsync(p => p.Id == id);
-            return this._mapper.Map<PostDto>(posts);
+            dto.Comments = (await _commentService.GetAllCommentsForPostAsync(id)).ToList();
         }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Error retrieving post with ID: {PostId}", id);
-            throw;
-        }
+
+        return dto;
     }
+
 
     public async Task<IEnumerable<PostDto>> GetFeedForUserAsync(string userId, int page = 1, int pageSize = 20)
     {
@@ -119,6 +125,7 @@ public class PostService : IPostService
     }
 
     // TODO: Should FromBody be used to force JSON body request (POST semantic)?
+    // TODO: Take userId from JWT token
     public async Task<PostDto> CreatePostAsync([FromBody] string userId, [FromBody] string text)
     {
         // TODO: Use a method from UserService for finding User by ID
@@ -260,83 +267,11 @@ public class PostService : IPostService
     }
 }
 
-    // Repository interface
-    public interface IPostRepository
-{
-    Task<Post> GetByIdAsync(string id);
-    Task<IEnumerable<Post>> GetAllAsync();
-    Task<Post> CreateAsync(Post post);
-    Task<Post> UpdateAsync(Post post);
-    Task<bool> DeleteAsync(string id);
-}
-
-// In-memory repository implementation
-public class InMemoryPostRepository : IPostRepository
-{
-    private readonly List<Post> _posts = new List<Post>();
-
-    public InMemoryPostRepository()
-    {
-        var user = new User { Id = "user123", Name = "Robert Wetzler", Email = "rwetzler779@gmail.com", Username = "RobAdmin", Password = "Stripse10"  };
-        // Add some sample data
-        this._posts.Add(new Post
-        {
-            Id = "postId12345678",
-            UserId = user.Id,
-            User = user,
-            Date = DateTime.UtcNow,
-            Text = "This is awesome"
-        });
-    }
-
-    public Task<Post?> GetByIdAsync(string id)
-    {
-        return Task.FromResult(_posts.FirstOrDefault(p => p.Id == id));
-    }
-
-    public Task<IEnumerable<Post>> GetAllAsync()
-    {
-        return Task.FromResult(_posts.AsEnumerable());
-    }
-
-    public Task<Post> CreateAsync(Post post)
-    {
-        post.Id = Guid.NewGuid().ToString();
-        _posts.Add(post);
-        return Task.FromResult(post);
-    }
-
-    public async Task<Post?> UpdateAsync(Post post)
-    {
-        var existingPost = await this.GetByIdAsync(post.Id);
-        if (existingPost != null)
-        {
-            existingPost.User = post.User;
-            existingPost.Date = post.Date;
-            existingPost.Text = post.Text;
-            existingPost.Viewers = post.Viewers;
-        }
-        return existingPost;
-    }
-
-    public async Task<bool> DeleteAsync(string id)
-    {
-        var post = await this.GetByIdAsync(id);
-        if (post != null)
-        {
-            _posts.Remove(post);
-            return true;
-        }
-        return false;
-    }
-}
-
 // Extension method for dependency injection
 public static class ServiceCollectionExtensions
 {
     public static IServiceCollection AddPostServices(this IServiceCollection services)
     {
-        services.AddScoped<IPostRepository, InMemoryPostRepository>();
         services.AddScoped<IPostService, PostService>();
         return services;
     }

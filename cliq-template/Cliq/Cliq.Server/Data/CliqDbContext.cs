@@ -9,6 +9,7 @@ public class CliqDbContext : DbContext
     private readonly IHostEnvironment _env;
     public DbSet<Post> Posts { get; set; }
     public DbSet<User> Users { get; set; }
+    public DbSet<Comment> Comments { get; set; }
 
     public CliqDbContext(
             DbContextOptions<CliqDbContext> options,
@@ -19,6 +20,11 @@ public class CliqDbContext : DbContext
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
+        // At the top of OnModelCreating, before other configurations:
+        modelBuilder.HasDefaultSchema("public");
+        // Make Postgres use quoted identifiers for case-sensitivity
+        modelBuilder.UseIdentityByDefaultColumns();
+
         base.OnModelCreating(modelBuilder);
         // Configure many-to-many relationship between Post and User (viewers)
         modelBuilder.Entity<Post>()
@@ -32,27 +38,49 @@ public class CliqDbContext : DbContext
             .HasForeignKey(p => p.UserId)
             .IsRequired();
 
+        modelBuilder.Entity<Comment>(entity =>
+        {
+            // Comment to User relationship
+            entity.HasOne(c => c.User)
+            .WithMany()
+            .HasForeignKey(c => c.UserId)
+            .IsRequired();
+
+            // Comment to Post relationship (for top-level comments)
+            entity.HasOne(c => c.Post)
+                .WithMany(p => p.Comments)
+                .HasForeignKey(c => c.PostId)
+                .OnDelete(DeleteBehavior.Cascade)
+                .IsRequired();
+
+
+            entity.HasOne(c => c.ParentComment)
+                .WithMany(c => c.Replies)
+                .HasForeignKey(c => c.ParentCommentId)
+                .OnDelete(DeleteBehavior.Cascade);
+        });
+
         if (_env.IsDevelopment())
         {
             // Seed Users
             var users = new List<User>
             {
                 new User {
-                    Id = "user1",
+                    Id = "seedUser1",
                     Name = "John Doe",
                     Email = "john@example.com",
                     Password = BCrypt.Net.BCrypt.HashPassword("password123"),
                     Username = "johndoe"
                 },
                 new User {
-                    Id = "user2",
+                    Id = "seedUser2",
                     Name = "Jane Smith",
                     Email = "jane@example.com",
                     Password = BCrypt.Net.BCrypt.HashPassword("password123"),
                     Username = "janesmith"
                 },
                 new User {
-                    Id = "user3",
+                    Id = "seedUser3",
                     Name = "Bob Wilson",
                     Email = "bob@example.com",
                     Password = BCrypt.Net.BCrypt.HashPassword("password123"),
@@ -62,37 +90,75 @@ public class CliqDbContext : DbContext
 
             modelBuilder.Entity<User>().HasData(users);
 
+
             // Seed Posts
             var posts = new List<Post>
             {
                 new Post {
-                    Id = "post1",
-                    UserId = "user1",
+                    Id = "seedPost1",
+                    UserId = users[0].Id,
                     Date = DateTime.UtcNow.AddDays(-1),
                     Text = "Hello world! This is my first post."
                 },
                 new Post {
-                    Id = "post2",
-                    UserId = "user2",
+                    Id = "seedPost2",
+                    UserId = users[1].Id,
                     Date = DateTime.UtcNow.AddHours(-12),
                     Text = "Excited to join this platform!"
                 },
                 new Post {
-                    Id = "post3",
-                    UserId = "user1",
+                    Id = "seedPost3",
+                    UserId = users[2].Id,
                     Date = DateTime.UtcNow.AddHours(-6),
                     Text = "Another day, another post. #coding"
                 }
             };
-
             modelBuilder.Entity<Post>().HasData(posts);
 
+            // Seed Comments
+            var comment1 = new Comment
+            {
+                Id = "seedComment1",
+                UserId = users[2].Id,
+                Date = DateTime.UtcNow,
+                PostId = posts[0].Id,
+                Text = "I am bob and I am commenting on a post",
+            };
+            var comment1_1 = new Comment
+            {
+                Id = "seedChildComment1_1",
+                UserId = users[0].Id,
+                Date = DateTime.UtcNow,
+                PostId = posts[0].Id,
+                ParentCommentId = comment1.Id,
+                Text = "I am John responding to Bob"
+            };
+            var comment1_1_1 = new Comment
+            {
+                Id = "seedChildComment1_1_1",
+                UserId = users[1].Id,
+                Date = DateTime.UtcNow,
+                PostId = posts[0].Id,
+                ParentCommentId = comment1_1.Id,
+                Text = "I am Jane responding to Bob"
+            };
+            var comment3 = new Comment
+            {
+                Id = "seedComment2",
+                UserId = users[1].Id,
+                Date = DateTime.UtcNow,
+                PostId = posts[0].Id,
+                Text = "I am Jane and I am commenting on John's post"
+            };
+            modelBuilder.Entity<Comment>().HasData(comment1, comment1_1, comment1_1_1, comment3 );
+            
             // Seed Viewers (requires separate statements due to many-to-many relationship)
+            // TODO THIS IS WRONG FOR SPECIFYING VIEWERS
             modelBuilder.Entity("PostUser").HasData(
-                new { ViewersId = "user2", PostId = "post1" },
-                new { ViewersId = "user3", PostId = "post1" },
-                new { ViewersId = "user1", PostId = "post2" },
-                new { ViewersId = "user3", PostId = "post2" }
+                new { ViewersId = "seedUser2", PostId = "seedPost1" },
+                new { ViewersId = "seedUser3", PostId = "seedPost1" },
+                new { ViewersId = "seedUser1", PostId = "seedPost2" },
+                new { ViewersId = "seedUser3", PostId = "seedPost2" }
             );
         }
     }
