@@ -48,7 +48,12 @@ public class CommentService : ICommentService
         {
             await _dbContext.Comments.AddAsync(comment);
             await _dbContext.SaveChangesAsync();
-            return _mapper.Map<CommentDto>(comment);
+            // Fetch the newly created comment with User data included
+            var commentWithUser = await _dbContext.Comments
+                .Include(c => c.User)
+                .FirstAsync(c => c.Id == comment.Id);
+
+            return _mapper.Map<CommentDto>(commentWithUser);
         }
         catch (DbUpdateException ex) when (ex.InnerException is PostgresException pgEx &&
                                          pgEx.SqlState == PostgresErrorCodes.ForeignKeyViolation)
