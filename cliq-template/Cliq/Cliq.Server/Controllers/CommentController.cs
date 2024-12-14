@@ -16,11 +16,11 @@ public class CommentController : ControllerBase
     }
 
     // TODO: validate user has permissions to view post
-    [HttpPost("{id}")]
+    [HttpPost]
     public async Task<ActionResult<CommentDto>> PostComment(string text, string postId, string? parentCommentid = null)
     {
         // TODO: Get UserId from JWT token
-        var userId = "someUserId";
+        var userId = "seedUser1";
         var comment = await _commentService.CreateCommentAsync(text, userId, postId, parentCommentid);
         if (comment == null)
         {

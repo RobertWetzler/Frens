@@ -19,13 +19,70 @@ export class Client {
     }
 
     /**
+     * @param text (optional) 
+     * @param postId (optional) 
+     * @param parentCommentid (optional) 
      * @return OK
      */
-    postGET(id: string): Promise<Post> {
-        let url_ = this.baseUrl + "/api/Post/{id}";
+    comment(text: string | undefined, postId: string | undefined, parentCommentid: string | undefined): Promise<CommentDto> {
+        let url_ = this.baseUrl + "/api/Comment?";
+        if (text === null)
+            throw new Error("The parameter 'text' cannot be null.");
+        else if (text !== undefined)
+            url_ += "text=" + encodeURIComponent("" + text) + "&";
+        if (postId === null)
+            throw new Error("The parameter 'postId' cannot be null.");
+        else if (postId !== undefined)
+            url_ += "postId=" + encodeURIComponent("" + postId) + "&";
+        if (parentCommentid === null)
+            throw new Error("The parameter 'parentCommentid' cannot be null.");
+        else if (parentCommentid !== undefined)
+            url_ += "parentCommentid=" + encodeURIComponent("" + parentCommentid) + "&";
+        url_ = url_.replace(/[?&]$/, "");
+
+        let options_: RequestInit = {
+            method: "POST",
+            headers: {
+                "Accept": "text/plain"
+            }
+        };
+
+        return this.http.fetch(url_, options_).then((_response: Response) => {
+            return this.processComment(_response);
+        });
+    }
+
+    protected processComment(response: Response): Promise<CommentDto> {
+        const status = response.status;
+        let _headers: any = {}; if (response.headers && response.headers.forEach) { response.headers.forEach((v: any, k: any) => _headers[k] = v); };
+        if (status === 200) {
+            return response.text().then((_responseText) => {
+            let result200: any = null;
+            let resultData200 = _responseText === "" ? null : JSON.parse(_responseText, this.jsonParseReviver);
+            result200 = CommentDto.fromJS(resultData200);
+            return result200;
+            });
+        } else if (status !== 200 && status !== 204) {
+            return response.text().then((_responseText) => {
+            return throwException("An unexpected server error occurred.", status, _responseText, _headers);
+            });
+        }
+        return Promise.resolve<CommentDto>(null as any);
+    }
+
+    /**
+     * @param includeCommentTree (optional) 
+     * @return OK
+     */
+    postGET(id: string, includeCommentTree: boolean | undefined): Promise<PostDto> {
+        let url_ = this.baseUrl + "/api/Post/{id}?";
         if (id === undefined || id === null)
             throw new Error("The parameter 'id' must be defined.");
         url_ = url_.replace("{id}", encodeURIComponent("" + id));
+        if (includeCommentTree === null)
+            throw new Error("The parameter 'includeCommentTree' cannot be null.");
+        else if (includeCommentTree !== undefined)
+            url_ += "includeCommentTree=" + encodeURIComponent("" + includeCommentTree) + "&";
         url_ = url_.replace(/[?&]$/, "");
 
         let options_: RequestInit = {
@@ -40,14 +97,14 @@ export class Client {
         });
     }
 
-    protected processPostGET(response: Response): Promise<Post> {
+    protected processPostGET(response: Response): Promise<PostDto> {
         const status = response.status;
         let _headers: any = {}; if (response.headers && response.headers.forEach) { response.headers.forEach((v: any, k: any) => _headers[k] = v); };
         if (status === 200) {
             return response.text().then((_responseText) => {
             let result200: any = null;
             let resultData200 = _responseText === "" ? null : JSON.parse(_responseText, this.jsonParseReviver);
-            result200 = Post.fromJS(resultData200);
+            result200 = PostDto.fromJS(resultData200);
             return result200;
             });
         } else if (status !== 200 && status !== 204) {
@@ -55,27 +112,27 @@ export class Client {
             return throwException("An unexpected server error occurred.", status, _responseText, _headers);
             });
         }
-        return Promise.resolve<Post>(null as any);
+        return Promise.resolve<PostDto>(null as any);
     }
 
     /**
-     * @param body (optional) 
+     * @param newText (optional) 
      * @return OK
      */
-    postPUT(id: string, body: Post | undefined): Promise<void> {
-        let url_ = this.baseUrl + "/api/Post/{id}";
+    postPUT(id: string, newText: string | undefined): Promise<void> {
+        let url_ = this.baseUrl + "/api/Post/{id}?";
         if (id === undefined || id === null)
             throw new Error("The parameter 'id' must be defined.");
         url_ = url_.replace("{id}", encodeURIComponent("" + id));
+        if (newText === null)
+            throw new Error("The parameter 'newText' cannot be null.");
+        else if (newText !== undefined)
+            url_ += "newText=" + encodeURIComponent("" + newText) + "&";
         url_ = url_.replace(/[?&]$/, "");
 
-        const content_ = JSON.stringify(body);
-
         let options_: RequestInit = {
-            body: content_,
             method: "PUT",
             headers: {
-                "Content-Type": "application/json",
             }
         };
 
@@ -138,7 +195,7 @@ export class Client {
     /**
      * @return OK
      */
-    postAll(): Promise<Post[]> {
+    postAll(): Promise<PostDto[]> {
         let url_ = this.baseUrl + "/api/Post";
         url_ = url_.replace(/[?&]$/, "");
 
@@ -154,7 +211,7 @@ export class Client {
         });
     }
 
-    protected processPostAll(response: Response): Promise<Post[]> {
+    protected processPostAll(response: Response): Promise<PostDto[]> {
         const status = response.status;
         let _headers: any = {}; if (response.headers && response.headers.forEach) { response.headers.forEach((v: any, k: any) => _headers[k] = v); };
         if (status === 200) {
@@ -164,7 +221,7 @@ export class Client {
             if (Array.isArray(resultData200)) {
                 result200 = [] as any;
                 for (let item of resultData200)
-                    result200!.push(Post.fromJS(item));
+                    result200!.push(PostDto.fromJS(item));
             }
             else {
                 result200 = <any>null;
@@ -176,24 +233,29 @@ export class Client {
             return throwException("An unexpected server error occurred.", status, _responseText, _headers);
             });
         }
-        return Promise.resolve<Post[]>(null as any);
+        return Promise.resolve<PostDto[]>(null as any);
     }
 
     /**
-     * @param body (optional) 
+     * @param userId (optional) 
+     * @param text (optional) 
      * @return OK
      */
-    postPOST(body: Post | undefined): Promise<Post> {
-        let url_ = this.baseUrl + "/api/Post";
+    postPOST(userId: string | undefined, text: string | undefined): Promise<PostDto> {
+        let url_ = this.baseUrl + "/api/Post?";
+        if (userId === null)
+            throw new Error("The parameter 'userId' cannot be null.");
+        else if (userId !== undefined)
+            url_ += "userId=" + encodeURIComponent("" + userId) + "&";
+        if (text === null)
+            throw new Error("The parameter 'text' cannot be null.");
+        else if (text !== undefined)
+            url_ += "text=" + encodeURIComponent("" + text) + "&";
         url_ = url_.replace(/[?&]$/, "");
 
-        const content_ = JSON.stringify(body);
-
         let options_: RequestInit = {
-            body: content_,
             method: "POST",
             headers: {
-                "Content-Type": "application/json",
                 "Accept": "text/plain"
             }
         };
@@ -203,14 +265,14 @@ export class Client {
         });
     }
 
-    protected processPostPOST(response: Response): Promise<Post> {
+    protected processPostPOST(response: Response): Promise<PostDto> {
         const status = response.status;
         let _headers: any = {}; if (response.headers && response.headers.forEach) { response.headers.forEach((v: any, k: any) => _headers[k] = v); };
         if (status === 200) {
             return response.text().then((_responseText) => {
             let result200: any = null;
             let resultData200 = _responseText === "" ? null : JSON.parse(_responseText, this.jsonParseReviver);
-            result200 = Post.fromJS(resultData200);
+            result200 = PostDto.fromJS(resultData200);
             return result200;
             });
         } else if (status !== 200 && status !== 204) {
@@ -218,63 +280,82 @@ export class Client {
             return throwException("An unexpected server error occurred.", status, _responseText, _headers);
             });
         }
-        return Promise.resolve<Post>(null as any);
-    }
-
-    /**
-     * @return OK
-     */
-    getWeatherForecast(): Promise<WeatherForecast[]> {
-        let url_ = this.baseUrl + "/WeatherForecast";
-        url_ = url_.replace(/[?&]$/, "");
-
-        let options_: RequestInit = {
-            method: "GET",
-            headers: {
-                "Accept": "text/plain"
-            }
-        };
-
-        return this.http.fetch(url_, options_).then((_response: Response) => {
-            return this.processGetWeatherForecast(_response);
-        });
-    }
-
-    protected processGetWeatherForecast(response: Response): Promise<WeatherForecast[]> {
-        const status = response.status;
-        let _headers: any = {}; if (response.headers && response.headers.forEach) { response.headers.forEach((v: any, k: any) => _headers[k] = v); };
-        if (status === 200) {
-            return response.text().then((_responseText) => {
-            let result200: any = null;
-            let resultData200 = _responseText === "" ? null : JSON.parse(_responseText, this.jsonParseReviver);
-            if (Array.isArray(resultData200)) {
-                result200 = [] as any;
-                for (let item of resultData200)
-                    result200!.push(WeatherForecast.fromJS(item));
-            }
-            else {
-                result200 = <any>null;
-            }
-            return result200;
-            });
-        } else if (status !== 200 && status !== 204) {
-            return response.text().then((_responseText) => {
-            return throwException("An unexpected server error occurred.", status, _responseText, _headers);
-            });
-        }
-        return Promise.resolve<WeatherForecast[]>(null as any);
+        return Promise.resolve<PostDto>(null as any);
     }
 }
 
-export class Post implements IPost {
+export class CommentDto implements ICommentDto {
+    id!: string | undefined;
+    date!: Date;
+    text!: string | undefined;
+    user!: UserDto;
+    replies?: CommentDto[] | undefined;
+
+    constructor(data?: ICommentDto) {
+        if (data) {
+            for (var property in data) {
+                if (data.hasOwnProperty(property))
+                    (<any>this)[property] = (<any>data)[property];
+            }
+        }
+        if (!data) {
+            this.user = new UserDto();
+        }
+    }
+
+    init(_data?: any) {
+        if (_data) {
+            this.id = _data["id"];
+            this.date = _data["date"] ? new Date(_data["date"].toString()) : <any>undefined;
+            this.text = _data["text"];
+            this.user = _data["user"] ? UserDto.fromJS(_data["user"]) : new UserDto();
+            if (Array.isArray(_data["replies"])) {
+                this.replies = [] as any;
+                for (let item of _data["replies"])
+                    this.replies!.push(CommentDto.fromJS(item));
+            }
+        }
+    }
+
+    static fromJS(data: any): CommentDto {
+        data = typeof data === 'object' ? data : {};
+        let result = new CommentDto();
+        result.init(data);
+        return result;
+    }
+
+    toJSON(data?: any) {
+        data = typeof data === 'object' ? data : {};
+        data["id"] = this.id;
+        data["date"] = this.date ? this.date.toISOString() : <any>undefined;
+        data["text"] = this.text;
+        data["user"] = this.user ? this.user.toJSON() : <any>undefined;
+        if (Array.isArray(this.replies)) {
+            data["replies"] = [];
+            for (let item of this.replies)
+                data["replies"].push(item.toJSON());
+        }
+        return data;
+    }
+}
+
+export interface ICommentDto {
+    id: string | undefined;
+    date: Date;
+    text: string | undefined;
+    user: UserDto;
+    replies?: CommentDto[] | undefined;
+}
+
+export class PostDto implements IPostDto {
     id!: string | undefined;
     userId!: string | undefined;
     date!: Date;
     text!: string | undefined;
-    user?: User;
-    viewers?: User[] | undefined;
+    user?: UserDto;
+    comments?: CommentDto[] | undefined;
 
-    constructor(data?: IPost) {
+    constructor(data?: IPostDto) {
         if (data) {
             for (var property in data) {
                 if (data.hasOwnProperty(property))
@@ -289,18 +370,18 @@ export class Post implements IPost {
             this.userId = _data["userId"];
             this.date = _data["date"] ? new Date(_data["date"].toString()) : <any>undefined;
             this.text = _data["text"];
-            this.user = _data["user"] ? User.fromJS(_data["user"]) : <any>undefined;
-            if (Array.isArray(_data["viewers"])) {
-                this.viewers = [] as any;
-                for (let item of _data["viewers"])
-                    this.viewers!.push(User.fromJS(item));
+            this.user = _data["user"] ? UserDto.fromJS(_data["user"]) : <any>undefined;
+            if (Array.isArray(_data["comments"])) {
+                this.comments = [] as any;
+                for (let item of _data["comments"])
+                    this.comments!.push(CommentDto.fromJS(item));
             }
         }
     }
 
-    static fromJS(data: any): Post {
+    static fromJS(data: any): PostDto {
         data = typeof data === 'object' ? data : {};
-        let result = new Post();
+        let result = new PostDto();
         result.init(data);
         return result;
     }
@@ -312,32 +393,30 @@ export class Post implements IPost {
         data["date"] = this.date ? this.date.toISOString() : <any>undefined;
         data["text"] = this.text;
         data["user"] = this.user ? this.user.toJSON() : <any>undefined;
-        if (Array.isArray(this.viewers)) {
-            data["viewers"] = [];
-            for (let item of this.viewers)
-                data["viewers"].push(item.toJSON());
+        if (Array.isArray(this.comments)) {
+            data["comments"] = [];
+            for (let item of this.comments)
+                data["comments"].push(item.toJSON());
         }
         return data;
     }
 }
 
-export interface IPost {
+export interface IPostDto {
     id: string | undefined;
     userId: string | undefined;
     date: Date;
     text: string | undefined;
-    user?: User;
-    viewers?: User[] | undefined;
+    user?: UserDto;
+    comments?: CommentDto[] | undefined;
 }
 
-export class User implements IUser {
+export class UserDto implements IUserDto {
     id!: string | undefined;
     name!: string | undefined;
-    email!: string | undefined;
-    password!: string | undefined;
     username!: string | undefined;
 
-    constructor(data?: IUser) {
+    constructor(data?: IUserDto) {
         if (data) {
             for (var property in data) {
                 if (data.hasOwnProperty(property))
@@ -350,15 +429,13 @@ export class User implements IUser {
         if (_data) {
             this.id = _data["id"];
             this.name = _data["name"];
-            this.email = _data["email"];
-            this.password = _data["password"];
             this.username = _data["username"];
         }
     }
 
-    static fromJS(data: any): User {
+    static fromJS(data: any): UserDto {
         data = typeof data === 'object' ? data : {};
-        let result = new User();
+        let result = new UserDto();
         result.init(data);
         return result;
     }
@@ -367,73 +444,15 @@ export class User implements IUser {
         data = typeof data === 'object' ? data : {};
         data["id"] = this.id;
         data["name"] = this.name;
-        data["email"] = this.email;
-        data["password"] = this.password;
         data["username"] = this.username;
         return data;
     }
 }
 
-export interface IUser {
+export interface IUserDto {
     id: string | undefined;
     name: string | undefined;
-    email: string | undefined;
-    password: string | undefined;
     username: string | undefined;
-}
-
-export class WeatherForecast implements IWeatherForecast {
-    date?: Date;
-    temperatureC?: number;
-    readonly temperatureF?: number;
-    summary?: string | undefined;
-
-    constructor(data?: IWeatherForecast) {
-        if (data) {
-            for (var property in data) {
-                if (data.hasOwnProperty(property))
-                    (<any>this)[property] = (<any>data)[property];
-            }
-        }
-    }
-
-    init(_data?: any) {
-        if (_data) {
-            this.date = _data["date"] ? new Date(_data["date"].toString()) : <any>undefined;
-            this.temperatureC = _data["temperatureC"];
-            (<any>this).temperatureF = _data["temperatureF"];
-            this.summary = _data["summary"];
-        }
-    }
-
-    static fromJS(data: any): WeatherForecast {
-        data = typeof data === 'object' ? data : {};
-        let result = new WeatherForecast();
-        result.init(data);
-        return result;
-    }
-
-    toJSON(data?: any) {
-        data = typeof data === 'object' ? data : {};
-        data["date"] = this.date ? formatDate(this.date) : <any>undefined;
-        data["temperatureC"] = this.temperatureC;
-        data["temperatureF"] = this.temperatureF;
-        data["summary"] = this.summary;
-        return data;
-    }
-}
-
-export interface IWeatherForecast {
-    date?: Date;
-    temperatureC?: number;
-    temperatureF?: number;
-    summary?: string | undefined;
-}
-
-function formatDate(d: Date) {
-    return d.getFullYear() + '-' + 
-        (d.getMonth() < 9 ? ('0' + (d.getMonth()+1)) : (d.getMonth()+1)) + '-' +
-        (d.getDate() < 10 ? ('0' + d.getDate()) : d.getDate());
 }
 
 export class ApiException extends Error {

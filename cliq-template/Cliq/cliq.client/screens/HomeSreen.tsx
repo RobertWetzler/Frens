@@ -2,7 +2,7 @@ import React, { useEffect } from 'react';
 import { Text, View, FlatList, StyleSheet, SafeAreaView, ActivityIndicator } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Post from '../components/Post';
-import { usePosts } from 'hooks/usePosts';
+import { useAllPosts } from 'hooks/usePosts';
 import AnimatedBackground from '../components/AnimatedBackground';
 
 const dummyPosts = [
@@ -12,7 +12,7 @@ const dummyPosts = [
 ];
 
 const HomeScreen = ({ navigation }) => {
-    const { posts, isLoading, error, loadPosts } = usePosts();
+    const { posts, isLoading, error, loadPosts } = useAllPosts();
     // Useful for debugging hook transitions
     useEffect(() => {
         console.log('Posts state:', posts);

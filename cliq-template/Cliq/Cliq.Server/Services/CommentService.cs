@@ -7,7 +7,7 @@ using Npgsql;
 
 public interface ICommentService
 {
-    public Task<Comment> CreateCommentAsync(string text, string userId, string? parentPostId = null, string? parentCommentId = null);
+    public Task<CommentDto> CreateCommentAsync(string text, string userId, string? parentPostId = null, string? parentCommentId = null);
     public Task<IEnumerable<CommentDto>> GetAllCommentsForPostAsync(string postId);
     public Task<bool> DeleteCommentAsync(string commentId, string userId);
 }
@@ -22,7 +22,7 @@ public class CommentService : ICommentService
         _mapper = mapper;
     }
 
-    public async Task<Comment> CreateCommentAsync(string text, string userId, string postId, string? parentCommentId = null)
+    public async Task<CommentDto> CreateCommentAsync(string text, string userId, string postId, string? parentCommentId = null)
     {
         if (parentCommentId != null)
         {
@@ -46,8 +46,9 @@ public class CommentService : ICommentService
 
         try
         {
+            await _dbContext.Comments.AddAsync(comment);
             await _dbContext.SaveChangesAsync();
-            return comment;
+            return _mapper.Map<CommentDto>(comment);
         }
         catch (DbUpdateException ex) when (ex.InnerException is PostgresException pgEx &&
                                          pgEx.SqlState == PostgresErrorCodes.ForeignKeyViolation)

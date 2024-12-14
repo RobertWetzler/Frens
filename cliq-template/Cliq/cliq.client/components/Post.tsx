@@ -1,6 +1,6 @@
 import React from 'react';
 import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
-import { Post as PostType} from 'services/generated/generatedClient'
+import { PostDto as PostType} from 'services/generated/generatedClient'
 
 interface PostProps {
   post: PostType,

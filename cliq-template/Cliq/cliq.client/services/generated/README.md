@@ -1,0 +1,1 @@
+nswag openapi2tsclient /input:http://localhost:5265/swagger/v1/swagger.json /output:..\cliq.client\services\generated\generatedClient.ts
