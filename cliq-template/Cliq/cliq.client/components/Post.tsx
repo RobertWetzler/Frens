@@ -1,13 +1,15 @@
 import React from 'react';
 import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
 import { PostDto as PostType} from 'services/generated/generatedClient'
+import { Ionicons } from '@expo/vector-icons';
 
 interface PostProps {
   post: PostType,
-  navigation: any;
+  navigation?: any;
+  isNavigable?: boolean;
 }
 
-const Post: React.FC<PostProps> = ({ post, navigation }) => {
+const Post: React.FC<PostProps> = ({ post, navigation, isNavigable = true }) => {
   return (
     <View style={styles.container}>
       <View style={styles.header}>
@@ -15,12 +17,15 @@ const Post: React.FC<PostProps> = ({ post, navigation }) => {
         <Text style={styles.date}>{post.date.toLocaleString()}</Text>
       </View>
       <Text style={styles.content}>{post.text}</Text>
-      <TouchableOpacity
-        style={styles.commentButton}
-        onPress={() => navigation.navigate('Comments', { postId: post.id })}
-      >
-        <Text style={styles.commentButtonText}>View Comments</Text>
-      </TouchableOpacity>
+      {isNavigable && (
+        <TouchableOpacity
+          style={styles.commentButton}  // Add this style
+          onPress={() => navigation?.navigate('Comments', { postId: post.id })}
+        >
+                  <Ionicons name="chatbox-outline" size={20} color="#1DA1F2" />
+                  <Text style={styles.actionButtonText}>{post.commentCount} comments</Text>
+        </TouchableOpacity>
+      )}
     </View>
   );
 };
@@ -38,6 +43,7 @@ const styles = StyleSheet.create({
     shadowRadius: 4,
     elevation: 3,
   },
+  
   header: {
     flexDirection: 'row',
     justifyContent: 'space-between',
@@ -56,15 +62,19 @@ const styles = StyleSheet.create({
     marginBottom: 10,
   },
   commentButton: {
-    backgroundColor: '#1DA1F2',
-    padding: 8,
-    borderRadius: 5,
-    alignItems: 'center',
+    flexDirection: 'row',
+    alignItems: 'center',  // This vertically centers the icon and text
+    gap: 4,  // This adds space between the icon and text
   },
   commentButtonText: {
     color: 'white',
     fontWeight: 'bold',
   },
+  // Used just for the "N Comments" button
+  actionButtonText: {
+    marginLeft: 4,
+    color: '#1DA1F2',
+    },
 });
 
 export default Post;

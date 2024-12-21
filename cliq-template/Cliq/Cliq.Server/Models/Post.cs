@@ -21,5 +21,6 @@ public class PostDto
     public required DateTime Date { get; set; }
     public required string Text { get; set; }
     public UserDto User { get; set; } = null!;
-    public List<CommentDto> Comments { get; set; } = new List<CommentDto>(); 
+    public List<CommentDto> Comments { get; set; } = new List<CommentDto>();
+    public int CommentCount { get; set; } = 0;
 }

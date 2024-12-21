@@ -354,6 +354,7 @@ export class PostDto implements IPostDto {
     text!: string | undefined;
     user?: UserDto;
     comments?: CommentDto[] | undefined;
+    commentCount?: number;
 
     constructor(data?: IPostDto) {
         if (data) {
@@ -376,6 +377,7 @@ export class PostDto implements IPostDto {
                 for (let item of _data["comments"])
                     this.comments!.push(CommentDto.fromJS(item));
             }
+            this.commentCount = _data["commentCount"];
         }
     }
 
@@ -398,6 +400,7 @@ export class PostDto implements IPostDto {
             for (let item of this.comments)
                 data["comments"].push(item.toJSON());
         }
+        data["commentCount"] = this.commentCount;
         return data;
     }
 }
@@ -409,6 +412,7 @@ export interface IPostDto {
     text: string | undefined;
     user?: UserDto;
     comments?: CommentDto[] | undefined;
+    commentCount?: number;
 }
 
 export class UserDto implements IUserDto {

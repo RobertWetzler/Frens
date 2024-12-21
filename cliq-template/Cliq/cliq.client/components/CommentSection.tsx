@@ -4,6 +4,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { PostDto as PostType, CommentDto, ICommentDto, UserDto } from 'services/generated/generatedClient'
 import { usePost } from 'hooks/usePosts';
 import { ApiClient } from 'services/apiClient';
+import Post from './Post';
 
 
 
@@ -107,12 +108,15 @@ const CommentTree: React.FC<{
     );
   };
   
-const CommentSection: React.FC<{ route: { params: { postId: string } } }> = ({ route }) => {
-    const { postId } = route.params;
-    const { post, isLoading, error, loadPost } = usePost(postId, true);
-    const [comments, setComments] = useState<CommentDto[]>([]);
-    const [isSubmitting, setIsSubmitting] = useState(false);
-    const [submitError, setSubmitError] = useState<string | null>(null);
+const CommentSection: React.FC<{ 
+    route: { params: { postId: string } };
+    navigation: any;
+  }> = ({ route, navigation }) => {
+      const { postId } = route.params;
+      const { post, isLoading, error, loadPost } = usePost(postId, true);
+      const [comments, setComments] = useState<CommentDto[]>([]);
+      const [isSubmitting, setIsSubmitting] = useState(false);
+      const [submitError, setSubmitError] = useState<string | null>(null);
 
     // Update comments when post data is loaded
     useEffect(() => {
@@ -200,8 +204,18 @@ const CommentSection: React.FC<{ route: { params: { postId: string } } }> = ({ r
 
     return (
         <SafeAreaView style={styles.container}>
+            <View style={styles.header}>
+                <TouchableOpacity 
+                    style={styles.backButton}
+                    onPress={() => navigation.goBack()}
+                >
+                    <Ionicons name="arrow-back" size={24} color="#1DA1F2" />
+                </TouchableOpacity>
+                <Text style={styles.headerTitle}>Comments</Text>
+            </View>
             <ScrollView style={styles.container}>
-                {comments.map((comment) => (
+            <Post post={post} isNavigable={false} />
+            {comments.map((comment) => (
                     <CommentTree
                         key={comment.id}
                         comment={comment}
@@ -217,10 +231,31 @@ const CommentSection: React.FC<{ route: { params: { postId: string } } }> = ({ r
 };
   
   const styles = StyleSheet.create({
+    // Header stuff
+    header: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      padding: 16,
+      backgroundColor: 'white',
+      borderBottomWidth: 1,
+      borderBottomColor: '#e1e4e8',
+  },
+  backButton: {
+      padding: 8,
+  },
+  headerTitle: {
+      fontSize: 18,
+      fontWeight: 'bold',
+      marginLeft: 16,
+  },
+
+  scrollContainer: {
+      flex: 1,
+      padding: 16,
+  },
     container: {
       flex: 1,
       backgroundColor: '#f0f2f5',
-      padding: 16,
     },
     commentContainer: {
         marginTop: 8,
@@ -228,8 +263,6 @@ const CommentSection: React.FC<{ route: { params: { postId: string } } }> = ({ r
       },
       commentContent: {
         flexDirection: 'row',
-        borderWidth: 1,
-        borderColor: '#e1e4e8',
         borderRadius: 4,
         overflow: 'hidden',
       },

@@ -16,7 +16,7 @@ public interface IPostService
 {
     Task<PostDto?> GetPostByIdAsync(string id, bool includeCommentTree = false, int maxDepth = 3);
     Task<IEnumerable<PostDto>> GetFeedForUserAsync(string userId, int page = 1, int pageSize = 20);
-    Task<IEnumerable<PostDto>> GetAllPostsAsync();
+    Task<List<PostDto>> GetAllPostsAsync(bool includeCommentCount = false);
     Task<IEnumerable<PostDto>> GetUserPostsAsync(string userId, int page = 1, int pageSize = 20);
     Task<PostDto> CreatePostAsync(string userId, string text);
     Task<PostDto?> UpdatePostAsync(string id, string newText);
@@ -87,20 +87,41 @@ public class PostService : IPostService
         }
     }
 
-    public async Task<IEnumerable<PostDto>> GetAllPostsAsync()
+    public async Task<List<PostDto>> GetAllPostsAsync(bool includeCommentCount = false)
     {
-        try
+        if (includeCommentCount)
         {
-            var posts =  await _dbContext.Posts
-                .Include(p => p.User)
-                .Include(p => p.Viewers)
+            // Single query approach using group join
+            var result = await(
+                from p in _dbContext.Posts
+                    .Include(p => p.User)
+                    .OrderByDescending(p => p.Date)
+                join c in _dbContext.Comments
+                    on p.Id equals c.PostId into comments
+                select new
+                {
+                    Post = p,
+                    CommentCount = comments.Count()
+                })
+                .AsNoTracking()
                 .ToListAsync();
-            return this._mapper.Map<PostDto[]>(posts);
+
+            return result.Select(pc =>
+            {
+                var dto = _mapper.Map<PostDto>(pc.Post);
+                dto.CommentCount = pc.CommentCount;
+                return dto;
+            }).ToList();
         }
-        catch (Exception ex)
+        else
         {
-            _logger.LogError(ex, "Error retrieving all posts");
-            throw;
+            var posts = await _dbContext.Posts
+                .Include(p => p.User)
+                .OrderByDescending(p => p.Date)
+                .AsNoTracking()
+                .ToListAsync();
+
+            return _mapper.Map<List<PostDto>>(posts);
         }
     }
     public async Task<IEnumerable<PostDto>> GetUserPostsAsync(string userId, int page = 1, int pageSize = 20)

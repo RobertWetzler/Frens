@@ -30,7 +30,7 @@ public class PostController : ControllerBase
     [HttpGet]
     public async Task<ActionResult<IEnumerable<PostDto>>> GetAllPosts()
     {
-        var posts = await _postService.GetAllPostsAsync();
+        var posts = await _postService.GetAllPostsAsync(true);
         return Ok(posts);
     }
     
