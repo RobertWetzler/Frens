@@ -30,49 +30,64 @@ const fragmentShader = `
 // Blobs!!!
 
 const fragmentShader = `
-  precision highp float;
-  uniform float time;
-  uniform vec2 resolution;
-  varying vec2 vUv;
+precision highp float;
+uniform float time;
+uniform vec2 resolution;
+varying vec2 vUv;
 
-  float metaball(vec2 p, vec2 center, float radius) {
-      float d = length(p - center);
-      return radius / d;
-  }
+struct Metaball {
+    float field;
+    vec3 color;
+};
 
-  void main() {
-      // Use vUv instead of gl_FragCoord
-      vec2 uv = vUv;
-      uv = uv * 2.0 - 1.0;
-      uv.x *= resolution.x / resolution.y;
+float metaball(vec2 p, vec2 center, float radius) {
+    float d = length(p - center);
+    //return radius / d;
+    return pow(min(radius / d, 1.5), 1.5);
+}
 
-      float t = time * 0.5 + 15.0;
+void main() {
+    vec2 uv = vUv;
+    uv = uv * 2.0 - 1.0;
+    uv.x *= resolution.x / resolution.y;
+    float t = time * 0.5 + 15.0;
 
-      vec2 ball1 = vec2(sin(t * 0.7) * 0.5, cos(t * 0.8) * 0.5);
-      vec2 ball2 = vec2(cos(t * 0.5) * 0.6, sin(t * 0.9) * 0.4);
-      vec2 ball3 = vec2(sin(t * 0.9) * 0.3, cos(t * 0.6) * 0.6);
+    // Define positions and colors for each ball
+    vec2 positions[3];
+    positions[0] = vec2(sin(t * 0.7) * 0.5, cos(t * 0.8) * 0.5);
+    positions[1] = vec2(cos(t * 0.5) * 0.6, sin(t * 0.9) * 0.4);
+    positions[2] = vec2(sin(t * 0.9) * 0.3, cos(t * 0.6) * 0.6);
 
-      float field = 0.0;
-      field += metaball(uv, ball1, 0.10);
-      field += metaball(uv, ball2, 0.10);
-      field += metaball(uv, ball3, 0.10);
+    vec3 colors[3];
+    colors[0] = vec3(0.4, 0.6, 1.0);    // Lighter blue
+    colors[1] = vec3(0.6, 0.8, 1.0);    // Very light blue
+    colors[2] = vec3(0.6, 0.45, 0.95);  // Lighter royal purple
 
-      // Color gradient based on field strength with less white
-      vec3 color1 = vec3(0.1, 0.2, 0.8);  // Deep blue
-      vec3 color2 = vec3(0.4, 0.7, 1.0);  // Light blue
-      //vec3 color = mix(color1, color2, min(field * 0.25, 1.0));
-      vec3 color = color2;
-      float glow = smoothstep(1.0, 2.0, field);
-      //color += vec3(0.2, 0.4, 0.8) * glow;
-      // Clamp colors to prevent over-brightening
-      color = min(color, vec3(0.9));
 
-      // Mix with white background
-      float alpha = smoothstep(0.99, 1.0, field);
-      color = mix(vec3(1.0), color, alpha);
+    // Calculate field and color contribution for each ball
+    Metaball balls[3];
+    float totalField = 0.0;
+    vec3 totalColor = vec3(0.0);
 
-      gl_FragColor = vec4(color, 1.0);
-  }
+    for(int i = 0; i < 3; i++) {
+        float field = metaball(uv, positions[i], 0.19);
+        balls[i].field = field;
+        balls[i].color = colors[i];
+        totalField += field;
+    }
+
+    // Blend colors based on field strength
+    for(int i = 0; i < 3; i++) {
+        float weight = balls[i].field / totalField;
+        totalColor += balls[i].color * weight;
+    }
+
+    // Mix with white background
+    float alpha = smoothstep(0.99, 1.0, totalField);
+    vec3 finalColor = mix(vec3(1.0), totalColor, alpha);
+
+    gl_FragColor = vec4(finalColor, 1.0);
+}
 `;
 
 const ShaderBackground = () => {
