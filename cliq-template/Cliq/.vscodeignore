@@ -1,0 +1,53 @@
+# Dependencies
+node_modules/**
+bower_components/**
+jspm_packages/**
+package-lock.json
+yarn.lock
+
+# Build outputs
+dist/**
+build/**
+out/**
+.next/**
+coverage/**
+# Supabase
+**/supabase/**
+# Environment and config files
+.env
+.env.local
+.env.*.local
+*.config.js
+!webpack.config.js
+!babel.config.js
+
+# IDE and editor files
+.idea/**
+.vscode/**
+*.swp
+*.swo
+*.swn
+*.bak
+
+# Operating System
+.DS_Store
+Thumbs.db
+
+# Debug logs
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+debug.log
+
+# Test files
+**/*.test.js
+**/*.spec.js
+__tests__/**
+__mocks__/**
+
+# Miscellaneous
+*.log
+.git
+.gitignore
+README.md
+CHANGELOG.md

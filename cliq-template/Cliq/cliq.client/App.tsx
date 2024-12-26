@@ -1,16 +1,36 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { NavigationContainer } from '@react-navigation/native';
 import { createStackNavigator } from '@react-navigation/stack';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { Ionicons } from '@expo/vector-icons';
+import { supabase } from './services/supabase';
+import { Session } from '@supabase/supabase-js';
+
+// Screens
 import HomeScreen from './screens/HomeSreen';
 import CommentSection from './components/CommentSection';
 import GroupsScreen from './screens/GroupScreen';
 import CalendarScreen from './screens/CalendarScreen';
 import ProfileScreen from './screens/CalendarScreen';
+import SignInScreen from './screens/SignInScreen';
+import { ActivityIndicator, SafeAreaView } from 'react-native';
+import AnimatedBackground from './components/AnimatedBackground';
 
-const Stack = createStackNavigator();
-const Tab = createBottomTabNavigator();
+type RootStackParamList = {
+    Auth: undefined;
+    Main: undefined;
+    Comments: undefined;
+};
+
+type TabParamList = {
+    Feed: undefined;
+    Groups: undefined;
+    Calendar: undefined;
+    Me: undefined;
+};
+
+const Stack = createStackNavigator<RootStackParamList>();
+const Tab = createBottomTabNavigator<TabParamList>();
 
 const BottomTabs = () => {
   return (
@@ -53,7 +73,38 @@ const BottomTabs = () => {
   );
 };
 
+
 export default function App() {
+  const [session, setSession] = useState<Session | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+
+  useEffect(() => {
+    // Check for existing session
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      setSession(session);
+      setIsLoading(false);
+    });
+
+    // Listen for auth changes
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      setSession(session);
+    });
+
+    return () => {
+      subscription.unsubscribe();
+    };
+  }, []);
+
+  // Show a loading screen while checking auth state
+  if (isLoading) {
+      <SafeAreaView
+          //style={styles.container}
+      >
+          <AnimatedBackground />
+          <ActivityIndicator size={36} color="#0000ff" />
+      </SafeAreaView>
+  }
+
   return (
     <NavigationContainer>
       <Stack.Navigator
@@ -61,8 +112,28 @@ export default function App() {
           headerShown: false,
         }}
       >
-        <Stack.Screen name="Main" component={BottomTabs} />
-        <Stack.Screen name="Comments" component={CommentSection} options={{ title: 'Comments' }} />
+        {session ? (
+          // Authenticated stack
+          <>
+            <Stack.Screen name="Main" component={BottomTabs} />
+            <Stack.Screen 
+              name="Comments" 
+              component={CommentSection} 
+              options={{ title: 'Comments' }} 
+            />
+          </>
+        ) : (
+          // Auth stack
+          <Stack.Screen 
+            name="Auth" 
+            component={SignInScreen}
+            options={{
+              // Prevent going back to auth screen once logged in
+              headerLeft: () => null,
+              gestureEnabled: false,
+            }}
+          />
+        )}
       </Stack.Navigator>
     </NavigationContainer>
   );

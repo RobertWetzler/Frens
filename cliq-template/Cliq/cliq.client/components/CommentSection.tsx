@@ -179,7 +179,7 @@ const CommentSection: React.FC<{
     if (isLoading) {
         return (
             <SafeAreaView style={styles.container}>
-                <ActivityIndicator size="large" color="#0000ff" />
+                <ActivityIndicator size={36} color="#0000ff" />
             </SafeAreaView>
         );
     }

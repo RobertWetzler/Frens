@@ -26,6 +26,10 @@
     },
     "extra": {
       "apiUrl": "https://localhost:7188"
-    }
+    },
+    "plugins": [
+      "expo-apple-authentication"
+    ],
+    "newArchEnabled": true
   }
 }

@@ -26,7 +26,7 @@ const HomeScreen = ({ navigation }) => {
     return (
       <SafeAreaView style={styles.container}>
         <AnimatedBackground />
-        <ActivityIndicator size="large" color="#0000ff" />
+        <ActivityIndicator size={36} color="#0000ff" />
       </SafeAreaView>
     );
   }
