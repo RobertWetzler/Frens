@@ -2,11 +2,12 @@ import React from 'react';
 import { View, Text, StyleSheet } from 'react-native';
 import { AppleSignInButton } from '../components/AppleSignInButton';
 import AnimatedBackground from '../components/AnimatedBackground';
+import ShaderBackground from '../components/ShaderBackground';
 
 export default function SignInScreen() {
     return (
         <View style={styles.container}>
-            <AnimatedBackground />
+            <ShaderBackground />
             <View style={styles.contentContainer}>
                 <Text style={styles.appName}>Frens</Text>
                 <Text style={styles.subtitle}>Connect with your community</Text>
