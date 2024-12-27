@@ -40,16 +40,23 @@ const float METABALL_RADIUS = 0.18;      // Size of each blob
 const float FIELD_THRESHOLD = 0.99;      // When to start blending with background
 const float COLOR_VARIANCE = 0.1;        // How much colors can vary (0.0 - 1.0)
 const float MOVEMENT_SPEED = 0.5;        // Speed of blob movement
-const float TIME_OFFSET = 20.0;          // Starting time offset
+const float TIME_OFFSET = 19.5;          // Starting time offset
 const float NOISE_SCALE = 2.0;           // Scale of the noise pattern
 const float MOVEMENT_RANGE = 0.5;        // How far blobs move from center
 const float COLOR_CLAMP = 0.2;           // Max color variation from base
 const float ANGLE_SPEED = 0.4;           // Speed of angle-based color change
-const float DIST_SPEED = 0.2;            // Speed of distance-based color change
+const float DIST_SPEED = 2.0;            // Speed of distance-based color change
+const float COLOR_SATURATION = 1.7;      // Boost color saturation
+const float EDGE_SOFTNESS = 0.15;        // Softness of blob edges
+const float SPECULAR_POWER = 3.0;        // Power of specular highlight
+const float SPECULAR_INTENSITY = 0.09;   // Intensity of specular highlight
+const float FRESNEL_POWER = 0.1;         // Power of fresnel (edge lighting) effect
+const vec3 LIGHT_DIR = normalize(vec3(0.5, 0.5, 1.0)); // Light direction
 
 struct Metaball {
     float field;
     vec3 color;
+    vec3 normal;
 };
 
 vec2 random2(vec2 p) {
@@ -59,12 +66,26 @@ vec2 random2(vec2 p) {
     )) * 43758.5453);
 }
 
+// Calculate normal for 3D effect
+vec3 calculateNormal(vec2 pos, vec2 center, float field) {
+    vec2 dir = pos - center;
+    float dist = length(dir);
+    float z = sqrt(max(0.0, 1.0 - dist * dist));
+    return normalize(vec3(dir, z));
+}
+
 float metaball(vec2 p, vec2 center, float radius) {
     float d = length(p - center);
     return pow(min(radius / d, 1.5), 1.5);
 }
 
-vec3 getVariedColor(vec3 baseColor, vec2 pos, vec2 center, float time) {
+vec3 saturate(vec3 color, float saturation) {
+    float brightness = dot(color, vec3(0.299, 0.587, 0.114));
+    return mix(vec3(brightness), color, saturation);
+}
+
+// Enhanced color variation with 3D lighting
+vec3 getVariedColor(vec3 baseColor, vec2 pos, vec2 center, float time, vec3 normal) {
     vec2 dir = pos - center;
     float angle = atan(dir.y, dir.x);
     float dist = length(dir);
@@ -73,18 +94,27 @@ vec3 getVariedColor(vec3 baseColor, vec2 pos, vec2 center, float time) {
     float centerFade = smoothstep(0.0, 0.2, dist);
     
     vec2 noisePos = pos + vec2(cos(time * 0.000002), sin(time * 0.000003)) * 0.5;
-    //vec2 noisePos = pos + vec2(cos(0.2), sin(0.3)) * 0.5;
     vec2 noise = random2(noisePos * NOISE_SCALE) * 2.0 - 1.0;
     
     vec3 colorVar;
-    //colorVar.r = baseColor.r + sin(angle + time * 0.3) * 0.1 + noise.x * 0.1;
-    //colorVar.g = baseColor.g + cos(dist * 4.0 + time * 0.2) * 0.1 + noise.y * 0.1;
-    //colorVar.b = baseColor.b + sin(dist * 3.0 - time * 0.4) * 0.1 + noise.x * 0.1;
     colorVar.r = baseColor.r + sin(angle + time * ANGLE_SPEED) * COLOR_VARIANCE * centerFade;
     colorVar.g = baseColor.g + cos(dist * 4.0 + time * DIST_SPEED) * COLOR_VARIANCE * centerFade;
     colorVar.b = baseColor.b + sin(dist * 3.0 - time * (ANGLE_SPEED - 0.1)) * COLOR_VARIANCE * centerFade;
     
-    return clamp(colorVar, baseColor - COLOR_CLAMP, baseColor + COLOR_CLAMP);
+    colorVar = clamp(colorVar, baseColor - COLOR_CLAMP, baseColor + COLOR_CLAMP);
+    colorVar = saturate(colorVar, COLOR_SATURATION);
+
+    // Add lighting effects
+    float diffuse = max(0.0, dot(normal, LIGHT_DIR));
+    float specular = pow(max(0.0, dot(reflect(-LIGHT_DIR, normal), vec3(0.0, 0.0, 1.0))), SPECULAR_POWER);
+    float fresnel = pow(1.0 - max(0.0, dot(normal, vec3(0.0, 0.0, 1.0))), FRESNEL_POWER);
+
+    // Blend lighting with color
+    colorVar = colorVar * (0.7 + 0.3 * diffuse);  // Diffuse lighting
+    colorVar += vec3(1.0) * specular * SPECULAR_INTENSITY;  // Specular highlight
+    colorVar += colorVar * fresnel * 0.3;  // Fresnel edge lighting
+
+    return colorVar;
 }
 
 void main() {
@@ -92,7 +122,6 @@ void main() {
     uv = uv * 2.0 - 1.0;
     uv.x *= resolution.x / resolution.y;
     float t = time * MOVEMENT_SPEED + TIME_OFFSET;
-    //t = t + 2.0 * sin(t);
 
     vec2 positions[3];
     positions[0] = vec2(sin(t * 0.7) * MOVEMENT_RANGE, cos(t * 0.8) * MOVEMENT_RANGE);
@@ -102,21 +131,26 @@ void main() {
     vec3 baseColors[3];
     baseColors[0] = vec3(0.4, 0.6, 1.0);    // Lighter blue
     baseColors[1] = vec3(0.6, 0.8, 1.0);    // Very light blue
-    baseColors[2] = vec3(0.6, 0.45, 0.95);  // Lighter royal purple
+    baseColors[2] = vec3(0.55, 0.45, 0.95);  // Lighter royal purple
 
     Metaball balls[3];
     float totalField = 0.0;
     vec3 totalColor = vec3(0.0);
+    vec3 totalNormal = vec3(0.0, 0.0, 1.0);
     
+    // First pass: calculate fields and normals
     for(int i = 0; i < 3; i++) {
         float field = metaball(uv, positions[i], METABALL_RADIUS);
         balls[i].field = field;
-        balls[i].color = getVariedColor(baseColors[i], uv, positions[i], t);
+        balls[i].normal = calculateNormal(uv, positions[i], field);
         totalField += field;
     }
 
+    // Second pass: blend colors with lighting
     for(int i = 0; i < 3; i++) {
         float weight = balls[i].field / totalField;
+        vec3 normal = mix(totalNormal, balls[i].normal, weight);
+        balls[i].color = getVariedColor(baseColors[i], uv, positions[i], t, normal);
         totalColor += balls[i].color * weight;
     }
 
