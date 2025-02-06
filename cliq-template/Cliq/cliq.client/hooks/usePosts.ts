@@ -10,7 +10,7 @@ export function useAllPosts() {
     const loadPosts = async () => {
         try {
             setIsLoading(true);
-            const posts = await ApiClient.Instance.postAll();
+            const posts = await ApiClient.call(c => c.postAll());
             setPosts(posts);
             setError(null);
         } catch (err) {
@@ -37,7 +37,7 @@ export function usePost(postId: string, includeComments: true) {
     const loadPost = async () => {
         try {
             setIsLoading(true);
-            const post = await ApiClient.Instance.postGET(postId, includeComments);
+            const post = await ApiClient.call(c => c.postGET(postId, includeComments));
             console.log("Loaded post with result: " + post);
             setPost(post);
             setError(null);

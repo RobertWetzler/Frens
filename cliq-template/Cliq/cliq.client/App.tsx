@@ -79,20 +79,28 @@ export default function App() {
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    // Check for existing session
-    supabase.auth.getSession().then(({ data: { session } }) => {
+    const initAuth = async () => {
+      // Clear any existing session during development
+      if (__DEV__) {
+        await supabase.auth.signOut();
+      }
+
+      // Then check for session
+      const { data: { session } } = await supabase.auth.getSession();
       setSession(session);
       setIsLoading(false);
-    });
 
-    // Listen for auth changes
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
-      setSession(session);
-    });
+      // Listen for auth changes
+      const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+        setSession(session);
+      });
 
-    return () => {
-      subscription.unsubscribe();
+      return () => {
+        subscription.unsubscribe();
+      };
     };
+
+    initAuth();
   }, []);
 
   // Show a loading screen while checking auth state
@@ -100,7 +108,6 @@ export default function App() {
       <SafeAreaView
           //style={styles.container}
       >
-          <AnimatedBackground />
           <ActivityIndicator size={36} color="#0000ff" />
       </SafeAreaView>
   }

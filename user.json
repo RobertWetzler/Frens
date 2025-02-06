@@ -1,0 +1,43 @@
+{
+    "app_metadata": {
+        "provider": "apple",
+        "providers": [
+            "apple"
+        ]
+    },
+    "aud": "authenticated",
+    "created_at": "2024-12-28T01:39:27.45863Z",
+    "email": "rwetzler779@gmail.com",
+    "email_confirmed_at": "2024-12-28T01:39:27.685657817Z",
+    "id": "e364ae13-b653-4690-9bb2-7a8bb9ca0631",
+    "identities": [
+        {
+            "created_at": "2024-12-28T01:39:27.527907Z",
+            "email": "rwetzler779@gmail.com",
+            "id": "001173.9b4d639e1c8741a2ad7541300a8baea5.0228",
+            "identity_data": [Object
+            ],
+            "identity_id": "d887765e-b2fd-4900-9f81-6d6e2ab5a6cf",
+            "last_sign_in_at": "2024-12-28T01:39:27.527827318Z",
+            "provider": "apple",
+            "updated_at": "2024-12-28T01:39:27.527907Z",
+            "user_id": "e364ae13-b653-4690-9bb2-7a8bb9ca0631"
+        }
+    ],
+    "is_anonymous": false,
+    "last_sign_in_at": "2024-12-28T01:39:27.75467273Z",
+    "phone": "",
+    "role": "authenticated",
+    "updated_at": "2024-12-28T01:39:27.960596Z",
+    "user_metadata": {
+        "custom_claims": {
+            "auth_time": 1735349964
+        },
+        "email": "rwetzler779@gmail.com",
+        "email_verified": true,
+        "iss": "https://appleid.apple.com",
+        "phone_verified": false,
+        "provider_id": "001173.9b4d639e1c8741a2ad7541300a8baea5.0228",
+        "sub": "001173.9b4d639e1c8741a2ad7541300a8baea5.0228"
+    }
+}

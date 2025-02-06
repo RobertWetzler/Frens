@@ -1,8 +1,8 @@
 import React from 'react';
 import { View, Text, StyleSheet } from 'react-native';
 import { AppleSignInButton } from '../components/AppleSignInButton';
-import AnimatedBackground from '../components/AnimatedBackground';
 import ShaderBackground from '../components/ShaderBackground';
+import { EmailSignInButton } from 'components/EmailSignInButton';
 
 export default function SignInScreen() {
     return (
@@ -13,7 +13,7 @@ export default function SignInScreen() {
                 <Text style={styles.subtitle}>Connect with your community</Text>
                 <View style={styles.signInContainer}>
                     <Text style={styles.signInText}>Sign in to continue</Text>
-                    <AppleSignInButton />
+                    <EmailSignInButton />
                 </View>
             </View>
         </View>
@@ -50,10 +50,10 @@ const styles = StyleSheet.create({
         width: '100%',
         alignItems: 'center',
         // Adding subtle container shadow similar to your other component
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.1,
-        shadowRadius: 4,
+        //shadowColor: '#000',
+        //shadowOffset: { width: 0, height: 2 },
+        //shadowOpacity: 0.1,
+        //shadowRadius: 4,
         elevation: 3,
     },
     signInText: {

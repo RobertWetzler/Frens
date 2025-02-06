@@ -2,3 +2,4 @@
 obj
 bin
 packages
+/cliq-template/Cliq/Cliq.Server/.env

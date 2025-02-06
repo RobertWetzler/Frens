@@ -3,30 +3,26 @@ import { Text, View, FlatList, StyleSheet, SafeAreaView, ActivityIndicator } fro
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Post from '../components/Post';
 import { useAllPosts } from 'hooks/usePosts';
-import AnimatedBackground from '../components/AnimatedBackground';
+import ShaderBackground from 'components/ShaderBackground';
 
-const dummyPosts = [
-  { id: '1', content: 'Hello, close friends!', author: 'Alice', circle: 'Best Friends' },
-  { id: '2', content: 'Movie night tonight?', author: 'Bob', circle: 'Movie Buddies' },
-  { id: '3', content: 'Just finished a great book!', author: 'Charlie', circle: 'Book Club' },
-];
 
 const HomeScreen = ({ navigation }) => {
     const { posts, isLoading, error, loadPosts } = useAllPosts();
     // Useful for debugging hook transitions
+    /*
     useEffect(() => {
         console.log('Posts state:', posts);
         console.log('Is Loading:', isLoading);
         console.log('Error:', error);
-    }, [posts, isLoading, error]);
+    }, [posts, isLoading, error]);  */
     
   const insets = useSafeAreaInsets();
    // Render loading state
    if (isLoading) {
     return (
       <SafeAreaView style={styles.container}>
-        <AnimatedBackground />
-        <ActivityIndicator size={36} color="#0000ff" />
+      <ShaderBackground />
+      <ActivityIndicator size={36} color="#0000ff" />
       </SafeAreaView>
     );
   }
@@ -35,15 +31,15 @@ const HomeScreen = ({ navigation }) => {
   if (error) {
     return (
       <SafeAreaView style={styles.container}>
-        <AnimatedBackground />
-        <Text style={styles.errorText}>{error}</Text>
+      <ShaderBackground />
+      <Text style={styles.errorText}>{error}</Text>
       </SafeAreaView>
     );
   }
 
   return (
     <SafeAreaView style={styles.container}>
-      <AnimatedBackground />
+      <ShaderBackground />
       <FlatList
         data={posts}
         renderItem={({ item }) => (

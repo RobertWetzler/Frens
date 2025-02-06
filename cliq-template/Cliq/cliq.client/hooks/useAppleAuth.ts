@@ -36,7 +36,7 @@ export function useAppleAuth() {
                             provider: 'apple',
                             token: credential.identityToken!,
                         })
-                        console.log(JSON.stringify({ signInError, data }, null, 2))
+                        //console.log(JSON.stringify({ signInError, data }, null, 2))
                         if (signInError) throw signInError;
 
                         return {
