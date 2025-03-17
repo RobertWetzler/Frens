@@ -10,6 +10,9 @@ using Microsoft.IdentityModel.Tokens;
 using Microsoft.IdentityModel.Protocols.Configuration;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.Identity;
+using Microsoft.AspNetCore.Identity.UI;
+using Cliq.Server.Auth;
 
 DotNetEnv.Env.Load();
 
@@ -36,6 +39,7 @@ builder.Services.AddCommentServices();
 // Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
+
 
 if (builder.Environment.IsDevelopment())
 {
@@ -65,54 +69,47 @@ builder.Logging.AddConsole();
 builder.Logging.AddDebug();
 
 # region Authentication
-var supabaseSecretKey = Environment.GetEnvironmentVariable("JWT_SECRET");
-if (supabaseSecretKey == null)
-{
-    throw new InvalidConfigurationException("Missing supabase signature key!");
-}
-var supabaseSignatureKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(supabaseSecretKey));
-// TOOD: replace valid issuer with env for supabase endpoint
-var validIssuer = "http://192.168.0.21:8000/auth/v1";
-var validAudiences = new List<string>() { "authenticated" };
+builder.Services.AddScoped<JwtService>();
+// TODO: Change confirmation to required when adding email auth
+/* Why does this not work, example from docs
+ * builder.Services.AddDefaultIdentity<IdentityUser>(options => options.SignIn.RequireConfirmedAccount = true)
+    .AddEntityFrameworkStores<ApplicationDbContext>(); 
+builder.Services.AddDefaultIdentity<IdentityUser>(options => options.SignIn.RequireConfirmedAccount = true)
+    .AddEntityFrameworkStores<ApplicationDbContext>(); */
+builder.Services.AddIdentity<IdentityUser, IdentityRole>(options => options.SignIn.RequireConfirmedAccount = false)
+    .AddEntityFrameworkStores<CliqDbContext>();
 
-builder.Services.AddAuthentication().AddJwtBearer(o =>
+builder.Services.Configure<IdentityOptions>(options =>
 {
-    o.TokenValidationParameters = new TokenValidationParameters
-    {
-        ValidateIssuerSigningKey = true,
-        IssuerSigningKey = supabaseSignatureKey,
-        ValidAudiences = validAudiences,
-        ValidIssuer = validIssuer,
-        ValidateLifetime = true
-    };
+    // Password settings.
+    options.Password.RequireDigit = true;
+    options.Password.RequireLowercase = true;
+    options.Password.RequireNonAlphanumeric = true;
+    options.Password.RequireUppercase = true;
+    options.Password.RequiredLength = 6;
+    options.Password.RequiredUniqueChars = 1;
 
-    o.Events = new JwtBearerEvents
-    {
-        OnTokenValidated = context =>
-        {
-            Console.WriteLine("Token validated");
-            return Task.CompletedTask;
-        },
-        OnAuthenticationFailed = context =>
-        {
-            Console.WriteLine($"Authentication failed: {context.Exception.Message}");
-            return Task.CompletedTask;
-        },
-        OnChallenge = context =>
-        {
-            Console.WriteLine($"OnChallenge: {context.Error}, {context.ErrorDescription}");
-            return Task.CompletedTask;
-        }
-    };
+    // Lockout settings.
+    options.Lockout.DefaultLockoutTimeSpan = TimeSpan.FromMinutes(5);
+    options.Lockout.MaxFailedAccessAttempts = 5;
+    options.Lockout.AllowedForNewUsers = true;
+
+    // User settings.
+    options.User.AllowedUserNameCharacters =
+    "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789-._@+";
+    options.User.RequireUniqueEmail = true;
 });
-// Require authentication on endpoints by default when no other attribute is specified (AllowAnonymous, Authorize, etc).
-builder.Services.AddAuthorization(options =>
+
+builder.Services.ConfigureApplicationCookie(options =>
 {
-    options.FallbackPolicy = new AuthorizationPolicyBuilder()
-        .RequireAuthenticatedUser()
-        .Build();
-}
-);
+    // Cookie settings
+    options.Cookie.HttpOnly = true;
+    options.ExpireTimeSpan = TimeSpan.FromMinutes(5);
+
+    options.LoginPath = "/Identity/Account/Login";
+    options.AccessDeniedPath = "/Identity/Account/AccessDenied";
+    options.SlidingExpiration = true;
+});
 # endregion
 
 var app = builder.Build();
@@ -138,7 +135,29 @@ if (app.Environment.IsDevelopment())
 
 // TODO: RE-INTRODUCE! After getting https working in dev-env for API server
 //app.UseHttpsRedirection();
-app.UseAuthentication();
+var jwtSettings = builder.Configuration.GetSection("JwtSettings");
+var key = Encoding.ASCII.GetBytes(jwtSettings["Secret"]);
+
+builder.Services.AddAuthentication(options =>
+{
+    options.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
+    options.DefaultChallengeScheme = JwtBearerDefaults.AuthenticationScheme;
+})
+.AddJwtBearer(options =>
+{
+    options.RequireHttpsMetadata = false; // TODO: Set to true in production
+    options.SaveToken = true;
+    options.TokenValidationParameters = new TokenValidationParameters
+    {
+        ValidateIssuerSigningKey = true,
+        IssuerSigningKey = new SymmetricSecurityKey(key),
+        ValidateIssuer = true,
+        ValidateAudience = true,
+        ValidIssuer = jwtSettings["Issuer"],
+        ValidAudience = jwtSettings["Audience"],
+        ClockSkew = TimeSpan.Zero
+    };
+});
 app.UseAuthorization();
 
 

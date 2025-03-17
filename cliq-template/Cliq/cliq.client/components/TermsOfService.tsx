@@ -1,4 +1,5 @@
 // components/TermsOfService.tsx
+// TODO: Use stack navigation for this to display on iOS
 import React from 'react'
 import { Modal, View, Text, ScrollView, Pressable, StyleSheet, Platform } from 'react-native'
 

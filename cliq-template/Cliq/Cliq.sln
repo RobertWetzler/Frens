@@ -7,7 +7,7 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Cliq.Server", "Cliq.Server\
 EndProject
 Project("{54A90642-561A-4BB1-A94E-469ADEE60C69}") = "cliq.client", "cliq.client\cliq.client.esproj", "{A5588309-DE22-472E-9FC7-38730E152605}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Cliq.Server.Test", "Cliq.Server.Test\Cliq.Server.Test.csproj", "{6BDF5630-1756-458A-9395-7A9333618E72}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Cliq.Server.Test", "Cliq.Server.Test\Cliq.Server.Test.csproj", "{6BDF5630-1756-458A-9395-7A9333618E72}"
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Solution Items", "Solution Items", "{6DC10516-A3B1-436D-B7A2-5D71540BDD27}"
 	ProjectSection(SolutionItems) = preProject
@@ -34,6 +34,10 @@ Global
 		{6BDF5630-1756-458A-9395-7A9333618E72}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{6BDF5630-1756-458A-9395-7A9333618E72}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{6BDF5630-1756-458A-9395-7A9333618E72}.Release|Any CPU.Build.0 = Release|Any CPU
+		{B8BD81FF-8DE9-4E04-A975-38A24880F495}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{B8BD81FF-8DE9-4E04-A975-38A24880F495}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{B8BD81FF-8DE9-4E04-A975-38A24880F495}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{B8BD81FF-8DE9-4E04-A975-38A24880F495}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

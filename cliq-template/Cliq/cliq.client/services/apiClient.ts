@@ -7,8 +7,7 @@ export class ApiClient {
     private static currentToken: string | null = null;
 
     static async getInstance(): Promise<Client> {
-        const { data: { session } } = await supabase.auth.getSession()
-        const token = session?.access_token
+        const token = localStorage.getItem('authToken');
 
         // If we have an instance and the token hasn't changed, return it
         if (this.instance && this.currentToken === token) {
