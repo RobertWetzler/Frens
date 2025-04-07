@@ -1,5 +1,6 @@
 ﻿using Cliq.Server.Models;
 using Cliq.Server.Services;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
 namespace Cliq.Server.Controllers;

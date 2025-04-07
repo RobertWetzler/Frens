@@ -31,6 +31,14 @@ builder.Services.AddDbContext<CliqDbContext>(options =>
     options.UseNpgsql(builder.Configuration.GetConnectionString("DefaultConnection"));
 });
 builder.Services.AddControllers();
+// Require authentication for all controllers by default
+builder.Services.AddMvcCore(options =>
+{
+    var policy = new AuthorizationPolicyBuilder()
+        .RequireAuthenticatedUser()
+        .Build();
+    options.Filters.Add(new Microsoft.AspNetCore.Mvc.Authorization.AuthorizeFilter(policy));
+});
 // AutoMapper used for mapping entity classes to DataTransfer Objects (DTOs) visible to user
 var mapperConfig = new MapperConfiguration(c => c.AddProfile(new MappingProfile()));
 builder.Services.AddSingleton<IMapper>(mapperConfig.CreateMapper());
