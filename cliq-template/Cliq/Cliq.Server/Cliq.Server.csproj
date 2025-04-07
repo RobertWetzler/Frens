@@ -14,7 +14,7 @@
 		<PackageReference Include="BCrypt.Net-Next" Version="4.0.3" />
 		<PackageReference Include="DotNetEnv" Version="3.1.1" />
 		<PackageReference Include="Microsoft.AspNetCore.Authentication.JwtBearer" Version="8.0.11" />
-		<PackageReference Include="Microsoft.AspNetCore.Identity" Version="2.3.0" />
+		<PackageReference Include="Microsoft.AspNetCore.Identity" Version="2.3.1" />
 		<PackageReference Include="Microsoft.AspNetCore.Identity.EntityFrameworkCore" Version="8.0.10" />
 		
 		<PackageReference Include="Microsoft.AspNetCore.SpaProxy">
@@ -32,9 +32,17 @@
 		<PackageReference Include="Npgsql.EntityFrameworkCore.PostgreSQL" Version="8.0.10" />
 		<PackageReference Include="NSwag.AspNetCore" Version="14.2.0" />
 		<PackageReference Include="NSwag.Core" Version="14.2.0" />
+		<PackageReference Include="NSwag.MSBuild" Version="14.2.0" />
 		<PackageReference Include="Swashbuckle.AspNetCore" Version="7.1.0" />
 	</ItemGroup>
-
+	<!-- Determine how to resolve nswag exe command. On MacOS it should be: dotnet "/Users/robertwetzler/.nuget/packages/nswag.msbuild/14.2.0/build/../tools/Net80/dotnet-nswag.dll"
+	https://github.com/RicoSuter/NSwag/issues/2444#issuecomment-604284806
+	
+	<Target Name="NSwag" AfterTargets="Build">
+		<Exec EnvironmentVariables="ASPNETCORE_ENVIRONMENT=Development" Command="$(NSwagExe) aspnetcore2openapi /assembly:$(TargetDir)Cliq.Server.dll /output:swagger.json" />
+		<Exec Command="$(NSwagExe) openapi2tsclient /input:swagger.json /output:Scripts/MyController.ts" />
+	</Target>
+	-->
 	<ItemGroup>
 		<ProjectReference Include="..\cliq.client\cliq.client.esproj">
 			<ReferenceOutputAssembly>false</ReferenceOutputAssembly>

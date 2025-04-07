@@ -1,14 +1,13 @@
 ﻿using Cliq.Server.Models;
 using Microsoft.EntityFrameworkCore;
-using static System.Runtime.InteropServices.JavaScript.JSType;
+using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
 
 namespace Cliq.Server.Data;
 
-public class CliqDbContext : DbContext
+public class CliqDbContext : IdentityDbContext<User>
 {
     private readonly IHostEnvironment _env;
     public DbSet<Post> Posts { get; set; }
-    public DbSet<User> Users { get; set; }
     public DbSet<Comment> Comments { get; set; }
 
     public CliqDbContext(
@@ -20,12 +19,14 @@ public class CliqDbContext : DbContext
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
+        // Call base.OnModelCreating first to set up Identity tables
+        base.OnModelCreating(modelBuilder);
+        
         // At the top of OnModelCreating, before other configurations:
         modelBuilder.HasDefaultSchema("public");
         // Make Postgres use quoted identifiers for case-sensitivity
         modelBuilder.UseIdentityByDefaultColumns();
 
-        base.OnModelCreating(modelBuilder);
         // Configure many-to-many relationship between Post and User (viewers)
         modelBuilder.Entity<Post>()
             .HasMany(p => p.Viewers)
@@ -65,26 +66,14 @@ public class CliqDbContext : DbContext
             // Seed Users
             var users = new List<User>
             {
-                new User {
-                    Id = "seedUser1",
+                new User("john@example.com") {
                     Name = "John Doe",
-                    Email = "john@example.com",
-                    Password = BCrypt.Net.BCrypt.HashPassword("password123"),
-                    Username = "johndoe"
                 },
-                new User {
-                    Id = "seedUser2",
+                new User("jane@example.com") {
                     Name = "Jane Smith",
-                    Email = "jane@example.com",
-                    Password = BCrypt.Net.BCrypt.HashPassword("password123"),
-                    Username = "janesmith"
                 },
-                new User {
-                    Id = "seedUser3",
+                new User("bob@example.com") {
                     Name = "Bob Wilson",
-                    Email = "bob@example.com",
-                    Password = BCrypt.Net.BCrypt.HashPassword("password123"),
-                    Username = "bobwilson"
                 }
             };
 
@@ -154,12 +143,14 @@ public class CliqDbContext : DbContext
             
             // Seed Viewers (requires separate statements due to many-to-many relationship)
             // TODO THIS IS WRONG FOR SPECIFYING VIEWERS
+            /*
             modelBuilder.Entity("PostUser").HasData(
                 new { ViewersId = "seedUser2", PostId = "seedPost1" },
                 new { ViewersId = "seedUser3", PostId = "seedPost1" },
                 new { ViewersId = "seedUser1", PostId = "seedPost2" },
                 new { ViewersId = "seedUser3", PostId = "seedPost2" }
             );
+            */
         }
     }
 }

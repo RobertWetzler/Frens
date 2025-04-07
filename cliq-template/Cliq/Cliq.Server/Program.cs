@@ -13,6 +13,7 @@ using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Identity.UI;
 using Cliq.Server.Auth;
+using Cliq.Server.Models;
 
 DotNetEnv.Env.Load();
 
@@ -76,7 +77,7 @@ builder.Services.AddScoped<JwtService>();
     .AddEntityFrameworkStores<ApplicationDbContext>(); 
 builder.Services.AddDefaultIdentity<IdentityUser>(options => options.SignIn.RequireConfirmedAccount = true)
     .AddEntityFrameworkStores<ApplicationDbContext>(); */
-builder.Services.AddIdentity<IdentityUser, IdentityRole>(options => options.SignIn.RequireConfirmedAccount = false)
+builder.Services.AddIdentity<User, IdentityRole>(options => options.SignIn.RequireConfirmedAccount = false)
     .AddEntityFrameworkStores<CliqDbContext>();
 
 builder.Services.Configure<IdentityOptions>(options =>
@@ -111,30 +112,6 @@ builder.Services.ConfigureApplicationCookie(options =>
     options.SlidingExpiration = true;
 });
 # endregion
-
-var app = builder.Build();
-
-app.UseDefaultFiles();
-app.UseStaticFiles();
-app.UseCors("ExpoApp");
-// Configure the HTTP request pipeline.
-if (app.Environment.IsDevelopment())
-{
-    app.UseSwagger();
-    app.UseSwaggerUI();
-    using (var scope = app.Services.CreateScope())
-    {
-        var db = scope.ServiceProvider.GetRequiredService<CliqDbContext>();
-        db.Database.EnsureDeleted(); // Drops the database if it exists
-        db.Database.EnsureCreated(); // Creates the database and schema
-        // Or use migrations instead:
-        //db.Database.Migrate();
-    }
-}
-
-
-// TODO: RE-INTRODUCE! After getting https working in dev-env for API server
-//app.UseHttpsRedirection();
 var jwtSettings = builder.Configuration.GetSection("JwtSettings");
 var key = Encoding.ASCII.GetBytes(jwtSettings["Secret"]);
 
@@ -158,6 +135,31 @@ builder.Services.AddAuthentication(options =>
         ClockSkew = TimeSpan.Zero
     };
 });
+var app = builder.Build();
+
+app.UseDefaultFiles();
+app.UseStaticFiles();
+app.UseCors("ExpoApp");
+// Configure the HTTP request pipeline.
+if (app.Environment.IsDevelopment())
+{
+    app.UseSwagger();
+    app.UseSwaggerUI();
+    using (var scope = app.Services.CreateScope())
+    {
+        var db = scope.ServiceProvider.GetRequiredService<CliqDbContext>();
+        db.Database.EnsureDeleted(); // Drops the database if it exists
+        db.Database.EnsureCreated(); // Creates the database and schema
+        // Or use migrations instead:
+        //db.Database.Migrate();
+    }
+}
+
+
+// TODO: RE-INTRODUCE! After getting https working in dev-env for API server
+//app.UseHttpsRedirection();
+
+
 app.UseAuthorization();
 
 

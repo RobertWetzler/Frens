@@ -3,7 +3,6 @@ import { NavigationContainer } from '@react-navigation/native';
 import { createStackNavigator } from '@react-navigation/stack';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { Ionicons } from '@expo/vector-icons';
-import { supabase } from './services/supabase';
 import { Session } from '@supabase/supabase-js';
 
 // Screens
@@ -15,6 +14,7 @@ import ProfileScreen from './screens/CalendarScreen';
 import SignInScreen from './screens/SignInScreen';
 import { ActivityIndicator, SafeAreaView } from 'react-native';
 import AnimatedBackground from './components/AnimatedBackground';
+import { AuthProvider, useAuth } from 'contexts/AuthContext';
 
 type RootStackParamList = {
     Auth: undefined;
@@ -74,42 +74,16 @@ const BottomTabs = () => {
 };
 
 
-export default function App() {
-  const [session, setSession] = useState<Session | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
-
-  useEffect(() => {
-    const initAuth = async () => {
-      // Clear any existing session during development
-      if (__DEV__) {
-        await supabase.auth.signOut();
-      }
-
-      // Then check for session
-      const { data: { session } } = await supabase.auth.getSession();
-      setSession(session);
-      setIsLoading(false);
-
-      // Listen for auth changes
-      const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
-        setSession(session);
-      });
-
-      return () => {
-        subscription.unsubscribe();
-      };
-    };
-
-    initAuth();
-  }, []);
+const MainApp = () => {
+  const { isAuthenticated, isAuthLoading } = useAuth();
 
   // Show a loading screen while checking auth state
-  if (isLoading) {
-      <SafeAreaView
-          //style={styles.container}
-      >
-          <ActivityIndicator size={36} color="#0000ff" />
+  if (isAuthLoading) {
+    return (
+      <SafeAreaView style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
+        <ActivityIndicator size={36} color="#0000ff" />
       </SafeAreaView>
+    );
   }
 
   return (
@@ -119,7 +93,7 @@ export default function App() {
           headerShown: false,
         }}
       >
-        {session ? (
+        {isAuthenticated ? (
           // Authenticated stack
           <>
             <Stack.Screen name="Main" component={BottomTabs} />
@@ -143,5 +117,13 @@ export default function App() {
         )}
       </Stack.Navigator>
     </NavigationContainer>
+  );
+};
+
+export default function App() {
+  return (
+    <AuthProvider>
+      <MainApp />
+    </AuthProvider>
   );
 }

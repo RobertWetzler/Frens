@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import {View, Text, TextInput, StyleSheet} from 'react-native';
+import { View, Text, TextInput, StyleSheet } from 'react-native';
 interface DateInputProps {
     value: Date | null
     onChange: (date: Date | null) => void
@@ -78,7 +78,9 @@ export const DateInput = ({ value, onChange, error }: DateInputProps) => {
                     maxLength={4}
                 />
             </View>
-            {error && <Text style={styles.errorText}>{error}</Text>}
+            {typeof error === 'string' && error.length > 0 ? (
+                <Text style={styles.errorText}>{error}</Text>
+            ) : null}
         </View>
     )
 }

@@ -23,7 +23,7 @@
     "expo-apple-authentication": "~7.1.2",
     "expo-gl": "~15.0.2",
     "expo-linear-gradient": "~14.0.1",
-    "expo-secure-store": "~14.0.0",
+    "expo-secure-store": "~14.0.1",
     "expo-status-bar": "~2.0.0",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",

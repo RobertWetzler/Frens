@@ -1,12 +1,11 @@
 import { useState } from 'react'
 import { supabase } from '../services/supabase'
+import { ApiClient } from 'services/apiClient'
+import { ISignInResponseDto, LoginModel, RegisterModel } from 'services/generated/generatedClient'
 
-interface EmailAuthResponse {
-    user: {
-        id: string
-        email?: string
-    } | null
-    error: Error | null
+export interface EmailAuthResponse {
+    result?: ISignInResponseDto | undefined
+    error?: Error | undefined
 }
 
 export function useEmailAuth() {
@@ -18,21 +17,12 @@ export function useEmailAuth() {
         setError(null)
 
         try {
-            const { data, error: signInError } = await supabase.auth.signInWithPassword({
-                email,
-                password,
-            })
-
-            if (signInError) throw signInError
-
-            return {
-                user: data.user,
-                error: null,
-            }
+            const signInResponse = await ApiClient.call(c => c.login(new LoginModel({email, password})));
+            return  { result: signInResponse }
         } catch (err) {
             setError(err instanceof Error ? err : new Error('An unknown error occurred'))
             return {
-                user: null,
+                result: null,
                 error: err instanceof Error ? err : new Error('An unknown error occurred'),
             }
         } finally {
@@ -40,26 +30,17 @@ export function useEmailAuth() {
         }
     }
 
-    const signUpWithEmail = async (email: string, password: string): Promise<EmailAuthResponse> => {
+    const signUpWithEmail = async (name: string, email: string, password: string): Promise<EmailAuthResponse> => {
         setLoading(true)
         setError(null)
 
         try {
-            const { data, error: signUpError } = await supabase.auth.signUp({
-                email,
-                password,
-            })
-
-            if (signUpError) throw signUpError
-
-            return {
-                user: data.user,
-                error: null,
-            }
+            const registerResponse = await ApiClient.call(c => c.register(new RegisterModel({name, email, password})));
+            return { result: registerResponse }
         } catch (err) {
             setError(err instanceof Error ? err : new Error('An unknown error occurred'))
             return {
-                user: null,
+                result: null,
                 error: err instanceof Error ? err : new Error('An unknown error occurred'),
             }
         } finally {

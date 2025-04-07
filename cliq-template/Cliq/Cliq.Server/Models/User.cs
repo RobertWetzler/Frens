@@ -1,17 +1,20 @@
-﻿namespace Cliq.Server.Models;
+﻿using Microsoft.AspNetCore.Identity;
 
-public class User
+namespace Cliq.Server.Models;
+
+public class User : IdentityUser
 {
-    public required string Id { get; set; }
+    public User(string userName) : base(userName)
+    {
+    }
+    public User() : base()
+    {
+    }
     public required string Name { get; set; }
-    public required string Email { get; set; }
-    public required string Password { get; set; }
-    public required string Username { get; set;}
 }
 
 public class UserDto
 {
     public required string Id { get; set; }
     public required string Name { get; set; }
-    public required string Username { get; set; }
 }

@@ -19,6 +19,123 @@ export class Client {
     }
 
     /**
+     * @param body (optional) 
+     * @return OK
+     */
+    register(body: RegisterModel | undefined): Promise<SignInResponseDto> {
+        let url_ = this.baseUrl + "/api/Account/register";
+        url_ = url_.replace(/[?&]$/, "");
+
+        const content_ = JSON.stringify(body);
+
+        let options_: RequestInit = {
+            body: content_,
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json",
+                "Accept": "text/plain"
+            }
+        };
+
+        return this.http.fetch(url_, options_).then((_response: Response) => {
+            return this.processRegister(_response);
+        });
+    }
+
+    protected processRegister(response: Response): Promise<SignInResponseDto> {
+        const status = response.status;
+        let _headers: any = {}; if (response.headers && response.headers.forEach) { response.headers.forEach((v: any, k: any) => _headers[k] = v); };
+        if (status === 200) {
+            return response.text().then((_responseText) => {
+            let result200: any = null;
+            let resultData200 = _responseText === "" ? null : JSON.parse(_responseText, this.jsonParseReviver);
+            result200 = SignInResponseDto.fromJS(resultData200);
+            return result200;
+            });
+        } else if (status !== 200 && status !== 204) {
+            return response.text().then((_responseText) => {
+            return throwException("An unexpected server error occurred.", status, _responseText, _headers);
+            });
+        }
+        return Promise.resolve<SignInResponseDto>(null as any);
+    }
+
+    /**
+     * @param body (optional) 
+     * @return OK
+     */
+    login(body: LoginModel | undefined): Promise<SignInResponseDto> {
+        let url_ = this.baseUrl + "/api/Account/login";
+        url_ = url_.replace(/[?&]$/, "");
+
+        const content_ = JSON.stringify(body);
+
+        let options_: RequestInit = {
+            body: content_,
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json",
+                "Accept": "text/plain"
+            }
+        };
+
+        return this.http.fetch(url_, options_).then((_response: Response) => {
+            return this.processLogin(_response);
+        });
+    }
+
+    protected processLogin(response: Response): Promise<SignInResponseDto> {
+        const status = response.status;
+        let _headers: any = {}; if (response.headers && response.headers.forEach) { response.headers.forEach((v: any, k: any) => _headers[k] = v); };
+        if (status === 200) {
+            return response.text().then((_responseText) => {
+            let result200: any = null;
+            let resultData200 = _responseText === "" ? null : JSON.parse(_responseText, this.jsonParseReviver);
+            result200 = SignInResponseDto.fromJS(resultData200);
+            return result200;
+            });
+        } else if (status !== 200 && status !== 204) {
+            return response.text().then((_responseText) => {
+            return throwException("An unexpected server error occurred.", status, _responseText, _headers);
+            });
+        }
+        return Promise.resolve<SignInResponseDto>(null as any);
+    }
+
+    /**
+     * @return OK
+     */
+    logout(): Promise<void> {
+        let url_ = this.baseUrl + "/api/Account/logout";
+        url_ = url_.replace(/[?&]$/, "");
+
+        let options_: RequestInit = {
+            method: "POST",
+            headers: {
+            }
+        };
+
+        return this.http.fetch(url_, options_).then((_response: Response) => {
+            return this.processLogout(_response);
+        });
+    }
+
+    protected processLogout(response: Response): Promise<void> {
+        const status = response.status;
+        let _headers: any = {}; if (response.headers && response.headers.forEach) { response.headers.forEach((v: any, k: any) => _headers[k] = v); };
+        if (status === 200) {
+            return response.text().then((_responseText) => {
+            return;
+            });
+        } else if (status !== 200 && status !== 204) {
+            return response.text().then((_responseText) => {
+            return throwException("An unexpected server error occurred.", status, _responseText, _headers);
+            });
+        }
+        return Promise.resolve<void>(null as any);
+    }
+
+    /**
      * @param text (optional) 
      * @param postId (optional) 
      * @param parentCommentid (optional) 
@@ -347,6 +464,50 @@ export interface ICommentDto {
     replies?: CommentDto[] | undefined;
 }
 
+export class LoginModel implements ILoginModel {
+    email?: string | undefined;
+    password?: string | undefined;
+    rememberMe?: boolean;
+
+    constructor(data?: ILoginModel) {
+        if (data) {
+            for (var property in data) {
+                if (data.hasOwnProperty(property))
+                    (<any>this)[property] = (<any>data)[property];
+            }
+        }
+    }
+
+    init(_data?: any) {
+        if (_data) {
+            this.email = _data["email"];
+            this.password = _data["password"];
+            this.rememberMe = _data["rememberMe"];
+        }
+    }
+
+    static fromJS(data: any): LoginModel {
+        data = typeof data === 'object' ? data : {};
+        let result = new LoginModel();
+        result.init(data);
+        return result;
+    }
+
+    toJSON(data?: any) {
+        data = typeof data === 'object' ? data : {};
+        data["email"] = this.email;
+        data["password"] = this.password;
+        data["rememberMe"] = this.rememberMe;
+        return data;
+    }
+}
+
+export interface ILoginModel {
+    email?: string | undefined;
+    password?: string | undefined;
+    rememberMe?: boolean;
+}
+
 export class PostDto implements IPostDto {
     id!: string | undefined;
     userId!: string | undefined;
@@ -415,10 +576,96 @@ export interface IPostDto {
     commentCount?: number;
 }
 
+export class RegisterModel implements IRegisterModel {
+    email?: string | undefined;
+    name?: string | undefined;
+    password?: string | undefined;
+
+    constructor(data?: IRegisterModel) {
+        if (data) {
+            for (var property in data) {
+                if (data.hasOwnProperty(property))
+                    (<any>this)[property] = (<any>data)[property];
+            }
+        }
+    }
+
+    init(_data?: any) {
+        if (_data) {
+            this.email = _data["email"];
+            this.name = _data["name"];
+            this.password = _data["password"];
+        }
+    }
+
+    static fromJS(data: any): RegisterModel {
+        data = typeof data === 'object' ? data : {};
+        let result = new RegisterModel();
+        result.init(data);
+        return result;
+    }
+
+    toJSON(data?: any) {
+        data = typeof data === 'object' ? data : {};
+        data["email"] = this.email;
+        data["name"] = this.name;
+        data["password"] = this.password;
+        return data;
+    }
+}
+
+export interface IRegisterModel {
+    email?: string | undefined;
+    name?: string | undefined;
+    password?: string | undefined;
+}
+
+export class SignInResponseDto implements ISignInResponseDto {
+    user!: UserDto;
+    token!: string | undefined;
+
+    constructor(data?: ISignInResponseDto) {
+        if (data) {
+            for (var property in data) {
+                if (data.hasOwnProperty(property))
+                    (<any>this)[property] = (<any>data)[property];
+            }
+        }
+        if (!data) {
+            this.user = new UserDto();
+        }
+    }
+
+    init(_data?: any) {
+        if (_data) {
+            this.user = _data["user"] ? UserDto.fromJS(_data["user"]) : new UserDto();
+            this.token = _data["token"];
+        }
+    }
+
+    static fromJS(data: any): SignInResponseDto {
+        data = typeof data === 'object' ? data : {};
+        let result = new SignInResponseDto();
+        result.init(data);
+        return result;
+    }
+
+    toJSON(data?: any) {
+        data = typeof data === 'object' ? data : {};
+        data["user"] = this.user ? this.user.toJSON() : <any>undefined;
+        data["token"] = this.token;
+        return data;
+    }
+}
+
+export interface ISignInResponseDto {
+    user: UserDto;
+    token: string | undefined;
+}
+
 export class UserDto implements IUserDto {
     id!: string | undefined;
     name!: string | undefined;
-    username!: string | undefined;
 
     constructor(data?: IUserDto) {
         if (data) {
@@ -433,7 +680,6 @@ export class UserDto implements IUserDto {
         if (_data) {
             this.id = _data["id"];
             this.name = _data["name"];
-            this.username = _data["username"];
         }
     }
 
@@ -448,7 +694,6 @@ export class UserDto implements IUserDto {
         data = typeof data === 'object' ? data : {};
         data["id"] = this.id;
         data["name"] = this.name;
-        data["username"] = this.username;
         return data;
     }
 }
@@ -456,7 +701,6 @@ export class UserDto implements IUserDto {
 export interface IUserDto {
     id: string | undefined;
     name: string | undefined;
-    username: string | undefined;
 }
 
 export class ApiException extends Error {

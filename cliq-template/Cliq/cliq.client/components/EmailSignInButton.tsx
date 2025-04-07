@@ -1,13 +1,18 @@
 import { useState, useRef, useEffect } from 'react'
 import { View, Pressable, Text, StyleSheet, TextInput, Modal, Animated } from 'react-native'
-import { useEmailAuth } from '../hooks/useEmailAuth'
+import { EmailAuthResponse, useEmailAuth } from '../hooks/useEmailAuth'
 import { DateInput } from './DateInput'
 import { TermsOfService } from './TermsOfService'
+import { useAuth } from 'contexts/AuthContext'
+import { ISignInResponseDto } from 'services/generated/generatedClient'
 
 export const EmailSignInButton = () => {
+    const { login } = useAuth();  // Add this line
+
     const { signInWithEmail, signUpWithEmail, loading } = useEmailAuth()
     const [modalVisible, setModalVisible] = useState(false)
     const [email, setEmail] = useState('')
+    const [username, setName] = useState('')
     const [password, setPassword] = useState('')
     const [isSignUp, setIsSignUp] = useState(false)
     // Stuff for TOS, Age Verification
@@ -30,7 +35,7 @@ export const EmailSignInButton = () => {
         return age >= 13
     }
 
-    const handleSignUp = async () => {
+    const handleSignUp = async (): Promise<EmailAuthResponse> => {
         if (!dateOfBirth) {
             setDateError('Please enter your date of birth')
             return
@@ -50,35 +55,14 @@ export const EmailSignInButton = () => {
 
         // Proceed with sign up
         try {
-            const { user, error } = await signUpWithEmail(email, password)
-            if (error) throw error
-
-            if (user) {
-                // Store consent timestamp and user age
-                const consentTimestamp = new Date().toISOString()
-                // TODO might want to store these in your user profile or a separate table
-                /*
-                await supabase
-                    .from('user_consent')
-                    .insert([
-                        {
-                            user_id: user.id,
-                            date_of_birth: dateOfBirth.toISOString(),
-                            tos_accepted_at: consentTimestamp,
-                        }
-                    ])
-                */
-
-                console.log('Account created:', user)
-                setModalVisible(false)
-                resetForm()
-            }
+            return await signUpWithEmail(username, email, password)
         } catch (error) {
             console.error('Sign up error:', error)
         }
     }
 
     const resetForm = () => {
+        setName('')
         setEmail('')
         setPassword('')
         setDateOfBirth(null)
@@ -89,18 +73,24 @@ export const EmailSignInButton = () => {
 
     const handleAuth = async () => {
         try {
+            let result: ISignInResponseDto, error: Error;
             if (isSignUp) {
-                return await handleSignUp();
+                ({ result, error } = await handleSignUp());
+            } else {
+                ({ result, error } = await signInWithEmail(email, password));
             }
-            const { user, error } = await signInWithEmail(email, password)
 
             if (error) throw error
 
-            if (user) {
-                console.log('Authenticated:', user)
+            if (result && result.user && result.token) {
+                await login(result.token, {
+                    id: result.user.id,
+                    email: email,
+                    username: result.user.name
+                });
+                console.log('Authenticated:', result.user)
                 setModalVisible(false)
-                setEmail('')
-                setPassword('')
+                resetForm()
             }
         } catch (error) {
             console.error('Authentication error:', error)
@@ -141,6 +131,17 @@ export const EmailSignInButton = () => {
                             {isSignUp ? 'Create Account' : 'Sign In'}
                         </Text>
 
+                        {isSignUp && (<TextInput
+                            style={styles.input}
+                            placeholder="Name"
+                            placeholderTextColor="#666"
+                            value={username}
+                            onChangeText={setName}
+                            autoCapitalize="none"
+                            returnKeyType="next" // Shows "next" instead of "return" on keyboard
+                            onSubmitEditing={() => passwordInputRef.current?.focus()}
+                        />)}
+
                         <TextInput
                             style={styles.input}
                             placeholder="Email"
@@ -154,7 +155,6 @@ export const EmailSignInButton = () => {
                             inputMode="email" // Ensures email keyboard on web
                             returnKeyType="next" // Shows "next" instead of "return" on keyboard
                             onSubmitEditing={() => passwordInputRef.current?.focus()}
-
                         />
 
                         <TextInput

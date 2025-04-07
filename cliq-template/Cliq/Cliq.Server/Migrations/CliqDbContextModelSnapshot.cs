@@ -271,6 +271,8 @@ namespace Cliq.Server.Migrations
                         .HasForeignKey("ViewersId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
+                    // TODO is this needed or duplicate
+                    b.HasKey("PostId", "ViewersId");
                 });
 
             modelBuilder.Entity("Cliq.Server.Models.Comment", b =>

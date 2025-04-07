@@ -2,19 +2,22 @@
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 
+using Cliq.Server.Auth;
+using Cliq.Server.Models;
+
 namespace Cliq.Server.Controllers;
 
 [Route("api/[controller]")]
 [ApiController]
 public class AccountController : ControllerBase
 {
-    private readonly UserManager<IdentityUser> _userManager;
-    private readonly SignInManager<IdentityUser> _signInManager;
+    private readonly UserManager<User> _userManager;
+    private readonly SignInManager<User> _signInManager;
     private readonly JwtService _jwtService;
 
     public AccountController(
-        UserManager<IdentityUser> userManager,
-        SignInManager<IdentityUser> signInManager,
+        UserManager<User> userManager,
+        SignInManager<User> signInManager,
         JwtService jwtService)
     {
         _userManager = userManager;
@@ -24,16 +27,21 @@ public class AccountController : ControllerBase
 
     [HttpPost("register")]
     [AllowAnonymous]
-    public async Task<IActionResult> Register([FromBody] RegisterModel model)
+    public async Task<ActionResult<SignInResponseDto>> Register([FromBody] RegisterModel model)
     {
         if (!ModelState.IsValid)
         {
             return BadRequest(ModelState);
         }
 
-        var user = new IdentityUser { UserName = model.UserName, Email = model.Email };
-        var result = await _userManager.CreateAsync(user, model.Password);
+        var user = new User() 
+        { 
+            UserName = model.Email,
+            Name = model.Name,
+            Email = model.Email,
+        };
 
+        var result = await _userManager.CreateAsync(user, model.Password);
         if (result.Succeeded)
         {
             // Generate JWT token
@@ -41,7 +49,11 @@ public class AccountController : ControllerBase
 
             return Ok(new
             {
-                user = new { id = user.Id, email = user.Email, username = user.UserName },
+                user = new UserDto
+                {
+                    Id = user.Id,
+                    Name = user.Name
+                },
                 token = token
             });
         }
@@ -56,7 +68,7 @@ public class AccountController : ControllerBase
 
     [HttpPost("login")]
     [AllowAnonymous]
-    public async Task<IActionResult> Login([FromBody] LoginModel model)
+    public async Task<ActionResult<SignInResponseDto>> Login([FromBody] LoginModel model)
     {
         if (!ModelState.IsValid)
         {
@@ -73,7 +85,11 @@ public class AccountController : ControllerBase
 
             return Ok(new
             {
-                user = new { id = user.Id, email = user.Email },
+                user = new UserDto
+                {
+                    Id = user.Id,
+                    Name = user.Name
+                },
                 token = token
             });
         }
@@ -97,8 +113,14 @@ public class AccountController : ControllerBase
 public class RegisterModel
 {
     public string Email { get; set; }
-    public string UserName { get; set; }
+    public string Name { get; set; }
     public string Password { get; set; }
+}
+
+public class SignInResponseDto
+{
+    public required UserDto User { get; set; }
+    public required string token { get; set; }
 }
 
 public class LoginModel
