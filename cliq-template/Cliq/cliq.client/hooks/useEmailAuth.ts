@@ -1,5 +1,4 @@
 import { useState } from 'react'
-import { supabase } from '../services/supabase'
 import { ApiClient } from 'services/apiClient'
 import { ISignInResponseDto, LoginModel, RegisterModel } from 'services/generated/generatedClient'
 

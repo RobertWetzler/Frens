@@ -7,10 +7,10 @@ import { ApiClient } from 'services/apiClient';
 // Define event type mapping properly
 type AuthEventsMap = {
     'AUTH_STATE_CHANGE': (user: AuthUser | null) => void;
-  };
-  
-  // Create event emitter with the correct type
-  export const authEvents = new EventEmitter<AuthEventsMap>();
+};
+
+// Create event emitter with the correct type
+export const authEvents = new EventEmitter<AuthEventsMap>();
 export const AUTH_STATE_CHANGE = 'AUTH_STATE_CHANGE';
 
 export type AuthUser = {
@@ -82,11 +82,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         try {
             setIsLoading(true);
             const token = await tokenStorage.getAuthToken();
-
             if (token) {
                 // Parse user data from token
                 const { user, expiration } = parseUserFromToken(token);
-                if (expiration && expiration < Date.now()) {
+                // Convert expiration to milliseconds for comparison
+                const expirationMs = expiration * 1000;
+                if (expirationMs && expirationMs < Date.now()) {
                     // Token is expired
                     await tokenStorage.removeAuthToken();
                     setUser(null);
