@@ -14,18 +14,20 @@ const ThreadLine: React.FC<{
   hasReplies: boolean;
   depth: number;
   collapsed: boolean;
-}> = ({ color, isLastInBranch, hasReplies, depth, collapsed }) => {
+  isReplying: boolean;
+}> = ({ color, isLastInBranch, hasReplies, depth, collapsed, isReplying }) => {
   return (
     <View style={styles.threadLineContainer}>
       {/* Main vertical line */}
-      <View 
-        style={[
-          styles.verticalLine, 
-          { backgroundColor: color },
-          { height: 82 },// Hide line when collapsed
-          (isLastInBranch && !hasReplies) && styles.lastCommentLine
-        ]} 
-      />
+
+        <View 
+          style={[
+            styles.verticalLine, 
+            { backgroundColor: color },
+            { height: collapsed ? 0 : (82 * (isReplying ? 3.2 : 1)) }, // Hide line when collapsed
+            (isLastInBranch && !hasReplies) && styles.lastCommentLine
+          ]}
+        />
       
       {/* For child comments, draw the curved connector from parent to child */}
       {depth > 0 && (
@@ -69,8 +71,8 @@ const CommentTree: React.FC<{
     };
 
     // Use for debugging thread lines
-    const lineColor = depth === 0 ? '#1DA1F2' : ['#FF4500', '#9370DB', '#4CBB17', '#FF8C00', '#1E90FF'][depth % 5];
-    //const lineColor = '#97d6fc'
+    //const lineColor = depth === 0 ? '#1DA1F2' : ['#FF4500', '#9370DB', '#4CBB17', '#FF8C00', '#1E90FF'][depth % 5];
+    const lineColor = '#97d6fc'
     const hasReplies = comment.replies && comment.replies.length > 0;
   
     return (
@@ -86,6 +88,7 @@ const CommentTree: React.FC<{
               hasReplies={hasReplies}
               depth={depth}
               collapsed={collapsed}
+              isReplying={isReplying}
             />
           </TouchableOpacity>
           
@@ -200,11 +203,11 @@ const CommentSection: React.FC<{
 
         try {
             // Call the API to create the comment
-            const response = await ApiClient.Instance.comment(
+            const response = await ApiClient.call(c => c.comment(
                 text,
                 postId,
                 parentCommentId
-            );
+            ));
 
             // If the API call was successful, update the UI with the returned comment
             if (!parentCommentId) {

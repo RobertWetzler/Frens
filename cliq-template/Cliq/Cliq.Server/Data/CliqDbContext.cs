@@ -66,14 +66,14 @@ public class CliqDbContext : IdentityDbContext<User>
             // Seed Users
             var users = new List<User>
             {
-                new User("john@example.com") {
-                    Name = "John Doe",
+                new User("sandman@example.com") {
+                    Name = "Spencer Sands",
                 },
-                new User("jane@example.com") {
-                    Name = "Jane Smith",
+                new User("smushi@example.com") {
+                    Name = "Sierra Takushi",
                 },
-                new User("bob@example.com") {
-                    Name = "Bob Wilson",
+                new User("daddio@example.com") {
+                    Name = "Howard Wetzler",
                 }
             };
 
