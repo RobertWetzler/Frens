@@ -19,11 +19,11 @@ const Post: React.FC<PostProps> = ({ post, navigation, isNavigable = true }) => 
       <Text style={styles.content}>{post.text}</Text>
       {isNavigable && (
         <TouchableOpacity
-          style={styles.commentButton}  // Add this style
+          style={styles.commentButton}
           onPress={() => navigation?.navigate('Comments', { postId: post.id })}
         >
-                  <Ionicons name="chatbox-outline" size={20} color="#1DA1F2" />
-                  <Text style={styles.actionButtonText}>{post.commentCount} comments</Text>
+          <Ionicons name="chatbox-outline" size={20} color="#1DA1F2" />
+          <Text style={styles.actionButtonText}>{post.commentCount} comments</Text>
         </TouchableOpacity>
       )}
     </View>
@@ -33,15 +33,10 @@ const Post: React.FC<PostProps> = ({ post, navigation, isNavigable = true }) => 
 const styles = StyleSheet.create({
   container: {
     backgroundColor: 'white',
-    borderRadius: 10,
     padding: 15,
-    marginVertical: 8,
-    marginHorizontal: 16,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
+    paddingHorizontal: 10,
+    borderBottomWidth: 1,
+    borderBottomColor: '#e1e8ed',  // Twitter-like separator color
   },
   
   header: {
@@ -63,18 +58,14 @@ const styles = StyleSheet.create({
   },
   commentButton: {
     flexDirection: 'row',
-    alignItems: 'center',  // This vertically centers the icon and text
-    gap: 4,  // This adds space between the icon and text
+    alignItems: 'center',
+    gap: 4,
+    marginTop: 8,
   },
-  commentButtonText: {
-    color: 'white',
-    fontWeight: 'bold',
-  },
-  // Used just for the "N Comments" button
   actionButtonText: {
     marginLeft: 4,
     color: '#1DA1F2',
-    },
+  },
 });
 
 export default Post;

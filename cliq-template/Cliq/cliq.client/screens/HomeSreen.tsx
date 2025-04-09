@@ -21,7 +21,6 @@ const HomeScreen = ({ navigation }) => {
    if (isLoading) {
     return (
       <SafeAreaView style={styles.container}>
-      <ShaderBackground />
       <ActivityIndicator size={36} color="#0000ff" />
       </SafeAreaView>
     );
@@ -39,7 +38,6 @@ const HomeScreen = ({ navigation }) => {
 
   return (
     <SafeAreaView style={styles.container}>
-      <ShaderBackground />
       <FlatList
         data={posts}
         renderItem={({ item }) => (
@@ -69,11 +67,10 @@ const HomeScreen = ({ navigation }) => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: 'transparent',
+    backgroundColor: 'white',
   },
   listContent: {
     paddingTop: 16,
-    paddingHorizontal: 16,
   },
   errorText: {
     color: 'red',
