@@ -6,6 +6,8 @@ import { usePost } from 'hooks/usePosts';
 import { ApiClient } from 'services/apiClient';
 import Post from './Post';
 import Svg, { Path } from 'react-native-svg';
+import { Avatar } from '@rneui/base';
+
 
 
 const ThreadLine: React.FC<{
@@ -20,20 +22,20 @@ const ThreadLine: React.FC<{
     <View style={styles.threadLineContainer}>
       {/* Main vertical line */}
 
-        <View 
+        { hasReplies && (<View 
           style={[
             styles.verticalLine, 
             { backgroundColor: color },
-            { height: collapsed ? 0 : (82 * (isReplying ? 3.2 : 1)) }, // Hide line when collapsed
+            { height: collapsed ? 0 : (84 * (isReplying ? 3.15 : 1)) }, // Hide line when collapsed
             (isLastInBranch && !hasReplies) && styles.lastCommentLine
           ]}
-        />
+        />)}
       
       {/* For child comments, draw the curved connector from parent to child */}
       {depth > 0 && (
         <Svg style={styles.connectorSvg} width={42} height={30}>
           <Path
-            d={`M 1,0 Q 1,20 20,20 L 42,20`}
+            d={`M 1,0 Q 1,20 20,20 L 26,20`}
             stroke={color}
             strokeWidth={2}
             fill="none"
@@ -93,16 +95,29 @@ const CommentTree: React.FC<{
           </TouchableOpacity>
           
           <View style={styles.commentBody}>
-            <Text style={styles.commentAuthor}>{comment.user.name}</Text>
+          <TouchableOpacity
+              onPress={() => setCollapsed(!collapsed)}>
+            <View style={styles.commentTitleRow}>
+
+              <View style={styles.avatarContainer}>
+              <Avatar rounded
+                source={{
+                  uri:
+                    'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcQ-bbvNECx5re2TCCrWHrocEck8RFKXGRPjtA&s',
+                }}
+              />
+              </View>
+              <Text style={styles.commentAuthor}>{comment.user.name}</Text>
+
+            </View>
+            </TouchableOpacity >
+
             {!collapsed && (
               <>
                 <Text style={styles.commentText}>{comment.text}</Text>
                 <View style={styles.actionButtons}>
                   <TouchableOpacity style={styles.actionButton}>
-                    <Ionicons name="arrow-up-outline" size={18} color="#606060" />
-                  </TouchableOpacity>
-                  <TouchableOpacity style={styles.actionButton}>
-                    <Ionicons name="arrow-down-outline" size={18} color="#606060" />
+                    <Ionicons name="heart-outline" size={18} color="#606060" />
                   </TouchableOpacity>
                   <TouchableOpacity style={styles.actionButton} onPress={() => setIsReplying(!isReplying)}>
                     <Ionicons name="chatbox-outline" size={16} color="#606060" />
@@ -411,8 +426,6 @@ const CommentSection: React.FC<{
       marginVertical: 8,
       marginLeft: 25,
       position: 'relative',
-      //borderWidth: 2, // Add this line
-      //borderColor: 'red', // Add this line
     },
     commentContent: {
       flexDirection: 'row',
@@ -431,8 +444,8 @@ const CommentSection: React.FC<{
       position: 'absolute',
       width: 2,
       borderRadius: 1,
-      left: 12,
-      top: 19,
+      left: 13,
+      top: 41,
       bottom: 0,
       transform: [{ translateX: -1 }],
     },
@@ -442,7 +455,7 @@ const CommentSection: React.FC<{
     connectorSvg: {
       position: 'relative',
       top: 0,
-      right: '121%',
+      right: '116%',
       transform: [{ translateX: 0 }], // Super magic number to align with parent vertiical line
     },
     // Remove or comment out these old connector styles
@@ -472,6 +485,27 @@ const CommentSection: React.FC<{
       flex: 1,
       paddingRight: 8,
       paddingBottom: 4,
+      //borderWidth: 2, // Add this line
+      // borderColor: 'red', // Add this line
+    },
+    commentTitleRow: {
+      flexDirection: 'row',
+      marginTop: 4,
+      marginLeft: -37, // Use margins when needed
+      marginBottom: 0,
+      alignItems: 'center',
+    },
+    // Add this to your StyleSheet:
+    avatarContainer: {
+      padding: 2, // Creates spacing around the avatar
+      backgroundColor: 'white', // Same as background color
+      borderRadius: 60, // Fully rounded to match the avatar
+      marginRight: 7,
+      // Optional shadow for more definition
+      // shadowColor: '#fff',
+      // shadowOpacity: 1,
+      // shadowOffset: { width: 0, height: 0 },
+      // shadowRadius: 3,
     },
     commentAuthor: {
       fontWeight: '600',
@@ -482,6 +516,7 @@ const CommentSection: React.FC<{
     commentText: {
       fontSize: 15,
       lineHeight: 22,
+      left: 9,
       color: '#000000',
       marginBottom: 8,
     },
