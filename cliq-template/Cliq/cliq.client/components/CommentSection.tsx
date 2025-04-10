@@ -26,7 +26,7 @@ const ThreadLine: React.FC<{
           style={[
             styles.verticalLine, 
             { backgroundColor: color },
-            { height: collapsed ? 0 : (84 * (isReplying ? 3.15 : 1)) }, // Hide line when collapsed
+            { height: collapsed ? 0 : (74 * (isReplying ? 3.38 : 1)) }, // Hide line when collapsed
             (isLastInBranch && !hasReplies) && styles.lastCommentLine
           ]}
         />)}
@@ -95,16 +95,19 @@ const CommentTree: React.FC<{
           </TouchableOpacity>
           
           <View style={styles.commentBody}>
-          <TouchableOpacity
+            <TouchableOpacity
               onPress={() => setCollapsed(!collapsed)}>
             <View style={styles.commentTitleRow}>
 
               <View style={styles.avatarContainer}>
               <Avatar rounded
-                source={{
+                overlayContainerStyle={{backgroundColor: '#73cbff'}}
+                title={comment.user.name.charAt(0).toUpperCase()}
+                // TODO: Load user photo
+                /*source={{
                   uri:
                     'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcQ-bbvNECx5re2TCCrWHrocEck8RFKXGRPjtA&s',
-                }}
+                }} */
               />
               </View>
               <Text style={styles.commentAuthor}>{comment.user.name}</Text>
@@ -311,7 +314,7 @@ const CommentSection: React.FC<{
                             )}
                             <TextInput
                                 style={styles.addCommentInputActive}
-                                placeholder="Write a comment..."
+                                placeholder="Add a comment..."
                                 multiline
                                 value={newCommentText}
                                 onChangeText={setNewCommentText}
@@ -423,7 +426,7 @@ const CommentSection: React.FC<{
       fontSize: 16,
     },
     commentContainer: {
-      marginVertical: 8,
+      marginVertical: 1,
       marginLeft: 25,
       position: 'relative',
     },
@@ -484,7 +487,7 @@ const CommentSection: React.FC<{
     commentBody: {
       flex: 1,
       paddingRight: 8,
-      paddingBottom: 4,
+      paddingBottom: 0,
       //borderWidth: 2, // Add this line
       // borderColor: 'red', // Add this line
     },
@@ -523,7 +526,7 @@ const CommentSection: React.FC<{
     actionButtons: {
       flexDirection: 'row',
       marginTop: 4,
-      marginBottom: 8,
+      marginBottom: 4,
       alignItems: 'center',
     },
     actionButton: {
@@ -590,7 +593,7 @@ const CommentSection: React.FC<{
       fontWeight: '600',
     },
     addCommentContainer: {
-      padding: 16,
+      padding: 12,
       backgroundColor: 'white',
       borderBottomWidth: 1,
       borderBottomColor: '#e1e4e8',
