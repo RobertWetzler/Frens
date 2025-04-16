@@ -74,6 +74,9 @@ public class CliqDbContext : IdentityDbContext<User>
                 },
                 new User("daddio@example.com") {
                     Name = "Howard Wetzler",
+                },
+                new User("devio@example.com") {
+                    Name = "Devon Brandt",
                 }
             };
 
@@ -103,43 +106,64 @@ public class CliqDbContext : IdentityDbContext<User>
                 }
             };
             modelBuilder.Entity<Post>().HasData(posts);
-
             // Seed Comments
-            var comment1 = new Comment
+            var comments = new List<Comment>
             {
-                Id = "seedComment1",
-                UserId = users[2].Id,
-                Date = DateTime.UtcNow,
-                PostId = posts[0].Id,
-                Text = "I am bob and I am commenting on a post",
+                new Comment
+                {
+                    Id = "seedComment1",
+                    UserId = users[2].Id,
+                    Date = DateTime.UtcNow,
+                    PostId = posts[0].Id,
+                    Text = "I am bob and I am commenting on a post",
+                },
+                new Comment
+                {
+                    Id = "seedChildComment1_1",
+                    UserId = users[0].Id,
+                    Date = DateTime.UtcNow,
+                    PostId = posts[0].Id,
+                    ParentCommentId = "seedComment1",
+                    Text = "I am John responding to Bob"
+                },
+                new Comment
+                {
+                    Id = "seedChildComment1_2",
+                    UserId = users[3].Id,
+                    Date = DateTime.UtcNow,
+                    PostId = posts[0].Id,
+                    ParentCommentId = "seedComment1",
+                    Text = "I am DEVON and I AM SO COOL"
+                },
+                new Comment
+                {
+                    Id = "seedChildComment1_2_1",
+                    UserId = users[3].Id,
+                    Date = DateTime.UtcNow,
+                    PostId = posts[0].Id,
+                    ParentCommentId = "seedChildComment1_2",
+                    Text = "Wassup devon this is devon"
+                },
+                new Comment
+                {
+                    Id = "seedChildComment1_1_1",
+                    UserId = users[1].Id,
+                    Date = DateTime.UtcNow,
+                    PostId = posts[0].Id,
+                    ParentCommentId = "seedChildComment1_1",
+                    Text = "I am Jane responding to Bob"
+                },
+                new Comment
+                {
+                    Id = "seedComment2",
+                    UserId = users[1].Id,
+                    Date = DateTime.UtcNow,
+                    PostId = posts[0].Id,
+                    Text = "I am Jane and I am commenting on John's post"
+                }
             };
-            var comment1_1 = new Comment
-            {
-                Id = "seedChildComment1_1",
-                UserId = users[0].Id,
-                Date = DateTime.UtcNow,
-                PostId = posts[0].Id,
-                ParentCommentId = comment1.Id,
-                Text = "I am John responding to Bob"
-            };
-            var comment1_1_1 = new Comment
-            {
-                Id = "seedChildComment1_1_1",
-                UserId = users[1].Id,
-                Date = DateTime.UtcNow,
-                PostId = posts[0].Id,
-                ParentCommentId = comment1_1.Id,
-                Text = "I am Jane responding to Bob"
-            };
-            var comment3 = new Comment
-            {
-                Id = "seedComment2",
-                UserId = users[1].Id,
-                Date = DateTime.UtcNow,
-                PostId = posts[0].Id,
-                Text = "I am Jane and I am commenting on John's post"
-            };
-            modelBuilder.Entity<Comment>().HasData(comment1, comment1_1, comment1_1_1, comment3 );
+
+            modelBuilder.Entity<Comment>().HasData(comments);
             
             // Seed Viewers (requires separate statements due to many-to-many relationship)
             // TODO THIS IS WRONG FOR SPECIFYING VIEWERS

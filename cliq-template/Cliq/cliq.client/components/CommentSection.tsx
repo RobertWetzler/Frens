@@ -18,22 +18,39 @@ const ThreadLine: React.FC<{
   collapsed: boolean;
   isReplying: boolean;
 }> = ({ color, isLastInBranch, hasReplies, depth, collapsed, isReplying }) => {
-  return (
+  const replyBoxHeight = 176.12
+  const height = collapsed ? 0 
+                : (74 + (isReplying ? replyBoxHeight : 0));
+  var amountToHide = 104;
+  // TODO: if last child is replying, increase amountToHide by replyBoxHeight 
+
+  return ( true && //TODO - renable thread lines when we can figure out curved connectors. 
+    // To do this, take the height of the full comment tree minus the height of the comment tree of the last comment
     <View style={styles.threadLineContainer}>
       {/* Main vertical line */}
-
-        { hasReplies && (<View 
+        { !collapsed && (hasReplies || isReplying) && (<View 
           style={[
             styles.verticalLine, 
-            { backgroundColor: color },
-            { height: collapsed ? 0 : (74 * (isReplying ? 3.38 : 1)) }, // Hide line when collapsed
-            (isLastInBranch && !hasReplies) && styles.lastCommentLine
+            { backgroundColor: color,
+              // Hide a certain amount from the bottom to connect to the curved connector of the last connebt
+              bottom: amountToHide,
+             },
           ]}
         />)}
-      
       {/* For child comments, draw the curved connector from parent to child */}
       {depth > 0 && (
         <Svg style={styles.connectorSvg} width={42} height={30}>
+          <Path
+            d={`M 1,0 Q 1,20 20,20 L 26,20`}
+            stroke={color}
+            strokeWidth={2}
+            fill="none"
+          />
+        </Svg>
+      )}
+      {/* Curvbed connector connecting to the reply box */}
+      {isReplying && (
+        <Svg style={[{ transform: [{ translateY: 150 }, { translateX: styles.verticalLine.left }] }]} width={42} height={30}>
           <Path
             d={`M 1,0 Q 1,20 20,20 L 26,20`}
             stroke={color}
@@ -78,20 +95,21 @@ const CommentTree: React.FC<{
     const hasReplies = comment.replies && comment.replies.length > 0;
   
     return (
-      <View style={[styles.commentContainer, { marginLeft: 8 }]}>
+      <View style={[styles.commentContainer, { marginLeft: 8,borderWidth: 0.5, borderColor: 'red',}]}>
         <View style={styles.commentContent}>
           <TouchableOpacity
             style={styles.collapseButton}
             onPress={() => setCollapsed(!collapsed)}
           >
-            <ThreadLine 
+            {!collapsed && (
+             <ThreadLine 
               color={lineColor}
               isLastInBranch={isLastInBranch}
               hasReplies={hasReplies}
               depth={depth}
               collapsed={collapsed}
               isReplying={isReplying}
-            />
+            />)}
           </TouchableOpacity>
           
           <View style={styles.commentBody}>
@@ -437,6 +455,8 @@ const CommentSection: React.FC<{
       width: 24,
       alignItems: 'center',
       marginRight: 8,
+      // borderWidth: 2, // Add this line
+      // borderColor: 'red', // Add this line
     },
     threadLineContainer: {
       width: '100%',
@@ -449,8 +469,7 @@ const CommentSection: React.FC<{
       borderRadius: 1,
       left: 13,
       top: 41,
-      bottom: 0,
-      transform: [{ translateX: -1 }],
+      //bottom: 0,
     },
     lastCommentLine: {
       bottom: '60%', // Line stops before end for last comments
@@ -458,7 +477,8 @@ const CommentSection: React.FC<{
     connectorSvg: {
       position: 'relative',
       top: 0,
-      right: '116%',
+      //right: '116%',
+      left: -13 * 2 - 1, //calculate based on verticalLine.left
       transform: [{ translateX: 0 }], // Super magic number to align with parent vertiical line
     },
     // Remove or comment out these old connector styles
@@ -488,8 +508,8 @@ const CommentSection: React.FC<{
       flex: 1,
       paddingRight: 8,
       paddingBottom: 0,
-      //borderWidth: 2, // Add this line
-      // borderColor: 'red', // Add this line
+      //borderWidth: 0.5, // Add this line
+      //borderColor: 'red', // Add this line
     },
     commentTitleRow: {
       flexDirection: 'row',
