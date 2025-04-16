@@ -1,6 +1,7 @@
 ﻿using Cliq.Server.Models;
 using Cliq.Server.Services;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Identity;
 
 namespace Cliq.Server.Controllers;
 
@@ -20,6 +21,7 @@ public class CommentController : ControllerBase
     public async Task<ActionResult<CommentDto>> PostComment(string text, string postId, string? parentCommentid = null)
     {
         // TODO: Get UserId from JWT token
+        //User.Identity.GetUserId()
         var userId = "seedUser1";
         var comment = await _commentService.CreateCommentAsync(text, userId, postId, parentCommentid);
         if (comment == null)

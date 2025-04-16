@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { View, Text, ScrollView, TouchableOpacity, TextInput, StyleSheet, SafeAreaView, ActivityIndicator } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { PostDto as PostType, CommentDto, ICommentDto, UserDto } from 'services/generated/generatedClient'
@@ -7,7 +7,24 @@ import { ApiClient } from 'services/apiClient';
 import Post from './Post';
 import Svg, { Path } from 'react-native-svg';
 import { Avatar } from '@rneui/base';
+import { Platform, UIManager } from 'react-native';
+import Animated, {
+  useSharedValue,
+  useAnimatedStyle,
+  withTiming,
+  runOnJS,
+  useDerivedValue,
+  interpolate,
+  SharedValue,
+} from 'react-native-reanimated';   
+// Enable LayoutAnimation for Android (required by some components)
+if (Platform.OS === 'android') {
+  if (UIManager.setLayoutAnimationEnabledExperimental) {
+    UIManager.setLayoutAnimationEnabledExperimental(true);
+  }
+}
 
+const AnimatedView = Animated.createAnimatedComponent(View);
 
 
 const ThreadLine: React.FC<{
@@ -17,32 +34,51 @@ const ThreadLine: React.FC<{
   depth: number;
   collapsed: boolean;
   isReplying: boolean;
-  lastChildHeight?: number;
-}> = ({ color, isLastInBranch, hasReplies, depth, collapsed, isReplying, lastChildHeight = 0}) => {
+  lastChildHeight?: SharedValue<number>;
+}> = ({ color, isLastInBranch, hasReplies, depth, collapsed, isReplying, lastChildHeight}) => {
   const replyBoxHeight = 176.12
   const height = collapsed ? 0 
                 : (74 + (isReplying ? replyBoxHeight : 0));
-  var amountToHide = 104;
-    // If we have the last child's height, adjust the vertical line length
-    if (hasReplies && lastChildHeight > 0) {
-      // Subtract the last child's height from the amount to hide
-      // This makes the line stop right where the last child begins
-      amountToHide = lastChildHeight;
+  // Create a derived value for the amount to hide
+  const amountToHide = useDerivedValue(() => {
+    // Base amount to hide if we don't have valid measurements or are collapsed
+    const baseAmount = 104;
+    
+    // If collapsed, don't show line
+    if (collapsed) 
+    {
+      console.log('collapsed, not hiding line on depth', depth);
+      return 0;
     }
+    
+    // If we have a valid measurement and there are replies, use that
+    if (hasReplies && lastChildHeight.value > 10) {
+      return lastChildHeight.value;
+    }
+    ;
+    // Default value
+    console.log('lastChildHeight', lastChildHeight.value, 'depth', depth);
+    return baseAmount;
+  }, [collapsed, hasReplies, lastChildHeight?.value]);    // If we have the last child's height, adjust the vertical line length
 
+  // Animate the style of the vertical line
+  const verticalLineStyle = useAnimatedStyle(() => {
+    return {
+      position: 'absolute',
+      width: 2,
+      borderRadius: 1,
+      backgroundColor: color, 
+      left: 13,
+      top: 41,
+      bottom: withTiming(amountToHide.value, { duration: 300 }),
+      opacity: withTiming(collapsed || (!hasReplies && !isReplying) ? 0 : 1, { duration: 300 })
+    };
+  }, [amountToHide.value, collapsed, hasReplies, isReplying, color]);
   return ( true && //TODO - renable thread lines when we can figure out curved connectors. 
     // To do this, take the height of the full comment tree minus the height of the comment tree of the last comment
     <View style={styles.threadLineContainer}>
       {/* Main vertical line */}
-        { !collapsed && (hasReplies || isReplying) && (<View 
-          style={[
-            styles.verticalLine, 
-            { backgroundColor: color,
-              // Hide a certain amount from the bottom to connect to the curved connector of the last connebt
-              bottom: amountToHide,
-             },
-          ]}
-        />)}
+      <AnimatedView style={verticalLineStyle} />
       {/* For child comments, draw the curved connector from parent to child */}
       {depth > 0 && (
         <Svg style={styles.connectorSvg} width={42} height={30}>
@@ -83,32 +119,66 @@ const CommentTree: React.FC<{
     const [collapsed, setCollapsed] = useState(false);
     const [replyText, setReplyText] = useState('');
     const [isReplying, setIsReplying] = useState(false);
-    const [lastChildHeight, setLastChildHeight] = useState(0);
+    const [initialLayoutComplete, setInitialLayoutComplete] = useState(false);
 
-    // Function to capture height from the last child
-    const handleLastChildHeight = (height: number) => {
-      setLastChildHeight(height);
-  };
-  
-  // Report own height to parent when mounted and when height changes
-  const handleLayout = (event) => {
-      const { height } = event.nativeEvent.layout;
-      // Only report height if this component is measuring itself for its parent
-      if (onHeightMeasure) {
-          onHeightMeasure(height);
-      }
-  };
-    const handleReply = async () => {
-        if (replyText.trim()) {
-            try {
-                await onAddReply(replyText.trim(), comment.id);
-                setReplyText('');
-                setIsReplying(false);
-            } catch (error) {
-                // Error is handled by parent component via submitError prop
-            }
+    // Use shared values for smoother animations and better state management
+    const lastChildHeight = useSharedValue(0);
+    const selfHeight = useSharedValue(0);
+    const isAnimating = useSharedValue(false);
+    
+    // Handle height updates from the last child
+    const handleLastChildHeight = useCallback((height: number) => {
+      // Always update on first measure to ensure proper initial rendering
+      if (!initialLayoutComplete || (!isAnimating.value && Math.abs(height - lastChildHeight.value) > 5)) {
+        lastChildHeight.value = withTiming(height, { duration: 300 });
+        if (!initialLayoutComplete) {
+          setInitialLayoutComplete(true);
         }
-    };
+      }
+    }, [initialLayoutComplete]);
+
+    // Toggle collapsed state with animations
+    const handleToggleCollapsed = useCallback(() => {
+      isAnimating.value = true;
+      setCollapsed(prev => !prev);
+      
+      // Wait for animation to complete
+      setTimeout(() => {
+        isAnimating.value = false;
+      }, 350);
+    }, []);
+    
+    // Update height measurement when component layout changes
+    const handleLayout = useCallback((event) => {
+      const { height } = event.nativeEvent.layout;
+      
+      // Always update on first measure
+      if (!initialLayoutComplete || (!isAnimating.value && Math.abs(height - selfHeight.value) > 5)) {
+        selfHeight.value = height;
+        
+        // Report to parent if requested
+        if (onHeightMeasure) {
+          onHeightMeasure(height);
+        }
+        
+        if (!initialLayoutComplete) {
+          setInitialLayoutComplete(true);
+        }
+      }
+    }, [onHeightMeasure, initialLayoutComplete]);
+    
+    // Handle posting a reply
+    const handleReply = useCallback(async () => {
+      if (replyText.trim()) {
+        try {
+          await onAddReply(replyText.trim(), comment.id);
+          setReplyText('');
+          setIsReplying(false);
+        } catch (error) {
+          // Error handled by parent
+        }
+      }
+    }, [replyText, comment.id, onAddReply]);
 
     // Use for debugging thread lines
     //const lineColor = depth === 0 ? '#1DA1F2' : ['#FF4500', '#9370DB', '#4CBB17', '#FF8C00', '#1E90FF'][depth % 5];
@@ -116,16 +186,15 @@ const CommentTree: React.FC<{
     const hasReplies = comment.replies && comment.replies.length > 0;
   
     return (
-      <View 
-        style={[styles.commentContainer, { marginLeft: 8}]}
-        onLayout={handleLayout}
-      >
+      <Animated.View 
+      style={[styles.commentContainer, { marginLeft: 8 }]}
+      onLayout={handleLayout}
+    >
         <View style={styles.commentContent}>
           <TouchableOpacity
             style={styles.collapseButton}
-            onPress={() => setCollapsed(!collapsed)}
+            onPress={handleToggleCollapsed}
           >
-            {!collapsed && (
              <ThreadLine 
               color={lineColor}
               isLastInBranch={isLastInBranch}
@@ -134,7 +203,7 @@ const CommentTree: React.FC<{
               collapsed={collapsed}
               isReplying={isReplying}
               lastChildHeight={lastChildHeight} // Pass the last child's height
-            />)}
+            />
           </TouchableOpacity>
           
           <View style={styles.commentBody}>
@@ -158,8 +227,11 @@ const CommentTree: React.FC<{
             </View>
             </TouchableOpacity >
 
-            {!collapsed && (
-              <>
+              {/* Content is conditionally rendered but with animated transitions */}
+              <Animated.View style={{
+                display: collapsed ? 'none' : 'flex',
+                opacity: withTiming(collapsed ? 0 : 1, { duration: 300 })
+              }}>
                 <Text style={styles.commentText}>{comment.text}</Text>
                 <View style={styles.actionButtons}>
                   <TouchableOpacity style={styles.actionButton}>
@@ -219,11 +291,10 @@ const CommentTree: React.FC<{
                     ))}
                   </View>
                 )}
-              </>
-            )}
+              </Animated.View>
           </View>
         </View>
-      </View>
+      </Animated.View>
     );
   };
   
