@@ -17,12 +17,18 @@ const ThreadLine: React.FC<{
   depth: number;
   collapsed: boolean;
   isReplying: boolean;
-}> = ({ color, isLastInBranch, hasReplies, depth, collapsed, isReplying }) => {
+  lastChildHeight?: number;
+}> = ({ color, isLastInBranch, hasReplies, depth, collapsed, isReplying, lastChildHeight = 0}) => {
   const replyBoxHeight = 176.12
   const height = collapsed ? 0 
                 : (74 + (isReplying ? replyBoxHeight : 0));
   var amountToHide = 104;
-  // TODO: if last child is replying, increase amountToHide by replyBoxHeight 
+    // If we have the last child's height, adjust the vertical line length
+    if (hasReplies && lastChildHeight > 0) {
+      // Subtract the last child's height from the amount to hide
+      // This makes the line stop right where the last child begins
+      amountToHide = lastChildHeight;
+    }
 
   return ( true && //TODO - renable thread lines when we can figure out curved connectors. 
     // To do this, take the height of the full comment tree minus the height of the comment tree of the last comment
@@ -72,11 +78,26 @@ const CommentTree: React.FC<{
     isSubmitting: boolean;
     submitError: string | null;
     isLastInBranch?: boolean;
-}> = ({ comment, depth, onAddReply, isSubmitting, submitError, isLastInBranch = false }) => {
+    onHeightMeasure?: (height: number) => void; // To report own height to parent
+}> = ({ comment, depth, onAddReply, isSubmitting, submitError, isLastInBranch = false, onHeightMeasure }) => {
     const [collapsed, setCollapsed] = useState(false);
     const [replyText, setReplyText] = useState('');
     const [isReplying, setIsReplying] = useState(false);
+    const [lastChildHeight, setLastChildHeight] = useState(0);
+
+    // Function to capture height from the last child
+    const handleLastChildHeight = (height: number) => {
+      setLastChildHeight(height);
+  };
   
+  // Report own height to parent when mounted and when height changes
+  const handleLayout = (event) => {
+      const { height } = event.nativeEvent.layout;
+      // Only report height if this component is measuring itself for its parent
+      if (onHeightMeasure) {
+          onHeightMeasure(height);
+      }
+  };
     const handleReply = async () => {
         if (replyText.trim()) {
             try {
@@ -95,7 +116,10 @@ const CommentTree: React.FC<{
     const hasReplies = comment.replies && comment.replies.length > 0;
   
     return (
-      <View style={[styles.commentContainer, { marginLeft: 8,borderWidth: 0.5, borderColor: 'red',}]}>
+      <View 
+        style={[styles.commentContainer, { marginLeft: 8}]}
+        onLayout={handleLayout}
+      >
         <View style={styles.commentContent}>
           <TouchableOpacity
             style={styles.collapseButton}
@@ -109,6 +133,7 @@ const CommentTree: React.FC<{
               depth={depth}
               collapsed={collapsed}
               isReplying={isReplying}
+              lastChildHeight={lastChildHeight} // Pass the last child's height
             />)}
           </TouchableOpacity>
           
@@ -189,6 +214,7 @@ const CommentTree: React.FC<{
                         isSubmitting={isSubmitting}
                         submitError={submitError}
                         isLastInBranch={index === comment.replies.length - 1}
+                        onHeightMeasure={index === comment.replies.length - 1 ? handleLastChildHeight : undefined}
                       />
                     ))}
                   </View>
@@ -384,6 +410,7 @@ const CommentSection: React.FC<{
                                 isSubmitting={isSubmitting}
                                 submitError={submitError}
                                 isLastInBranch={index === comments.length - 1}
+                                // Only measure the last child's height
                             />
                         ))}
                     </View>
