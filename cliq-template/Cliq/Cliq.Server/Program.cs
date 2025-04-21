@@ -14,6 +14,7 @@ using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Identity.UI;
 using Cliq.Server.Auth;
 using Cliq.Server.Models;
+using System.Security.Claims;
 
 DotNetEnv.Env.Load();
 
@@ -141,6 +142,29 @@ builder.Services.AddAuthentication(options =>
         ValidIssuer = jwtSettings["Issuer"],
         ValidAudience = jwtSettings["Audience"],
         ClockSkew = TimeSpan.Zero
+    };
+     // Add events to validate user exists in database on each request
+    options.Events = new JwtBearerEvents
+    {
+        OnTokenValidated = async context =>
+        {
+            var userManager = context.HttpContext.RequestServices.GetRequiredService<UserManager<User>>();
+            var userId = context.Principal.FindFirstValue(ClaimTypes.NameIdentifier);
+            
+            if (userId == null)
+            {
+                context.Fail("Unauthorized: User identifier claim not found");
+                return;
+            }
+            
+            var user = await userManager.FindByIdAsync(userId);
+            if (user == null)
+            {
+                // User no longer exists in the database
+                context.Fail("Unauthorized: User no longer exists");
+                return;
+            }
+        }
     };
 });
 var app = builder.Build();
