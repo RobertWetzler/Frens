@@ -22,7 +22,7 @@ const ThreadLine: React.FC<{
   const replyBoxHeight = 176.12
   const height = collapsed ? 0 
                 : (74 + (isReplying ? replyBoxHeight : 0));
-  var amountToHide = 104;
+  var amountToHide = 150;
     // If we have the last child's height, adjust the vertical line length
     if (hasReplies && lastChildHeight > 0) {
       // Subtract the last child's height from the amount to hide
@@ -33,8 +33,8 @@ const ThreadLine: React.FC<{
   return ( true && //TODO - renable thread lines when we can figure out curved connectors. 
     // To do this, take the height of the full comment tree minus the height of the comment tree of the last comment
     <View style={styles.threadLineContainer}>
-      {/* Main vertical line */}
-        { !collapsed && (hasReplies || isReplying) && (<View 
+      {/* Main vertical line (can add || isReplying to add line to reply box on last in branch*/}
+        { !collapsed && (hasReplies) && (<View 
           style={[
             styles.verticalLine, 
             { backgroundColor: color,
@@ -54,8 +54,9 @@ const ThreadLine: React.FC<{
           />
         </Svg>
       )}
-      {/* Curvbed connector connecting to the reply box */}
-      {isReplying && (
+      {/* Curved connector connecting to the reply box 
+          TODO: Curved line to reply box for last comment in branch - just use full height for vertical line*/}
+      {!collapsed && hasReplies && isReplying && (
         <Svg style={[{ transform: [{ translateY: 150 }, { translateX: styles.verticalLine.left }] }]} width={42} height={30}>
           <Path
             d={`M 1,0 Q 1,20 20,20 L 26,20`}
@@ -125,7 +126,6 @@ const CommentTree: React.FC<{
             style={styles.collapseButton}
             onPress={() => setCollapsed(!collapsed)}
           >
-            {!collapsed && (
              <ThreadLine 
               color={lineColor}
               isLastInBranch={isLastInBranch}
@@ -134,7 +134,7 @@ const CommentTree: React.FC<{
               collapsed={collapsed}
               isReplying={isReplying}
               lastChildHeight={lastChildHeight} // Pass the last child's height
-            />)}
+              />
           </TouchableOpacity>
           
           <View style={styles.commentBody}>
@@ -474,9 +474,13 @@ const CommentSection: React.FC<{
       marginVertical: 1,
       marginLeft: 25,
       position: 'relative',
+      //borderColor: 'red',
+      //borderWidth: 0.5,
     },
     commentContent: {
       flexDirection: 'row',
+      //borderColor: 'blue',
+      //borderWidth: 0.5,
     },
     collapseButton: {
       width: 24,
@@ -489,6 +493,8 @@ const CommentSection: React.FC<{
       width: '100%',
       height: '100%',
       position: 'relative',
+      //borderColor: 'green',
+      //borderWidth: 0.5,
     },
     verticalLine: {
       position: 'absolute',
