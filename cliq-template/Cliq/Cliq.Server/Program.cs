@@ -149,7 +149,7 @@ builder.Services.AddAuthentication(options =>
         OnTokenValidated = async context =>
         {
             var userManager = context.HttpContext.RequestServices.GetRequiredService<UserManager<User>>();
-            var userId = context.Principal.FindFirstValue(ClaimTypes.NameIdentifier);
+            var userId = context.Principal?.FindFirstValue(ClaimTypes.NameIdentifier);
             
             if (userId == null)
             {

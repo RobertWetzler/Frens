@@ -19,9 +19,12 @@ public class CommentController : ControllerBase
     [HttpPost]
     public async Task<ActionResult<CommentDto>> PostComment(string text, string postId, string? parentCommentid = null)
     {
-        // TODO: Get UserId from JWT token
-        var userId = "seedUser1";
-        var comment = await _commentService.CreateCommentAsync(text, userId, postId, parentCommentid);
+        var idClaim = this.HttpContext.User.Claims.FirstOrDefault(c => c.Type == "http://schemas.xmlsoap.org/ws/2005/05/identity/claims/nameidentifier");
+        if (idClaim == null)
+        {
+            return Unauthorized();
+        }
+        var comment = await _commentService.CreateCommentAsync(text, idClaim.Value, postId, parentCommentid);
         if (comment == null)
         {
             return NotFound();

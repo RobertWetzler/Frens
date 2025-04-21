@@ -19,8 +19,8 @@ public interface IPostService
     Task<List<PostDto>> GetAllPostsAsync(bool includeCommentCount = false);
     Task<IEnumerable<PostDto>> GetUserPostsAsync(string userId, int page = 1, int pageSize = 20);
     Task<PostDto> CreatePostAsync(string userId, string text);
-    Task<PostDto?> UpdatePostAsync(string id, string newText);
-    Task<bool> DeletePostAsync(string id);
+    Task<PostDto?> UpdatePostAsync(string id, string updatedByUserId, string newText);
+    Task<bool> DeletePostAsync(string id, string deletedByUserId);
     Task<bool> AddViewerAsync(string postId, string userId);
     Task<bool> RemoveViewerAsync(string postId, string userId);
     Task<bool> PostExistsAsync(string id);
@@ -147,7 +147,7 @@ public class PostService : IPostService
 
     // TODO: Should FromBody be used to force JSON body request (POST semantic)?
     // TODO: Take userId from JWT token
-    public async Task<PostDto> CreatePostAsync([FromBody] string userId, [FromBody] string text)
+    public async Task<PostDto> CreatePostAsync(string userId, string text)
     {
         // TODO: Use a method from UserService for finding User by ID
         if (await this._dbContext.Users.FirstOrDefaultAsync(u => u.Id == userId) == null)
@@ -186,14 +186,18 @@ public class PostService : IPostService
         }
     }
 
-    public async Task<PostDto?> UpdatePostAsync(string id, string newText)
+    public async Task<PostDto?> UpdatePostAsync(string id, string updatedByUserId, string newText)
     {
         try
         {
             var post = await this._dbContext.Posts
                         .FirstOrDefaultAsync(p => p.Id == id);
-            if (post == null) return null;
 
+            if (post == null) return null;
+            if (post.UserId != updatedByUserId)
+            {
+                throw new UnauthorizedAccessException($"User {updatedByUserId} is not authorized to update post {id}");
+            }
             post.Text = newText;
             _dbContext.Posts.Update(post);
             await SaveChangesAsync();
@@ -207,13 +211,16 @@ public class PostService : IPostService
         }
     }
 
-    public async Task<bool> DeletePostAsync(string id)
+    public async Task<bool> DeletePostAsync(string id, string deletedByUserId)
     {
         try
         {
             var post = await _dbContext.Posts.FindAsync(id);
             if (post == null) return false;
-
+            if (post.UserId != deletedByUserId)
+            {
+                throw new UnauthorizedAccessException($"User {deletedByUserId} is not authorized to delete post {id}");
+            }
             _dbContext.Posts.Remove(post);
             await SaveChangesAsync();
             return true;

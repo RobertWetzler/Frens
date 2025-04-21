@@ -16,6 +16,7 @@ public class PostController : ControllerBase
         _postService = postService;
     }
 
+    // TODO: validate user has permissions to view post
     [HttpGet("{id}")]
     public async Task<ActionResult<PostDto>> GetPost(string id, bool includeCommentTree = true)
     {
@@ -27,7 +28,7 @@ public class PostController : ControllerBase
         return Ok(post);
     }
 
-    
+    // TODO: Only return posts that the user has access to
     [HttpGet]
     public async Task<ActionResult<IEnumerable<PostDto>>> GetAllPosts()
     {
@@ -37,9 +38,14 @@ public class PostController : ControllerBase
     
 
     [HttpPost]
-    public async Task<ActionResult<PostDto>> CreatePost(string userId, string text)
+    public async Task<ActionResult<PostDto>> CreatePost(string text)
     {
-        var createdPost = await _postService.CreatePostAsync(userId, text);
+        var idClaim = this.HttpContext.User.Claims.FirstOrDefault(c => c.Type == "http://schemas.xmlsoap.org/ws/2005/05/identity/claims/nameidentifier");
+        if (idClaim == null)
+        {
+            return Unauthorized();
+        }
+        var createdPost = await _postService.CreatePostAsync(idClaim.Value, text);
         return CreatedAtAction(nameof(GetPost), new { id = createdPost.Id }, createdPost);
     }
 
@@ -47,7 +53,12 @@ public class PostController : ControllerBase
     [HttpPut("{id}")]
     public async Task<IActionResult> UpdatePost(string id, string newText)
     {
-        var updatedPost = await _postService.UpdatePostAsync(id, newText);
+        var idClaim = this.HttpContext.User.Claims.FirstOrDefault(c => c.Type == "http://schemas.xmlsoap.org/ws/2005/05/identity/claims/nameidentifier");
+        if (idClaim == null)
+        {
+            return Unauthorized();
+        }
+        var updatedPost = await _postService.UpdatePostAsync(id, idClaim.Value, newText);
         if (updatedPost == null)
         {
             return NotFound();
@@ -56,10 +67,16 @@ public class PostController : ControllerBase
         return NoContent();
     }
 
+    // TODO: Authorize userId matches that of postId
     [HttpDelete("{id}")]
     public async Task<IActionResult> DeletePost(string id)
     {
-        var result = await _postService.DeletePostAsync(id);
+        var idClaim = this.HttpContext.User.Claims.FirstOrDefault(c => c.Type == "http://schemas.xmlsoap.org/ws/2005/05/identity/claims/nameidentifier");
+        if (idClaim == null)
+        {
+            return Unauthorized();
+        }
+        var result = await _postService.DeletePostAsync(id, idClaim.Value);
         if (!result)
         {
             return NotFound();

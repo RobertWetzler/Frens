@@ -7,7 +7,7 @@ using Npgsql;
 
 public interface ICommentService
 {
-    public Task<CommentDto> CreateCommentAsync(string text, string userId, string? parentPostId = null, string? parentCommentId = null);
+    public Task<CommentDto> CreateCommentAsync(string text, string userId, string postId, string? parentCommentId = null);
     public Task<IEnumerable<CommentDto>> GetAllCommentsForPostAsync(string postId);
     public Task<bool> DeleteCommentAsync(string commentId, string userId);
 }
