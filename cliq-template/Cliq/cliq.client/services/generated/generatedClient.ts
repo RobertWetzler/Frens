@@ -354,16 +354,11 @@ export class Client {
     }
 
     /**
-     * @param userId (optional) 
      * @param text (optional) 
      * @return OK
      */
-    postPOST(userId: string | undefined, text: string | undefined): Promise<PostDto> {
+    postPOST(text: string | undefined): Promise<PostDto> {
         let url_ = this.baseUrl + "/api/Post?";
-        if (userId === null)
-            throw new Error("The parameter 'userId' cannot be null.");
-        else if (userId !== undefined)
-            url_ += "userId=" + encodeURIComponent("" + userId) + "&";
         if (text === null)
             throw new Error("The parameter 'text' cannot be null.");
         else if (text !== undefined)
@@ -392,7 +387,7 @@ export class Client {
             result200 = PostDto.fromJS(resultData200);
             return result200;
             });
-        } else if (status !== 200 && status !== 204) {
+        } else if (status !== 200 && status !== 201) {
             return response.text().then((_responseText) => {
             return throwException("An unexpected server error occurred.", status, _responseText, _headers);
             });
