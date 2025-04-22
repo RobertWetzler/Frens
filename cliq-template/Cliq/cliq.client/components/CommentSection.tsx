@@ -474,27 +474,19 @@ const CommentSection: React.FC<{
       marginVertical: 1,
       marginLeft: 25,
       position: 'relative',
-      //borderColor: 'red',
-      //borderWidth: 0.5,
     },
     commentContent: {
       flexDirection: 'row',
-      //borderColor: 'blue',
-      //borderWidth: 0.5,
     },
     collapseButton: {
       width: 24,
       alignItems: 'center',
       marginRight: 8,
-      // borderWidth: 2, // Add this line
-      // borderColor: 'red', // Add this line
     },
     threadLineContainer: {
-      width: '100%',
+      width: 24,
       height: '100%',
-      position: 'relative',
-      //borderColor: 'green',
-      //borderWidth: 0.5,
+      position: 'absolute',
     },
     verticalLine: {
       position: 'absolute',
@@ -502,7 +494,6 @@ const CommentSection: React.FC<{
       borderRadius: 1,
       left: 13,
       top: 41,
-      //bottom: 0,
     },
     lastCommentLine: {
       bottom: '60%', // Line stops before end for last comments
