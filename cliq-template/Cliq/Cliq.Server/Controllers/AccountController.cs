@@ -80,6 +80,14 @@ public class AccountController : ControllerBase
         if (result.Succeeded)
         {
             var user = await _userManager.FindByEmailAsync(model.Email);
+            if (user == null)
+            {
+                return NotFound(new { error = "User not found" });
+            }
+            
+            user.LastLogin = DateTime.UtcNow;
+            await _userManager.UpdateAsync(user);  // Save the LastLogin change to the database
+
             // Generate JWT token
             var token = _jwtService.GenerateJwtToken(user);
 

@@ -10,6 +10,8 @@ public class MappingProfile : Profile
     {
         CreateMap<Post, PostDto>();
         CreateMap<User, UserDto>();
+        CreateMap<User, UserProfileDto>();
+        CreateMap<Friendship, FriendshipDto>();
         CreateMap<Comment, CommentDto>()
             // We'll handle replies separately due to their recursive nature
             .ForMember(dest => dest.Replies, opt => opt.Ignore());

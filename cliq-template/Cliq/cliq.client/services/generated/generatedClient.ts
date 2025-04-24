@@ -188,6 +188,399 @@ export class Client {
     }
 
     /**
+     * @return OK
+     */
+    sendRequest(addresseeId: string): Promise<FriendshipDto> {
+        let url_ = this.baseUrl + "/api/Friendship/send-request/{addresseeId}";
+        if (addresseeId === undefined || addresseeId === null)
+            throw new Error("The parameter 'addresseeId' must be defined.");
+        url_ = url_.replace("{addresseeId}", encodeURIComponent("" + addresseeId));
+        url_ = url_.replace(/[?&]$/, "");
+
+        let options_: RequestInit = {
+            method: "POST",
+            headers: {
+                "Accept": "text/plain"
+            }
+        };
+
+        return this.http.fetch(url_, options_).then((_response: Response) => {
+            return this.processSendRequest(_response);
+        });
+    }
+
+    protected processSendRequest(response: Response): Promise<FriendshipDto> {
+        const status = response.status;
+        let _headers: any = {}; if (response.headers && response.headers.forEach) { response.headers.forEach((v: any, k: any) => _headers[k] = v); };
+        if (status === 200) {
+            return response.text().then((_responseText) => {
+            let result200: any = null;
+            let resultData200 = _responseText === "" ? null : JSON.parse(_responseText, this.jsonParseReviver);
+            result200 = FriendshipDto.fromJS(resultData200);
+            return result200;
+            });
+        } else if (status !== 200 && status !== 204) {
+            return response.text().then((_responseText) => {
+            return throwException("An unexpected server error occurred.", status, _responseText, _headers);
+            });
+        }
+        return Promise.resolve<FriendshipDto>(null as any);
+    }
+
+    /**
+     * @return OK
+     */
+    acceptRequest(friendshipId: string): Promise<FriendshipDto> {
+        let url_ = this.baseUrl + "/api/Friendship/accept-request/{friendshipId}";
+        if (friendshipId === undefined || friendshipId === null)
+            throw new Error("The parameter 'friendshipId' must be defined.");
+        url_ = url_.replace("{friendshipId}", encodeURIComponent("" + friendshipId));
+        url_ = url_.replace(/[?&]$/, "");
+
+        let options_: RequestInit = {
+            method: "POST",
+            headers: {
+                "Accept": "text/plain"
+            }
+        };
+
+        return this.http.fetch(url_, options_).then((_response: Response) => {
+            return this.processAcceptRequest(_response);
+        });
+    }
+
+    protected processAcceptRequest(response: Response): Promise<FriendshipDto> {
+        const status = response.status;
+        let _headers: any = {}; if (response.headers && response.headers.forEach) { response.headers.forEach((v: any, k: any) => _headers[k] = v); };
+        if (status === 200) {
+            return response.text().then((_responseText) => {
+            let result200: any = null;
+            let resultData200 = _responseText === "" ? null : JSON.parse(_responseText, this.jsonParseReviver);
+            result200 = FriendshipDto.fromJS(resultData200);
+            return result200;
+            });
+        } else if (status !== 200 && status !== 204) {
+            return response.text().then((_responseText) => {
+            return throwException("An unexpected server error occurred.", status, _responseText, _headers);
+            });
+        }
+        return Promise.resolve<FriendshipDto>(null as any);
+    }
+
+    /**
+     * @return OK
+     */
+    rejectRequest(friendshipId: string): Promise<void> {
+        let url_ = this.baseUrl + "/api/Friendship/reject-request/{friendshipId}";
+        if (friendshipId === undefined || friendshipId === null)
+            throw new Error("The parameter 'friendshipId' must be defined.");
+        url_ = url_.replace("{friendshipId}", encodeURIComponent("" + friendshipId));
+        url_ = url_.replace(/[?&]$/, "");
+
+        let options_: RequestInit = {
+            method: "POST",
+            headers: {
+            }
+        };
+
+        return this.http.fetch(url_, options_).then((_response: Response) => {
+            return this.processRejectRequest(_response);
+        });
+    }
+
+    protected processRejectRequest(response: Response): Promise<void> {
+        const status = response.status;
+        let _headers: any = {}; if (response.headers && response.headers.forEach) { response.headers.forEach((v: any, k: any) => _headers[k] = v); };
+        if (status === 200) {
+            return response.text().then((_responseText) => {
+            return;
+            });
+        } else if (status !== 200 && status !== 204) {
+            return response.text().then((_responseText) => {
+            return throwException("An unexpected server error occurred.", status, _responseText, _headers);
+            });
+        }
+        return Promise.resolve<void>(null as any);
+    }
+
+    /**
+     * @return OK
+     */
+    cancelRequest(friendshipId: string): Promise<void> {
+        let url_ = this.baseUrl + "/api/Friendship/cancel-request/{friendshipId}";
+        if (friendshipId === undefined || friendshipId === null)
+            throw new Error("The parameter 'friendshipId' must be defined.");
+        url_ = url_.replace("{friendshipId}", encodeURIComponent("" + friendshipId));
+        url_ = url_.replace(/[?&]$/, "");
+
+        let options_: RequestInit = {
+            method: "DELETE",
+            headers: {
+            }
+        };
+
+        return this.http.fetch(url_, options_).then((_response: Response) => {
+            return this.processCancelRequest(_response);
+        });
+    }
+
+    protected processCancelRequest(response: Response): Promise<void> {
+        const status = response.status;
+        let _headers: any = {}; if (response.headers && response.headers.forEach) { response.headers.forEach((v: any, k: any) => _headers[k] = v); };
+        if (status === 200) {
+            return response.text().then((_responseText) => {
+            return;
+            });
+        } else if (status !== 200 && status !== 204) {
+            return response.text().then((_responseText) => {
+            return throwException("An unexpected server error occurred.", status, _responseText, _headers);
+            });
+        }
+        return Promise.resolve<void>(null as any);
+    }
+
+    /**
+     * @return OK
+     */
+    removeFriend(friendId: string): Promise<void> {
+        let url_ = this.baseUrl + "/api/Friendship/remove-friend/{friendId}";
+        if (friendId === undefined || friendId === null)
+            throw new Error("The parameter 'friendId' must be defined.");
+        url_ = url_.replace("{friendId}", encodeURIComponent("" + friendId));
+        url_ = url_.replace(/[?&]$/, "");
+
+        let options_: RequestInit = {
+            method: "DELETE",
+            headers: {
+            }
+        };
+
+        return this.http.fetch(url_, options_).then((_response: Response) => {
+            return this.processRemoveFriend(_response);
+        });
+    }
+
+    protected processRemoveFriend(response: Response): Promise<void> {
+        const status = response.status;
+        let _headers: any = {}; if (response.headers && response.headers.forEach) { response.headers.forEach((v: any, k: any) => _headers[k] = v); };
+        if (status === 200) {
+            return response.text().then((_responseText) => {
+            return;
+            });
+        } else if (status !== 200 && status !== 204) {
+            return response.text().then((_responseText) => {
+            return throwException("An unexpected server error occurred.", status, _responseText, _headers);
+            });
+        }
+        return Promise.resolve<void>(null as any);
+    }
+
+    /**
+     * @return OK
+     */
+    blockUser(userToBlockId: string): Promise<void> {
+        let url_ = this.baseUrl + "/api/Friendship/block-user/{userToBlockId}";
+        if (userToBlockId === undefined || userToBlockId === null)
+            throw new Error("The parameter 'userToBlockId' must be defined.");
+        url_ = url_.replace("{userToBlockId}", encodeURIComponent("" + userToBlockId));
+        url_ = url_.replace(/[?&]$/, "");
+
+        let options_: RequestInit = {
+            method: "POST",
+            headers: {
+            }
+        };
+
+        return this.http.fetch(url_, options_).then((_response: Response) => {
+            return this.processBlockUser(_response);
+        });
+    }
+
+    protected processBlockUser(response: Response): Promise<void> {
+        const status = response.status;
+        let _headers: any = {}; if (response.headers && response.headers.forEach) { response.headers.forEach((v: any, k: any) => _headers[k] = v); };
+        if (status === 200) {
+            return response.text().then((_responseText) => {
+            return;
+            });
+        } else if (status !== 200 && status !== 204) {
+            return response.text().then((_responseText) => {
+            return throwException("An unexpected server error occurred.", status, _responseText, _headers);
+            });
+        }
+        return Promise.resolve<void>(null as any);
+    }
+
+    /**
+     * @return OK
+     */
+    friendRequests(): Promise<FriendshipDto[]> {
+        let url_ = this.baseUrl + "/api/Friendship/friend-requests";
+        url_ = url_.replace(/[?&]$/, "");
+
+        let options_: RequestInit = {
+            method: "GET",
+            headers: {
+                "Accept": "text/plain"
+            }
+        };
+
+        return this.http.fetch(url_, options_).then((_response: Response) => {
+            return this.processFriendRequests(_response);
+        });
+    }
+
+    protected processFriendRequests(response: Response): Promise<FriendshipDto[]> {
+        const status = response.status;
+        let _headers: any = {}; if (response.headers && response.headers.forEach) { response.headers.forEach((v: any, k: any) => _headers[k] = v); };
+        if (status === 200) {
+            return response.text().then((_responseText) => {
+            let result200: any = null;
+            let resultData200 = _responseText === "" ? null : JSON.parse(_responseText, this.jsonParseReviver);
+            if (Array.isArray(resultData200)) {
+                result200 = [] as any;
+                for (let item of resultData200)
+                    result200!.push(FriendshipDto.fromJS(item));
+            }
+            else {
+                result200 = <any>null;
+            }
+            return result200;
+            });
+        } else if (status !== 200 && status !== 204) {
+            return response.text().then((_responseText) => {
+            return throwException("An unexpected server error occurred.", status, _responseText, _headers);
+            });
+        }
+        return Promise.resolve<FriendshipDto[]>(null as any);
+    }
+
+    /**
+     * @return OK
+     */
+    friends(): Promise<UserDto[]> {
+        let url_ = this.baseUrl + "/api/Friendship/friends";
+        url_ = url_.replace(/[?&]$/, "");
+
+        let options_: RequestInit = {
+            method: "GET",
+            headers: {
+                "Accept": "text/plain"
+            }
+        };
+
+        return this.http.fetch(url_, options_).then((_response: Response) => {
+            return this.processFriends(_response);
+        });
+    }
+
+    protected processFriends(response: Response): Promise<UserDto[]> {
+        const status = response.status;
+        let _headers: any = {}; if (response.headers && response.headers.forEach) { response.headers.forEach((v: any, k: any) => _headers[k] = v); };
+        if (status === 200) {
+            return response.text().then((_responseText) => {
+            let result200: any = null;
+            let resultData200 = _responseText === "" ? null : JSON.parse(_responseText, this.jsonParseReviver);
+            if (Array.isArray(resultData200)) {
+                result200 = [] as any;
+                for (let item of resultData200)
+                    result200!.push(UserDto.fromJS(item));
+            }
+            else {
+                result200 = <any>null;
+            }
+            return result200;
+            });
+        } else if (status !== 200 && status !== 204) {
+            return response.text().then((_responseText) => {
+            return throwException("An unexpected server error occurred.", status, _responseText, _headers);
+            });
+        }
+        return Promise.resolve<UserDto[]>(null as any);
+    }
+
+    /**
+     * @return OK
+     */
+    status(userId: string): Promise<FriendshipStatusDto> {
+        let url_ = this.baseUrl + "/api/Friendship/status/{userId}";
+        if (userId === undefined || userId === null)
+            throw new Error("The parameter 'userId' must be defined.");
+        url_ = url_.replace("{userId}", encodeURIComponent("" + userId));
+        url_ = url_.replace(/[?&]$/, "");
+
+        let options_: RequestInit = {
+            method: "GET",
+            headers: {
+                "Accept": "text/plain"
+            }
+        };
+
+        return this.http.fetch(url_, options_).then((_response: Response) => {
+            return this.processStatus(_response);
+        });
+    }
+
+    protected processStatus(response: Response): Promise<FriendshipStatusDto> {
+        const status = response.status;
+        let _headers: any = {}; if (response.headers && response.headers.forEach) { response.headers.forEach((v: any, k: any) => _headers[k] = v); };
+        if (status === 200) {
+            return response.text().then((_responseText) => {
+            let result200: any = null;
+            let resultData200 = _responseText === "" ? null : JSON.parse(_responseText, this.jsonParseReviver);
+            result200 = FriendshipStatusDto.fromJS(resultData200);
+            return result200;
+            });
+        } else if (status !== 200 && status !== 204) {
+            return response.text().then((_responseText) => {
+            return throwException("An unexpected server error occurred.", status, _responseText, _headers);
+            });
+        }
+        return Promise.resolve<FriendshipStatusDto>(null as any);
+    }
+
+    /**
+     * @return OK
+     */
+    check(userId: string): Promise<boolean> {
+        let url_ = this.baseUrl + "/api/Friendship/check/{userId}";
+        if (userId === undefined || userId === null)
+            throw new Error("The parameter 'userId' must be defined.");
+        url_ = url_.replace("{userId}", encodeURIComponent("" + userId));
+        url_ = url_.replace(/[?&]$/, "");
+
+        let options_: RequestInit = {
+            method: "GET",
+            headers: {
+                "Accept": "text/plain"
+            }
+        };
+
+        return this.http.fetch(url_, options_).then((_response: Response) => {
+            return this.processCheck(_response);
+        });
+    }
+
+    protected processCheck(response: Response): Promise<boolean> {
+        const status = response.status;
+        let _headers: any = {}; if (response.headers && response.headers.forEach) { response.headers.forEach((v: any, k: any) => _headers[k] = v); };
+        if (status === 200) {
+            return response.text().then((_responseText) => {
+            let result200: any = null;
+            let resultData200 = _responseText === "" ? null : JSON.parse(_responseText, this.jsonParseReviver);
+                result200 = resultData200 !== undefined ? resultData200 : <any>null;
+    
+            return result200;
+            });
+        } else if (status !== 200 && status !== 204) {
+            return response.text().then((_responseText) => {
+            return throwException("An unexpected server error occurred.", status, _responseText, _headers);
+            });
+        }
+        return Promise.resolve<boolean>(null as any);
+    }
+
+    /**
      * @param includeCommentTree (optional) 
      * @return OK
      */
@@ -387,12 +780,54 @@ export class Client {
             result200 = PostDto.fromJS(resultData200);
             return result200;
             });
-        } else if (status !== 200 && status !== 201) {
+        } else if (status !== 200 && status !== 204) {
             return response.text().then((_responseText) => {
             return throwException("An unexpected server error occurred.", status, _responseText, _headers);
             });
         }
         return Promise.resolve<PostDto>(null as any);
+    }
+
+    /**
+     * @param userId (optional) 
+     * @return OK
+     */
+    profile(userId: string | undefined): Promise<ProfilePageResponseDto> {
+        let url_ = this.baseUrl + "/api/Profile?";
+        if (userId === null)
+            throw new Error("The parameter 'userId' cannot be null.");
+        else if (userId !== undefined)
+            url_ += "userId=" + encodeURIComponent("" + userId) + "&";
+        url_ = url_.replace(/[?&]$/, "");
+
+        let options_: RequestInit = {
+            method: "GET",
+            headers: {
+                "Accept": "text/plain"
+            }
+        };
+
+        return this.http.fetch(url_, options_).then((_response: Response) => {
+            return this.processProfile(_response);
+        });
+    }
+
+    protected processProfile(response: Response): Promise<ProfilePageResponseDto> {
+        const status = response.status;
+        let _headers: any = {}; if (response.headers && response.headers.forEach) { response.headers.forEach((v: any, k: any) => _headers[k] = v); };
+        if (status === 200) {
+            return response.text().then((_responseText) => {
+            let result200: any = null;
+            let resultData200 = _responseText === "" ? null : JSON.parse(_responseText, this.jsonParseReviver);
+            result200 = ProfilePageResponseDto.fromJS(resultData200);
+            return result200;
+            });
+        } else if (status !== 200 && status !== 204) {
+            return response.text().then((_responseText) => {
+            return throwException("An unexpected server error occurred.", status, _responseText, _headers);
+            });
+        }
+        return Promise.resolve<ProfilePageResponseDto>(null as any);
     }
 }
 
@@ -457,6 +892,109 @@ export interface ICommentDto {
     text: string | undefined;
     user: UserDto;
     replies?: CommentDto[] | undefined;
+}
+
+export class FriendshipDto implements IFriendshipDto {
+    id?: string | undefined;
+    requester?: UserDto;
+    addressee?: UserDto;
+    status?: FriendshipStatus;
+    createdAt?: Date;
+    acceptedAt?: Date | undefined;
+
+    constructor(data?: IFriendshipDto) {
+        if (data) {
+            for (var property in data) {
+                if (data.hasOwnProperty(property))
+                    (<any>this)[property] = (<any>data)[property];
+            }
+        }
+    }
+
+    init(_data?: any) {
+        if (_data) {
+            this.id = _data["id"];
+            this.requester = _data["requester"] ? UserDto.fromJS(_data["requester"]) : <any>undefined;
+            this.addressee = _data["addressee"] ? UserDto.fromJS(_data["addressee"]) : <any>undefined;
+            this.status = _data["status"];
+            this.createdAt = _data["createdAt"] ? new Date(_data["createdAt"].toString()) : <any>undefined;
+            this.acceptedAt = _data["acceptedAt"] ? new Date(_data["acceptedAt"].toString()) : <any>undefined;
+        }
+    }
+
+    static fromJS(data: any): FriendshipDto {
+        data = typeof data === 'object' ? data : {};
+        let result = new FriendshipDto();
+        result.init(data);
+        return result;
+    }
+
+    toJSON(data?: any) {
+        data = typeof data === 'object' ? data : {};
+        data["id"] = this.id;
+        data["requester"] = this.requester ? this.requester.toJSON() : <any>undefined;
+        data["addressee"] = this.addressee ? this.addressee.toJSON() : <any>undefined;
+        data["status"] = this.status;
+        data["createdAt"] = this.createdAt ? this.createdAt.toISOString() : <any>undefined;
+        data["acceptedAt"] = this.acceptedAt ? this.acceptedAt.toISOString() : <any>undefined;
+        return data;
+    }
+}
+
+export interface IFriendshipDto {
+    id?: string | undefined;
+    requester?: UserDto;
+    addressee?: UserDto;
+    status?: FriendshipStatus;
+    createdAt?: Date;
+    acceptedAt?: Date | undefined;
+}
+
+export enum FriendshipStatus {
+    _0 = 0,
+    _1 = 1,
+    _2 = 2,
+    _3 = 3,
+}
+
+export class FriendshipStatusDto implements IFriendshipStatusDto {
+    status?: VisibleStatus;
+    friendshipId?: string | undefined;
+
+    constructor(data?: IFriendshipStatusDto) {
+        if (data) {
+            for (var property in data) {
+                if (data.hasOwnProperty(property))
+                    (<any>this)[property] = (<any>data)[property];
+            }
+        }
+    }
+
+    init(_data?: any) {
+        if (_data) {
+            this.status = _data["status"];
+            this.friendshipId = _data["friendshipId"];
+        }
+    }
+
+    static fromJS(data: any): FriendshipStatusDto {
+        data = typeof data === 'object' ? data : {};
+        let result = new FriendshipStatusDto();
+        result.init(data);
+        return result;
+    }
+
+    toJSON(data?: any) {
+        data = typeof data === 'object' ? data : {};
+        data["status"] = this.status;
+        data["friendshipId"] = this.friendshipId;
+        return data;
+    }
+}
+
+export interface IFriendshipStatusDto {
+    status?: VisibleStatus;
+    friendshipId?: string | undefined;
 }
 
 export class LoginModel implements ILoginModel {
@@ -569,6 +1107,62 @@ export interface IPostDto {
     user?: UserDto;
     comments?: CommentDto[] | undefined;
     commentCount?: number;
+}
+
+export class ProfilePageResponseDto implements IProfilePageResponseDto {
+    profile?: UserProfileDto;
+    isCurrentUser?: boolean;
+    friendshipStatus?: FriendshipStatusDto;
+    recentPosts?: PostDto[] | undefined;
+
+    constructor(data?: IProfilePageResponseDto) {
+        if (data) {
+            for (var property in data) {
+                if (data.hasOwnProperty(property))
+                    (<any>this)[property] = (<any>data)[property];
+            }
+        }
+    }
+
+    init(_data?: any) {
+        if (_data) {
+            this.profile = _data["profile"] ? UserProfileDto.fromJS(_data["profile"]) : <any>undefined;
+            this.isCurrentUser = _data["isCurrentUser"];
+            this.friendshipStatus = _data["friendshipStatus"] ? FriendshipStatusDto.fromJS(_data["friendshipStatus"]) : <any>undefined;
+            if (Array.isArray(_data["recentPosts"])) {
+                this.recentPosts = [] as any;
+                for (let item of _data["recentPosts"])
+                    this.recentPosts!.push(PostDto.fromJS(item));
+            }
+        }
+    }
+
+    static fromJS(data: any): ProfilePageResponseDto {
+        data = typeof data === 'object' ? data : {};
+        let result = new ProfilePageResponseDto();
+        result.init(data);
+        return result;
+    }
+
+    toJSON(data?: any) {
+        data = typeof data === 'object' ? data : {};
+        data["profile"] = this.profile ? this.profile.toJSON() : <any>undefined;
+        data["isCurrentUser"] = this.isCurrentUser;
+        data["friendshipStatus"] = this.friendshipStatus ? this.friendshipStatus.toJSON() : <any>undefined;
+        if (Array.isArray(this.recentPosts)) {
+            data["recentPosts"] = [];
+            for (let item of this.recentPosts)
+                data["recentPosts"].push(item.toJSON());
+        }
+        return data;
+    }
+}
+
+export interface IProfilePageResponseDto {
+    profile?: UserProfileDto;
+    isCurrentUser?: boolean;
+    friendshipStatus?: FriendshipStatusDto;
+    recentPosts?: PostDto[] | undefined;
 }
 
 export class RegisterModel implements IRegisterModel {
@@ -696,6 +1290,63 @@ export class UserDto implements IUserDto {
 export interface IUserDto {
     id: string | undefined;
     name: string | undefined;
+}
+
+export class UserProfileDto implements IUserProfileDto {
+    id!: string | undefined;
+    name!: string | undefined;
+    bio?: string | undefined;
+    createdAt?: Date;
+
+    constructor(data?: IUserProfileDto) {
+        if (data) {
+            for (var property in data) {
+                if (data.hasOwnProperty(property))
+                    (<any>this)[property] = (<any>data)[property];
+            }
+        }
+    }
+
+    init(_data?: any) {
+        if (_data) {
+            this.id = _data["id"];
+            this.name = _data["name"];
+            this.bio = _data["bio"];
+            this.createdAt = _data["createdAt"] ? new Date(_data["createdAt"].toString()) : <any>undefined;
+        }
+    }
+
+    static fromJS(data: any): UserProfileDto {
+        data = typeof data === 'object' ? data : {};
+        let result = new UserProfileDto();
+        result.init(data);
+        return result;
+    }
+
+    toJSON(data?: any) {
+        data = typeof data === 'object' ? data : {};
+        data["id"] = this.id;
+        data["name"] = this.name;
+        data["bio"] = this.bio;
+        data["createdAt"] = this.createdAt ? this.createdAt.toISOString() : <any>undefined;
+        return data;
+    }
+}
+
+export interface IUserProfileDto {
+    id: string | undefined;
+    name: string | undefined;
+    bio?: string | undefined;
+    createdAt?: Date;
+}
+
+export enum VisibleStatus {
+    _0 = 0,
+    _1 = 1,
+    _2 = 2,
+    _3 = 3,
+    _4 = 4,
+    _5 = 5,
 }
 
 export class ApiException extends Error {

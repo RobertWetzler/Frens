@@ -11,7 +11,7 @@ import HomeScreen from './screens/HomeSreen';
 import CommentSection from './components/CommentSection';
 import GroupsScreen from './screens/GroupScreen';
 import CalendarScreen from './screens/CalendarScreen';
-import ProfileScreen from './screens/CalendarScreen';
+import ProfileScreen from './screens/ProfileScreen';
 import SignInScreen from './screens/SignInScreen';
 import CreatePostScreen from './screens/CreatePostScreen'; // You'll need to create this
 import { ActivityIndicator, SafeAreaView } from 'react-native';

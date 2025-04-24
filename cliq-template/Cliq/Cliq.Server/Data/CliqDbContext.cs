@@ -9,6 +9,7 @@ public class CliqDbContext : IdentityDbContext<User>
     private readonly IHostEnvironment _env;
     public DbSet<Post> Posts { get; set; }
     public DbSet<Comment> Comments { get; set; }
+    public DbSet<Friendship> Friendships { get; set; }
 
     public CliqDbContext(
             DbContextOptions<CliqDbContext> options,
@@ -21,7 +22,7 @@ public class CliqDbContext : IdentityDbContext<User>
     {
         // Call base.OnModelCreating first to set up Identity tables
         base.OnModelCreating(modelBuilder);
-        
+
         // At the top of OnModelCreating, before other configurations:
         modelBuilder.HasDefaultSchema("public");
         // Make Postgres use quoted identifiers for case-sensitivity
@@ -59,6 +60,26 @@ public class CliqDbContext : IdentityDbContext<User>
                 .WithMany(c => c.Replies)
                 .HasForeignKey(c => c.ParentCommentId)
                 .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        modelBuilder.Entity<Friendship>(entity =>
+        {
+            entity.HasKey(f => f.Id);
+
+            // Relationship from Requester to Friendship
+            entity.HasOne(f => f.Requester)
+                .WithMany(u => u.FriendRequestsSent)
+                .HasForeignKey(f => f.RequesterId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            // Relationship from Addressee to Friendship
+            entity.HasOne(f => f.Addressee)
+                .WithMany(u => u.FriendRequestsReceived)
+                .HasForeignKey(f => f.AddresseeId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            // Create a unique constraint to prevent duplicate friendships
+            entity.HasIndex(f => new { f.RequesterId, f.AddresseeId }).IsUnique();
         });
 
         if (_env.IsDevelopment())
@@ -164,7 +185,7 @@ public class CliqDbContext : IdentityDbContext<User>
             };
 
             modelBuilder.Entity<Comment>().HasData(comments);
-            
+
             // Seed Viewers (requires separate statements due to many-to-many relationship)
             // TODO THIS IS WRONG FOR SPECIFYING VIEWERS
             /*
