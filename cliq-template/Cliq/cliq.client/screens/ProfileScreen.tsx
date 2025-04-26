@@ -167,7 +167,7 @@ const ProfileScreen: React.FC<ProfileScreenProps> = ({ route, navigation }) => {
                 }
                 data={posts}
                 renderItem={({ item }) => (
-                    <Post post={item} isNavigable={true} />
+                    <Post post={item} isNavigable={true} navigation={navigation}/>
                 )}
                 keyExtractor={item => item.id}
                 refreshControl={
@@ -255,12 +255,6 @@ const styles = StyleSheet.create({
     },
     avatarContainer: {
         marginBottom: 16,
-        // Optional shadow for more definition
-        shadowColor: '#000',
-        shadowOpacity: 0.1,
-        shadowOffset: { width: 0, height: 4 },
-        shadowRadius: 6,
-        elevation: 5,
     },
     userName: {
         fontSize: 24,
