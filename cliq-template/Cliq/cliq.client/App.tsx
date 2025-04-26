@@ -23,6 +23,7 @@ type RootStackParamList = {
     Main: undefined;
     Comments: undefined;
     CreatePost: undefined;
+    Profile: { userId: string };
 };
 
 type TabParamList = {
@@ -165,6 +166,11 @@ const MainApp = () => {
                   },
                 }),
               }} 
+            />
+            <Stack.Screen 
+              name="Profile" 
+              component={ProfileScreen} 
+              options={{ title: 'Profile' }}
             />
           </>
         ) : (

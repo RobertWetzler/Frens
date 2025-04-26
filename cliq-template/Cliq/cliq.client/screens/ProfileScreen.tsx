@@ -135,7 +135,7 @@ const ProfileScreen: React.FC<ProfileScreenProps> = ({ route, navigation }) => {
                         </View>
 
                         <Text style={styles.userName}>{user?.name || 'User'}</Text>
-                        <Text style={styles.userBio}>{user?.bio || 'No bio available'}</Text>
+                        <Text style={styles.userBio}>{user?.bio || ''}</Text>
 
                         <View style={styles.statsContainer}>
                             <View style={styles.statItem}>

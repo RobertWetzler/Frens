@@ -6,8 +6,7 @@ import { usePost } from 'hooks/usePosts';
 import { ApiClient } from 'services/apiClient';
 import Post from './Post';
 import Svg, { Path } from 'react-native-svg';
-import { Avatar } from '@rneui/base';
-
+import Avatar from 'components/Avatar';
 
 
 const ThreadLine: React.FC<{
@@ -80,7 +79,8 @@ const CommentTree: React.FC<{
     submitError: string | null;
     isLastInBranch?: boolean;
     onHeightMeasure?: (height: number) => void; // To report own height to parent
-}> = ({ comment, depth, onAddReply, isSubmitting, submitError, isLastInBranch = false, onHeightMeasure }) => {
+    navigation?: any; // Add this line
+}> = ({ comment, depth, onAddReply, isSubmitting, submitError, isLastInBranch = false, onHeightMeasure, navigation }) => {
     const [collapsed, setCollapsed] = useState(false);
     const [replyText, setReplyText] = useState('');
     const [isReplying, setIsReplying] = useState(false);
@@ -139,20 +139,14 @@ const CommentTree: React.FC<{
           
           <View style={styles.commentBody}>
             <TouchableOpacity
-              onPress={() => setCollapsed(!collapsed)}>
+               onPress={() => navigation.navigate('Profile', { userId: comment.user.id })}>
             <View style={styles.commentTitleRow}>
-
-              <View style={styles.avatarContainer}>
-              <Avatar rounded
-                overlayContainerStyle={{backgroundColor: '#73cbff'}}
-                title={comment.user.name.charAt(0).toUpperCase()}
-                // TODO: Load user photo
-                /*source={{
-                  uri:
-                    'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcQ-bbvNECx5re2TCCrWHrocEck8RFKXGRPjtA&s',
-                }} */
-              />
-              </View>
+              <Avatar 
+                name={comment.user.name}
+                userId={comment.user.id}
+                navigation={navigation} // TODO: Pass navigation prop if needed
+                >
+                </Avatar>
               <Text style={styles.commentAuthor}>{comment.user.name}</Text>
 
             </View>
@@ -215,6 +209,7 @@ const CommentTree: React.FC<{
                         submitError={submitError}
                         isLastInBranch={index === comment.replies.length - 1}
                         onHeightMeasure={index === comment.replies.length - 1 ? handleLastChildHeight : undefined}
+                        navigation={navigation}
                       />
                     ))}
                   </View>
@@ -410,6 +405,7 @@ const CommentSection: React.FC<{
                                 isSubmitting={isSubmitting}
                                 submitError={submitError}
                                 isLastInBranch={index === comments.length - 1}
+                                navigation={navigation} // Add this line
                                 // Only measure the last child's height
                             />
                         ))}
