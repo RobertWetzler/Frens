@@ -12,7 +12,7 @@ import {
 import { Avatar } from '@rneui/base';
 import { Ionicons } from '@expo/vector-icons';
 import { ApiClient } from 'services/apiClient';
-import { PostDto, ProfilePageResponseDto, UserDto, UserProfileDto, VisibleStatus } from 'services/generated/generatedClient';
+import { FriendshipStatus, PostDto, ProfilePageResponseDto, UserDto, UserProfileDto, VisibleStatus } from 'services/generated/generatedClient';
 import Post from '../components/Post';
 import { useAuth } from 'contexts/AuthContext';
 
@@ -32,7 +32,7 @@ const ProfileScreen: React.FC<ProfileScreenProps> = ({ route, navigation }) => {
     const [posts, setPosts] = useState<PostDto[]>([]);
     const [isLoading, setIsLoading] = useState(true);
     const [isRefreshing, setIsRefreshing] = useState(false);
-    const [isFollowing, setIsFollowing] = useState(false);
+    const [followStatus, setFollowStatus] = useState<VisibleStatus>(VisibleStatus.None);
     const [error, setError] = useState<string | null>(null);
 
     const fetchUserProfile = async () => {
@@ -42,7 +42,7 @@ const ProfileScreen: React.FC<ProfileScreenProps> = ({ route, navigation }) => {
             setUser(profileData.profile);
 
             if (currentUser?.id !== userId) {
-                setIsFollowing(profileData.friendshipStatus.status == VisibleStatus._1);
+                setFollowStatus(profileData.friendshipStatus.status);
             }
             setPosts(profileData.recentPosts);
             setError(null);
@@ -67,12 +67,19 @@ const ProfileScreen: React.FC<ProfileScreenProps> = ({ route, navigation }) => {
 
     const toggleFollow = async () => {
         try {
-            if (isFollowing) {
+            if (followStatus == VisibleStatus.Friends) {
                 await ApiClient.call(c => c.removeFriend(userId));
+                setFollowStatus(VisibleStatus.None);
             } else {
-                await ApiClient.call(c => c.sendRequest(userId));
+                const res = await ApiClient.call(c => c.sendRequest(userId));
+                const statusMap = {
+                    [FriendshipStatus.Accepted]: VisibleStatus.Friends,
+                    [FriendshipStatus.Blocked]: VisibleStatus.Blocked,
+                    [FriendshipStatus.Rejected]: VisibleStatus.None
+                };
+                const status = statusMap[res.status] || VisibleStatus.PendingSent;
+                setFollowStatus(status);
             }
-            setIsFollowing(!isFollowing);
         } catch (err) {
             console.error("Error updating follow status:", err);
         }
@@ -148,15 +155,19 @@ const ProfileScreen: React.FC<ProfileScreenProps> = ({ route, navigation }) => {
                             <TouchableOpacity
                                 style={[
                                     styles.followButton,
-                                    isFollowing ? styles.followingButton : {}
+                                    followStatus == VisibleStatus.Friends ? styles.followingButton : {}
                                 ]}
                                 onPress={toggleFollow}
                             >
                                 <Text style={[
                                     styles.followButtonText,
-                                    isFollowing ? styles.followingButtonText : {}
+                                    followStatus == VisibleStatus.Friends ? styles.followingButtonText : {}
                                 ]}>
-                                    {isFollowing ? 'Following' : 'Follow'}
+                                    {followStatus == VisibleStatus.Friends ? 'Frens':
+                                    followStatus == VisibleStatus.PendingSent ? 'Request Sent':
+                                    followStatus == VisibleStatus.Blocked ? 'Blocked':
+                                    followStatus == VisibleStatus.PendingReceived ? 'Accept Request':
+                                    'Become Frens'}
                                 </Text>
                             </TouchableOpacity>
                         )}

@@ -951,10 +951,10 @@ export interface IFriendshipDto {
 }
 
 export enum FriendshipStatus {
-    _0 = 0,
-    _1 = 1,
-    _2 = 2,
-    _3 = 3,
+    Pending = "Pending",
+    Accepted = "Accepted",
+    Rejected = "Rejected",
+    Blocked = "Blocked",
 }
 
 export class FriendshipStatusDto implements IFriendshipStatusDto {
@@ -1341,12 +1341,12 @@ export interface IUserProfileDto {
 }
 
 export enum VisibleStatus {
-    _0 = 0,
-    _1 = 1,
-    _2 = 2,
-    _3 = 3,
-    _4 = 4,
-    _5 = 5,
+    None = "None",
+    Friends = "Friends",
+    PendingSent = "PendingSent",
+    PendingReceived = "PendingReceived",
+    Blocked = "Blocked",
+    BlockedBy = "BlockedBy",
 }
 
 export class ApiException extends Error {

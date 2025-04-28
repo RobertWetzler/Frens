@@ -1,6 +1,7 @@
 ﻿using Cliq.Server.Models;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
+using Microsoft.AspNetCore.Identity;
 
 namespace Cliq.Server.Data;
 
@@ -92,15 +93,26 @@ public class CliqDbContext : IdentityDbContext<User>
                 },
                 new User("smushi@example.com") {
                     Name = "Sierra Takushi",
+                    Email = "smushi@example.com",
+                    NormalizedEmail = "SMUSHI@EXAMPLE.COM",
+                    NormalizedUserName = "SMUSHI@EXAMPLE.COM",
+                    EmailConfirmed = true,
+                    SecurityStamp = Guid.NewGuid().ToString()
                 },
                 new User("daddio@example.com") {
                     Name = "Howard Wetzler",
                 },
                 new User("devio@example.com") {
                     Name = "Devon Brandt",
+                    Bio = "Life is like a game of chess. I don't know how to play chess.",
                 }
             };
-
+            // Hash passwords for seeded users
+            var passwordHasher = new PasswordHasher<User>();
+            foreach (var user in users)
+            {
+                user.PasswordHash = passwordHasher.HashPassword(user, "password");
+            }
             modelBuilder.Entity<User>().HasData(users);
 
 

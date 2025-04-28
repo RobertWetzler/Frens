@@ -15,6 +15,7 @@ using Microsoft.AspNetCore.Identity.UI;
 using Cliq.Server.Auth;
 using Cliq.Server.Models;
 using System.Security.Claims;
+using System.Text.Json.Serialization;
 
 DotNetEnv.Env.Load();
 
@@ -31,7 +32,10 @@ builder.Services.AddDbContext<CliqDbContext>(options =>
 {
     options.UseNpgsql(builder.Configuration.GetConnectionString("DefaultConnection"));
 });
-builder.Services.AddControllers();
+builder.Services.AddControllers().AddJsonOptions(o =>
+{
+    o.JsonSerializerOptions.Converters.Add(new JsonStringEnumConverter());
+});
 // Require authentication for all controllers by default
 builder.Services.AddMvcCore(options =>
 {
@@ -50,7 +54,6 @@ builder.Services.AddFriendshipServices();
 // Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
-
 
 if (builder.Environment.IsDevelopment())
 {
