@@ -12,7 +12,7 @@ import {
 import { Avatar } from '@rneui/base';
 import { Ionicons } from '@expo/vector-icons';
 import { ApiClient } from 'services/apiClient';
-import { FriendshipStatus, PostDto, ProfilePageResponseDto, UserDto, UserProfileDto, VisibleStatus } from 'services/generated/generatedClient';
+import { FriendshipDto, FriendshipStatus, FriendshipStatusDto, PostDto, ProfilePageResponseDto, UserDto, UserProfileDto, VisibleStatus } from 'services/generated/generatedClient';
 import Post from '../components/Post';
 import { useAuth } from 'contexts/AuthContext';
 
@@ -29,10 +29,10 @@ const ProfileScreen: React.FC<ProfileScreenProps> = ({ route, navigation }) => {
     console.log("User ID:", userId);
     console.log("Current User:", currentUser);
     const [user, setUser] = useState<UserProfileDto | null>(null);
+    const [friendshipStatus, setFriendshipStatus] = useState<FriendshipStatusDto | null>(null);
     const [posts, setPosts] = useState<PostDto[]>([]);
     const [isLoading, setIsLoading] = useState(true);
     const [isRefreshing, setIsRefreshing] = useState(false);
-    const [followStatus, setFollowStatus] = useState<VisibleStatus>(VisibleStatus.None);
     const [error, setError] = useState<string | null>(null);
 
     const fetchUserProfile = async () => {
@@ -40,9 +40,8 @@ const ProfileScreen: React.FC<ProfileScreenProps> = ({ route, navigation }) => {
             // Fetch user profile data
             const profileData = await ApiClient.call(c => c.profile(userId));
             setUser(profileData.profile);
-
             if (currentUser?.id !== userId) {
-                setFollowStatus(profileData.friendshipStatus.status);
+                setFriendshipStatus(profileData.friendshipStatus);
             }
             setPosts(profileData.recentPosts);
             setError(null);
@@ -67,14 +66,19 @@ const ProfileScreen: React.FC<ProfileScreenProps> = ({ route, navigation }) => {
 
     const toggleFollow = async () => {
         try {
-            if (followStatus == VisibleStatus.Friends) {
+            if (friendshipStatus.status == VisibleStatus.Friends) {
                 await ApiClient.call(c => c.removeFriend(userId));
-                setFollowStatus(VisibleStatus.None);
+                setFriendshipStatus(new FriendshipStatusDto({
+                    ...friendshipStatus,
+                    status: VisibleStatus.None
+                }));
             } 
-            else if (followStatus == VisibleStatus.PendingSent) {
-                await ApiClient.call(c => c.cancelRequest(userId));
-                setFollowStatus(VisibleStatus.None);
-            } else {
+            else if (friendshipStatus.status == VisibleStatus.PendingSent) {
+                await ApiClient.call(c => c.cancelRequest(friendshipStatus.friendshipId));
+                setFriendshipStatus(new FriendshipStatusDto({
+                    ...friendshipStatus,
+                    status: VisibleStatus.None
+                }));            } else {
                 const res = await ApiClient.call(c => c.sendRequest(userId));
                 // TODO backend should return a VisibleStatus here
                 const statusMap = {
@@ -83,7 +87,10 @@ const ProfileScreen: React.FC<ProfileScreenProps> = ({ route, navigation }) => {
                     [FriendshipStatus.Rejected]: VisibleStatus.None
                 };
                 const status = statusMap[res.status] || VisibleStatus.PendingSent;
-                setFollowStatus(status);
+                setFriendshipStatus(new FriendshipStatusDto({
+                    friendshipId: res.id,
+                    status: status
+                }));
             }
         } catch (err) {
             console.error("Error updating follow status:", err);
@@ -160,18 +167,24 @@ const ProfileScreen: React.FC<ProfileScreenProps> = ({ route, navigation }) => {
                             <TouchableOpacity
                                 style={[
                                     styles.followButton,
-                                    followStatus == VisibleStatus.Friends ? styles.followingButton : {}
+                                    friendshipStatus.status == VisibleStatus.Friends ? styles.friendsButton : 
+                                    friendshipStatus.status == VisibleStatus.PendingSent ? styles.pendingButton :
+                                    friendshipStatus.status == VisibleStatus.Blocked ? styles.blockedButton :
+                                    friendshipStatus.status == VisibleStatus.PendingReceived ? styles.acceptRequestButton : {}
                                 ]}
                                 onPress={toggleFollow}
                             >
                                 <Text style={[
                                     styles.followButtonText,
-                                    followStatus == VisibleStatus.Friends ? styles.followingButtonText : {}
+                                    friendshipStatus.status == VisibleStatus.Friends ? styles.friendsButtonText : 
+                                    friendshipStatus.status == VisibleStatus.PendingSent ? styles.pendingButtonText :
+                                    friendshipStatus.status == VisibleStatus.Blocked ? styles.blockedButtonText :
+                                    friendshipStatus.status == VisibleStatus.PendingReceived ? styles.acceptRequestButtonText : {}
                                 ]}>
-                                    {followStatus == VisibleStatus.Friends ? 'Frens':
-                                    followStatus == VisibleStatus.PendingSent ? 'Request Sent':
-                                    followStatus == VisibleStatus.Blocked ? 'Blocked':
-                                    followStatus == VisibleStatus.PendingReceived ? 'Accept Request':
+                                    {friendshipStatus.status == VisibleStatus.Friends ? 'Frens!':
+                                    friendshipStatus.status == VisibleStatus.PendingSent ? 'Request Sent':
+                                    friendshipStatus.status == VisibleStatus.Blocked ? 'Blocked':
+                                    friendshipStatus.status == VisibleStatus.PendingReceived ? 'Accept Request':
                                     'Become Frens'}
                                 </Text>
                             </TouchableOpacity>
@@ -308,15 +321,52 @@ const styles = StyleSheet.create({
         borderRadius: 20,
         marginBottom: 20,
     },
-    followingButton: {
-        backgroundColor: 'transparent',
-        borderWidth: 1,
-        borderColor: '#1DA1F2',
-    },
     followButtonText: {
         color: 'white',
         fontWeight: 'bold',
         fontSize: 16,
+    },
+    // Friends status
+    friendsButton: {
+        backgroundColor: 'white',
+        borderWidth: 1,
+        borderColor: '#1DA1F2',
+    },
+    friendsButtonText: {
+        color: '#1DA1F2',
+    },
+    // Pending status
+    pendingButton: {
+        backgroundColor: 'white',
+        borderWidth: 2,
+        borderColor: '#1DA1F2',
+        borderStyle: 'dashed',
+    },
+    pendingButtonText: {
+        color: '#1DA1F2',
+    },
+    // Blocked status
+    blockedButton: {
+        backgroundColor: 'black',
+        borderWidth: 1,
+        borderColor: 'white',
+    },
+    blockedButtonText: {
+        color: 'white',
+    },
+    // Accept Request status
+    acceptRequestButton: {
+        backgroundColor: '#A142F5', // Apple's green color - positive action
+        borderWidth: 0,
+    },
+    acceptRequestButtonText: {
+        color: 'white',
+        fontWeight: 'bold',
+    },
+    followingButton: {
+        backgroundColor: 'transparent',
+        borderWidth: 1,
+        borderColor: '#1DA1F2',
     },
     followingButtonText: {
         color: '#1DA1F2',

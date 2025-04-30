@@ -90,6 +90,7 @@ public class CliqDbContext : IdentityDbContext<User>
             {
                 new User("sandman@example.com") {
                     Name = "Spencer Sands",
+                    Bio = "Your life is your's to create."
                 },
                 new User("smushi@example.com") {
                     Name = "Sierra Takushi",
