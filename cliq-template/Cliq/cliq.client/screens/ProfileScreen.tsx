@@ -70,8 +70,13 @@ const ProfileScreen: React.FC<ProfileScreenProps> = ({ route, navigation }) => {
             if (followStatus == VisibleStatus.Friends) {
                 await ApiClient.call(c => c.removeFriend(userId));
                 setFollowStatus(VisibleStatus.None);
+            } 
+            else if (followStatus == VisibleStatus.PendingSent) {
+                await ApiClient.call(c => c.cancelRequest(userId));
+                setFollowStatus(VisibleStatus.None);
             } else {
                 const res = await ApiClient.call(c => c.sendRequest(userId));
+                // TODO backend should return a VisibleStatus here
                 const statusMap = {
                     [FriendshipStatus.Accepted]: VisibleStatus.Friends,
                     [FriendshipStatus.Blocked]: VisibleStatus.Blocked,
