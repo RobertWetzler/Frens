@@ -1,4 +1,4 @@
-using Cliq.Server.Models;
+﻿using Cliq.Server.Models;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
 using Microsoft.AspNetCore.Identity;
@@ -11,6 +11,9 @@ public class CliqDbContext : IdentityDbContext<User, CliqRole, Guid>
     public DbSet<Post> Posts { get; set; }
     public DbSet<Comment> Comments { get; set; }
     public DbSet<Friendship> Friendships { get; set; }
+    public DbSet<Circle> Circles { get; set; }
+    public DbSet<CircleMembership> CircleMemberships { get; set; }
+    public DbSet<CirclePost> CirclePosts { get; set; }
 
     public CliqDbContext(
             DbContextOptions<CliqDbContext> options,
@@ -82,6 +85,56 @@ public class CliqDbContext : IdentityDbContext<User, CliqRole, Guid>
             // Create a unique constraint to prevent duplicate friendships
             entity.HasIndex(f => new { f.RequesterId, f.AddresseeId }).IsUnique();
         });
+
+        // Circles
+        modelBuilder.Entity<Circle>()
+            .HasMany(c => c.Members)
+            .WithOne(m => m.Circle)
+            .HasForeignKey(m => m.CircleId);
+
+        modelBuilder.Entity<Circle>()
+            .HasMany(c => c.Posts)
+            .WithOne(cp => cp.Circle)
+            .HasForeignKey(cp => cp.CircleId);
+
+        // For querying user.OwnedCircles
+        modelBuilder.Entity<Circle>()
+            .HasOne(c => c.Owner)
+            .WithMany(u => u.OwnedCircles)
+            .HasForeignKey(c => c.OwnerId);
+
+        modelBuilder.Entity<CircleMembership>()
+            .HasKey(cm => new { cm.CircleId, cm.UserId });
+
+        modelBuilder.Entity<CircleMembership>()
+            .HasIndex(cm => cm.UserId); // For reverse lookup (User's circles)
+
+        modelBuilder.Entity<CircleMembership>()
+            .HasIndex(cm => cm.CircleId); // For reverse lookup (Users in a circle)
+
+        modelBuilder.Entity<CircleMembership>()
+            .HasIndex(cm => new { cm.CircleId, cm.UserId })
+            .IsUnique();
+
+        modelBuilder.Entity<CirclePost>()
+            .HasKey(cp => new { cp.CircleId, cp.PostId });
+
+        modelBuilder.Entity<CirclePost>()
+            .HasIndex(cp => cp.CircleId); // For getting all posts per circle
+
+        modelBuilder.Entity<CirclePost>()
+            .HasIndex(cp => cp.PostId);   // For reverse joins if needed
+
+        modelBuilder.Entity<Post>()
+            .HasMany(p => p.SharedWithCircles)
+            .WithOne(cp => cp.Post)
+            .HasForeignKey(cp => cp.PostId);
+
+        modelBuilder.Entity<Post>()
+            .HasIndex(p => p.UserId);     // For querying all posts by a user
+
+        modelBuilder.Entity<Circle>()
+            .HasIndex(c => c.OwnerId);    // For admin tools
 
         if (_env.IsDevelopment())
         {
@@ -221,7 +274,7 @@ public class CliqDbContext : IdentityDbContext<User, CliqRole, Guid>
                     Date = DateTime.UtcNow,
                     PostId = posts[3].Id,
                     Text = "Im down. I have a diamond sword too. Wanna have a duel?",
-            }
+                }
             };
 
             modelBuilder.Entity<Comment>().HasData(comments);
