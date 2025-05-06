@@ -106,6 +106,10 @@ public class CliqDbContext : IdentityDbContext<User>
                 new User("devio@example.com") {
                     Name = "Devon Brandt",
                     Bio = "Life is like a game of chess. I don't know how to play chess.",
+                },
+                new User("twilly@example.com") {
+                    Name = "Jacob Terwilleger",
+                    Bio = "Just chill out everybody.",
                 }
             };
             // Hash passwords for seeded users
@@ -137,6 +141,12 @@ public class CliqDbContext : IdentityDbContext<User>
                     UserId = users[2].Id,
                     Date = DateTime.UtcNow.AddHours(-6),
                     Text = "Another day, another post. #coding"
+                },
+                new Post {
+                    Id = "seedPost4",
+                    UserId = users[4].Id,
+                    Date = DateTime.UtcNow.AddHours(-1),
+                    Text = "Just finished a great workout! Feeling good."
                 }
             };
             modelBuilder.Entity<Post>().HasData(posts);
@@ -194,7 +204,24 @@ public class CliqDbContext : IdentityDbContext<User>
                     Date = DateTime.UtcNow,
                     PostId = posts[0].Id,
                     Text = "I am Jane and I am commenting on John's post"
-                }
+                },
+                new Comment
+                {
+                    Id = "seedComment4_1",
+                    UserId = users[3].Id,
+                    Date = DateTime.UtcNow,
+                    PostId = posts[3].Id,
+                    Text = "I am DEVON and I AM SO COOL. Wanna play Minecraft? I have a diamond sword named Excalibur.",
+                },
+                new Comment
+                {
+                    Id = "seedComment4_2",
+                    ParentCommentId = "seedComment4_1",
+                    UserId = users[4].Id,
+                    Date = DateTime.UtcNow,
+                    PostId = posts[3].Id,
+                    Text = "Im down. I have a diamond sword too. Wanna have a duel?",
+            }
             };
 
             modelBuilder.Entity<Comment>().HasData(comments);
