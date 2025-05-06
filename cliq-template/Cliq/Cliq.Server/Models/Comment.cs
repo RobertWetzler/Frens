@@ -4,10 +4,10 @@ namespace Cliq.Server.Models;
 
 public class Comment
 {
-    public required string Id { get; set; }
-    public required string UserId { get; set; }
-    public required string PostId { get; set; }  // Always set to the root post's ID
-    public string? ParentCommentId { get; set; }  // If this is set, it's a reply to another comment
+    public required Guid Id { get; set; }
+    public required Guid UserId { get; set; }
+    public required Guid PostId { get; set; }  // Always set to the root post's ID
+    public Guid? ParentCommentId { get; set; }  // If this is set, it's a reply to another comment
     public required DateTime Date { get; set; }
     [MaxLength(4000)]
     public required string Text { get; set; }
@@ -20,7 +20,7 @@ public class Comment
 
 public class CommentDto
 {
-    public required string Id { get; set; }
+    public required Guid Id { get; set; }
     public required DateTime Date { get; set; }
     public required string Text { get; set; }
 

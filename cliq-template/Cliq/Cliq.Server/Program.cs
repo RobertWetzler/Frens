@@ -90,7 +90,7 @@ builder.Services.AddScoped<JwtService>();
     .AddEntityFrameworkStores<ApplicationDbContext>(); 
 builder.Services.AddDefaultIdentity<IdentityUser>(options => options.SignIn.RequireConfirmedAccount = true)
     .AddEntityFrameworkStores<ApplicationDbContext>(); */
-builder.Services.AddIdentity<User, IdentityRole>(options => options.SignIn.RequireConfirmedAccount = false)
+builder.Services.AddIdentity<User, CliqRole>(options => options.SignIn.RequireConfirmedAccount = false)
     .AddEntityFrameworkStores<CliqDbContext>();
 
 builder.Services.Configure<IdentityOptions>(options =>

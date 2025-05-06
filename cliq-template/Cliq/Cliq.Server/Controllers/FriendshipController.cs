@@ -26,18 +26,18 @@ namespace Cliq.Server.Controllers
         /// <summary>
         /// Gets the current user ID from claims
         /// </summary>
-        private string GetCurrentUserId()
+        private Guid GetCurrentUserId()
         {
             var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
             if (string.IsNullOrEmpty(userId))
             {
                 throw new UnauthorizedAccessException("User is not authenticated or ID is missing");
             }
-            return userId;
+            return Guid.Parse(userId);
         }
 
         [HttpPost("send-request/{addresseeId}")]
-        public async Task<ActionResult<FriendshipDto>> SendFriendRequest(string addresseeId)
+        public async Task<ActionResult<FriendshipDto>> SendFriendRequest(Guid addresseeId)
         {
             try
             {
@@ -56,7 +56,7 @@ namespace Cliq.Server.Controllers
         }
 
         [HttpPost("accept-request/{friendshipId}")]
-        public async Task<ActionResult<FriendshipDto>> AcceptFriendRequest(string friendshipId)
+        public async Task<ActionResult<FriendshipDto>> AcceptFriendRequest(Guid friendshipId)
         {
             try
             {
@@ -75,7 +75,7 @@ namespace Cliq.Server.Controllers
         }
 
         [HttpPost("reject-request/{friendshipId}")]
-        public async Task<ActionResult> RejectFriendRequest(string friendshipId)
+        public async Task<ActionResult> RejectFriendRequest(Guid friendshipId)
         {
             var currentUserId = GetCurrentUserId();
             var result = await _friendshipService.RejectFriendRequestAsync(friendshipId, currentUserId);
@@ -89,7 +89,7 @@ namespace Cliq.Server.Controllers
         }
 
         [HttpDelete("cancel-request/{friendshipId}")]
-        public async Task<ActionResult> CancelFriendRequest(string friendshipId)
+        public async Task<ActionResult> CancelFriendRequest(Guid friendshipId)
         {
             var currentUserId = GetCurrentUserId();
             var result = await _friendshipService.CancelFriendRequestAsync(friendshipId, currentUserId);
@@ -103,7 +103,7 @@ namespace Cliq.Server.Controllers
         }
 
         [HttpDelete("remove-friend/{friendId}")]
-        public async Task<ActionResult> RemoveFriend(string friendId)
+        public async Task<ActionResult> RemoveFriend(Guid friendId)
         {
             var currentUserId = GetCurrentUserId();
             var result = await _friendshipService.RemoveFriendshipAsync(currentUserId, friendId);
@@ -117,7 +117,7 @@ namespace Cliq.Server.Controllers
         }
 
         [HttpPost("block-user/{userToBlockId}")]
-        public async Task<ActionResult> BlockUser(string userToBlockId)
+        public async Task<ActionResult> BlockUser(Guid userToBlockId)
         {
             var currentUserId = GetCurrentUserId();
             var result = await _friendshipService.BlockUserAsync(currentUserId, userToBlockId);
@@ -144,7 +144,7 @@ namespace Cliq.Server.Controllers
         }
 
         [HttpGet("status/{userId}")]
-        public async Task<ActionResult<FriendshipStatusDto>> GetFriendshipStatus(string userId)
+        public async Task<ActionResult<FriendshipStatusDto>> GetFriendshipStatus(Guid userId)
         {
             var currentUserId = GetCurrentUserId();
             var status = await _friendshipService.GetFriendshipStatusAsync(currentUserId, userId);
@@ -153,7 +153,7 @@ namespace Cliq.Server.Controllers
         }
 
         [HttpGet("check/{userId}")]
-        public async Task<ActionResult<bool>> CheckIfFriends(string userId)
+        public async Task<ActionResult<bool>> CheckIfFriends(Guid userId)
         {
             var currentUserId = GetCurrentUserId();
             var areFriends = await _friendshipService.AreFriendsAsync(currentUserId, userId);

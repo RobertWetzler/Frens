@@ -7,9 +7,9 @@ using Npgsql;
 
 public interface ICommentService
 {
-    public Task<CommentDto> CreateCommentAsync(string text, string userId, string postId, string? parentCommentId = null);
-    public Task<IEnumerable<CommentDto>> GetAllCommentsForPostAsync(string postId);
-    public Task<bool> DeleteCommentAsync(string commentId, string userId);
+    public Task<CommentDto> CreateCommentAsync(string text, Guid userId, Guid postId, Guid? parentCommentId = null);
+    public Task<IEnumerable<CommentDto>> GetAllCommentsForPostAsync(Guid postId);
+    public Task<bool> DeleteCommentAsync(Guid commentId, Guid userId);
 }
 public class CommentService : ICommentService
 {
@@ -22,7 +22,7 @@ public class CommentService : ICommentService
         _mapper = mapper;
     }
 
-    public async Task<CommentDto> CreateCommentAsync(string text, string userId, string postId, string? parentCommentId = null)
+    public async Task<CommentDto> CreateCommentAsync(string text, Guid userId, Guid postId, Guid? parentCommentId = null)
     {
         if (parentCommentId != null)
         {
@@ -36,7 +36,7 @@ public class CommentService : ICommentService
 
         var comment = new Comment
         {
-            Id = Guid.NewGuid().ToString(),
+            Id = Guid.NewGuid(),
             Text = text,
             UserId = userId,
             PostId = postId,
@@ -63,7 +63,7 @@ public class CommentService : ICommentService
     }
 
     // New method to efficiently get comment count for posts
-    public async Task<Dictionary<string, int>> GetCommentCountsForPostsAsync(IEnumerable<string> postIds)
+    public async Task<Dictionary<Guid, int>> GetCommentCountsForPostsAsync(IEnumerable<Guid> postIds)
     {
         return await _dbContext.Comments
             .Where(c => postIds.Contains(c.PostId))
@@ -76,7 +76,7 @@ public class CommentService : ICommentService
 
     // TODO: A potential optimization to provide pagination/depth control is to use a closure table
     // See https://stackoverflow.com/a/11565855
-    public async Task<IEnumerable<CommentDto>> GetAllCommentsForPostAsync(string postId)
+    public async Task<IEnumerable<CommentDto>> GetAllCommentsForPostAsync(Guid postId)
     {
         // Get all comments for this post in a single query
         var allComments = await _dbContext.Comments
@@ -115,7 +115,7 @@ public class CommentService : ICommentService
     }
 
 
-    public async Task<bool> DeleteCommentAsync(string commentId, string userId)
+    public async Task<bool> DeleteCommentAsync(Guid commentId, Guid userId)
     {
         var comment = await _dbContext.Comments
             .FirstOrDefaultAsync(c => c.Id == commentId && c.UserId == userId);

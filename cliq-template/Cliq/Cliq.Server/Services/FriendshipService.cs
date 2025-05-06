@@ -20,17 +20,17 @@ public class FriendshipDto
 
 public interface IFriendshipService
 {
-    Task<FriendshipDto> SendFriendRequestAsync(string requesterId, string addresseeId);
-    Task<FriendshipDto> AcceptFriendRequestAsync(string friendshipId, string userId);
-    Task<bool> RejectFriendRequestAsync(string friendshipId, string userId);
-    Task<bool> CancelFriendRequestAsync(string friendshipId, string userId);
-    Task<bool> RemoveFriendshipAsync(string userId, string friendId);
-    Task<bool> BlockUserAsync(string userId, string userToBlockId);
-    Task<IEnumerable<FriendshipDto>> GetFriendRequestsAsync(string userId);
-    Task<IEnumerable<UserDto>> GetFriendsAsync(string userId);
-    Task<bool> AreFriendsAsync(string userId1, string userId2);
-    Task<Friendship?> GetFriendshipByUserIdsAsync(string userId1, string userId2);
-    Task<FriendshipStatusDto> GetFriendshipStatusAsync(string currentUserId, string targetUserId);
+    Task<FriendshipDto> SendFriendRequestAsync(Guid requesterId, Guid addresseeId);
+    Task<FriendshipDto> AcceptFriendRequestAsync(Guid friendshipId, Guid userId);
+    Task<bool> RejectFriendRequestAsync(Guid friendshipId, Guid userId);
+    Task<bool> CancelFriendRequestAsync(Guid friendshipId, Guid userId);
+    Task<bool> RemoveFriendshipAsync(Guid userId, Guid friendId);
+    Task<bool> BlockUserAsync(Guid userId, Guid userToBlockId);
+    Task<IEnumerable<FriendshipDto>> GetFriendRequestsAsync(Guid userId);
+    Task<IEnumerable<UserDto>> GetFriendsAsync(Guid userId);
+    Task<bool> AreFriendsAsync(Guid userId1, Guid userId2);
+    Task<Friendship?> GetFriendshipByUserIdsAsync(Guid userId1, Guid userId2);
+    Task<FriendshipStatusDto> GetFriendshipStatusAsync(Guid currentUserId, Guid targetUserId);
 }
 
 public class FriendshipService : IFriendshipService
@@ -44,7 +44,7 @@ public class FriendshipService : IFriendshipService
         _mapper = mapper;
     }
 
-    public async Task<FriendshipDto> SendFriendRequestAsync(string requesterId, string addresseeId)
+    public async Task<FriendshipDto> SendFriendRequestAsync(Guid requesterId, Guid addresseeId)
     {
         // Prevent sending request to self
         if (requesterId == addresseeId)
@@ -105,7 +105,7 @@ public class FriendshipService : IFriendshipService
         // Create new friend request
         var newFriendship = new Friendship
         {
-            Id = Guid.NewGuid().ToString(),
+            Id = Guid.NewGuid(),
             RequesterId = requesterId,
             AddresseeId = addresseeId,
             Status = FriendshipStatus.Pending,
@@ -120,7 +120,7 @@ public class FriendshipService : IFriendshipService
         return _mapper.Map<FriendshipDto>(newFriendshipWithDetails);
     }
 
-    public async Task<FriendshipDto> AcceptFriendRequestAsync(string friendshipId, string userId)
+    public async Task<FriendshipDto> AcceptFriendRequestAsync(Guid friendshipId, Guid userId)
     {
         var friendship = await _dbContext.Friendships
             .FirstOrDefaultAsync(f => f.Id == friendshipId && f.AddresseeId == userId);
@@ -140,7 +140,7 @@ public class FriendshipService : IFriendshipService
         return _mapper.Map<FriendshipDto>(updatedFriendship);
     }
 
-    public async Task<bool> RejectFriendRequestAsync(string friendshipId, string userId)
+    public async Task<bool> RejectFriendRequestAsync(Guid friendshipId, Guid userId)
     {
         var friendship = await _dbContext.Friendships
             .FirstOrDefaultAsync(f => f.Id == friendshipId && f.AddresseeId == userId);
@@ -153,7 +153,7 @@ public class FriendshipService : IFriendshipService
         return true;
     }
 
-    public async Task<bool> CancelFriendRequestAsync(string friendshipId, string userId)
+    public async Task<bool> CancelFriendRequestAsync(Guid friendshipId, Guid userId)
     {
         var friendship = await _dbContext.Friendships
             .FirstOrDefaultAsync(f => f.Id == friendshipId && f.RequesterId == userId && f.Status == FriendshipStatus.Pending);
@@ -166,7 +166,7 @@ public class FriendshipService : IFriendshipService
         return true;
     }
 
-    public async Task<bool> RemoveFriendshipAsync(string userId, string friendId)
+    public async Task<bool> RemoveFriendshipAsync(Guid userId, Guid friendId)
     {
         var friendship = await _dbContext.Friendships
             .FirstOrDefaultAsync(f =>
@@ -182,7 +182,7 @@ public class FriendshipService : IFriendshipService
         return true;
     }
 
-    public async Task<bool> BlockUserAsync(string userId, string userToBlockId)
+    public async Task<bool> BlockUserAsync(Guid userId, Guid userToBlockId)
     {
         // Remove any existing friendship
         var existingFriendship = await _dbContext.Friendships
@@ -206,7 +206,7 @@ public class FriendshipService : IFriendshipService
             // Create a new blocked relationship
             var blockFriendship = new Friendship
             {
-                Id = Guid.NewGuid().ToString(),
+                Id = Guid.NewGuid(),
                 RequesterId = userId,
                 AddresseeId = userToBlockId,
                 Status = FriendshipStatus.Blocked,
@@ -220,7 +220,7 @@ public class FriendshipService : IFriendshipService
         return true;
     }
 
-    public async Task<IEnumerable<FriendshipDto>> GetFriendRequestsAsync(string userId)
+    public async Task<IEnumerable<FriendshipDto>> GetFriendRequestsAsync(Guid userId)
     {
         var friendships = await _dbContext.Friendships
             .Where(f => f.AddresseeId == userId && f.Status == FriendshipStatus.Pending)
@@ -231,7 +231,7 @@ public class FriendshipService : IFriendshipService
         return _mapper.Map<IEnumerable<FriendshipDto>>(friendships);
     }
 
-    public async Task<Friendship?> GetFriendshipByUserIdsAsync(string userId1, string userId2)
+    public async Task<Friendship?> GetFriendshipByUserIdsAsync(Guid userId1, Guid userId2)
     {
         return await _dbContext.Friendships
             .Include(f => f.Requester)
@@ -241,7 +241,7 @@ public class FriendshipService : IFriendshipService
                 (f.RequesterId == userId2 && f.AddresseeId == userId1));
     }
 
-    public async Task<IEnumerable<UserDto>> GetFriendsAsync(string userId)
+    public async Task<IEnumerable<UserDto>> GetFriendsAsync(Guid userId)
     {
         var friends = new List<User>();
 
@@ -264,7 +264,7 @@ public class FriendshipService : IFriendshipService
         return _mapper.Map<IEnumerable<UserDto>>(friends);
     }
 
-    public async Task<bool> AreFriendsAsync(string userId1, string userId2)
+    public async Task<bool> AreFriendsAsync(Guid userId1, Guid userId2)
     {
         return await _dbContext.Friendships
             .AnyAsync(f =>
@@ -273,7 +273,7 @@ public class FriendshipService : IFriendshipService
                 f.Status == FriendshipStatus.Accepted);
     }
 
-    private async Task<Friendship> GetFriendshipWithDetailsAsync(string friendshipId)
+    private async Task<Friendship?> GetFriendshipWithDetailsAsync(Guid friendshipId)
     {
         return await _dbContext.Friendships
             .Include(f => f.Requester)
@@ -281,7 +281,7 @@ public class FriendshipService : IFriendshipService
             .FirstOrDefaultAsync(f => f.Id == friendshipId);
     }
 
-    public async Task<FriendshipStatusDto> GetFriendshipStatusAsync(string currentUserId, string targetUserId)
+    public async Task<FriendshipStatusDto> GetFriendshipStatusAsync(Guid currentUserId, Guid targetUserId)
     {
         // Check if users are friends
         bool areFriends = await AreFriendsAsync(currentUserId, targetUserId);

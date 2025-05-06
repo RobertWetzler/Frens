@@ -1,11 +1,11 @@
-﻿using Cliq.Server.Models;
+using Cliq.Server.Models;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
 using Microsoft.AspNetCore.Identity;
 
 namespace Cliq.Server.Data;
 
-public class CliqDbContext : IdentityDbContext<User>
+public class CliqDbContext : IdentityDbContext<User, CliqRole, Guid>
 {
     private readonly IHostEnvironment _env;
     public DbSet<Post> Posts { get; set; }
@@ -125,25 +125,25 @@ public class CliqDbContext : IdentityDbContext<User>
             var posts = new List<Post>
             {
                 new Post {
-                    Id = "seedPost1",
+                    Id = Guid.NewGuid(),
                     UserId = users[0].Id,
                     Date = DateTime.UtcNow.AddDays(-1),
                     Text = "Hello world! This is my first post."
                 },
                 new Post {
-                    Id = "seedPost2",
+                    Id = Guid.NewGuid(),
                     UserId = users[1].Id,
                     Date = DateTime.UtcNow.AddHours(-12),
                     Text = "Excited to join this platform!"
                 },
                 new Post {
-                    Id = "seedPost3",
+                    Id = Guid.NewGuid(),
                     UserId = users[2].Id,
                     Date = DateTime.UtcNow.AddHours(-6),
                     Text = "Another day, another post. #coding"
                 },
                 new Post {
-                    Id = "seedPost4",
+                    Id = Guid.NewGuid(),
                     UserId = users[4].Id,
                     Date = DateTime.UtcNow.AddHours(-1),
                     Text = "Just finished a great workout! Feeling good."
@@ -155,7 +155,7 @@ public class CliqDbContext : IdentityDbContext<User>
             {
                 new Comment
                 {
-                    Id = "seedComment1",
+                    Id = new Guid("11111111-1111-1111-1111-111111111111"), // Defining a fixed GUID for the first comment
                     UserId = users[2].Id,
                     Date = DateTime.UtcNow,
                     PostId = posts[0].Id,
@@ -163,43 +163,43 @@ public class CliqDbContext : IdentityDbContext<User>
                 },
                 new Comment
                 {
-                    Id = "seedChildComment1_1",
+                    Id = new Guid("22222222-2222-2222-2222-222222222222"),
                     UserId = users[0].Id,
                     Date = DateTime.UtcNow,
                     PostId = posts[0].Id,
-                    ParentCommentId = "seedComment1",
+                    ParentCommentId = new Guid("11111111-1111-1111-1111-111111111111"), // Reference to first comment
                     Text = "I am John responding to Bob"
                 },
                 new Comment
                 {
-                    Id = "seedChildComment1_2",
+                    Id = new Guid("33333333-3333-3333-3333-333333333333"),
                     UserId = users[3].Id,
                     Date = DateTime.UtcNow,
                     PostId = posts[0].Id,
-                    ParentCommentId = "seedComment1",
+                    ParentCommentId = new Guid("11111111-1111-1111-1111-111111111111"), // Reference to first comment
                     Text = "I am DEVON and I AM SO COOL"
                 },
                 new Comment
                 {
-                    Id = "seedChildComment1_2_1",
+                    Id = new Guid("44444444-4444-4444-4444-444444444444"),
                     UserId = users[3].Id,
                     Date = DateTime.UtcNow,
                     PostId = posts[0].Id,
-                    ParentCommentId = "seedChildComment1_2",
+                    ParentCommentId = new Guid("33333333-3333-3333-3333-333333333333"), // Reference to Devon's comment
                     Text = "Wassup devon this is devon"
                 },
                 new Comment
                 {
-                    Id = "seedChildComment1_1_1",
+                    Id = new Guid("55555555-5555-5555-5555-555555555555"),
                     UserId = users[1].Id,
                     Date = DateTime.UtcNow,
                     PostId = posts[0].Id,
-                    ParentCommentId = "seedChildComment1_1",
+                    ParentCommentId = new Guid("22222222-2222-2222-2222-222222222222"), // Changed to reference John's comment
                     Text = "I am Jane responding to Bob"
                 },
                 new Comment
                 {
-                    Id = "seedComment2",
+                    Id = new Guid("66666666-6666-6666-6666-666666666666"),
                     UserId = users[1].Id,
                     Date = DateTime.UtcNow,
                     PostId = posts[0].Id,
@@ -207,7 +207,7 @@ public class CliqDbContext : IdentityDbContext<User>
                 },
                 new Comment
                 {
-                    Id = "seedComment4_1",
+                    Id = new Guid("77777777-7777-7777-7777-777777777777"),
                     UserId = users[3].Id,
                     Date = DateTime.UtcNow,
                     PostId = posts[3].Id,
@@ -215,8 +215,8 @@ public class CliqDbContext : IdentityDbContext<User>
                 },
                 new Comment
                 {
-                    Id = "seedComment4_2",
-                    ParentCommentId = "seedComment4_1",
+                    Id = new Guid("88888888-8888-8888-8888-888888888888"),
+                    ParentCommentId = new Guid("77777777-7777-7777-7777-777777777777"), // Reference to Devon's Minecraft comment
                     UserId = users[4].Id,
                     Date = DateTime.UtcNow,
                     PostId = posts[3].Id,

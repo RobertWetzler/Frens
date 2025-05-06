@@ -2,12 +2,11 @@ namespace Cliq.Server.Models;
 
 public class Friendship
 {
-    public string Id { get; set; } = Guid.NewGuid().ToString();
-    
-    public required string RequesterId { get; set; }
+    public Guid Id { get; set; } = Guid.NewGuid();
+    public required Guid RequesterId { get; set; }
     public User Requester { get; set; }
     
-    public required string AddresseeId { get; set; }
+    public required Guid AddresseeId { get; set; }
     public User Addressee { get; set; }
     
     public FriendshipStatus Status { get; set; } = FriendshipStatus.Pending;
@@ -33,7 +32,7 @@ public class FriendshipStatusDto
     /// <summary>
     /// The friendship ID, if applicable (useful for accepting/rejecting requests)
     /// </summary>
-    public string? FriendshipId { get; set; }
+    public Guid? FriendshipId { get; set; }
 }
 
 public enum VisibleStatus

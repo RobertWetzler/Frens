@@ -31,17 +31,14 @@ namespace Cliq.Server.Controllers
         }
 
         [HttpGet]
-        public async Task<ActionResult<ProfilePageResponseDto>> GetProfile(string? userId)
+        public async Task<ActionResult<ProfilePageResponseDto>> GetProfile(Guid? userId)
         {
             // Get current user ID from claims
-            var currentUserId = User.FindFirstValue(ClaimTypes.NameIdentifier);
-            if (string.IsNullOrEmpty(userId) || string.Equals(userId, "me", StringComparison.OrdinalIgnoreCase))
-            {
-                userId = currentUserId;
-            }
+            var currentUserId = Guid.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier));
+            Guid userIdToUse = userId ?? currentUserId;
 
             // Find target user
-            var user = await _userManager.FindByIdAsync(userId);
+            var user = await _userManager.FindByIdAsync(userIdToUse.ToString());
             if (user == null)
             {
                 return NotFound(new { error = "User not found" });
@@ -60,7 +57,7 @@ namespace Cliq.Server.Controllers
             // Get friendship status if viewing someone else's profile
             if (!response.IsCurrentUser)
             {
-                var friendshipStatus = await _friendshipService.GetFriendshipStatusAsync(currentUserId, userId);
+                var friendshipStatus = await _friendshipService.GetFriendshipStatusAsync(currentUserId, userIdToUse);
                 response.FriendshipStatus = friendshipStatus;
             }
 
@@ -68,7 +65,7 @@ namespace Cliq.Server.Controllers
             // to view them (i.e., they are friends or the user is viewing their own profile)
             if (response.IsCurrentUser || response.FriendshipStatus?.Status == VisibleStatus.Friends)
             {
-                response.RecentPosts = await _postService.GetUserPostsAsync(userId, page: 1, pageSize: 10);
+                response.RecentPosts = await _postService.GetUserPostsAsync(userIdToUse, page: 1, pageSize: 10);
             }
 
             return Ok(response);

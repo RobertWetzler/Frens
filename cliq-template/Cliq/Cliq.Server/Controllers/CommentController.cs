@@ -17,14 +17,14 @@ public class CommentController : ControllerBase
 
     // TODO: validate user has permissions to view post
     [HttpPost]
-    public async Task<ActionResult<CommentDto>> PostComment(string text, string postId, string? parentCommentid = null)
+    public async Task<ActionResult<CommentDto>> PostComment(string text, Guid postId, Guid? parentCommentid = null)
     {
         var idClaim = this.HttpContext.User.Claims.FirstOrDefault(c => c.Type == "http://schemas.xmlsoap.org/ws/2005/05/identity/claims/nameidentifier");
         if (idClaim == null)
         {
             return Unauthorized();
         }
-        var comment = await _commentService.CreateCommentAsync(text, idClaim.Value, postId, parentCommentid);
+        var comment = await _commentService.CreateCommentAsync(text, new Guid(idClaim.Value), postId, parentCommentid);
         if (comment == null)
         {
             return NotFound();

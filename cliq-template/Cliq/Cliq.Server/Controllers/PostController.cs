@@ -18,7 +18,7 @@ public class PostController : ControllerBase
 
     // TODO: validate user has permissions to view post
     [HttpGet("{id}")]
-    public async Task<ActionResult<PostDto>> GetPost(string id, bool includeCommentTree = true)
+    public async Task<ActionResult<PostDto>> GetPost(Guid id, bool includeCommentTree = true)
     {
         var post = await _postService.GetPostByIdAsync(id, includeCommentTree);
         if (post == null)
@@ -45,20 +45,20 @@ public class PostController : ControllerBase
         {
             return Unauthorized();
         }
-        var createdPost = await _postService.CreatePostAsync(idClaim.Value, text);
+        var createdPost = await _postService.CreatePostAsync(new Guid(idClaim.Value), text);
         return CreatedAtAction(nameof(GetPost), new { id = createdPost.Id }, createdPost);
     }
 
     // TODO: Authorize userId matches that of postId
     [HttpPut("{id}")]
-    public async Task<IActionResult> UpdatePost(string id, string newText)
+    public async Task<IActionResult> UpdatePost(Guid id, string newText)
     {
         var idClaim = this.HttpContext.User.Claims.FirstOrDefault(c => c.Type == "http://schemas.xmlsoap.org/ws/2005/05/identity/claims/nameidentifier");
         if (idClaim == null)
         {
             return Unauthorized();
         }
-        var updatedPost = await _postService.UpdatePostAsync(id, idClaim.Value, newText);
+        var updatedPost = await _postService.UpdatePostAsync(id, new Guid(idClaim.Value), newText);
         if (updatedPost == null)
         {
             return NotFound();
@@ -69,14 +69,14 @@ public class PostController : ControllerBase
 
     // TODO: Authorize userId matches that of postId
     [HttpDelete("{id}")]
-    public async Task<IActionResult> DeletePost(string id)
+    public async Task<IActionResult> DeletePost(Guid id)
     {
         var idClaim = this.HttpContext.User.Claims.FirstOrDefault(c => c.Type == "http://schemas.xmlsoap.org/ws/2005/05/identity/claims/nameidentifier");
         if (idClaim == null)
         {
             return Unauthorized();
         }
-        var result = await _postService.DeletePostAsync(id, idClaim.Value);
+        var result = await _postService.DeletePostAsync(id, new Guid(idClaim.Value));
         if (!result)
         {
             return NotFound();

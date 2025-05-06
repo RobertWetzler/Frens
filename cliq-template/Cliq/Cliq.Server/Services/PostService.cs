@@ -14,16 +14,16 @@ namespace Cliq.Server.Services;
 
 public interface IPostService
 {
-    Task<PostDto?> GetPostByIdAsync(string id, bool includeCommentTree = false, int maxDepth = 3);
-    Task<IEnumerable<PostDto>> GetFeedForUserAsync(string userId, int page = 1, int pageSize = 20);
+    Task<PostDto?> GetPostByIdAsync(Guid id, bool includeCommentTree = false, int maxDepth = 3);
+    Task<IEnumerable<PostDto>> GetFeedForUserAsync(Guid userId, int page = 1, int pageSize = 20);
     Task<List<PostDto>> GetAllPostsAsync(bool includeCommentCount = false);
-    Task<IEnumerable<PostDto>> GetUserPostsAsync(string userId, int page = 1, int pageSize = 20);
-    Task<PostDto> CreatePostAsync(string userId, string text);
-    Task<PostDto?> UpdatePostAsync(string id, string updatedByUserId, string newText);
-    Task<bool> DeletePostAsync(string id, string deletedByUserId);
-    Task<bool> AddViewerAsync(string postId, string userId);
-    Task<bool> RemoveViewerAsync(string postId, string userId);
-    Task<bool> PostExistsAsync(string id);
+    Task<IEnumerable<PostDto>> GetUserPostsAsync(Guid userId, int page = 1, int pageSize = 20);
+    Task<PostDto> CreatePostAsync(Guid userId, string text);
+    Task<PostDto?> UpdatePostAsync(Guid id, Guid updatedByUserId, string newText);
+    Task<bool> DeletePostAsync(Guid id, Guid deletedByUserId);
+    Task<bool> AddViewerAsync(Guid postId, Guid userId);
+    Task<bool> RemoveViewerAsync(Guid postId, Guid userId);
+    Task<bool> PostExistsAsync(Guid id);
     Task<int> SaveChangesAsync();
 }
 
@@ -47,7 +47,7 @@ public class PostService : IPostService
         _logger = logger;
     }
 
-    public async Task<PostDto?> GetPostByIdAsync(string id, bool includeCommentTree = true, int maxDepth = 3)
+    public async Task<PostDto?> GetPostByIdAsync(Guid id, bool includeCommentTree = true, int maxDepth = 3)
     {
         var post = await _dbContext.Posts
             .Include(p => p.User)
@@ -66,7 +66,7 @@ public class PostService : IPostService
     }
 
 
-    public async Task<IEnumerable<PostDto>> GetFeedForUserAsync(string userId, int page = 1, int pageSize = 20)
+    public async Task<IEnumerable<PostDto>> GetFeedForUserAsync(Guid userId, int page = 1, int pageSize = 20)
     {
         try
         {
@@ -124,7 +124,7 @@ public class PostService : IPostService
             return _mapper.Map<List<PostDto>>(posts);
         }
     }
-    public async Task<IEnumerable<PostDto>> GetUserPostsAsync(string userId, int page = 1, int pageSize = 20)
+    public async Task<IEnumerable<PostDto>> GetUserPostsAsync(Guid userId, int page = 1, int pageSize = 20)
     {
         try
         {
@@ -147,7 +147,7 @@ public class PostService : IPostService
 
     // TODO: Should FromBody be used to force JSON body request (POST semantic)?
     // TODO: Take userId from JWT token
-    public async Task<PostDto> CreatePostAsync(string userId, string text)
+    public async Task<PostDto> CreatePostAsync(Guid userId, string text)
     {
         // TODO: Use a method from UserService for finding User by ID
         if (await this._dbContext.Users.FirstOrDefaultAsync(u => u.Id == userId) == null)
@@ -159,7 +159,7 @@ public class PostService : IPostService
         {
             var post = new Post
             {
-                Id = Guid.NewGuid().ToString(),
+                Id = Guid.NewGuid(),
                 UserId = userId,
                 Text = text,
                 Date = DateTime.UtcNow
@@ -186,7 +186,7 @@ public class PostService : IPostService
         }
     }
 
-    public async Task<PostDto?> UpdatePostAsync(string id, string updatedByUserId, string newText)
+    public async Task<PostDto?> UpdatePostAsync(Guid id, Guid updatedByUserId, string newText)
     {
         try
         {
@@ -211,7 +211,7 @@ public class PostService : IPostService
         }
     }
 
-    public async Task<bool> DeletePostAsync(string id, string deletedByUserId)
+    public async Task<bool> DeletePostAsync(Guid id, Guid deletedByUserId)
     {
         try
         {
@@ -232,7 +232,7 @@ public class PostService : IPostService
         }
     }
 
-    public async Task<bool> AddViewerAsync(string postId, string userId)
+    public async Task<bool> AddViewerAsync(Guid postId, Guid userId)
     {
         try
         {
@@ -260,7 +260,7 @@ public class PostService : IPostService
         }
     }
 
-    public async Task<bool> RemoveViewerAsync(string postId, string userId)
+    public async Task<bool> RemoveViewerAsync(Guid postId, Guid userId)
     {
         try
         {
@@ -284,7 +284,7 @@ public class PostService : IPostService
         }
     }
 
-    public async Task<bool> PostExistsAsync(string id)
+    public async Task<bool> PostExistsAsync(Guid id)
     {
         return await _dbContext.Posts.AnyAsync(p => p.Id == id);
     }
