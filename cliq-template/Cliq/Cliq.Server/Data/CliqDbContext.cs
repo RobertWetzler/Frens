@@ -143,6 +143,7 @@ public class CliqDbContext : IdentityDbContext<User, CliqRole, Guid>
             {
                 new User("sandman@example.com") {
                     Name = "Spencer Sands",
+                    Email = "sandman@example.com",
                     Bio = "Your life is your's to create."
                 },
                 new User("smushi@example.com") {
@@ -154,14 +155,17 @@ public class CliqDbContext : IdentityDbContext<User, CliqRole, Guid>
                     SecurityStamp = Guid.NewGuid().ToString()
                 },
                 new User("daddio@example.com") {
+                    Email="daddio@example.com",
                     Name = "Howard Wetzler",
                 },
                 new User("devio@example.com") {
                     Name = "Devon Brandt",
+                    Email="devio@example.com",
                     Bio = "Life is like a game of chess. I don't know how to play chess.",
                 },
                 new User("twilly@example.com") {
                     Name = "Jacob Terwilleger",
+                    Email="twilly@example.com",
                     Bio = "Just chill out everybody.",
                 }
             };
@@ -175,6 +179,8 @@ public class CliqDbContext : IdentityDbContext<User, CliqRole, Guid>
 
 
             // Seed Posts
+            modelBuilder.AddPosts(users);
+            /*
             var posts = new List<Post>
             {
                 new Post {
@@ -204,6 +210,7 @@ public class CliqDbContext : IdentityDbContext<User, CliqRole, Guid>
             };
             modelBuilder.Entity<Post>().HasData(posts);
             // Seed Comments
+            
             var comments = new List<Comment>
             {
                 new Comment
@@ -275,10 +282,10 @@ public class CliqDbContext : IdentityDbContext<User, CliqRole, Guid>
                     PostId = posts[3].Id,
                     Text = "Im down. I have a diamond sword too. Wanna have a duel?",
                 }
-            };
+            }; 
 
             modelBuilder.Entity<Comment>().HasData(comments);
-
+            */
             // Seed Viewers (requires separate statements due to many-to-many relationship)
             // TODO THIS IS WRONG FOR SPECIFYING VIEWERS
             /*
