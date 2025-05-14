@@ -789,6 +789,60 @@ export class Client {
     }
 
     /**
+     * @param page (optional) 
+     * @param pageSize (optional) 
+     * @return OK
+     */
+    feed(page: number | undefined, pageSize: number | undefined): Promise<PostDto[]> {
+        let url_ = this.baseUrl + "/api/Post/feed?";
+        if (page === null)
+            throw new Error("The parameter 'page' cannot be null.");
+        else if (page !== undefined)
+            url_ += "page=" + encodeURIComponent("" + page) + "&";
+        if (pageSize === null)
+            throw new Error("The parameter 'pageSize' cannot be null.");
+        else if (pageSize !== undefined)
+            url_ += "pageSize=" + encodeURIComponent("" + pageSize) + "&";
+        url_ = url_.replace(/[?&]$/, "");
+
+        let options_: RequestInit = {
+            method: "GET",
+            headers: {
+                "Accept": "text/plain"
+            }
+        };
+
+        return this.http.fetch(url_, options_).then((_response: Response) => {
+            return this.processFeed(_response);
+        });
+    }
+
+    protected processFeed(response: Response): Promise<PostDto[]> {
+        const status = response.status;
+        let _headers: any = {}; if (response.headers && response.headers.forEach) { response.headers.forEach((v: any, k: any) => _headers[k] = v); };
+        if (status === 200) {
+            return response.text().then((_responseText) => {
+            let result200: any = null;
+            let resultData200 = _responseText === "" ? null : JSON.parse(_responseText, this.jsonParseReviver);
+            if (Array.isArray(resultData200)) {
+                result200 = [] as any;
+                for (let item of resultData200)
+                    result200!.push(PostDto.fromJS(item));
+            }
+            else {
+                result200 = <any>null;
+            }
+            return result200;
+            });
+        } else if (status !== 200 && status !== 204) {
+            return response.text().then((_responseText) => {
+            return throwException("An unexpected server error occurred.", status, _responseText, _headers);
+            });
+        }
+        return Promise.resolve<PostDto[]>(null as any);
+    }
+
+    /**
      * @param userId (optional) 
      * @return OK
      */
@@ -832,7 +886,7 @@ export class Client {
 }
 
 export class CommentDto implements ICommentDto {
-    id!: string | undefined;
+    id!: string;
     date!: Date;
     text!: string | undefined;
     user!: UserDto;
@@ -887,7 +941,7 @@ export class CommentDto implements ICommentDto {
 }
 
 export interface ICommentDto {
-    id: string | undefined;
+    id: string;
     date: Date;
     text: string | undefined;
     user: UserDto;
@@ -1042,8 +1096,8 @@ export interface ILoginModel {
 }
 
 export class PostDto implements IPostDto {
-    id!: string | undefined;
-    userId!: string | undefined;
+    id!: string;
+    userId!: string;
     date!: Date;
     text!: string | undefined;
     user?: UserDto;
@@ -1100,8 +1154,8 @@ export class PostDto implements IPostDto {
 }
 
 export interface IPostDto {
-    id: string | undefined;
-    userId: string | undefined;
+    id: string;
+    userId: string;
     date: Date;
     text: string | undefined;
     user?: UserDto;
@@ -1253,7 +1307,7 @@ export interface ISignInResponseDto {
 }
 
 export class UserDto implements IUserDto {
-    id!: string | undefined;
+    id!: string;
     name!: string | undefined;
 
     constructor(data?: IUserDto) {
@@ -1288,12 +1342,12 @@ export class UserDto implements IUserDto {
 }
 
 export interface IUserDto {
-    id: string | undefined;
+    id: string;
     name: string | undefined;
 }
 
 export class UserProfileDto implements IUserProfileDto {
-    id!: string | undefined;
+    id!: string;
     name!: string | undefined;
     bio?: string | undefined;
     createdAt?: Date;
@@ -1334,7 +1388,7 @@ export class UserProfileDto implements IUserProfileDto {
 }
 
 export interface IUserProfileDto {
-    id: string | undefined;
+    id: string;
     name: string | undefined;
     bio?: string | undefined;
     createdAt?: Date;

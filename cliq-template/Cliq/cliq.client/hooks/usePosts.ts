@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { PostDto } from '../services/generated/generatedClient';
 import { ApiClient } from 'services/apiClient';
 
-export function useAllPosts() {
+export function useFeed() {
     const [posts, setPosts] = useState<PostDto[]>([]);
     const [isLoading, setIsLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
@@ -10,7 +10,8 @@ export function useAllPosts() {
     const loadPosts = async () => {
         try {
             setIsLoading(true);
-            const posts = await ApiClient.call(c => c.postAll());
+            // TODO add pagination
+            const posts = await ApiClient.call(c => c.feed(1, 20));
             setPosts(posts);
             setError(null);
         } catch (err) {

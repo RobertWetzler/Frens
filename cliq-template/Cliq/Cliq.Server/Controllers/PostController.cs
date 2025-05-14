@@ -36,6 +36,18 @@ public class PostController : ControllerBase
         return Ok(posts);
     }
     
+    [HttpGet("feed")]
+    public async Task<ActionResult<IEnumerable<PostDto>>> GetFeed(int page=1, int pageSize=20)
+    {
+        var idClaim = this.HttpContext.User.Claims.FirstOrDefault(c => c.Type == "http://schemas.xmlsoap.org/ws/2005/05/identity/claims/nameidentifier");
+        Guid userId;
+        if (idClaim == null || !Guid.TryParse(idClaim.Value, out userId))
+        {
+            return Unauthorized();
+        }
+        var feed = await _postService.GetFeedForUserAsync(userId, page, pageSize);
+        return Ok(feed);
+    }
 
     [HttpPost]
     public async Task<ActionResult<PostDto>> CreatePost(string text)

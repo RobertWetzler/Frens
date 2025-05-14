@@ -2,12 +2,12 @@ import React, { useEffect } from 'react';
 import { Text, View, FlatList, StyleSheet, SafeAreaView, ActivityIndicator } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Post from '../components/Post';
-import { useAllPosts } from 'hooks/usePosts';
+import { useFeed } from 'hooks/usePosts';
 import ShaderBackground from 'components/ShaderBackground';
 
 
 const HomeScreen = ({ navigation }) => {
-    const { posts, isLoading, error, loadPosts } = useAllPosts();
+    const { posts, isLoading, error, loadPosts } = useFeed();
     // Useful for debugging hook transitions
     /*
     useEffect(() => {

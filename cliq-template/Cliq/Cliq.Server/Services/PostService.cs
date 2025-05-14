@@ -70,17 +70,18 @@ public class PostService : IPostService
     {
         try
         {
-            var posts =  await _dbContext.Posts
-                .Include(p => p.User)
-                .Include(p => p.Viewers)
-                .Where(p => p.UserId == userId || p.Viewers.Any(v => v.Id == userId))
+            var feed = await _dbContext.Posts
+                .Where(p => p.SharedWithCircles.Any(cp =>
+                    cp.Circle.Members.Any(m => m.UserId == userId)))
                 .OrderByDescending(p => p.Date)
+                .Include(p => p.User)
+                .Include(p => p.Comments)
                 .Skip((page - 1) * pageSize)
                 .Take(pageSize)
                 .ToListAsync();
-            return this._mapper.Map<PostDto[]>(posts);
+            return _mapper.Map<PostDto[]>(feed);
         }
-        catch (Exception ex)
+        catch (Exception ex )
         {
             _logger.LogError(ex, "Error retrieving feed for user: {UserId}", userId);
             throw;
