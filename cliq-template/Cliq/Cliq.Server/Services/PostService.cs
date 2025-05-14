@@ -15,7 +15,7 @@ namespace Cliq.Server.Services;
 public interface IPostService
 {
     Task<PostDto?> GetPostByIdAsync(Guid id, bool includeCommentTree = false, int maxDepth = 3);
-    Task<IEnumerable<PostDto>> GetFeedForUserAsync(Guid userId, int page = 1, int pageSize = 20);
+    Task<IEnumerable<PostDto>> GetFeedForUserAsync(Guid userId, int page = 1, int pageSize = 20, bool includeCommentCount = true);
     Task<List<PostDto>> GetAllPostsAsync(bool includeCommentCount = false);
     Task<IEnumerable<PostDto>> GetUserPostsAsync(Guid userId, int page = 1, int pageSize = 20);
     Task<PostDto> CreatePostAsync(Guid userId, string text);
@@ -66,22 +66,53 @@ public class PostService : IPostService
     }
 
 
-    public async Task<IEnumerable<PostDto>> GetFeedForUserAsync(Guid userId, int page = 1, int pageSize = 20)
+    public async Task<IEnumerable<PostDto>> GetFeedForUserAsync(Guid userId, int page = 1, int pageSize = 20, bool includeCommentCount = true)
     {
         try
         {
-            var feed = await _dbContext.Posts
-                .Where(p => p.SharedWithCircles.Any(cp =>
-                    cp.Circle.Members.Any(m => m.UserId == userId)))
-                .OrderByDescending(p => p.Date)
-                .Include(p => p.User)
-                .Include(p => p.Comments)
-                .Skip((page - 1) * pageSize)
-                .Take(pageSize)
-                .ToListAsync();
-            return _mapper.Map<PostDto[]>(feed);
+            if (includeCommentCount)
+            {
+                // Single query approach with group join for comment counting
+                var result = await (
+                    from p in _dbContext.Posts
+                        .Where(p => p.SharedWithCircles.Any(cp =>
+                            cp.Circle.Members.Any(m => m.UserId == userId)))
+                        .OrderByDescending(p => p.Date)
+                        .Include(p => p.User)
+                        .Skip((page - 1) * pageSize)
+                        .Take(pageSize)
+                    join c in _dbContext.Comments
+                        on p.Id equals c.PostId into comments
+                    select new
+                    {
+                        Post = p,
+                        CommentCount = comments.Count()
+                    })
+                    .AsNoTracking()
+                    .ToListAsync();
+
+                return result.Select(pc =>
+                {
+                    var dto = _mapper.Map<PostDto>(pc.Post);
+                    dto.CommentCount = pc.CommentCount;
+                    return dto;
+                }).ToList();
+            }
+            else
+            {
+                var feed = await _dbContext.Posts
+                    .Where(p => p.SharedWithCircles.Any(cp =>
+                        cp.Circle.Members.Any(m => m.UserId == userId)))
+                    .OrderByDescending(p => p.Date)
+                    .Include(p => p.User)
+                    .Include(p => p.Comments)
+                    .Skip((page - 1) * pageSize)
+                    .Take(pageSize)
+                    .ToListAsync();
+                return _mapper.Map<PostDto[]>(feed);
+            }
         }
-        catch (Exception ex )
+        catch (Exception ex)
         {
             _logger.LogError(ex, "Error retrieving feed for user: {UserId}", userId);
             throw;
@@ -93,7 +124,7 @@ public class PostService : IPostService
         if (includeCommentCount)
         {
             // Single query approach using group join
-            var result = await(
+            var result = await (
                 from p in _dbContext.Posts
                     .Include(p => p.User)
                     .OrderByDescending(p => p.Date)
@@ -129,7 +160,7 @@ public class PostService : IPostService
     {
         try
         {
-            var posts =  await _dbContext.Posts
+            var posts = await _dbContext.Posts
                 .Include(p => p.User)
                 .Include(p => p.Viewers)
                 .Where(p => p.UserId == userId)

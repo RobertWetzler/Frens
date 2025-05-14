@@ -1,6 +1,7 @@
 
 using Cliq.Server.Models;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Metadata.Internal;
 
 namespace Cliq.Server.Data;
 
@@ -19,10 +20,25 @@ public static class SeedExtensions
         var hikingCircle = modelBuilder.CreateCircle("Hiking Buddies", true, robert, sierra, jacob);
         var familyCircle = modelBuilder.CreateCircle("Family", false, robert, howard);
 
-        modelBuilder.CreatePost(robert, "Planning a climbing trip this weekend!", DateTime.UtcNow.AddHours(-10), climbingCircle);
-        modelBuilder.CreatePost(robert, "New hiking trail opened up — let's go!", DateTime.UtcNow.AddHours(-8), hikingCircle, climbingCircle);
+        var post1 = modelBuilder.CreatePost(robert, "Planning a climbing trip this weekend!", DateTime.UtcNow.AddHours(-10), climbingCircle);
+        var post2 = modelBuilder.CreatePost(robert, "New hiking trail opened up — let's go!", DateTime.UtcNow.AddHours(-8), hikingCircle, climbingCircle);
         modelBuilder.CreatePost(sierra, "Anyone want to go for a hike Sunday?", DateTime.UtcNow.AddHours(-2), hikingCircle);
         modelBuilder.CreatePost(howard, "Letting family know: I’ll be out mountaineering Sunday.", DateTime.UtcNow.AddHours(-5), familyCircle);
+
+        modelBuilder.AddCommentTree(post1, new[]
+        {
+            new C(devon, "Sick where should we go climb",
+                new C(robert, "Lets go to Red Rock",
+                    new C(devon, "Oh hell yea plus some cheeky vegas gambling eh?",
+                        new C(spencer, "I’m in!"),
+                        new C(robert, "I’m down for some gambling too!"),
+                        new C(devon, "I’ll bring the cards")
+                    )
+                ),
+                new C(robert, "Or Vantage")
+            ),
+            new C(spencer, "This will be so hype!!!!!")
+        });
     }
 
     private static User GetOrAddUser(this ModelBuilder modelBuilder, string email, string name, List<User> users)
@@ -89,4 +105,25 @@ public static class SeedExtensions
         return circle;
     }
 
+    record C(User U, string T, params C[] Replies);
+
+    private static void AddCommentTree(this ModelBuilder modelBuilder, Post post, IEnumerable<C> comments, Guid? parentId = null)
+    {
+        foreach (var c in comments)
+        {
+            var commentId = Guid.NewGuid();
+            modelBuilder.Entity<Comment>().HasData(new Comment
+            {
+                Id = commentId,
+                UserId = c.U.Id,
+                Text = c.T,
+                Date = DateTime.UtcNow,
+                PostId = post.Id,
+                ParentCommentId = parentId
+            });
+
+            if (c.Replies?.Length > 0)
+                modelBuilder.AddCommentTree(post, c.Replies, commentId);
+        }
+    }
 }

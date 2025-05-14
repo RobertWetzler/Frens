@@ -158,6 +158,14 @@ public class CliqDbContext : IdentityDbContext<User, CliqRole, Guid>
                     Email="daddio@example.com",
                     Name = "Howard Wetzler",
                 },
+                new User("robert@gmail.com") {
+                    Email="robert@gmail.com",
+                    Name = "Robert Wetzler",
+                    NormalizedEmail = "ROBERT@GMAIL.COM",
+                    NormalizedUserName = "ROBERT@GMAIL.COM",
+                    EmailConfirmed = true,
+                    SecurityStamp = Guid.NewGuid().ToString()
+                },
                 new User("devio@example.com") {
                     Name = "Devon Brandt",
                     Email="devio@example.com",
