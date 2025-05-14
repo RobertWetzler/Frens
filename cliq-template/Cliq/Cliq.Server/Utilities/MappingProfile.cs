@@ -15,7 +15,7 @@ public class MappingProfile : Profile
         CreateMap<Comment, CommentDto>()
             // We'll handle replies separately due to their recursive nature
             .ForMember(dest => dest.Replies, opt => opt.Ignore());
-
+        CreateMap<Circle, CirclePublicDto>();
     }
 }
 

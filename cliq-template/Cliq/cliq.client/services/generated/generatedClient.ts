@@ -136,6 +136,183 @@ export class Client {
     }
 
     /**
+     * @return OK
+     */
+    circleAll(): Promise<CirclePublicDto[]> {
+        let url_ = this.baseUrl + "/api/Circle";
+        url_ = url_.replace(/[?&]$/, "");
+
+        let options_: RequestInit = {
+            method: "GET",
+            headers: {
+                "Accept": "text/plain"
+            }
+        };
+
+        return this.http.fetch(url_, options_).then((_response: Response) => {
+            return this.processCircleAll(_response);
+        });
+    }
+
+    protected processCircleAll(response: Response): Promise<CirclePublicDto[]> {
+        const status = response.status;
+        let _headers: any = {}; if (response.headers && response.headers.forEach) { response.headers.forEach((v: any, k: any) => _headers[k] = v); };
+        if (status === 200) {
+            return response.text().then((_responseText) => {
+            let result200: any = null;
+            let resultData200 = _responseText === "" ? null : JSON.parse(_responseText, this.jsonParseReviver);
+            if (Array.isArray(resultData200)) {
+                result200 = [] as any;
+                for (let item of resultData200)
+                    result200!.push(CirclePublicDto.fromJS(item));
+            }
+            else {
+                result200 = <any>null;
+            }
+            return result200;
+            });
+        } else if (status !== 200 && status !== 204) {
+            return response.text().then((_responseText) => {
+            return throwException("An unexpected server error occurred.", status, _responseText, _headers);
+            });
+        }
+        return Promise.resolve<CirclePublicDto[]>(null as any);
+    }
+
+    /**
+     * @param body (optional) 
+     * @return OK
+     */
+    circle(body: CircleCreationDto | undefined): Promise<CirclePublicDto> {
+        let url_ = this.baseUrl + "/api/Circle";
+        url_ = url_.replace(/[?&]$/, "");
+
+        const content_ = JSON.stringify(body);
+
+        let options_: RequestInit = {
+            body: content_,
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json",
+                "Accept": "text/plain"
+            }
+        };
+
+        return this.http.fetch(url_, options_).then((_response: Response) => {
+            return this.processCircle(_response);
+        });
+    }
+
+    protected processCircle(response: Response): Promise<CirclePublicDto> {
+        const status = response.status;
+        let _headers: any = {}; if (response.headers && response.headers.forEach) { response.headers.forEach((v: any, k: any) => _headers[k] = v); };
+        if (status === 200) {
+            return response.text().then((_responseText) => {
+            let result200: any = null;
+            let resultData200 = _responseText === "" ? null : JSON.parse(_responseText, this.jsonParseReviver);
+            result200 = CirclePublicDto.fromJS(resultData200);
+            return result200;
+            });
+        } else if (status !== 200 && status !== 204) {
+            return response.text().then((_responseText) => {
+            return throwException("An unexpected server error occurred.", status, _responseText, _headers);
+            });
+        }
+        return Promise.resolve<CirclePublicDto>(null as any);
+    }
+
+    /**
+     * @return OK
+     */
+    own(): Promise<CirclePublicDto[]> {
+        let url_ = this.baseUrl + "/api/Circle/own";
+        url_ = url_.replace(/[?&]$/, "");
+
+        let options_: RequestInit = {
+            method: "GET",
+            headers: {
+                "Accept": "text/plain"
+            }
+        };
+
+        return this.http.fetch(url_, options_).then((_response: Response) => {
+            return this.processOwn(_response);
+        });
+    }
+
+    protected processOwn(response: Response): Promise<CirclePublicDto[]> {
+        const status = response.status;
+        let _headers: any = {}; if (response.headers && response.headers.forEach) { response.headers.forEach((v: any, k: any) => _headers[k] = v); };
+        if (status === 200) {
+            return response.text().then((_responseText) => {
+            let result200: any = null;
+            let resultData200 = _responseText === "" ? null : JSON.parse(_responseText, this.jsonParseReviver);
+            if (Array.isArray(resultData200)) {
+                result200 = [] as any;
+                for (let item of resultData200)
+                    result200!.push(CirclePublicDto.fromJS(item));
+            }
+            else {
+                result200 = <any>null;
+            }
+            return result200;
+            });
+        } else if (status !== 200 && status !== 204) {
+            return response.text().then((_responseText) => {
+            return throwException("An unexpected server error occurred.", status, _responseText, _headers);
+            });
+        }
+        return Promise.resolve<CirclePublicDto[]>(null as any);
+    }
+
+    /**
+     * @return OK
+     */
+    circleAll2(circleId: string): Promise<CirclePublicDto[]> {
+        let url_ = this.baseUrl + "/api/Circle/{circleId}";
+        if (circleId === undefined || circleId === null)
+            throw new Error("The parameter 'circleId' must be defined.");
+        url_ = url_.replace("{circleId}", encodeURIComponent("" + circleId));
+        url_ = url_.replace(/[?&]$/, "");
+
+        let options_: RequestInit = {
+            method: "GET",
+            headers: {
+                "Accept": "text/plain"
+            }
+        };
+
+        return this.http.fetch(url_, options_).then((_response: Response) => {
+            return this.processCircleAll2(_response);
+        });
+    }
+
+    protected processCircleAll2(response: Response): Promise<CirclePublicDto[]> {
+        const status = response.status;
+        let _headers: any = {}; if (response.headers && response.headers.forEach) { response.headers.forEach((v: any, k: any) => _headers[k] = v); };
+        if (status === 200) {
+            return response.text().then((_responseText) => {
+            let result200: any = null;
+            let resultData200 = _responseText === "" ? null : JSON.parse(_responseText, this.jsonParseReviver);
+            if (Array.isArray(resultData200)) {
+                result200 = [] as any;
+                for (let item of resultData200)
+                    result200!.push(CirclePublicDto.fromJS(item));
+            }
+            else {
+                result200 = <any>null;
+            }
+            return result200;
+            });
+        } else if (status !== 200 && status !== 204) {
+            return response.text().then((_responseText) => {
+            return throwException("An unexpected server error occurred.", status, _responseText, _headers);
+            });
+        }
+        return Promise.resolve<CirclePublicDto[]>(null as any);
+    }
+
+    /**
      * @param text (optional) 
      * @param postId (optional) 
      * @param parentCommentid (optional) 
@@ -885,13 +1062,11 @@ export class Client {
     }
 }
 
-export class CirclePublicDtoInfo implements ICirclePublicDtoInfo {
-    circleId?: string;
-    circleName?: string | undefined;
+export class CircleCreationDto implements ICircleCreationDto {
+    name?: string | undefined;
     isShared?: boolean;
-    sharedAt?: Date;
 
-    constructor(data?: ICirclePublicDtoInfo) {
+    constructor(data?: ICircleCreationDto) {
         if (data) {
             for (var property in data) {
                 if (data.hasOwnProperty(property))
@@ -902,35 +1077,73 @@ export class CirclePublicDtoInfo implements ICirclePublicDtoInfo {
 
     init(_data?: any) {
         if (_data) {
-            this.circleId = _data["circleId"];
-            this.circleName = _data["circleName"];
+            this.name = _data["name"];
             this.isShared = _data["isShared"];
-            this.sharedAt = _data["sharedAt"] ? new Date(_data["sharedAt"].toString()) : <any>undefined;
         }
     }
 
-    static fromJS(data: any): CirclePublicDtoInfo {
+    static fromJS(data: any): CircleCreationDto {
         data = typeof data === 'object' ? data : {};
-        let result = new CirclePublicDtoInfo();
+        let result = new CircleCreationDto();
         result.init(data);
         return result;
     }
 
     toJSON(data?: any) {
         data = typeof data === 'object' ? data : {};
-        data["circleId"] = this.circleId;
-        data["circleName"] = this.circleName;
+        data["name"] = this.name;
         data["isShared"] = this.isShared;
-        data["sharedAt"] = this.sharedAt ? this.sharedAt.toISOString() : <any>undefined;
         return data;
     }
 }
 
-export interface ICirclePublicDtoInfo {
-    circleId?: string;
-    circleName?: string | undefined;
+export interface ICircleCreationDto {
+    name?: string | undefined;
     isShared?: boolean;
-    sharedAt?: Date;
+}
+
+export class CirclePublicDto implements ICirclePublicDto {
+    id?: string;
+    name?: string | undefined;
+    isShared?: boolean;
+
+    constructor(data?: ICirclePublicDto) {
+        if (data) {
+            for (var property in data) {
+                if (data.hasOwnProperty(property))
+                    (<any>this)[property] = (<any>data)[property];
+            }
+        }
+    }
+
+    init(_data?: any) {
+        if (_data) {
+            this.id = _data["id"];
+            this.name = _data["name"];
+            this.isShared = _data["isShared"];
+        }
+    }
+
+    static fromJS(data: any): CirclePublicDto {
+        data = typeof data === 'object' ? data : {};
+        let result = new CirclePublicDto();
+        result.init(data);
+        return result;
+    }
+
+    toJSON(data?: any) {
+        data = typeof data === 'object' ? data : {};
+        data["id"] = this.id;
+        data["name"] = this.name;
+        data["isShared"] = this.isShared;
+        return data;
+    }
+}
+
+export interface ICirclePublicDto {
+    id?: string;
+    name?: string | undefined;
+    isShared?: boolean;
 }
 
 export class CommentDto implements ICommentDto {
@@ -1150,7 +1363,7 @@ export class PostDto implements IPostDto {
     text!: string | undefined;
     user?: UserDto;
     comments?: CommentDto[] | undefined;
-    sharedWithCircles?: CirclePublicDtoInfo[] | undefined;
+    sharedWithCircles?: CirclePublicDto[] | undefined;
     commentCount?: number;
 
     constructor(data?: IPostDto) {
@@ -1177,7 +1390,7 @@ export class PostDto implements IPostDto {
             if (Array.isArray(_data["sharedWithCircles"])) {
                 this.sharedWithCircles = [] as any;
                 for (let item of _data["sharedWithCircles"])
-                    this.sharedWithCircles!.push(CirclePublicDtoInfo.fromJS(item));
+                    this.sharedWithCircles!.push(CirclePublicDto.fromJS(item));
             }
             this.commentCount = _data["commentCount"];
         }
@@ -1219,7 +1432,7 @@ export interface IPostDto {
     text: string | undefined;
     user?: UserDto;
     comments?: CommentDto[] | undefined;
-    sharedWithCircles?: CirclePublicDtoInfo[] | undefined;
+    sharedWithCircles?: CirclePublicDto[] | undefined;
     commentCount?: number;
 }
 

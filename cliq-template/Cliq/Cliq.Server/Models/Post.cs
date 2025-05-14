@@ -25,6 +25,6 @@ public class PostDto
     public required string Text { get; set; }
     public UserDto User { get; set; } = null!;
     public List<CommentDto> Comments { get; set; } = new List<CommentDto>();
-    public List<CirclePublicDtoInfo> SharedWithCircles { get; set; } = new List<CirclePublicDtoInfo>();
+    public List<CirclePublicDto> SharedWithCircles { get; set; } = new List<CirclePublicDto>();
     public int CommentCount { get; set; } = 0;
 }

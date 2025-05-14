@@ -1,7 +1,6 @@
 
 using Cliq.Server.Models;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.EntityFrameworkCore.Metadata.Internal;
 
 namespace Cliq.Server.Data;
 
@@ -15,14 +14,18 @@ public static class SeedExtensions
         var devon = modelBuilder.GetOrAddUser("devio@example.com", "Devon Brandt", users);
         var jacob = modelBuilder.GetOrAddUser("twilly@example.com", "Jacob Terwilleger", users);
         var howard = modelBuilder.GetOrAddUser("daddio@example.com", "Howard Wetzler", users);
+        var anya = modelBuilder.GetOrAddUser("anya@example.com", "Anya Steinberg", users);
+        var kevin = modelBuilder.GetOrAddUser("kevin@example.com", "Kevin Jones", users);
+        var mira = modelBuilder.GetOrAddUser("mira@example.com", "Mira Peterson", users);
 
         var climbingCircle = modelBuilder.CreateCircle("Climbing Crew", false, robert, devon, spencer);
         var hikingCircle = modelBuilder.CreateCircle("Hiking Buddies", true, robert, sierra, jacob);
         var familyCircle = modelBuilder.CreateCircle("Family", false, robert, howard);
+        var sierraFriends = modelBuilder.CreateCircle("Sierra's Friends", false, sierra, anya, kevin, mira);
 
         var post1 = modelBuilder.CreatePost(robert, "Planning a climbing trip this weekend!", DateTime.UtcNow.AddHours(-10), climbingCircle);
-        var post2 = modelBuilder.CreatePost(robert, "New hiking trail opened up — let's go!", DateTime.UtcNow.AddHours(-8), hikingCircle, climbingCircle);
-        modelBuilder.CreatePost(sierra, "Anyone want to go for a hike Sunday?", DateTime.UtcNow.AddHours(-2), hikingCircle);
+        modelBuilder.CreatePost(robert, "New hiking trail opened up — let's go!", DateTime.UtcNow.AddHours(-8), hikingCircle, climbingCircle);
+        modelBuilder.CreatePost(sierra, "Anyone want to go for a hike Sunday?", DateTime.UtcNow.AddHours(-2), hikingCircle, sierraFriends);
         modelBuilder.CreatePost(howard, "Letting family know: I’ll be out mountaineering Sunday.", DateTime.UtcNow.AddHours(-5), familyCircle);
 
         modelBuilder.AddCommentTree(post1, new[]

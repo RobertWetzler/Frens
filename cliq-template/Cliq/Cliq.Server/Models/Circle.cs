@@ -11,6 +11,23 @@ public class Circle
     public ICollection<CirclePost> Posts { get; set; }
 }
 
+// Helper class to avoid duplicates when combining circles
+public class CircleIdComparer : IEqualityComparer<Circle>
+{
+    public bool Equals(Circle? x, Circle? y)
+    {
+        if (x == null || y == null)
+            return false;
+        
+        return x.Id == y.Id;
+    }
+    
+    public int GetHashCode(Circle obj)
+    {
+        return obj.Id.GetHashCode();
+    }
+}
+
 public class CircleMembership
 {
     public Guid CircleId { get; set; }
@@ -33,11 +50,15 @@ public class CirclePost
     public DateTime SharedAt { get; set; }
 }
 
-// New DTO class for circle information
-public class CirclePublicDtoInfo
+public class CirclePublicDto
 {
-    public Guid CircleId { get; set; }
-    public string CircleName { get; set; }
+    public Guid Id { get; set; }
+    public string Name { get; set; }
     public bool IsShared { get; set; }  
-    public DateTime SharedAt { get; set; }
+}
+
+public class CircleCreationDto
+{
+    public string Name { get; set; }
+    public bool IsShared { get; set; } // If true, multiple members can post
 }

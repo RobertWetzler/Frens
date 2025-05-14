@@ -11,7 +11,7 @@ interface PostProps {
 
 const Post: React.FC<PostProps> = ({ post, navigation, isNavigable = true }) => {
   const sharedWithText = post.sharedWithCircles && post.sharedWithCircles.length > 0 
-    ? post.sharedWithCircles.map(c => c.circleName).join(", ")
+    ? post.sharedWithCircles.map(c => c.name).join(", ")
     : "you";
 
   const formatDate = (date: Date) => {

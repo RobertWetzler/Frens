@@ -146,8 +146,11 @@ public class PostService : IPostService
             // Step 3: Get circle information in one query
             var circleInfo = await (
                 from cp in _dbContext.CirclePosts
-                join c in _dbContext.Circles on cp.CircleId equals c.Id
                 where postIds.Contains(cp.PostId)
+                join c in _dbContext.Circles on cp.CircleId equals c.Id
+                // This Join + Where restricts the circles to be returned to only be those the user is a member/owner of
+                join m in _dbContext.CircleMemberships on c.Id equals m.CircleId
+                where m.UserId == userId
                 select new
                 {
                     PostId = cp.PostId,
@@ -164,20 +167,20 @@ public class PostService : IPostService
                 .GroupBy(c => c.PostId)
                 .ToDictionary(g => g.Key, g => g.ToList());
 
+            this._logger.LogInformation("Done querying database for feed");
             // Combine the data
             return postsWithComments.Select(pc =>
             {
                 var dto = _mapper.Map<PostDto>(pc.Post);
                 dto.CommentCount = pc.CommentCount;
                 dto.SharedWithCircles = circlesByPost.ContainsKey(pc.Post.Id)
-                    ? circlesByPost[pc.Post.Id].Select(c => new CirclePublicDtoInfo
+                    ? circlesByPost[pc.Post.Id].Select(c => new CirclePublicDto
                     {
-                        CircleId = c.CircleId,
-                        CircleName = c.CircleName,
+                        Id = c.CircleId,
+                        Name = c.CircleName,
                         IsShared = c.IsShared,
-                        SharedAt = c.SharedAt
                     }).ToList()
-                    : new List<CirclePublicDtoInfo>();
+                    : new List<CirclePublicDto>();
                 return dto;
             }).ToList();
         }
