@@ -15,7 +15,7 @@ namespace Cliq.Server.Services;
 public interface IPostService
 {
     Task<PostDto?> GetPostByIdAsync(Guid id, bool includeCommentTree = false, int maxDepth = 3);
-    Task<IEnumerable<PostDto>> GetFeedForUserAsync(Guid userId, int page = 1, int pageSize = 20, bool includeCommentCount = true);
+    Task<IEnumerable<PostDto>> GetFeedForUserAsync(Guid userId, int page = 1, int pageSize = 20);
     Task<List<PostDto>> GetAllPostsAsync(bool includeCommentCount = false);
     Task<IEnumerable<PostDto>> GetUserPostsAsync(Guid userId, int page = 1, int pageSize = 20);
     Task<PostDto> CreatePostAsync(Guid userId, string text);
@@ -66,51 +66,120 @@ public class PostService : IPostService
     }
 
 
-    public async Task<IEnumerable<PostDto>> GetFeedForUserAsync(Guid userId, int page = 1, int pageSize = 20, bool includeCommentCount = true)
+    public async Task<IEnumerable<PostDto>> GetFeedForUserAsync(Guid userId, int page = 1, int pageSize = 20)
     {
         try
         {
-            if (includeCommentCount)
-            {
-                // Single query approach with group join for comment counting
-                var result = await (
-                    from p in _dbContext.Posts
-                        .Where(p => p.SharedWithCircles.Any(cp =>
-                            cp.Circle.Members.Any(m => m.UserId == userId)))
-                        .OrderByDescending(p => p.Date)
-                        .Include(p => p.User)
-                        .Skip((page - 1) * pageSize)
-                        .Take(pageSize)
-                    join c in _dbContext.Comments
-                        on p.Id equals c.PostId into comments
-                    select new
-                    {
-                        Post = p,
-                        CommentCount = comments.Count()
-                    })
-                    .AsNoTracking()
-                    .ToListAsync();
+            /* Attempt at single query approach with group join for comment counting, gets System.InvalidOperationException: The LINQ expression 'DbSet<Post>()
 
-                return result.Select(pc =>
-                {
-                    var dto = _mapper.Map<PostDto>(pc.Post);
-                    dto.CommentCount = pc.CommentCount;
-                    return dto;
-                }).ToList();
-            }
-            else
-            {
-                var feed = await _dbContext.Posts
+            var result = await (
+                from p in _dbContext.Posts
                     .Where(p => p.SharedWithCircles.Any(cp =>
                         cp.Circle.Members.Any(m => m.UserId == userId)))
                     .OrderByDescending(p => p.Date)
                     .Include(p => p.User)
-                    .Include(p => p.Comments)
                     .Skip((page - 1) * pageSize)
                     .Take(pageSize)
-                    .ToListAsync();
-                return _mapper.Map<PostDto[]>(feed);
-            }
+                join c in _dbContext.Comments
+                    on p.Id equals c.PostId into comments
+                // Somehow get names of all the circles a given post was shared in
+                join cp in _dbContext.Set<CirclePost>()
+                    on p.Id equals cp.PostId into postCircles
+                select new
+                {
+                    Post = p,
+                    CommentCount = comments.Count(),
+                    Circles = postCircles.Select(pc => new
+                    {
+                        pc.CircleId,
+                        CircleName = pc.Circle.Name,
+                        pc.Circle.IsShared,
+                        pc.SharedAt
+                    }).ToList()
+                })
+                .AsNoTracking()
+                .ToListAsync();
+
+            return result.Select(pc =>
+            {
+                var dto = _mapper.Map<PostDto>(pc.Post);
+                dto.CommentCount = pc.CommentCount;
+                dto.SharedWithCircles = pc.Circles.Select(c => new CirclePublicDtoInfo
+                {
+                    CircleId = c.CircleId,
+                    CircleName = c.CircleName,
+                    IsShared = c.IsShared,
+                    SharedAt = c.SharedAt
+                }).ToList();
+                return dto;
+            }).ToList();
+            */
+
+            // Step 1: Get post IDs for pagination (most efficient way to paginate)
+            var postIds = await _dbContext.Posts
+                .Where(p => p.SharedWithCircles.Any(cp =>
+                    cp.Circle.Members.Any(m => m.UserId == userId)))
+                .OrderByDescending(p => p.Date)
+                .Skip((page - 1) * pageSize)
+                .Take(pageSize)
+                .Select(p => p.Id)
+                .ToListAsync();
+
+            if (!postIds.Any())
+                return new List<PostDto>();
+
+            // Step 2: Get posts with comments counts in one query using LEFT JOIN and GROUP BY
+            var postsWithComments = await (
+                from p in _dbContext.Posts.Include(p => p.User)
+                where postIds.Contains(p.Id)
+                join c in _dbContext.Comments
+                    on p.Id equals c.PostId into comments
+                orderby p.Date descending
+                select new
+                {
+                    Post = p,
+                    CommentCount = comments.Count()
+                })
+                .AsNoTracking()
+                .ToListAsync();
+
+            // Step 3: Get circle information in one query
+            var circleInfo = await (
+                from cp in _dbContext.CirclePosts
+                join c in _dbContext.Circles on cp.CircleId equals c.Id
+                where postIds.Contains(cp.PostId)
+                select new
+                {
+                    PostId = cp.PostId,
+                    CircleId = c.Id,
+                    CircleName = c.Name,
+                    IsShared = c.IsShared,
+                    SharedAt = cp.SharedAt
+                })
+                .AsNoTracking()
+                .ToListAsync();
+
+            // Group circle info by post ID for easy lookup
+            var circlesByPost = circleInfo
+                .GroupBy(c => c.PostId)
+                .ToDictionary(g => g.Key, g => g.ToList());
+
+            // Combine the data
+            return postsWithComments.Select(pc =>
+            {
+                var dto = _mapper.Map<PostDto>(pc.Post);
+                dto.CommentCount = pc.CommentCount;
+                dto.SharedWithCircles = circlesByPost.ContainsKey(pc.Post.Id)
+                    ? circlesByPost[pc.Post.Id].Select(c => new CirclePublicDtoInfo
+                    {
+                        CircleId = c.CircleId,
+                        CircleName = c.CircleName,
+                        IsShared = c.IsShared,
+                        SharedAt = c.SharedAt
+                    }).ToList()
+                    : new List<CirclePublicDtoInfo>();
+                return dto;
+            }).ToList();
         }
         catch (Exception ex)
         {

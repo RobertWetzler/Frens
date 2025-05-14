@@ -885,6 +885,54 @@ export class Client {
     }
 }
 
+export class CirclePublicDtoInfo implements ICirclePublicDtoInfo {
+    circleId?: string;
+    circleName?: string | undefined;
+    isShared?: boolean;
+    sharedAt?: Date;
+
+    constructor(data?: ICirclePublicDtoInfo) {
+        if (data) {
+            for (var property in data) {
+                if (data.hasOwnProperty(property))
+                    (<any>this)[property] = (<any>data)[property];
+            }
+        }
+    }
+
+    init(_data?: any) {
+        if (_data) {
+            this.circleId = _data["circleId"];
+            this.circleName = _data["circleName"];
+            this.isShared = _data["isShared"];
+            this.sharedAt = _data["sharedAt"] ? new Date(_data["sharedAt"].toString()) : <any>undefined;
+        }
+    }
+
+    static fromJS(data: any): CirclePublicDtoInfo {
+        data = typeof data === 'object' ? data : {};
+        let result = new CirclePublicDtoInfo();
+        result.init(data);
+        return result;
+    }
+
+    toJSON(data?: any) {
+        data = typeof data === 'object' ? data : {};
+        data["circleId"] = this.circleId;
+        data["circleName"] = this.circleName;
+        data["isShared"] = this.isShared;
+        data["sharedAt"] = this.sharedAt ? this.sharedAt.toISOString() : <any>undefined;
+        return data;
+    }
+}
+
+export interface ICirclePublicDtoInfo {
+    circleId?: string;
+    circleName?: string | undefined;
+    isShared?: boolean;
+    sharedAt?: Date;
+}
+
 export class CommentDto implements ICommentDto {
     id!: string;
     date!: Date;
@@ -1102,6 +1150,7 @@ export class PostDto implements IPostDto {
     text!: string | undefined;
     user?: UserDto;
     comments?: CommentDto[] | undefined;
+    sharedWithCircles?: CirclePublicDtoInfo[] | undefined;
     commentCount?: number;
 
     constructor(data?: IPostDto) {
@@ -1124,6 +1173,11 @@ export class PostDto implements IPostDto {
                 this.comments = [] as any;
                 for (let item of _data["comments"])
                     this.comments!.push(CommentDto.fromJS(item));
+            }
+            if (Array.isArray(_data["sharedWithCircles"])) {
+                this.sharedWithCircles = [] as any;
+                for (let item of _data["sharedWithCircles"])
+                    this.sharedWithCircles!.push(CirclePublicDtoInfo.fromJS(item));
             }
             this.commentCount = _data["commentCount"];
         }
@@ -1148,6 +1202,11 @@ export class PostDto implements IPostDto {
             for (let item of this.comments)
                 data["comments"].push(item.toJSON());
         }
+        if (Array.isArray(this.sharedWithCircles)) {
+            data["sharedWithCircles"] = [];
+            for (let item of this.sharedWithCircles)
+                data["sharedWithCircles"].push(item.toJSON());
+        }
         data["commentCount"] = this.commentCount;
         return data;
     }
@@ -1160,6 +1219,7 @@ export interface IPostDto {
     text: string | undefined;
     user?: UserDto;
     comments?: CommentDto[] | undefined;
+    sharedWithCircles?: CirclePublicDtoInfo[] | undefined;
     commentCount?: number;
 }
 

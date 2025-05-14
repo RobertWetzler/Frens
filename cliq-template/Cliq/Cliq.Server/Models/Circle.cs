@@ -32,3 +32,12 @@ public class CirclePost
 
     public DateTime SharedAt { get; set; }
 }
+
+// New DTO class for circle information
+public class CirclePublicDtoInfo
+{
+    public Guid CircleId { get; set; }
+    public string CircleName { get; set; }
+    public bool IsShared { get; set; }  
+    public DateTime SharedAt { get; set; }
+}
