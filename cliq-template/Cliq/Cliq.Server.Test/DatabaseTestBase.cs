@@ -14,13 +14,24 @@ public abstract class DatabaseTestBase : IAsyncLifetime
     protected DatabaseTestBase()
     {
         ConnectionString = System.Environment.GetEnvironmentVariable("TEST_DATABASE_CONNECTION_STRING")
-            ?? "Host=localhost;Database=cliq_test;Username=postgres;Password=postgres";
+            ?? "Host=localhost;Database=cliq_test;Username=postgres;Password=postgres;Port=5433";
         Environment = new HostingEnvironment { EnvironmentName = "Testing" };
-        // Use a shared context throughought the test lifecycle
-        // Otherwise there is issues sharing transaction across different DbContext instances
+        
+        // First ensure the database exists
+        EnsureDatabaseCreated();
+        
+        // Create context for tests
         Context = CreateContext();
-        Context.Database.EnsureDeleted();
-        Context.Database.EnsureCreated();
+    }
+    
+    private void EnsureDatabaseCreated()
+    {
+        var options = new DbContextOptionsBuilder<CliqDbContext>()
+            .UseNpgsql(ConnectionString)
+            .Options;
+        
+        using var context = new CliqDbContext(options, Environment);
+        context.Database.EnsureCreated();
     }
 
     protected CliqDbContext CreateContext()
@@ -36,7 +47,7 @@ public abstract class DatabaseTestBase : IAsyncLifetime
     public async Task InitializeAsync()
     {
         // Start transaction
-        await Context.Database.BeginTransactionAsync();
+        _transaction = await Context.Database.BeginTransactionAsync();
 
         // Setup test data
         await SetupTestDataAsync(Context);
@@ -46,11 +57,16 @@ public abstract class DatabaseTestBase : IAsyncLifetime
     // Runs after each test
     public async Task DisposeAsync()
     {
-        if (Context.Database.CurrentTransaction != null)
+        if (_transaction != null)
         {
-            await Context.Database.RollbackTransactionAsync();
+            await _transaction.RollbackAsync();
+            await _transaction.DisposeAsync();
         }
-        await Context.DisposeAsync();
+        
+        if (Context != null)
+        {
+            await Context.DisposeAsync();
+        }
     }
 
     protected abstract Task SetupTestDataAsync(CliqDbContext context);

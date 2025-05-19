@@ -90,31 +90,59 @@ public class CircleService : ICircleService
     }
 
     // Get all circles where user is an owner or where they are a member of a shared circle. Do not include circles where user is a member of a private circle.
-public async Task<IEnumerable<CirclePublicDto>> GetUserMemberCirclesAsync(Guid userId)
-{
-    if (await _dbContext.Users.FirstOrDefaultAsync(u => u.Id == userId) == null)
+    public async Task<IEnumerable<CirclePublicDto>> GetUserMemberCirclesAsync(Guid userId)
     {
-        throw new BadHttpRequestException($"Cannot create post for invalid user {userId}");
+        if (await _dbContext.Users.FirstOrDefaultAsync(u => u.Id == userId) == null)
+        {
+            throw new BadHttpRequestException($"Cannot create post for invalid user {userId}");
+        }
+
+        // Get circles where user is a member (through CircleMembership)
+        var memberCircles = _dbContext.CircleMemberships
+            .Where(cm => cm.UserId == userId)
+            .Include(cm => cm.Circle)
+            .Select(cm => cm.Circle)
+            .Where(c => c.IsShared && c.OwnerId != userId); // Only include shared circles and ones the user does not own (to avoid duplicates, those get marked seperately)
+
+        // Get circles where user is the owner
+        var ownedCircles = _dbContext.Circles
+            .Where(c => c.OwnerId == userId);
+
+        var ownedCirclesMapped = _mapper.Map<IEnumerable<CirclePublicDto>>(ownedCircles).Select(c => new CirclePublicDto { Id = c.Id, IsOwner = true, IsShared = c.IsShared, Name = c.Name });
+        // Combine both lists and remove duplicates
+        // TODO: might  e bug if member circles returns 
+        return _mapper.Map<IEnumerable<CirclePublicDto>>(memberCircles).Union(ownedCirclesMapped, new CircleIdComparer());
     }
-    
-    // Get circles where user is a member (through CircleMembership)
-    var memberCircles = await _dbContext.CircleMemberships
-        .Where(cm => cm.UserId == userId)
-        .Include(cm => cm.Circle)
-        .Select(cm => cm.Circle)
-        .Where(c => c.IsShared) // Only include shared circles
+
+    public static async Task ValidateAuthorizationToPostAsync(CliqDbContext dbContext, Guid[] circleIds, Guid userId)
+    {
+        var circleValidation = await dbContext.Circles
+        .Where(c => circleIds.Contains(c.Id))
+        .Select(c => new
+        {
+            c.Id,
+            IsUserMember = c.Members.Any(m => m.UserId == userId) || c.OwnerId == userId
+        })
         .ToListAsync();
-    
-    // Get circles where user is the owner
-    var ownedCircles = await _dbContext.Circles
-        .Where(c => c.OwnerId == userId)
-        .ToListAsync();
-    
-    // Combine both lists and remove duplicates
-    var allCircles = memberCircles
-        .Union(ownedCircles, new CircleIdComparer())
-        .ToList();
-    
-    return _mapper.Map<IEnumerable<CirclePublicDto>>(allCircles);
-}
+
+        // Check if any circles were not found
+        var foundCircleIds = circleValidation.Select(c => c.Id).ToList();
+        var missingCircleIds = circleIds.Except(foundCircleIds).ToList();
+        if (missingCircleIds.Any())
+        {
+            throw new BadHttpRequestException(
+                $"Cannot create post for invalid circle(s): {string.Join(", ", missingCircleIds)}");
+        }
+
+        // Check if user is not a member/owner of any of the circles
+        var unauthorizedCircleIds = circleValidation
+            .Where(c => !c.IsUserMember)
+            .Select(c => c.Id)
+            .ToList();
+        if (unauthorizedCircleIds.Any())
+        {
+            throw new UnauthorizedAccessException(
+                $"User is not a member of circle(s): {string.Join(", ", unauthorizedCircleIds)}");
+        }
+    }
 }

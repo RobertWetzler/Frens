@@ -7,8 +7,8 @@ using Microsoft.EntityFrameworkCore.Storage;
 
 public class CommentTests : DatabaseTestBase
 {
-    private string _postId = null!;
-    private string _userId = null!;
+    private Guid _postId;
+    private Guid _userId;
     private Comment _comment1;
     private Comment _comment2;
     private Comment _subComment;
@@ -27,16 +27,14 @@ public class CommentTests : DatabaseTestBase
         // Create minimal data needed for this specific test
         var user = new User
         {
-            Id = "testuser1",
             Name = "Test User",
             Email = "test@example.com",
-            Password = BCrypt.Net.BCrypt.HashPassword("password123"),
-            Username = "testuser"
+            UserName = "testuser"
         };
 
         var post = new Post
         {
-            Id = "testpost1",
+            Id = Guid.NewGuid(),
             UserId = user.Id,
             Date = DateTime.UtcNow,
             Text = "Test post"
@@ -44,7 +42,7 @@ public class CommentTests : DatabaseTestBase
 
         var comment1 = new Comment
         {
-            Id = "testComment1",
+            Id = Guid.NewGuid(),
             UserId = user.Id,
             PostId = post.Id,
             Date = DateTime.UtcNow,
@@ -53,7 +51,7 @@ public class CommentTests : DatabaseTestBase
 
         var comment2 = new Comment
         {
-            Id = "testComment2",
+            Id = Guid.NewGuid(),
             UserId = user.Id,
             PostId = post.Id,
             Date = DateTime.UtcNow,
@@ -62,7 +60,7 @@ public class CommentTests : DatabaseTestBase
 
         var subComment = new Comment
         {
-            Id = "testComment3",
+            Id = Guid.NewGuid(),
             UserId = user.Id,
             PostId = post.Id,
             ParentCommentId = comment2.Id,
@@ -72,7 +70,7 @@ public class CommentTests : DatabaseTestBase
 
         var subComment2 = new Comment
         {
-            Id = "testComment4",
+            Id = Guid.NewGuid(),
             UserId = user.Id,
             PostId = post.Id,
             ParentCommentId = subComment.Id,

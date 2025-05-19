@@ -13,7 +13,6 @@ public class Post
     public required string Text { get; set; }
     public User User { get; set; } = null!;
     public ICollection<Comment> Comments { get; set; } = new List<Comment>();
-    public ICollection<User> Viewers { get; set; } = new List<User>();
     public ICollection<CirclePost> SharedWithCircles { get; set; } = new List<CirclePost>();
 }
 
@@ -27,4 +26,10 @@ public class PostDto
     public List<CommentDto> Comments { get; set; } = new List<CommentDto>();
     public List<CirclePublicDto> SharedWithCircles { get; set; } = new List<CirclePublicDto>();
     public int CommentCount { get; set; } = 0;
+}
+
+public class CreatePostDto
+{
+    public string Text { get; set; }
+    public Guid[] CircleIds { get; set; }
 }

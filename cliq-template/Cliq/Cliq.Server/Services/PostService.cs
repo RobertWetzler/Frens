@@ -18,11 +18,9 @@ public interface IPostService
     Task<IEnumerable<PostDto>> GetFeedForUserAsync(Guid userId, int page = 1, int pageSize = 20);
     Task<List<PostDto>> GetAllPostsAsync(bool includeCommentCount = false);
     Task<IEnumerable<PostDto>> GetUserPostsAsync(Guid userId, int page = 1, int pageSize = 20);
-    Task<PostDto> CreatePostAsync(Guid userId, string text);
+    Task<PostDto> CreatePostAsync(Guid userId, Guid[] circleIds, string text);
     Task<PostDto?> UpdatePostAsync(Guid id, Guid updatedByUserId, string newText);
     Task<bool> DeletePostAsync(Guid id, Guid deletedByUserId);
-    Task<bool> AddViewerAsync(Guid postId, Guid userId);
-    Task<bool> RemoveViewerAsync(Guid postId, Guid userId);
     Task<bool> PostExistsAsync(Guid id);
     Task<int> SaveChangesAsync();
 }
@@ -51,7 +49,6 @@ public class PostService : IPostService
     {
         var post = await _dbContext.Posts
             .Include(p => p.User)
-            .Include(p => p.Viewers)
             .FirstOrDefaultAsync(p => p.Id == id);
 
         if (post == null) return null;
@@ -234,7 +231,6 @@ public class PostService : IPostService
         {
             var posts = await _dbContext.Posts
                 .Include(p => p.User)
-                .Include(p => p.Viewers)
                 .Where(p => p.UserId == userId)
                 .OrderByDescending(p => p.Date)
                 .Skip((page - 1) * pageSize)
@@ -249,15 +245,15 @@ public class PostService : IPostService
         }
     }
 
-    // TODO: Should FromBody be used to force JSON body request (POST semantic)?
-    // TODO: Take userId from JWT token
-    public async Task<PostDto> CreatePostAsync(Guid userId, string text)
+    public async Task<PostDto> CreatePostAsync(Guid userId, Guid[] circleIds, string text)
     {
         // TODO: Use a method from UserService for finding User by ID
         if (await this._dbContext.Users.FirstOrDefaultAsync(u => u.Id == userId) == null)
         {
             throw new Microsoft.AspNetCore.Http.BadHttpRequestException($"Cannot create post for invalid user {userId}");
         }
+
+        await CircleService.ValidateAuthorizationToPostAsync(_dbContext, circleIds, userId);
 
         try
         {
@@ -270,6 +266,13 @@ public class PostService : IPostService
             };
 
             var entry = await _dbContext.Posts.AddAsync(post);
+            var circlePosts = circleIds.Select(circleId => new CirclePost
+            {
+                CircleId = circleId,
+                PostId = post.Id,
+                SharedAt = DateTime.UtcNow
+            }).ToList();
+            await _dbContext.CirclePosts.AddRangeAsync(circlePosts);
             await SaveChangesAsync();
 
             // Reload the post with relationships
@@ -278,7 +281,9 @@ public class PostService : IPostService
                 .LoadAsync();
 
             await _dbContext.Entry(post)
-                .Collection(p => p.Viewers)
+                .Collection(p => p.SharedWithCircles)
+                .Query()
+                .Include(cp => cp.Circle)
                 .LoadAsync();
 
             return this._mapper.Map<PostDto>(entry.Entity);
@@ -336,58 +341,6 @@ public class PostService : IPostService
         }
     }
 
-    public async Task<bool> AddViewerAsync(Guid postId, Guid userId)
-    {
-        try
-        {
-            var post = await _dbContext.Posts
-                .Include(p => p.Viewers)
-                .FirstOrDefaultAsync(p => p.Id == postId);
-
-            if (post == null) return false;
-
-            var user = await _dbContext.Users.FindAsync(userId);
-            if (user == null) return false;
-
-            if (!post.Viewers.Any(v => v.Id == userId))
-            {
-                post.Viewers.Add(user);
-                await SaveChangesAsync();
-            }
-
-            return true;
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Error adding viewer {UserId} to post {PostId}", userId, postId);
-            throw;
-        }
-    }
-
-    public async Task<bool> RemoveViewerAsync(Guid postId, Guid userId)
-    {
-        try
-        {
-            var post = await _dbContext.Posts
-                .Include(p => p.Viewers)
-                .FirstOrDefaultAsync(p => p.Id == postId);
-
-            if (post == null) return false;
-
-            var viewer = post.Viewers.FirstOrDefault(v => v.Id == userId);
-            if (viewer == null) return false;
-
-            post.Viewers.Remove(viewer);
-            await SaveChangesAsync();
-            return true;
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Error removing viewer {UserId} from post {PostId}", userId, postId);
-            throw;
-        }
-    }
-
     public async Task<bool> PostExistsAsync(Guid id)
     {
         return await _dbContext.Posts.AnyAsync(p => p.Id == id);
@@ -407,4 +360,10 @@ public static class ServiceCollectionExtensions
         services.AddScoped<IPostService, PostService>();
         return services;
     }
+
+    public static IServiceCollection AddCircleServices(this IServiceCollection services)
+    {
+        services.AddScoped<ICircleService, CircleService>();
+        return services;
+    } 
 }

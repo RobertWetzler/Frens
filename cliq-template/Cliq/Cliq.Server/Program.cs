@@ -49,6 +49,7 @@ var mapperConfig = new MapperConfiguration(c => c.AddProfile(new MappingProfile(
 builder.Services.AddSingleton<IMapper>(mapperConfig.CreateMapper());
 
 builder.Services.AddPostServices();
+builder.Services.AddCircleServices();
 builder.Services.AddCommentServices();
 builder.Services.AddFriendshipServices();
 // Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle

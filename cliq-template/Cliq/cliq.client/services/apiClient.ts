@@ -1,4 +1,4 @@
-import { Client } from 'services/generated/generatedClient'
+import { ApiException, Client } from 'services/generated/generatedClient'
 import getEnvVars from 'env'
 import { tokenStorage } from 'utils/tokenStorage';
 import { authEvents, AUTH_STATE_CHANGE } from '../contexts/AuthContext';
@@ -135,11 +135,19 @@ export class ApiClient {
         try {
             const client = await ApiClient.getInstance();
             return await operation(client);
-        } catch (error) {
+        } catch (error: unknown) {
             // If the error is related to authentication and retries failed
-            if (error.status === 401) {
-                this.signalAuthFailure();
+            if (error instanceof ApiException)
+            {
+                if (error.status === 401) {
+                    this.signalAuthFailure();
+                    throw error;
+                }
+                if (error.status == 201) {
+                    return;
+                }
             }
+            
             throw error;
         }
     }

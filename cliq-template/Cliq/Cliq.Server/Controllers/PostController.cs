@@ -50,17 +50,16 @@ public class PostController : ControllerBase
     }
 
     [HttpPost]
-    public async Task<ActionResult<PostDto>> CreatePost(string text)
+    public async Task<ActionResult<PostDto>> CreatePost([FromBody] CreatePostDto request)
     {
         var idClaim = this.HttpContext.User.Claims.FirstOrDefault(c => c.Type == "http://schemas.xmlsoap.org/ws/2005/05/identity/claims/nameidentifier");
         if (idClaim == null)
         {
             return Unauthorized();
         }
-        var createdPost = await _postService.CreatePostAsync(new Guid(idClaim.Value), text);
+        var createdPost = await _postService.CreatePostAsync(new Guid(idClaim.Value), request.CircleIds, request.Text);
         return CreatedAtAction(nameof(GetPost), new { id = createdPost.Id }, createdPost);
     }
-
     // TODO: Authorize userId matches that of postId
     [HttpPut("{id}")]
     public async Task<IActionResult> UpdatePost(Guid id, string newText)

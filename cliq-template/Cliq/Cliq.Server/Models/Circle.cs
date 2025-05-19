@@ -12,9 +12,9 @@ public class Circle
 }
 
 // Helper class to avoid duplicates when combining circles
-public class CircleIdComparer : IEqualityComparer<Circle>
+public class CircleIdComparer : IEqualityComparer<CirclePublicDto>
 {
-    public bool Equals(Circle? x, Circle? y)
+    public bool Equals(CirclePublicDto? x, CirclePublicDto? y)
     {
         if (x == null || y == null)
             return false;
@@ -22,7 +22,7 @@ public class CircleIdComparer : IEqualityComparer<Circle>
         return x.Id == y.Id;
     }
     
-    public int GetHashCode(Circle obj)
+    public int GetHashCode(CirclePublicDto obj)
     {
         return obj.Id.GetHashCode();
     }
@@ -54,7 +54,8 @@ public class CirclePublicDto
 {
     public Guid Id { get; set; }
     public string Name { get; set; }
-    public bool IsShared { get; set; }  
+    public bool IsShared { get; set; }
+    public bool IsOwner {get; set; } = false;
 }
 
 public class CircleCreationDto

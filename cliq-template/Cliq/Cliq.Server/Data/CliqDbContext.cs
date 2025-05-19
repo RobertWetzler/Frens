@@ -32,11 +32,6 @@ public class CliqDbContext : IdentityDbContext<User, CliqRole, Guid>
         // Make Postgres use quoted identifiers for case-sensitivity
         modelBuilder.UseIdentityByDefaultColumns();
 
-        // Configure many-to-many relationship between Post and User (viewers)
-        modelBuilder.Entity<Post>()
-            .HasMany(p => p.Viewers)
-            .WithMany();
-
         // Configure one-to-many relationship between User and Post
         modelBuilder.Entity<Post>()
             .HasOne(p => p.User)

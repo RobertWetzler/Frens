@@ -924,20 +924,20 @@ export class Client {
     }
 
     /**
-     * @param text (optional) 
+     * @param body (optional) 
      * @return OK
      */
-    postPOST(text: string | undefined): Promise<PostDto> {
-        let url_ = this.baseUrl + "/api/Post?";
-        if (text === null)
-            throw new Error("The parameter 'text' cannot be null.");
-        else if (text !== undefined)
-            url_ += "text=" + encodeURIComponent("" + text) + "&";
+    postPOST(body: CreatePostDto | undefined): Promise<PostDto> {
+        let url_ = this.baseUrl + "/api/Post";
         url_ = url_.replace(/[?&]$/, "");
 
+        const content_ = JSON.stringify(body);
+
         let options_: RequestInit = {
+            body: content_,
             method: "POST",
             headers: {
+                "Content-Type": "application/json",
                 "Accept": "text/plain"
             }
         };
@@ -1106,6 +1106,7 @@ export class CirclePublicDto implements ICirclePublicDto {
     id?: string;
     name?: string | undefined;
     isShared?: boolean;
+    isOwner?: boolean;
 
     constructor(data?: ICirclePublicDto) {
         if (data) {
@@ -1121,6 +1122,7 @@ export class CirclePublicDto implements ICirclePublicDto {
             this.id = _data["id"];
             this.name = _data["name"];
             this.isShared = _data["isShared"];
+            this.isOwner = _data["isOwner"];
         }
     }
 
@@ -1136,6 +1138,7 @@ export class CirclePublicDto implements ICirclePublicDto {
         data["id"] = this.id;
         data["name"] = this.name;
         data["isShared"] = this.isShared;
+        data["isOwner"] = this.isOwner;
         return data;
     }
 }
@@ -1144,6 +1147,7 @@ export interface ICirclePublicDto {
     id?: string;
     name?: string | undefined;
     isShared?: boolean;
+    isOwner?: boolean;
 }
 
 export class CommentDto implements ICommentDto {
@@ -1207,6 +1211,54 @@ export interface ICommentDto {
     text: string | undefined;
     user: UserDto;
     replies?: CommentDto[] | undefined;
+}
+
+export class CreatePostDto implements ICreatePostDto {
+    text?: string | undefined;
+    circleIds?: string[] | undefined;
+
+    constructor(data?: ICreatePostDto) {
+        if (data) {
+            for (var property in data) {
+                if (data.hasOwnProperty(property))
+                    (<any>this)[property] = (<any>data)[property];
+            }
+        }
+    }
+
+    init(_data?: any) {
+        if (_data) {
+            this.text = _data["text"];
+            if (Array.isArray(_data["circleIds"])) {
+                this.circleIds = [] as any;
+                for (let item of _data["circleIds"])
+                    this.circleIds!.push(item);
+            }
+        }
+    }
+
+    static fromJS(data: any): CreatePostDto {
+        data = typeof data === 'object' ? data : {};
+        let result = new CreatePostDto();
+        result.init(data);
+        return result;
+    }
+
+    toJSON(data?: any) {
+        data = typeof data === 'object' ? data : {};
+        data["text"] = this.text;
+        if (Array.isArray(this.circleIds)) {
+            data["circleIds"] = [];
+            for (let item of this.circleIds)
+                data["circleIds"].push(item);
+        }
+        return data;
+    }
+}
+
+export interface ICreatePostDto {
+    text?: string | undefined;
+    circleIds?: string[] | undefined;
 }
 
 export class FriendshipDto implements IFriendshipDto {

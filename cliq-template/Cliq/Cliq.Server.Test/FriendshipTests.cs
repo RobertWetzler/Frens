@@ -11,11 +11,11 @@ using Xunit;
 
 public class FriendshipTests : DatabaseTestBase
 {
-    private string _user1Id = null!;
-    private string _user2Id = null!;
-    private string _user3Id = null!;
-    private string _pendingFriendshipId = null!;
-    private string _acceptedFriendshipId = null!;
+    private Guid _user1Id;
+    private Guid _user2Id;
+    private Guid _user3Id;
+    private Guid _pendingFriendshipId;
+    private Guid _acceptedFriendshipId;
 
     private IFriendshipService _friendshipService = null!;
     private IMapper _mapper;
@@ -31,7 +31,7 @@ public class FriendshipTests : DatabaseTestBase
         // Create test users
         var user1 = new User
         {
-            Id = "testuser1",
+            Id = Guid.NewGuid(),
             Name = "Test User One",
             Email = "user1@example.com",
             UserName = "testuser1"
@@ -39,7 +39,7 @@ public class FriendshipTests : DatabaseTestBase
 
         var user2 = new User
         {
-            Id = "testuser2",
+            Id = Guid.NewGuid(),
             Name = "Test User Two",
             Email = "user2@example.com",
             UserName = "testuser2"
@@ -47,7 +47,7 @@ public class FriendshipTests : DatabaseTestBase
 
         var user3 = new User
         {
-            Id = "testuser3",
+            Id = Guid.NewGuid(),
             Name = "Test User Three",
             Email = "user3@example.com",
             UserName = "testuser3"
@@ -56,7 +56,7 @@ public class FriendshipTests : DatabaseTestBase
         // Create a pending friendship from user1 to user2
         var pendingFriendship = new Friendship
         {
-            Id = "pending-friendship",
+            Id = Guid.NewGuid(),
             RequesterId = user1.Id,
             AddresseeId = user2.Id,
             Status = FriendshipStatus.Pending,
@@ -66,7 +66,7 @@ public class FriendshipTests : DatabaseTestBase
         // Create an accepted friendship between user1 and user3
         var acceptedFriendship = new Friendship
         {
-            Id = "accepted-friendship",
+            Id = Guid.NewGuid(),
             RequesterId = user1.Id,
             AddresseeId = user3.Id,
             Status = FriendshipStatus.Accepted,
