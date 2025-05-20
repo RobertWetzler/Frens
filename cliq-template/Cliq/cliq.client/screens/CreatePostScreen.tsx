@@ -72,6 +72,10 @@ const CreatePostScreen = ({ navigation }) => {
     }
   };
 
+  const handleCreateNewCircle = () => {
+    navigation.navigate('CreateCircle');
+  };
+
   return (
     <SafeAreaView style={styles.container}>
       <KeyboardAvoidingView
@@ -149,6 +153,24 @@ const CreatePostScreen = ({ navigation }) => {
             </TouchableOpacity>
           )}
           contentContainerStyle={styles.circleList}
+          ListFooterComponent={
+            <TouchableOpacity 
+              style={styles.createCircleButton}
+              onPress={handleCreateNewCircle}
+              activeOpacity={0.7}
+            >
+              <View style={styles.circleIconContainer}>
+                <Ionicons 
+                  name="add" 
+                  size={20} 
+                  color="#1DA1F2" 
+                />
+              </View>
+              <Text style={styles.createCircleText}>
+                Create New Circle
+              </Text>
+            </TouchableOpacity>
+          }
         /> 
       </KeyboardAvoidingView>
     </SafeAreaView>
@@ -194,7 +216,7 @@ const styles = StyleSheet.create({
   },
   circleWarning: {
     fontSize: 12,
-    color: '#ff6b6b',
+    color: '#f5f8fa',
     fontStyle: 'italic',
   },
   circleList: {
@@ -254,6 +276,29 @@ const styles = StyleSheet.create({
   postButtonText: {
     color: '#fff',
     fontWeight: '600',
+  },
+  createCircleButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 12,
+    paddingHorizontal: 15,
+    borderRadius: 12,
+    marginVertical: 4,
+    backgroundColor: '#fff',
+    borderWidth: 1,
+    borderColor: '#1DA1F2',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.1,
+    shadowRadius: 1,
+    elevation: 1,
+  },
+  createCircleText: {
+    fontSize: 16,
+    marginLeft: 8,
+    flex: 1,
+    color: '#1DA1F2',
+    fontWeight: '500',
   },
 });
 

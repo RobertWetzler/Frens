@@ -18,6 +18,11 @@ public static class SeedExtensions
         var kevin = modelBuilder.GetOrAddUser("kevin@example.com", "Kevin Jones", users);
         var mira = modelBuilder.GetOrAddUser("mira@example.com", "Mira Peterson", users);
 
+        modelBuilder.AddFriend(robert, [sierra, spencer, devon, jacob, howard, anya, kevin, mira]);
+        modelBuilder.AddFriend(sierra, [anya, kevin, mira]);
+        modelBuilder.AddFriend(spencer, [devon, sierra]);
+        modelBuilder.AddFriend(devon, [jacob]);
+
         var climbingCircle = modelBuilder.CreateCircle("Climbing Crew", false, robert, devon, spencer);
         var hikingCircle = modelBuilder.CreateCircle("Hiking Buddies", true, robert, sierra, jacob);
         var familyCircle = modelBuilder.CreateCircle("Family", false, robert, howard);
@@ -59,6 +64,22 @@ public static class SeedExtensions
             modelBuilder.Entity<User>().HasData(user);
         }
         return user;
+    }
+
+    private static void AddFriend(this ModelBuilder modelBuilder, User user, User[] friends)
+    {
+        foreach (var friend in friends)
+        {
+            var f = new Friendship
+            {
+                Id = Guid.NewGuid(),
+                RequesterId = user.Id,
+                AddresseeId = friend.Id,
+                Status = FriendshipStatus.Accepted
+            };
+            modelBuilder.Entity<Friendship>().HasData(f);
+        }
+
     }
     private static Post CreatePost(this ModelBuilder modelBuilder, User author, string text, DateTime date, params Circle[] circles)
     {

@@ -12,12 +12,12 @@ namespace Cliq.Server.Controllers
     [Route("api/[controller]")]
     [ApiController]
     [Authorize]
-    public class FriendshipController : ControllerBase
+    public class FrenshipController : ControllerBase
     {
         private readonly IFriendshipService _friendshipService;
         private readonly IMapper _mapper;
 
-        public FriendshipController(IFriendshipService friendshipService, IMapper mapper)
+        public FrenshipController(IFriendshipService friendshipService, IMapper mapper)
         {
             _friendshipService = friendshipService;
             _mapper = mapper;
@@ -102,7 +102,7 @@ namespace Cliq.Server.Controllers
             return NotFound(new { error = "Friend request not found or you don't have permission to cancel it" });
         }
 
-        [HttpDelete("remove-friend/{friendId}")]
+        [HttpDelete("remove-fren/{friendId}")]
         public async Task<ActionResult> RemoveFriend(Guid friendId)
         {
             var currentUserId = GetCurrentUserId();
@@ -125,7 +125,7 @@ namespace Cliq.Server.Controllers
             return Ok(new { success = result });
         }
 
-        [HttpGet("friend-requests")]
+        [HttpGet("fren-requests")]
         public async Task<ActionResult<IEnumerable<FriendshipDto>>> GetFriendRequests()
         {
             var currentUserId = GetCurrentUserId();
@@ -134,7 +134,7 @@ namespace Cliq.Server.Controllers
             return Ok(friendRequests);
         }
 
-        [HttpGet("friends")]
+        [HttpGet]
         public async Task<ActionResult<IEnumerable<UserDto>>> GetFriends()
         {
             var currentUserId = GetCurrentUserId();

@@ -38,7 +38,7 @@ const Post: React.FC<PostProps> = ({ post, navigation, isNavigable = true }) => 
       <View style={styles.header}>
         <View style={styles.authorContainer}>
           <Text style={styles.author}>{post.user.name}</Text>
-          <Text style={styles.sharedWith}> shared with {sharedWithText}</Text>
+            <Text style={styles.sharedWith}> to {sharedWithText}</Text>
         </View>
         <Text style={styles.date}>{formatDate(post.date)}</Text>
       </View>

@@ -368,7 +368,7 @@ export class Client {
      * @return OK
      */
     sendRequest(addresseeId: string): Promise<FriendshipDto> {
-        let url_ = this.baseUrl + "/api/Friendship/send-request/{addresseeId}";
+        let url_ = this.baseUrl + "/api/Frenship/send-request/{addresseeId}";
         if (addresseeId === undefined || addresseeId === null)
             throw new Error("The parameter 'addresseeId' must be defined.");
         url_ = url_.replace("{addresseeId}", encodeURIComponent("" + addresseeId));
@@ -408,7 +408,7 @@ export class Client {
      * @return OK
      */
     acceptRequest(friendshipId: string): Promise<FriendshipDto> {
-        let url_ = this.baseUrl + "/api/Friendship/accept-request/{friendshipId}";
+        let url_ = this.baseUrl + "/api/Frenship/accept-request/{friendshipId}";
         if (friendshipId === undefined || friendshipId === null)
             throw new Error("The parameter 'friendshipId' must be defined.");
         url_ = url_.replace("{friendshipId}", encodeURIComponent("" + friendshipId));
@@ -448,7 +448,7 @@ export class Client {
      * @return OK
      */
     rejectRequest(friendshipId: string): Promise<void> {
-        let url_ = this.baseUrl + "/api/Friendship/reject-request/{friendshipId}";
+        let url_ = this.baseUrl + "/api/Frenship/reject-request/{friendshipId}";
         if (friendshipId === undefined || friendshipId === null)
             throw new Error("The parameter 'friendshipId' must be defined.");
         url_ = url_.replace("{friendshipId}", encodeURIComponent("" + friendshipId));
@@ -484,7 +484,7 @@ export class Client {
      * @return OK
      */
     cancelRequest(friendshipId: string): Promise<void> {
-        let url_ = this.baseUrl + "/api/Friendship/cancel-request/{friendshipId}";
+        let url_ = this.baseUrl + "/api/Frenship/cancel-request/{friendshipId}";
         if (friendshipId === undefined || friendshipId === null)
             throw new Error("The parameter 'friendshipId' must be defined.");
         url_ = url_.replace("{friendshipId}", encodeURIComponent("" + friendshipId));
@@ -519,8 +519,8 @@ export class Client {
     /**
      * @return OK
      */
-    removeFriend(friendId: string): Promise<void> {
-        let url_ = this.baseUrl + "/api/Friendship/remove-friend/{friendId}";
+    removeFren(friendId: string): Promise<void> {
+        let url_ = this.baseUrl + "/api/Frenship/remove-fren/{friendId}";
         if (friendId === undefined || friendId === null)
             throw new Error("The parameter 'friendId' must be defined.");
         url_ = url_.replace("{friendId}", encodeURIComponent("" + friendId));
@@ -533,11 +533,11 @@ export class Client {
         };
 
         return this.http.fetch(url_, options_).then((_response: Response) => {
-            return this.processRemoveFriend(_response);
+            return this.processRemoveFren(_response);
         });
     }
 
-    protected processRemoveFriend(response: Response): Promise<void> {
+    protected processRemoveFren(response: Response): Promise<void> {
         const status = response.status;
         let _headers: any = {}; if (response.headers && response.headers.forEach) { response.headers.forEach((v: any, k: any) => _headers[k] = v); };
         if (status === 200) {
@@ -556,7 +556,7 @@ export class Client {
      * @return OK
      */
     blockUser(userToBlockId: string): Promise<void> {
-        let url_ = this.baseUrl + "/api/Friendship/block-user/{userToBlockId}";
+        let url_ = this.baseUrl + "/api/Frenship/block-user/{userToBlockId}";
         if (userToBlockId === undefined || userToBlockId === null)
             throw new Error("The parameter 'userToBlockId' must be defined.");
         url_ = url_.replace("{userToBlockId}", encodeURIComponent("" + userToBlockId));
@@ -591,8 +591,8 @@ export class Client {
     /**
      * @return OK
      */
-    friendRequests(): Promise<FriendshipDto[]> {
-        let url_ = this.baseUrl + "/api/Friendship/friend-requests";
+    frenRequests(): Promise<FriendshipDto[]> {
+        let url_ = this.baseUrl + "/api/Frenship/fren-requests";
         url_ = url_.replace(/[?&]$/, "");
 
         let options_: RequestInit = {
@@ -603,11 +603,11 @@ export class Client {
         };
 
         return this.http.fetch(url_, options_).then((_response: Response) => {
-            return this.processFriendRequests(_response);
+            return this.processFrenRequests(_response);
         });
     }
 
-    protected processFriendRequests(response: Response): Promise<FriendshipDto[]> {
+    protected processFrenRequests(response: Response): Promise<FriendshipDto[]> {
         const status = response.status;
         let _headers: any = {}; if (response.headers && response.headers.forEach) { response.headers.forEach((v: any, k: any) => _headers[k] = v); };
         if (status === 200) {
@@ -635,8 +635,8 @@ export class Client {
     /**
      * @return OK
      */
-    friends(): Promise<UserDto[]> {
-        let url_ = this.baseUrl + "/api/Friendship/friends";
+    frenship(): Promise<UserDto[]> {
+        let url_ = this.baseUrl + "/api/Frenship";
         url_ = url_.replace(/[?&]$/, "");
 
         let options_: RequestInit = {
@@ -647,11 +647,11 @@ export class Client {
         };
 
         return this.http.fetch(url_, options_).then((_response: Response) => {
-            return this.processFriends(_response);
+            return this.processFrenship(_response);
         });
     }
 
-    protected processFriends(response: Response): Promise<UserDto[]> {
+    protected processFrenship(response: Response): Promise<UserDto[]> {
         const status = response.status;
         let _headers: any = {}; if (response.headers && response.headers.forEach) { response.headers.forEach((v: any, k: any) => _headers[k] = v); };
         if (status === 200) {
@@ -680,7 +680,7 @@ export class Client {
      * @return OK
      */
     status(userId: string): Promise<FriendshipStatusDto> {
-        let url_ = this.baseUrl + "/api/Friendship/status/{userId}";
+        let url_ = this.baseUrl + "/api/Frenship/status/{userId}";
         if (userId === undefined || userId === null)
             throw new Error("The parameter 'userId' must be defined.");
         url_ = url_.replace("{userId}", encodeURIComponent("" + userId));
@@ -720,7 +720,7 @@ export class Client {
      * @return OK
      */
     check(userId: string): Promise<boolean> {
-        let url_ = this.baseUrl + "/api/Friendship/check/{userId}";
+        let url_ = this.baseUrl + "/api/Frenship/check/{userId}";
         if (userId === undefined || userId === null)
             throw new Error("The parameter 'userId' must be defined.");
         url_ = url_.replace("{userId}", encodeURIComponent("" + userId));

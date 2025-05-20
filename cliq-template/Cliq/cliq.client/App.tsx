@@ -17,12 +17,14 @@ import CreatePostScreen from './screens/CreatePostScreen'; // You'll need to cre
 import { ActivityIndicator, SafeAreaView } from 'react-native';
 import AnimatedBackground from './components/AnimatedBackground';
 import { AuthProvider, useAuth } from 'contexts/AuthContext';
+import CreateCircleScreen from 'screens/CreateCircleScreen';
 
 type RootStackParamList = {
     Auth: undefined;
     Main: undefined;
     Comments: undefined;
     CreatePost: undefined;
+    CreateCircle: undefined;
     Profile: { userId: string };
 };
 
@@ -152,6 +154,7 @@ const MainApp = () => {
               name="CreatePost" 
               component={CreatePostScreen} 
               options={{
+                title: 'Create Post',
                 presentation: 'modal',
                 cardStyleInterpolator: ({ current }) => ({
                   cardStyle: {
@@ -171,6 +174,11 @@ const MainApp = () => {
               name="Profile" 
               component={ProfileScreen} 
               options={{ title: 'Profile' }}
+            />
+            <Stack.Screen 
+              name="CreateCircle" 
+              component={CreateCircleScreen} 
+              options={{ title: 'Create Circle' }}
             />
           </>
         ) : (
