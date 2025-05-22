@@ -8,7 +8,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.IdentityModel.Protocols.Configuration;
-using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Authorizatipon;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Identity.UI;
@@ -24,7 +24,7 @@ var builder = WebApplication.CreateBuilder(args);
 // Listen on all interfaces
 builder.WebHost.ConfigureKestrel(serverOptions =>
 {
-    serverOptions.ListenAnyIP(5265); // Listen on all interfaces
+    serverOptions.ListenAnyIP(8080); // Listen on all interfaces
 });
 
 // Add services to the container.
@@ -185,7 +185,8 @@ if (app.Environment.IsDevelopment())
     using (var scope = app.Services.CreateScope())
     {
         var db = scope.ServiceProvider.GetRequiredService<CliqDbContext>();
-        db.Database.EnsureDeleted(); // Drops the database if it exists
+        //db.Database.EnsureDeleted(); // Drops the database if it exists
+        // TODO: Ensure this works in prod env / figure out how to do this in prod env
         db.Database.EnsureCreated(); // Creates the database and schema
         // Or use migrations instead:
         //db.Database.Migrate();
