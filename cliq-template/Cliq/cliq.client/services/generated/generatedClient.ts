@@ -1063,8 +1063,9 @@ export class Client {
 }
 
 export class CircleCreationDto implements ICircleCreationDto {
-    name?: string | undefined;
-    isShared?: boolean;
+    name!: string | undefined;
+    isShared!: boolean;
+    userIdsToAdd?: string[] | undefined;
 
     constructor(data?: ICircleCreationDto) {
         if (data) {
@@ -1079,6 +1080,11 @@ export class CircleCreationDto implements ICircleCreationDto {
         if (_data) {
             this.name = _data["name"];
             this.isShared = _data["isShared"];
+            if (Array.isArray(_data["userIdsToAdd"])) {
+                this.userIdsToAdd = [] as any;
+                for (let item of _data["userIdsToAdd"])
+                    this.userIdsToAdd!.push(item);
+            }
         }
     }
 
@@ -1093,13 +1099,19 @@ export class CircleCreationDto implements ICircleCreationDto {
         data = typeof data === 'object' ? data : {};
         data["name"] = this.name;
         data["isShared"] = this.isShared;
+        if (Array.isArray(this.userIdsToAdd)) {
+            data["userIdsToAdd"] = [];
+            for (let item of this.userIdsToAdd)
+                data["userIdsToAdd"].push(item);
+        }
         return data;
     }
 }
 
 export interface ICircleCreationDto {
-    name?: string | undefined;
-    isShared?: boolean;
+    name: string | undefined;
+    isShared: boolean;
+    userIdsToAdd?: string[] | undefined;
 }
 
 export class CirclePublicDto implements ICirclePublicDto {

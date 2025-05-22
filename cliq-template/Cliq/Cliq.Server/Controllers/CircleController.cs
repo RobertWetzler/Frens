@@ -18,7 +18,7 @@ public class CircleController : ControllerBase
     }
 
     [HttpGet]
-    public async Task<ActionResult<IEnumerable<CirclePublicDto>>> GetUserMembberCircle()
+    public async Task<ActionResult<IEnumerable<CirclePublicDto>>> GetUserMemberCircle()
     {
         if(!AuthUtils.TryGetUserIdFromToken(this.HttpContext, out var userId))
         {
@@ -61,6 +61,8 @@ public class CircleController : ControllerBase
             return Unauthorized();
         }
         var createdCircle = await _circleService.CreateCircleAsync(userId, circleDto);
-        return CreatedAtAction(nameof(GetCircle), new CirclePublicDto{ Id = createdCircle.Id, Name = createdCircle.Name, IsShared = createdCircle.IsShared});
+        return CreatedAtAction(nameof(GetCircle),
+            new { circleId = createdCircle.Id }, // Route values
+            new CirclePublicDto{ Id = createdCircle.Id, Name = createdCircle.Name, IsShared = createdCircle.IsShared});
     }
 }

@@ -60,6 +60,7 @@ public class CirclePublicDto
 
 public class CircleCreationDto
 {
-    public string Name { get; set; }
-    public bool IsShared { get; set; } // If true, multiple members can post
+    public required string Name { get; set; }
+    public required bool IsShared { get; set; } // If true, multiple members can post
+    public Guid[] UserIdsToAdd { get; set; } = Array.Empty<Guid>();
 }

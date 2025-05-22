@@ -16,11 +16,25 @@ import { Ionicons } from '@expo/vector-icons';
 import { useMemberCircles } from 'hooks/useCircle';
 import ShaderBackground from 'components/ShaderBackground';
 import { CreatePostDto } from 'services/generated/generatedClient';
+import { useFocusEffect } from '@react-navigation/native';
 
-const CreatePostScreen = ({ navigation }) => {
+
+const CreatePostScreen = ({ navigation, route }) => {
   const [postContent, setPostContent] = useState('');
   const [selectedCircleIds, setSelectedCircleIds] = useState([]);
   const { circles, isLoading, error, loadCircles } = useMemberCircles();
+
+  // For refreshing data when this screen is navigated to
+  useFocusEffect(
+    React.useCallback(() => {
+      // Check if we should refresh data when screen is focused
+      if (route.params?.refresh) {
+        loadCircles(); // Your function to fetch fresh data
+        // Clear the parameter after refresh
+        navigation.setParams({ refresh: undefined });
+      }
+    }, [route.params?.refresh])
+  );
 
   // Render loading state
   if (isLoading) {
@@ -73,8 +87,9 @@ const CreatePostScreen = ({ navigation }) => {
   };
 
   const handleCreateNewCircle = () => {
-    navigation.navigate('CreateCircle');
-  };
+    navigation.navigate('CreateCircle', { 
+      onReturn: () => navigation.setParams({ refresh: true })
+    });  };
 
   return (
     <SafeAreaView style={styles.container}>

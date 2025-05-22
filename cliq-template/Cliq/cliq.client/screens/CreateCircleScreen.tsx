@@ -36,9 +36,8 @@ const CreateCircleScreen = ({ navigation }) => {
       setIsLoading(true);
       const response = await ApiClient.call(c => c.frenship());
       // TODO: Use this to verify scrollability on mobile
-      const response2 = response.concat(response);
-      response2.sort((u1, u2) => u1.name.localeCompare(u2.name));
-      setFriends(response2);
+      response.sort((u1, u2) => u1.name.localeCompare(u2.name));
+      setFriends(response);
       setError(null);
     } catch (err) {
       setError('Failed to load friends. Please try again.');
@@ -69,12 +68,12 @@ const CreateCircleScreen = ({ navigation }) => {
         c.circle(new CircleCreationDto({
           name: circleName,
           isShared: isShared,
-          //memberIds: selectedFriendIds
+          userIdsToAdd: selectedFriendIds
         }))
       );
       
       // Return to previous screen
-      navigation.goBack();
+      navigation.navigate('CreatePost', { refresh: true });
     } catch (error) {
       console.error('Error creating circle:', error);
       Alert.alert(
@@ -86,7 +85,7 @@ const CreateCircleScreen = ({ navigation }) => {
       setIsSubmitting(false);
     }
   };
-
+ 
   // Render loading state
   if (isLoading) {
     return (
@@ -116,7 +115,7 @@ const CreateCircleScreen = ({ navigation }) => {
         style={styles.keyboardAvoid}
       >
         <View style={styles.header}>
-          <TouchableOpacity onPress={() => navigation.goBack()}>
+          <TouchableOpacity onPress={() => navigation.goBack({refresh: true})}>
             <Ionicons name="arrow-back" size={24} color="#1DA1F2" />
           </TouchableOpacity>
           <Text style={styles.headerTitle}>Create New Circle</Text>

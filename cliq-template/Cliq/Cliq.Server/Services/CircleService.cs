@@ -39,6 +39,9 @@ public class CircleService : ICircleService
         {
             throw new BadHttpRequestException($"Cannot create post for invalid user {creatorId}");
         }
+
+        // Start a transaction to ensure all operations succeed or fail together
+        using var transaction = await _dbContext.Database.BeginTransactionAsync();
         try
         {
             var circle = new Circle
@@ -51,15 +54,67 @@ public class CircleService : ICircleService
             var entry = await _dbContext.Circles.AddAsync(circle);
             await _dbContext.SaveChangesAsync();
 
+            // Add owner as a member
+            await _dbContext.CircleMemberships.AddAsync(new CircleMembership
+            {
+                CircleId = circle.Id,
+                UserId = creatorId,
+                IsModerator = true // Owner is automatically a moderator
+            });
+
+            var userIdsToAdd = circleDto.UserIdsToAdd;
+            // Validate users are friends with the creator
+            if (userIdsToAdd != null && userIdsToAdd.Length > 0)
+            {
+                var creatorFriends = await _dbContext.Friendships
+                    .Where(f => (f.RequesterId == creatorId || f.AddresseeId == creatorId) &&
+                                f.Status == FriendshipStatus.Accepted)
+                    .Select(f => f.RequesterId == creatorId ? f.AddresseeId : f.RequesterId)
+                    .ToListAsync();
+
+                var nonFriendIds = userIdsToAdd.Where(id => id != creatorId && !creatorFriends.Contains(id)).ToList();
+                if (nonFriendIds.Any())
+                {
+                    throw new BadHttpRequestException($"Cannot add non-friend users to circle: {string.Join(", ", nonFriendIds)}");
+                }
+
+                // Verify all users exist
+                var existingUserIds = await _dbContext.Users
+                    .Where(u => userIdsToAdd.Contains(u.Id))
+                    .Select(u => u.Id)
+                    .ToListAsync();
+
+                var invalidUserIds = userIdsToAdd.Where(id => !existingUserIds.Contains(id)).ToList();
+                if (invalidUserIds.Any())
+                {
+                    throw new BadHttpRequestException($"Cannot add non-existent users to circle: {string.Join(", ", invalidUserIds)}");
+                }
+
+                // Add all valid friend users to the circle (excluding creator as they're already added)
+                var memberships = userIdsToAdd
+                    .Where(id => id != creatorId) // Skip creator as they're already added
+                    .Select(userId => new CircleMembership
+                    {
+                        CircleId = circle.Id,
+                        UserId = userId,
+                        IsModerator = false
+                    });
+
+                await _dbContext.CircleMemberships.AddRangeAsync(memberships);
+            }
+
+            await _dbContext.SaveChangesAsync();
+            await transaction.CommitAsync();
+
             return this._mapper.Map<CirclePublicDto>(entry.Entity);
         }
         catch (Exception ex)
         {
+            await transaction.RollbackAsync();
             _logger.LogError(ex, "Error creating circle for user: {CreatorId}", creatorId);
             throw;
         }
     }
-
     public async Task<CirclePublicDto> GetCircleAsync(Guid requestorId, Guid circleId)
     {
         var circle = await _dbContext.Circles

@@ -14,18 +14,25 @@ public static class SeedExtensions
         var devon = modelBuilder.GetOrAddUser("devio@example.com", "Devon Brandt", users);
         var jacob = modelBuilder.GetOrAddUser("twilly@example.com", "Jacob Terwilleger", users);
         var howard = modelBuilder.GetOrAddUser("daddio@example.com", "Howard Wetzler", users);
+        var carolyn = modelBuilder.GetOrAddUser("carolyn@example.com", "Carolyn Wetzler", users);
         var anya = modelBuilder.GetOrAddUser("anya@example.com", "Anya Steinberg", users);
         var kevin = modelBuilder.GetOrAddUser("kevin@example.com", "Kevin Jones", users);
         var mira = modelBuilder.GetOrAddUser("mira@example.com", "Mira Peterson", users);
+        
+        var eliza = modelBuilder.GetOrAddUser("eliza@example.com", "Eliza Topolosky", users);
+        var lauren = modelBuilder.GetOrAddUser("lauren@example.com", "Lauren Topolosky", users);
+        var barbara = modelBuilder.GetOrAddUser("barbara@example.com", "Barbara Topolosky", users);
+        var elana = modelBuilder.GetOrAddUser("elana@example.com", "Elana Loomis", users);
+        var daltin = modelBuilder.GetOrAddUser("mira@example.com", "Daltin Loomis", users);
 
-        modelBuilder.AddFriend(robert, [sierra, spencer, devon, jacob, howard, anya, kevin, mira]);
+        modelBuilder.AddFriend(robert, [sierra, spencer, devon, jacob, howard, carolyn, eliza, lauren, barbara, elana, daltin, anya, kevin, mira]);
         modelBuilder.AddFriend(sierra, [anya, kevin, mira]);
         modelBuilder.AddFriend(spencer, [devon, sierra]);
         modelBuilder.AddFriend(devon, [jacob]);
 
         var climbingCircle = modelBuilder.CreateCircle("Climbing Crew", false, robert, devon, spencer);
         var hikingCircle = modelBuilder.CreateCircle("Hiking Buddies", true, robert, sierra, jacob);
-        var familyCircle = modelBuilder.CreateCircle("Family", false, robert, howard);
+        var familyCircle = modelBuilder.CreateCircle("Family", false, robert, howard, elana, daltin, carolyn);
         var sierraFriends = modelBuilder.CreateCircle("Sierra's Friends", false, sierra, anya, kevin, mira);
 
         var post1 = modelBuilder.CreatePost(robert, "Planning a climbing trip this weekend!", DateTime.UtcNow.AddHours(-10), climbingCircle);
