@@ -122,7 +122,7 @@ public class CircleService : ICircleService
             .Include(c => c.Members)
             .FirstOrDefaultAsync(c => c.Id == circleId);
 
-        var requestorIsOwner = requestorId != circle.OwnerId;
+        var requestorIsOwner = requestorId == circle.OwnerId;
         var requestorIsMemberOfShared = circle.IsShared && circle.Members.Any(m => m.UserId == requestorId);
         if (!requestorIsOwner && !requestorIsMemberOfShared)
         {
