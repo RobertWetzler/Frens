@@ -1,5 +1,6 @@
 ﻿using Cliq.Server.Models;
 using Cliq.Server.Services;
+using Cliq.Utilities;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
@@ -20,7 +21,12 @@ public class PostController : ControllerBase
     [HttpGet("{id}")]
     public async Task<ActionResult<PostDto>> GetPost(Guid id, bool includeCommentTree = true)
     {
-        var post = await _postService.GetPostByIdAsync(id, includeCommentTree);
+        // TODO: Auhtorization to ensure use is either owner or member of shared circle
+        if(!AuthUtils.TryGetUserIdFromToken(HttpContext, out var userId))
+        {
+            return Unauthorized();
+        }
+        var post = await _postService.GetPostByIdAsync(userId, id, includeCommentTree);
         if (post == null)
         {
             return NotFound();
@@ -28,14 +34,6 @@ public class PostController : ControllerBase
         return Ok(post);
     }
 
-    // TODO: Only return posts that the user has access to
-    [HttpGet]
-    public async Task<ActionResult<IEnumerable<PostDto>>> GetAllPosts()
-    {
-        var posts = await _postService.GetAllPostsAsync(true);
-        return Ok(posts);
-    }
-    
     [HttpGet("feed")]
     public async Task<ActionResult<IEnumerable<PostDto>>> GetFeed(int page=1, int pageSize=20)
     {

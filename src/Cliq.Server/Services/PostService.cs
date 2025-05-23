@@ -1,20 +1,13 @@
 ﻿using AutoMapper;
 using Cliq.Server.Data;
 using Cliq.Server.Models;
-using Cliq.Server.Utilities;
-using Microsoft.AspNetCore.Http.HttpResults;
-using Microsoft.AspNetCore.Mvc;
-using Microsoft.AspNetCore.Mvc.RazorPages;
-using Microsoft.AspNetCore.Server.IIS;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.EntityFrameworkCore.ChangeTracking;
-using Microsoft.Extensions.Hosting;
 
 namespace Cliq.Server.Services;
 
 public interface IPostService
 {
-    Task<PostDto?> GetPostByIdAsync(Guid id, bool includeCommentTree = false, int maxDepth = 3);
+    Task<PostDto?> GetPostByIdAsync(Guid requestorId, Guid id, bool includeCommentTree = false, int maxDepth = 3);
     Task<IEnumerable<PostDto>> GetFeedForUserAsync(Guid userId, int page = 1, int pageSize = 20);
     Task<List<PostDto>> GetAllPostsAsync(bool includeCommentCount = false);
     Task<IEnumerable<PostDto>> GetUserPostsAsync(Guid userId, int page = 1, int pageSize = 20);
@@ -45,15 +38,43 @@ public class PostService : IPostService
         _logger = logger;
     }
 
-    public async Task<PostDto?> GetPostByIdAsync(Guid id, bool includeCommentTree = true, int maxDepth = 3)
+    public async Task<PostDto?> GetPostByIdAsync(Guid requestorId, Guid id, bool includeCommentTree = true, int maxDepth = 3)
     {
+        // First get the post with minimal data to check existence and ownership
         var post = await _dbContext.Posts
+            .FirstOrDefaultAsync(p => p.Id == id);
+
+        if (post == null)
+        {
+            _logger.LogWarning("User {UserId} attempted to access non-existent post {PostId}", requestorId, id);
+            throw new BadHttpRequestException($"Post {id} not found");
+        }
+
+        bool isAuthorized = post.UserId == requestorId;
+
+        // Only check circle membership if not already authorized as post owner
+        if (!isAuthorized)
+        {
+            // Check if post is shared with any circle the requestor is a member of
+            isAuthorized = await _dbContext.CirclePosts
+                .Where(cp => cp.PostId == id)
+                .AnyAsync(cp => _dbContext.CircleMemberships
+                    .Any(cm => cm.CircleId == cp.CircleId && cm.UserId == requestorId));
+
+            if (!isAuthorized)
+            {
+                _logger.LogWarning("User {UserId} attempted unauthorized access to post {PostId}", requestorId, id);
+                return null;
+            }
+        }
+
+        // User is authorized, load full post data with user info
+        var fullPost = await _dbContext.Posts
             .Include(p => p.User)
             .FirstOrDefaultAsync(p => p.Id == id);
 
-        if (post == null) return null;
+        var dto = _mapper.Map<PostDto>(fullPost);
 
-        var dto = this._mapper.Map<PostDto>(post);
         if (includeCommentTree)
         {
             dto.Comments = (await _commentService.GetAllCommentsForPostAsync(id)).ToList();
@@ -365,5 +386,5 @@ public static class ServiceCollectionExtensions
     {
         services.AddScoped<ICircleService, CircleService>();
         return services;
-    } 
+    }
 }
