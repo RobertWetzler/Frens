@@ -30,7 +30,39 @@ builder.WebHost.ConfigureKestrel(serverOptions =>
 // Add services to the container.
 builder.Services.AddDbContext<CliqDbContext>(options =>
 {
-    options.UseNpgsql(builder.Configuration.GetConnectionString("DefaultConnection"));
+    string connectionString;
+
+    if (builder.Environment.IsProduction())
+    {
+        // In production, use the DATABASE_URL environment variable
+        var connUrl = Environment.GetEnvironmentVariable("DATABASE_URL")
+            ?? throw new InvalidOperationException("DATABASE_URL environment variable is not set in production.");
+        // Parse connection URL to connection string for Npgsql
+        connUrl = connUrl.Replace("postgres://", string.Empty);
+        var pgUserPass = connUrl.Split("@")[0];
+        var pgHostPortDb = connUrl.Split("@")[1];
+        var pgHostPort = pgHostPortDb.Split("/")[0];
+        var pgDb = pgHostPortDb.Split("/")[1];
+        var pgUser = pgUserPass.Split(":")[0];
+        var pgPass = pgUserPass.Split(":")[1];
+        var pgHost = pgHostPort.Split(":")[0];
+        var pgPort = pgHostPort.Split(":")[1];
+        var updatedHost = pgHost.Replace("flycast", "internal");
+
+        connectionString = $"Server={updatedHost};Port={pgPort};User Id={pgUser};Password={pgPass};Database={pgDb};";
+
+        // Debug: Log the connection string (be careful not to log passwords in real production)
+        Console.WriteLine($"Connection string length: {connectionString.Length}");
+        Console.WriteLine($"Connection string ends with: '{connectionString.Substring(Math.Max(0, connectionString.Length - 20))}'");
+    }
+    else
+    {
+        // In development, use the connection string from configuration
+        connectionString = builder.Configuration.GetConnectionString("DefaultConnection")
+            ?? throw new InvalidOperationException("DefaultConnection is not configured.");
+    }
+
+    options.UseNpgsql(connectionString);
 });
 builder.Services.AddControllers().AddJsonOptions(o =>
 {
@@ -148,20 +180,20 @@ builder.Services.AddAuthentication(options =>
         ValidAudience = jwtSettings["Audience"],
         ClockSkew = TimeSpan.Zero
     };
-     // Add events to validate user exists in database on each request
+    // Add events to validate user exists in database on each request
     options.Events = new JwtBearerEvents
     {
         OnTokenValidated = async context =>
         {
             var userManager = context.HttpContext.RequestServices.GetRequiredService<UserManager<User>>();
             var userId = context.Principal?.FindFirstValue(ClaimTypes.NameIdentifier);
-            
+
             if (userId == null)
             {
                 context.Fail("Unauthorized: User identifier claim not found");
                 return;
             }
-            
+
             var user = await userManager.FindByIdAsync(userId);
             if (user == null)
             {
@@ -186,21 +218,28 @@ if (app.Environment.IsDevelopment())
     using (var scope = app.Services.CreateScope())
     {
         var db = scope.ServiceProvider.GetRequiredService<CliqDbContext>();
-        //db.Database.EnsureDeleted(); // Drops the database if it exists
-        // TODO: Ensure this works in prod env / figure out how to do this in prod env
-        db.Database.EnsureCreated(); // Creates the database and schema
-        // Or use migrations instead:
-        //db.Database.Migrate();
+
+        // For development, delete and recreate the database to ensure clean migrations
+        await db.Database.EnsureDeletedAsync();
+        await db.Database.MigrateAsync();
+
+        await SeedExtensions.SeedDevelopmentDataAsync(app.Services);
     }
 }
-
+else
+{
+    // In production, only apply migrations
+    using (var scope = app.Services.CreateScope())
+    {
+        var db = scope.ServiceProvider.GetRequiredService<CliqDbContext>();
+        await db.Database.MigrateAsync();
+    }
+}
 
 // TODO: RE-INTRODUCE! After getting https working in dev-env for API server
 //app.UseHttpsRedirection();
 
-
 app.UseAuthorization();
-
 
 app.MapControllers();
 

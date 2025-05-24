@@ -1,53 +1,144 @@
-
 using Cliq.Server.Models;
+using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 
 namespace Cliq.Server.Data;
 
 public static class SeedExtensions
 {
-    public static void AddPosts(this ModelBuilder modelBuilder, List<User> users)
+    public static async Task SeedDevelopmentDataAsync(IServiceProvider serviceProvider)
     {
-        var sierra = modelBuilder.GetOrAddUser("smushi@example.com", "Sierra Takushi", users);
-        var robert = modelBuilder.GetOrAddUser("robert@gmail.com", "Robert Wetzler", users);
-        var spencer = modelBuilder.GetOrAddUser("sandman@example.com", "Spencer Sands", users);
-        var devon = modelBuilder.GetOrAddUser("devio@example.com", "Devon Brandt", users);
-        var jacob = modelBuilder.GetOrAddUser("twilly@example.com", "Jacob Terwilleger", users);
-        var howard = modelBuilder.GetOrAddUser("daddio@example.com", "Howard Wetzler", users);
-        var carolyn = modelBuilder.GetOrAddUser("carolyn@example.com", "Carolyn Wetzler", users);
-        var anya = modelBuilder.GetOrAddUser("anya@example.com", "Anya Steinberg", users);
-        var kevin = modelBuilder.GetOrAddUser("kevin@example.com", "Kevin Jones", users);
-        var mira = modelBuilder.GetOrAddUser("mira@example.com", "Mira Peterson", users);
+        using var scope = serviceProvider.CreateScope();
+        var db = scope.ServiceProvider.GetRequiredService<CliqDbContext>();
         
-        var eliza = modelBuilder.GetOrAddUser("eliza@example.com", "Eliza Topolosky", users);
-        var lauren = modelBuilder.GetOrAddUser("lauren@example.com", "Lauren Topolosky", users);
-        var barbara = modelBuilder.GetOrAddUser("barbara@example.com", "Barbara Topolosky", users);
-        var elana = modelBuilder.GetOrAddUser("elana@example.com", "Elana Loomis", users);
-        var daltin = modelBuilder.GetOrAddUser("mira@example.com", "Daltin Loomis", users);
+        // Check if data already exists to avoid duplicates
+        if (await db.Users.AnyAsync()) return;
 
-        modelBuilder.AddFriend(robert, [sierra, spencer, devon, jacob, howard, carolyn, eliza, lauren, barbara, elana, daltin, anya, kevin, mira]);
-        modelBuilder.AddFriend(sierra, [anya, kevin, mira]);
-        modelBuilder.AddFriend(spencer, [devon, sierra]);
-        modelBuilder.AddFriend(devon, [jacob]);
+        var userManager = scope.ServiceProvider.GetRequiredService<UserManager<User>>();
 
-        var climbingCircle = modelBuilder.CreateCircle("Climbing Crew", false, robert, devon, spencer);
-        var hikingCircle = modelBuilder.CreateCircle("Hiking Buddies", true, robert, sierra, jacob);
-        var familyCircle = modelBuilder.CreateCircle("Family", false, robert, howard, elana, daltin, carolyn);
-        var sierraFriends = modelBuilder.CreateCircle("Sierra's Friends", false, sierra, anya, kevin, mira);
+        // Create users first
+        var users = await CreateUsersAsync(userManager);
+        
+        // Create additional users not in the initial list
+        var additionalUsers = await CreateAdditionalUsersAsync(userManager);
+        users.AddRange(additionalUsers);
 
-        var post1 = modelBuilder.CreatePost(robert, "Planning a climbing trip this weekend!", DateTime.UtcNow.AddHours(-10), climbingCircle);
-        modelBuilder.CreatePost(robert, "New hiking trail opened up — let's go!", DateTime.UtcNow.AddHours(-8), hikingCircle, climbingCircle);
-        modelBuilder.CreatePost(sierra, "Anyone want to go for a hike Sunday?", DateTime.UtcNow.AddHours(-2), hikingCircle, sierraFriends);
-        modelBuilder.CreatePost(howard, "Letting family know: I’ll be out mountaineering Sunday.", DateTime.UtcNow.AddHours(-5), familyCircle);
+        // Now add other data using the DbContext
+        await AddPostsAndRelatedDataAsync(db, users);
+    }
 
-        modelBuilder.AddCommentTree(post1, new[]
+    private static async Task<List<User>> CreateUsersAsync(UserManager<User> userManager)
+    {
+        var users = new List<User>
+        {
+            new User("sandman@example.com") {
+                Name = "Spencer Sands",
+                Email = "sandman@example.com",
+                Bio = "Your life is your's to create."
+            },
+            new User("smushi@example.com") {
+                Name = "Sierra Takushi",
+                Email = "smushi@example.com",
+                EmailConfirmed = true
+            },
+            new User("daddio@example.com") {
+                Email = "daddio@example.com",
+                Name = "Howard Wetzler"
+            },
+            new User("robert@gmail.com") {
+                Email = "robert@gmail.com",
+                Name = "Robert Wetzler",
+                EmailConfirmed = true
+            },
+            new User("devio@example.com") {
+                Name = "Devon Brandt",
+                Email = "devio@example.com",
+                Bio = "Life is like a game of chess. I don't know how to play chess."
+            },
+            new User("twilly@example.com") {
+                Name = "Jacob Terwilleger",
+                Email = "twilly@example.com",
+                Bio = "Just chill out everybody."
+            }
+        };
+
+        // Create users with UserManager for proper password hashing
+        foreach (var user in users)
+        {
+            await userManager.CreateAsync(user, "TestPassword123!");
+        }
+
+        return users;
+    }
+
+    private static async Task<List<User>> CreateAdditionalUsersAsync(UserManager<User> userManager)
+    {
+        var additionalUsers = new List<User>
+        {
+            new User("carolyn@example.com") { Name = "Carolyn Wetzler", Email = "carolyn@example.com" },
+            new User("anya@example.com") { Name = "Anya Steinberg", Email = "anya@example.com" },
+            new User("kevin@example.com") { Name = "Kevin Jones", Email = "kevin@example.com" },
+            new User("mira@example.com") { Name = "Mira Peterson", Email = "mira@example.com" },
+            new User("eliza@example.com") { Name = "Eliza Topolosky", Email = "eliza@example.com" },
+            new User("lauren@example.com") { Name = "Lauren Topolosky", Email = "lauren@example.com" },
+            new User("barbara@example.com") { Name = "Barbara Topolosky", Email = "barbara@example.com" },
+            new User("elana@example.com") { Name = "Elana Loomis", Email = "elana@example.com" },
+            new User("daltin@example.com") { Name = "Daltin Loomis", Email = "daltin@example.com" }
+        };
+
+        foreach (var user in additionalUsers)
+        {
+            await userManager.CreateAsync(user, "TestPassword123!");
+        }
+
+        return additionalUsers;
+    }
+
+    private static async Task AddPostsAndRelatedDataAsync(CliqDbContext db, List<User> users)
+    {
+        var sierra = GetUser(users, "smushi@example.com");
+        var robert = GetUser(users, "robert@gmail.com");
+        var spencer = GetUser(users, "sandman@example.com");
+        var devon = GetUser(users, "devio@example.com");
+        var jacob = GetUser(users, "twilly@example.com");
+        var howard = GetUser(users, "daddio@example.com");
+        var carolyn = GetUser(users, "carolyn@example.com");
+        var anya = GetUser(users, "anya@example.com");
+        var kevin = GetUser(users, "kevin@example.com");
+        var mira = GetUser(users, "mira@example.com");
+        var eliza = GetUser(users, "eliza@example.com");
+        var lauren = GetUser(users, "lauren@example.com");
+        var barbara = GetUser(users, "barbara@example.com");
+        var elana = GetUser(users, "elana@example.com");
+        var daltin = GetUser(users, "daltin@example.com");
+
+        // Add friendships
+        await AddFriendshipsAsync(db, robert, new[] { sierra, spencer, devon, jacob, howard, carolyn, eliza, lauren, barbara, elana, daltin, anya, kevin, mira });
+        await AddFriendshipsAsync(db, sierra, new[] { anya, kevin, mira });
+        await AddFriendshipsAsync(db, spencer, new[] { devon, sierra });
+        await AddFriendshipsAsync(db, devon, new[] { jacob });
+
+        // Create circles
+        var climbingCircle = await CreateCircleAsync(db, "Climbing Crew", false, robert, new[] { devon, spencer });
+        var hikingCircle = await CreateCircleAsync(db, "Hiking Buddies", true, robert, new[] { sierra, jacob });
+        var familyCircle = await CreateCircleAsync(db, "Family", false, robert, new[] { howard, elana, daltin, carolyn });
+        var sierraFriends = await CreateCircleAsync(db, "Sierra's Friends", false, sierra, new[] { anya, kevin, mira });
+
+        // Create posts
+        var post1 = await CreatePostAsync(db, robert, "Planning a climbing trip this weekend!", DateTime.UtcNow.AddHours(-10), new[] { climbingCircle });
+        await CreatePostAsync(db, robert, "New hiking trail opened up — let's go!", DateTime.UtcNow.AddHours(-8), new[] { hikingCircle, climbingCircle });
+        await CreatePostAsync(db, sierra, "Anyone want to go for a hike Sunday?", DateTime.UtcNow.AddHours(-2), new[] { hikingCircle, sierraFriends });
+        await CreatePostAsync(db, howard, "Letting family know: I'll be out mountaineering Sunday.", DateTime.UtcNow.AddHours(-5), new[] { familyCircle });
+
+        // Add comments
+        await AddCommentTreeAsync(db, post1, new[]
         {
             new C(devon, "Sick where should we go climb",
                 new C(robert, "Lets go to Red Rock",
                     new C(devon, "Oh hell yea plus some cheeky vegas gambling eh?",
-                        new C(spencer, "I’m in!"),
-                        new C(robert, "I’m down for some gambling too!"),
-                        new C(devon, "I’ll bring the cards")
+                        new C(spencer, "I'm in!"),
+                        new C(robert, "I'm down for some gambling too!"),
+                        new C(devon, "I'll bring the cards")
                     )
                 ),
                 new C(robert, "Or Vantage")
@@ -56,63 +147,26 @@ public static class SeedExtensions
         });
     }
 
-    private static User GetOrAddUser(this ModelBuilder modelBuilder, string email, string name, List<User> users)
+    private static User GetUser(List<User> users, string email)
     {
-        var passwordHasher = new Microsoft.AspNetCore.Identity.PasswordHasher<User>();
-        var user = users.FirstOrDefault(u => u.Email == email);
-        if (user == null)
-        {
-            user = new User(email)
-            {
-                Name = name,
-                PasswordHash = passwordHasher.HashPassword(null!, "password")
-            };
-            users.Add(user);
-            modelBuilder.Entity<User>().HasData(user);
-        }
-        return user;
+        return users.First(u => u.Email == email);
     }
 
-    private static void AddFriend(this ModelBuilder modelBuilder, User user, User[] friends)
+    private static async Task AddFriendshipsAsync(CliqDbContext db, User user, User[] friends)
     {
-        foreach (var friend in friends)
-        {
-            var f = new Friendship
-            {
-                Id = Guid.NewGuid(),
-                RequesterId = user.Id,
-                AddresseeId = friend.Id,
-                Status = FriendshipStatus.Accepted
-            };
-            modelBuilder.Entity<Friendship>().HasData(f);
-        }
-
-    }
-    private static Post CreatePost(this ModelBuilder modelBuilder, User author, string text, DateTime date, params Circle[] circles)
-    {
-        var post = new Post
+        var friendships = friends.Select(friend => new Friendship
         {
             Id = Guid.NewGuid(),
-            UserId = author.Id,
-            Text = text,
-            Date = date
-        };
-        modelBuilder.Entity<Post>().HasData(post);
+            RequesterId = user.Id,
+            AddresseeId = friend.Id,
+            Status = FriendshipStatus.Accepted
+        }).ToList();
 
-        foreach (var circle in circles)
-        {
-            var cp = new CirclePost
-            {
-                CircleId = circle.Id,
-                PostId = post.Id,
-                SharedAt = date
-            };
-            modelBuilder.Entity<CirclePost>().HasData(cp);
-        }
-
-        return post;
+        await db.Friendships.AddRangeAsync(friendships);
+        await db.SaveChangesAsync();
     }
-    private static Circle CreateCircle(this ModelBuilder modelBuilder, string name, bool isShared, User owner, params User[] members)
+
+    private static async Task<Circle> CreateCircleAsync(CliqDbContext db, string name, bool isShared, User owner, User[] members)
     {
         var circle = new Circle
         {
@@ -121,29 +175,56 @@ public static class SeedExtensions
             IsShared = isShared,
             OwnerId = owner.Id
         };
-        modelBuilder.Entity<Circle>().HasData(circle);
 
-        foreach (var member in members.Append(owner).Distinct())
+        await db.Circles.AddAsync(circle);
+        await db.SaveChangesAsync();
+
+        var memberships = members.Append(owner).Distinct().Select(member => new CircleMembership
         {
-            var membership = new CircleMembership
-            {
-                CircleId = circle.Id,
-                UserId = member.Id
-            };
-            modelBuilder.Entity<CircleMembership>().HasData(membership);
-        }
+            CircleId = circle.Id,
+            UserId = member.Id
+        }).ToList();
+
+        await db.CircleMemberships.AddRangeAsync(memberships);
+        await db.SaveChangesAsync();
 
         return circle;
     }
 
-    record C(User U, string T, params C[] Replies);
+    private static async Task<Post> CreatePostAsync(CliqDbContext db, User author, string text, DateTime date, Circle[] circles)
+    {
+        var post = new Post
+        {
+            Id = Guid.NewGuid(),
+            UserId = author.Id,
+            Text = text,
+            Date = date
+        };
 
-    private static void AddCommentTree(this ModelBuilder modelBuilder, Post post, IEnumerable<C> comments, Guid? parentId = null)
+        await db.Posts.AddAsync(post);
+        await db.SaveChangesAsync();
+
+        var circlePosts = circles.Select(circle => new CirclePost
+        {
+            CircleId = circle.Id,
+            PostId = post.Id,
+            SharedAt = date
+        }).ToList();
+
+        await db.CirclePosts.AddRangeAsync(circlePosts);
+        await db.SaveChangesAsync();
+
+        return post;
+    }
+
+    private record C(User U, string T, params C[] Replies);
+
+    private static async Task AddCommentTreeAsync(CliqDbContext db, Post post, IEnumerable<C> comments, Guid? parentId = null)
     {
         foreach (var c in comments)
         {
             var commentId = Guid.NewGuid();
-            modelBuilder.Entity<Comment>().HasData(new Comment
+            var comment = new Comment
             {
                 Id = commentId,
                 UserId = c.U.Id,
@@ -151,10 +232,13 @@ public static class SeedExtensions
                 Date = DateTime.UtcNow,
                 PostId = post.Id,
                 ParentCommentId = parentId
-            });
+            };
+
+            await db.Comments.AddAsync(comment);
+            await db.SaveChangesAsync();
 
             if (c.Replies?.Length > 0)
-                modelBuilder.AddCommentTree(post, c.Replies, commentId);
+                await AddCommentTreeAsync(db, post, c.Replies, commentId);
         }
     }
 }
