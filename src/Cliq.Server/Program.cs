@@ -8,7 +8,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.IdentityModel.Protocols.Configuration;
-using Microsoft.AspNetCore.Authorizatipon;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Identity.UI;
@@ -176,6 +176,7 @@ var app = builder.Build();
 
 app.UseDefaultFiles();
 app.UseStaticFiles();
+// TODO Figure out correct CORS for mobile app
 app.UseCors("ExpoApp");
 // Configure the HTTP request pipeline.
 if (app.Environment.IsDevelopment())
@@ -203,6 +204,6 @@ app.UseAuthorization();
 
 app.MapControllers();
 
-app.MapFallbackToFile("/index.html");
+app.MapFallbackToFile("index.html");
 
 app.Run();

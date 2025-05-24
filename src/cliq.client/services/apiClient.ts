@@ -59,7 +59,7 @@ export class ApiClient {
             }
         }
 
-        this.instance = new Client(getEnvVars('development').API_URL, customFetch);
+        this.instance = new Client(getEnvVars().API_URL, customFetch);
         this.currentToken = token;
         return this.instance;
     }
@@ -79,7 +79,7 @@ export class ApiClient {
                 if (!refreshToken) return null;
                 
                 // Call your refresh token endpoint
-                const response = await fetch(`${getEnvVars('development').API_URL}/auth/refresh`, {
+                const response = await fetch(`${getEnvVars().API_URL}/auth/refresh`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ refreshToken })

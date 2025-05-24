@@ -29,7 +29,7 @@ const ThreadLine: React.FC<{
       amountToHide = lastChildHeight;
     }
 
-  return ( true && //TODO - renable thread lines when we can figure out curved connectors. 
+  return ( true &&
     // To do this, take the height of the full comment tree minus the height of the comment tree of the last comment
     <View style={styles.threadLineContainer}>
       {/* Main vertical line (can add || isReplying to add line to reply box on last in branch*/}
