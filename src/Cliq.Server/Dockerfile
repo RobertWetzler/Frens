@@ -25,4 +25,7 @@ ENV ASPNETCORE_ENVIRONMENT Production
 EXPOSE 8080
 WORKDIR /app
 COPY --from=build /app .
+# Copy assets separately to ensure they're included
+COPY --from=client-build /client/cliq.client/dist/assets ./wwwroot/assets
+
 ENTRYPOINT ["dotnet", "Cliq.Server.dll"]
