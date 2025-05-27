@@ -1,13 +1,16 @@
 import React, { useEffect } from 'react';
-import { Text, View, FlatList, StyleSheet, SafeAreaView, ActivityIndicator } from 'react-native';
+import { Text, View, FlatList, StyleSheet, SafeAreaView, ActivityIndicator, TouchableOpacity, Share } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Post from '../components/Post';
 import { useFeed } from 'hooks/usePosts';
 import ShaderBackground from 'components/ShaderBackground';
+import { useAuth } from 'contexts/AuthContext';
 
 
 const HomeScreen = ({ navigation }) => {
     const { posts, isLoading, error, loadPosts } = useFeed();
+    const authContext = useAuth();
     // Useful for debugging hook transitions
     /*
     useEffect(() => {
@@ -15,7 +18,27 @@ const HomeScreen = ({ navigation }) => {
         console.log('Is Loading:', isLoading);
         console.log('Error:', error);
     }, [posts, isLoading, error]);  */
-    
+    const handleShareProfile = async () => {
+      try {
+        // Get the current domain from the browser URL if available, otherwise use default
+        let baseUrl = 'https://frens-app.com'; // Default fallback for mobile apps
+        
+        if (typeof window !== 'undefined' && window.location) {
+            // Running in a web browser - use current domain
+            baseUrl = `${window.location.protocol}//${window.location.host}`;
+        }
+        const profileUrl = `${baseUrl}/profile/${authContext.user?.id}`;
+
+          await Share.share({
+              message: `Add me on Frens! ${profileUrl}`,
+              url: profileUrl, // iOS will use this
+              //title: 'My Frens Profile',
+          });
+      } catch (error) {
+          console.error('Error sharing profile:', error);
+      }
+  };
+
   const insets = useSafeAreaInsets();
    // Render loading state
    if (isLoading) {
@@ -56,9 +79,20 @@ const HomeScreen = ({ navigation }) => {
         }}
         ListEmptyComponent={() => (
           <View style={styles.emptyContainer}>
-            <Text style={styles.emptyText}>No posts found</Text>
+              <Ionicons name="people-outline" size={64} color="#e1e4e8" />
+              <Text style={styles.emptyText}>No posts found</Text>
+              <Text style={styles.emptySubtext}>
+                  Connect with friends to see their posts in your feed
+              </Text>
+              <TouchableOpacity 
+                  style={styles.shareButton}
+                  onPress={handleShareProfile}
+              >
+                  <Ionicons name="share-outline" size={20} color="white" style={styles.shareIcon} />
+                  <Text style={styles.shareButtonText}>Share my profile to add friends</Text>
+              </TouchableOpacity>
           </View>
-        )}
+      )}
       />
     </SafeAreaView>
   );
@@ -84,9 +118,43 @@ const styles = StyleSheet.create({
     marginTop: 50,
   },
   emptyText: {
-    fontSize: 18,
-    color: '#888',
-  },
+    fontSize: 24,
+    fontWeight: 'bold',
+    color: '#333',
+    marginTop: 20,
+    marginBottom: 8,
+},
+  emptySubtext: {
+    fontSize: 16,
+    color: '#8e8e8e',
+    textAlign: 'center',
+    marginBottom: 32,
+    lineHeight: 22,
+},
+shareButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#1DA1F2',
+    paddingVertical: 14,
+    paddingHorizontal: 24,
+    borderRadius: 25,
+    shadowColor: '#1DA1F2',
+    shadowOffset: {
+        width: 0,
+        height: 4,
+    },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 6,
+},
+shareIcon: {
+    marginRight: 8,
+},
+shareButtonText: {
+    color: 'white',
+    fontSize: 16,
+    fontWeight: '600',
+},
 });
 
 export default HomeScreen;

@@ -67,9 +67,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             // TODO add test for expiration logic
             const expiration = payload.exp;
             const user: AuthUser = {
-                id: payload.sub,
+                id: payload.nameid,
                 email: payload.email,
-                username: payload.username,
+                // TODO: Add username to token in backend
+                username: payload.username, // This doesnt actually exist in the token at the moment
             };
             return { user, expiration };
         } catch (error) {
