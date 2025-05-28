@@ -1,10 +1,16 @@
 import React from 'react';
 import { View, Text, StyleSheet } from 'react-native';
-import { AppleSignInButton } from '../components/AppleSignInButton';
 import ShaderBackground from '../components/ShaderBackground';
 import { EmailSignInButton } from 'components/EmailSignInButton';
 
-export default function SignInScreen() {
+interface SignInScreenProps {
+  route?: { params?: { returnTo?: string } };
+  navigation?: any;
+}
+
+export default function SignInScreen({ route, navigation }: SignInScreenProps) {
+    const returnTo = route?.params?.returnTo;
+
     return (
         <View style={styles.container}>
             <ShaderBackground />
@@ -13,7 +19,7 @@ export default function SignInScreen() {
                 <Text style={styles.subtitle}>Connect with your community</Text>
                 <View style={styles.signInContainer}>
                     <Text style={styles.signInText}>Sign in to continue</Text>
-                    <EmailSignInButton />
+                    <EmailSignInButton returnTo={returnTo} navigation={navigation} />
                 </View>
             </View>
         </View>

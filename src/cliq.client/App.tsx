@@ -1,10 +1,10 @@
 import React, { useEffect, useState, useRef } from 'react';
-import { NavigationContainer } from '@react-navigation/native';
+import { LinkingOptions, NavigationContainer } from '@react-navigation/native';
 import { createStackNavigator } from '@react-navigation/stack';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { Ionicons } from '@expo/vector-icons';
-import { Session } from '@supabase/supabase-js';
 import { TouchableOpacity, View, StyleSheet, Animated } from 'react-native';
+import * as Linking from 'expo-linking';
 
 // Screens
 import HomeScreen from './screens/HomeSreen';
@@ -13,19 +13,19 @@ import GroupsScreen from './screens/GroupScreen';
 import CalendarScreen from './screens/CalendarScreen';
 import ProfileScreen from './screens/ProfileScreen';
 import SignInScreen from './screens/SignInScreen';
-import CreatePostScreen from './screens/CreatePostScreen'; // You'll need to create this
+import CreatePostScreen from './screens/CreatePostScreen';
 import { ActivityIndicator, SafeAreaView } from 'react-native';
-import AnimatedBackground from './components/AnimatedBackground';
 import { AuthProvider, useAuth } from 'contexts/AuthContext';
 import CreateCircleScreen from 'screens/CreateCircleScreen';
 
 type RootStackParamList = {
-    Auth: undefined;
-    Main: undefined;
-    Comments: undefined;
-    CreatePost: undefined;
-    CreateCircle: undefined;
-    Profile: { userId: string };
+  SignIn: undefined | { returnTo?: string };
+  Main: undefined // This is the key change
+  // TODO change to "Post"
+  Comments: { postId: string };
+  CreatePost: undefined;
+  CreateCircle: undefined;
+  Profile: { userId: string };
 };
 
 type TabParamList = {
@@ -38,6 +38,28 @@ type TabParamList = {
 
 const Stack = createStackNavigator<RootStackParamList>();
 const Tab = createBottomTabNavigator<TabParamList>();
+
+// Configure linking using expo-linking
+const prefix = Linking.createURL('/');
+const linking: LinkingOptions<RootStackParamList> = {
+  prefixes: [Linking.createURL('/'), 'https://frens-app.com', 'frens://'],
+  config: {
+    screens: {
+      Main: {
+        screens: {
+          Feed: '',
+          Groups: 'groups',
+          Calendar: 'calendar',
+          Me: 'me',
+        },
+      },
+      Profile: 'profile/:userId',
+      Comments: 'post/:postId',
+      CreatePost: 'create-post',
+      CreateCircle: 'create-circle',
+    },
+  },
+};
 
 const CreateButton = ({ onPress }) => {
   return (
@@ -108,7 +130,7 @@ const BottomTabs = ({ navigation }) => {
       <Tab.Screen name="Groups" component={GroupsScreen} />
       <Tab.Screen 
         name="Create" 
-        component={HomeScreen} // This is a dummy component, we'll never navigate here directly
+        component={HomeScreen}
         options={{
           tabBarButton: () => (
             <CreateButton onPress={openCreatePost} />
@@ -121,34 +143,95 @@ const BottomTabs = ({ navigation }) => {
   );
 };
 
-
 const MainApp = () => {
   const { isAuthenticated, isAuthLoading } = useAuth();
+  const [initialURL, setInitialURL] = useState<string | null>(null);
+  const [isReady, setIsReady] = useState(false);
 
-  // Show a loading screen while checking auth state
-  if (isAuthLoading) {
+  useEffect(() => {
+    const getInitialURL = async () => {
+      try {
+        const url = await Linking.getInitialURL();
+        console.log('Initial URL:', url);
+        setInitialURL(url);
+      } finally {
+        setIsReady(true);
+      }
+    };
+
+    if (!isReady) {
+      getInitialURL();
+    }
+  }, [isReady]);
+
+    // Helper function to check if URL needs redirect after auth
+    const shouldRedirectAfterAuth = (url: string | null): boolean => {
+      if (!url) return false;
+      
+      try {
+        const parsedUrl = new URL(url);
+        const pathname = parsedUrl.pathname;
+        
+        // Don't redirect for root paths or main tab routes
+        if (pathname === '/' || 
+            pathname === '/feed' || 
+            pathname === '/groups' || 
+            pathname === '/calendar' || 
+            pathname === '/me' || 
+            pathname === '') {
+          return false;
+        }
+        
+        // Redirect for specific protected routes
+        return pathname.startsWith('/profile/') || 
+               pathname.startsWith('/post/') || 
+               pathname.startsWith('/create-');
+      } catch (error) {
+        // If URL parsing fails, don't redirect
+        return false;
+      }
+    };
+  // Show loading screen while checking auth state
+  if (isAuthLoading || !isReady) {
     return (
       <SafeAreaView style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
-        <ActivityIndicator size={36} color="#0000ff" />
+        <ActivityIndicator size={36} color="#1DA1F2" />
       </SafeAreaView>
     );
   }
 
+  const authParams = !isAuthenticated && shouldRedirectAfterAuth(initialURL) 
+    ? { returnTo: initialURL } 
+    : undefined;
+
   return (
-    <NavigationContainer>
+    <NavigationContainer linking={linking}>
       <Stack.Navigator
         screenOptions={{
           headerShown: false,
         }}
       >
         {isAuthenticated ? (
-          // Authenticated stack
-          <>
+          // Authenticated stack - all protected routes
+          <Stack.Group>
             <Stack.Screen name="Main" component={BottomTabs} />
+            <Stack.Screen 
+              name="Profile" 
+              component={ProfileScreen} 
+              options={{ 
+                title: 'Profile',
+                headerShown: true,
+                headerBackTitleVisible: false,
+              }}
+            />
             <Stack.Screen 
               name="Comments" 
               component={CommentSection} 
-              options={{ title: 'Comments' }} 
+              options={{ 
+                title: 'Comments',
+                headerShown: true,
+                headerBackTitleVisible: false,
+              }} 
             />
             <Stack.Screen 
               name="CreatePost" 
@@ -156,6 +239,7 @@ const MainApp = () => {
               options={{
                 title: 'Create Post',
                 presentation: 'modal',
+                headerShown: true,
                 cardStyleInterpolator: ({ current }) => ({
                   cardStyle: {
                     transform: [
@@ -171,23 +255,23 @@ const MainApp = () => {
               }} 
             />
             <Stack.Screen 
-              name="Profile" 
-              component={ProfileScreen} 
-              options={{ title: 'Profile' }}
-            />
-            <Stack.Screen 
               name="CreateCircle" 
               component={CreateCircleScreen} 
-              options={{ title: 'Create Circle' }}
+              options={{ 
+                title: 'Create Circle',
+                headerShown: true,
+                headerBackTitleVisible: false,
+              }}
             />
-          </>
+          </Stack.Group>
         ) : (
-          // Auth stack
+          // Auth stack - only auth screen available when not authenticated
           <Stack.Screen 
-            name="Auth" 
+            name="SignIn" 
             component={SignInScreen}
+            initialParams={authParams}
             options={{
-              // Prevent going back to auth screen once logged in
+              // Prevent going back
               headerLeft: () => null,
               gestureEnabled: false,
             }}

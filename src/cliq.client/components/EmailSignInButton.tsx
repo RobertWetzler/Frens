@@ -5,9 +5,15 @@ import { DateInput } from './DateInput'
 import { TermsOfService } from './TermsOfService'
 import { useAuth } from 'contexts/AuthContext'
 import { ISignInResponseDto } from 'services/generated/generatedClient'
+import * as Linking from 'expo-linking';
 
-export const EmailSignInButton = () => {
-    const { login } = useAuth();  // Add this line
+interface EmailSignInButtonProps {
+    returnTo?: string;
+    navigation?: any;
+}
+
+export const EmailSignInButton = ({ returnTo, navigation }: EmailSignInButtonProps) => {
+    const { login } = useAuth();
 
     const { signInWithEmail, signUpWithEmail, loading } = useEmailAuth()
     const [modalVisible, setModalVisible] = useState(false)
@@ -70,6 +76,22 @@ export const EmailSignInButton = () => {
         setDateError('')
     }
 
+    const handlePostLoginRedirect = async () => {
+        if (returnTo) {
+            try {
+                console.log('Redirecting to:', returnTo);
+                // Use Linking to navigate to the original URL
+                await Linking.openURL(returnTo);
+            } catch (error) {
+                console.error('Error redirecting to original URL:', error);
+                // Fallback: close modal and let normal auth flow handle navigation
+                setModalVisible(false);
+            }
+        } else {
+            // No redirect URL, just close the modal and let auth state change handle navigation
+            setModalVisible(false);
+        }
+    }
 
     const handleAuth = async () => {
         try {
@@ -89,8 +111,12 @@ export const EmailSignInButton = () => {
                     username: result.user.name
                 });
                 console.log('Authenticated:', result.user)
-                setModalVisible(false)
+                
+                // Reset form
                 resetForm()
+                
+                // Handle post-login redirect
+                await handlePostLoginRedirect();
             }
         } catch (error) {
             console.error('Authentication error:', error)
@@ -104,9 +130,7 @@ export const EmailSignInButton = () => {
     }
     
     return (
-
         <View>
-
             <Pressable
                 style={styles.button}
                 onPress={() => setModalVisible(true)}
@@ -123,8 +147,6 @@ export const EmailSignInButton = () => {
                 visible={modalVisible}
                 onRequestClose={() => setModalVisible(false)}
             >
-
-
                 <View style={[styles.modalContainer, { zIndex: 2 }]}>
                     <View style={styles.modalContent}>
                         <Text style={styles.modalTitle}>
@@ -138,7 +160,7 @@ export const EmailSignInButton = () => {
                             value={username}
                             onChangeText={setName}
                             autoCapitalize="none"
-                            returnKeyType="next" // Shows "next" instead of "return" on keyboard
+                            returnKeyType="next"
                             onSubmitEditing={() => passwordInputRef.current?.focus()}
                         />)}
 
@@ -150,10 +172,10 @@ export const EmailSignInButton = () => {
                             onChangeText={setEmail}
                             autoCapitalize="none"
                             keyboardType="email-address"
-                            textContentType="emailAddress" // iOS email autofill
-                            autoComplete="email" // Android/web email autofill
-                            inputMode="email" // Ensures email keyboard on web
-                            returnKeyType="next" // Shows "next" instead of "return" on keyboard
+                            textContentType="emailAddress"
+                            autoComplete="email"
+                            inputMode="email"
+                            returnKeyType="next"
                             onSubmitEditing={() => passwordInputRef.current?.focus()}
                         />
 
@@ -164,8 +186,8 @@ export const EmailSignInButton = () => {
                             placeholderTextColor="#666"
                             value={password}
                             onChangeText={setPassword}
-                            textContentType={isSignUp ? "newPassword" : "password"} // iOS password autofill
-                            autoComplete={isSignUp ? "new-password" : "current-password"} // Android/web password autofill
+                            textContentType={isSignUp ? "newPassword" : "password"}
+                            autoComplete={isSignUp ? "new-password" : "current-password"}
                             secureTextEntry
                             returnKeyType="done"
                             onSubmitEditing={handleAuth}
@@ -201,12 +223,10 @@ export const EmailSignInButton = () => {
                                             </Text>
                                         </Pressable>
                                     </Text>
-
                                 </View>
                                 {submitError && <Text style={styles.errorText}>{submitError.message}</Text>}
                             </>
                         )}
-
 
                         <Pressable
                             style={styles.submitButton}
@@ -238,6 +258,7 @@ export const EmailSignInButton = () => {
                     </View>
                 </View>
             </Modal>
+            
             <TermsOfService
                 isVisible={showTos}
                 onClose={() => setShowTos(false)}
@@ -246,11 +267,11 @@ export const EmailSignInButton = () => {
                     setShowTos(false)
                 }}
             />
-
         </View>
     )
 }
 
+// ...existing styles remain the same...
 const styles = StyleSheet.create({
     button: {
         width: '100%',
@@ -260,7 +281,7 @@ const styles = StyleSheet.create({
         justifyContent: 'center',
         alignItems: 'center',
         borderRadius: 5,
-        marginHorizontal: 20, // Add some horizontal margin
+        marginHorizontal: 20,
     },
     buttonText: {
         color: '#fff',
@@ -271,10 +292,10 @@ const styles = StyleSheet.create({
         flex: 1,
         justifyContent: 'center',
         alignItems: 'center',
-        backgroundColor: 'rgba(0, 0, 0, 0.4)', // This creates the dark overlay
+        backgroundColor: 'rgba(0, 0, 0, 0.4)',
     },
     overlay: {
-        ...StyleSheet.absoluteFillObject,  // This makes the overlay fill the entire screen
+        ...StyleSheet.absoluteFillObject,
         backgroundColor: 'rgba(0, 0, 0, 0.5)',
         zIndex: 1,
     },
@@ -327,8 +348,7 @@ const styles = StyleSheet.create({
         color: '#666',
         fontSize: 14,
     },
-    // TOS addition
-    osContainer: {
+    tosContainer: {
         flexDirection: 'row',
         alignItems: 'center',
         marginTop: 10,
@@ -351,11 +371,6 @@ const styles = StyleSheet.create({
     tosLink: {
         color: '#4A90E2',
         textDecorationLine: 'underline',
-    },
-    tosContainer: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        marginTop: 10,
     },
     title: {
         fontSize: 20,
