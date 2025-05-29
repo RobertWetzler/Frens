@@ -76,6 +76,8 @@ const CreatePostScreen = ({ navigation, route }) => {
           circleIds: selectedCircleIds
         }))
       );
+      setPostContent('');
+      setSelectedCircleIds([]);
       console.log('Response:', response);
       // TODO update nswag.json to expect 201 response
       //if (response) {
