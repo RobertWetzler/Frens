@@ -2,11 +2,13 @@ import React, { useEffect } from 'react';
 import { Text, View, FlatList, StyleSheet, SafeAreaView, ActivityIndicator, TouchableOpacity, Share } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { LinearGradient } from 'expo-linear-gradient';
 import Post from '../components/Post';
 import { useFeed } from 'hooks/usePosts';
 import ShaderBackground from 'components/ShaderBackground';
 import { useAuth } from 'contexts/AuthContext';
 import { handleShareProfile } from 'utils/share';
+import NotificationBell from 'components/NotificationBell';
 
 
 const HomeScreen = ({ navigation }) => {
@@ -42,6 +44,10 @@ const HomeScreen = ({ navigation }) => {
 
   return (
     <SafeAreaView style={styles.container}>
+      <View style={styles.header}>
+        <Text style={styles.headerTitle}>Frens</Text>
+        <NotificationBell onPress={() => navigation.navigate('Notifications')} />
+      </View>
       <FlatList
         data={posts}
         renderItem={({ item }) => (
@@ -87,6 +93,19 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: 'white',
+  },
+  header: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: '#e1e4e8',
+  },
+  headerTitle: {
+    fontSize: 22,
+    fontWeight: 'bold',
   },
   listContent: {
     paddingTop: 16,

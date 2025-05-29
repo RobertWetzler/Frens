@@ -17,6 +17,7 @@ import CreatePostScreen from './screens/CreatePostScreen';
 import { ActivityIndicator, SafeAreaView } from 'react-native';
 import { AuthProvider, useAuth } from 'contexts/AuthContext';
 import CreateCircleScreen from 'screens/CreateCircleScreen';
+import NotificationsScreen from 'screens/NotificationScreen';
 
 type RootStackParamList = {
   SignIn: undefined | { returnTo?: string };
@@ -26,6 +27,7 @@ type RootStackParamList = {
   CreatePost: undefined;
   CreateCircle: undefined;
   Profile: { userId: string };
+  Notifications: undefined;
 };
 
 type TabParamList = {
@@ -58,6 +60,7 @@ const linking: LinkingOptions<RootStackParamList> = {
       Comments: 'post/:postId',
       CreatePost: 'create-post',
       CreateCircle: 'create-circle',
+      Notifications: 'notifications',
     },
   },
 };
@@ -263,6 +266,15 @@ const MainApp = () => {
               component={CreateCircleScreen} 
               options={{ 
                 title: 'Create Circle',
+                headerShown: false,
+                headerBackTitleVisible: false,
+              }}
+            />
+            <Stack.Screen 
+              name="Notifications" 
+              component={NotificationsScreen} 
+              options={{ 
+                title: 'Notifications',
                 headerShown: false,
                 headerBackTitleVisible: false,
               }}

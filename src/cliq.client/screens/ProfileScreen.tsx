@@ -16,6 +16,7 @@ import { FriendshipDto, FriendshipStatus, FriendshipStatusDto, PostDto, ProfileP
 import Post from '../components/Post';
 import { useAuth } from 'contexts/AuthContext';
 import { handleShareProfile } from 'utils/share';
+import NotificationBell from 'components/NotificationBell';
 
 interface ProfileScreenProps {
     route?: { params?: { userId?: string } };
@@ -146,6 +147,7 @@ const ProfileScreen: React.FC<ProfileScreenProps> = ({ route, navigation }) => {
                             <Ionicons name="settings-outline" size={24} color="#1DA1F2" />
                         </TouchableOpacity>
                     )}
+                    <NotificationBell onPress={() => navigation.navigate('Notifications')} />
                 </View>
             </View>
 
