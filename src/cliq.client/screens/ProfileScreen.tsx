@@ -15,6 +15,7 @@ import { ApiClient } from 'services/apiClient';
 import { FriendshipDto, FriendshipStatus, FriendshipStatusDto, PostDto, ProfilePageResponseDto, UserDto, UserProfileDto, VisibleStatus } from 'services/generated/generatedClient';
 import Post from '../components/Post';
 import { useAuth } from 'contexts/AuthContext';
+import { handleShareProfile } from 'utils/share';
 
 interface ProfileScreenProps {
     route?: { params?: { userId?: string } };
@@ -67,7 +68,7 @@ const ProfileScreen: React.FC<ProfileScreenProps> = ({ route, navigation }) => {
     const toggleFollow = async () => {
         try {
             if (friendshipStatus.status == VisibleStatus.Friends) {
-                await ApiClient.call(c => c.removeFriend(userId));
+                await ApiClient.call(c => c.removeFren(userId));
                 setFriendshipStatus(new FriendshipStatusDto({
                     ...friendshipStatus,
                     status: VisibleStatus.None
@@ -121,7 +122,8 @@ const ProfileScreen: React.FC<ProfileScreenProps> = ({ route, navigation }) => {
     return (
         <SafeAreaView style={styles.container}>
             <View style={styles.header}>
-                {!isOwnProfile && (
+                {/* TODO: Show back button if deep-linked to this page, or if deeplinked to own profile show with bottom tabs, or have React-Navigation drive the header */}
+                {!isOwnProfile  && (
                     <TouchableOpacity
                         style={styles.backButton}
                         onPress={() => navigation.goBack()}
@@ -132,11 +134,19 @@ const ProfileScreen: React.FC<ProfileScreenProps> = ({ route, navigation }) => {
                 <Text style={styles.headerTitle}>
                     {isOwnProfile ? 'My Profile' : 'Profile'}
                 </Text>
-                {isOwnProfile && (
-                    <TouchableOpacity style={styles.editButton} onPress={() => navigation.navigate('EditProfile')}>
-                        <Ionicons name="settings-outline" size={24} color="#1DA1F2" />
+                <View style={styles.headerActions}>
+                    <TouchableOpacity 
+                        style={styles.shareButton} 
+                        onPress={() => handleShareProfile(userId)}
+                    >
+                        <Ionicons name="share-outline" size={24} color="#1DA1F2" />
                     </TouchableOpacity>
-                )}
+                    {isOwnProfile && (
+                        <TouchableOpacity style={styles.editButton} onPress={() => navigation.navigate('EditProfile')}>
+                            <Ionicons name="settings-outline" size={24} color="#1DA1F2" />
+                        </TouchableOpacity>
+                    )}
+                </View>
             </View>
 
             <FlatList
@@ -272,6 +282,14 @@ const styles = StyleSheet.create({
         fontWeight: 'bold',
         flex: 1,
         textAlign: 'center',
+    },
+    headerActions: {
+        flexDirection: 'row',
+        alignItems: 'center',
+    },
+    shareButton: {
+        padding: 8,
+        marginRight: 8,
     },
     editButton: {
         padding: 8,

@@ -6,6 +6,7 @@ import Post from '../components/Post';
 import { useFeed } from 'hooks/usePosts';
 import ShaderBackground from 'components/ShaderBackground';
 import { useAuth } from 'contexts/AuthContext';
+import { handleShareProfile } from 'utils/share';
 
 
 const HomeScreen = ({ navigation }) => {
@@ -18,26 +19,6 @@ const HomeScreen = ({ navigation }) => {
         console.log('Is Loading:', isLoading);
         console.log('Error:', error);
     }, [posts, isLoading, error]);  */
-    const handleShareProfile = async () => {
-      try {
-        // Get the current domain from the browser URL if available, otherwise use default
-        let baseUrl = 'https://frens-app.com'; // Default fallback for mobile apps
-        
-        if (typeof window !== 'undefined' && window.location) {
-            // Running in a web browser - use current domain
-            baseUrl = `${window.location.protocol}//${window.location.host}`;
-        }
-        const profileUrl = `${baseUrl}/profile/${authContext.user?.id}`;
-
-          await Share.share({
-              message: `Add me on Frens! ${profileUrl}`,
-              url: profileUrl, // iOS will use this
-              //title: 'My Frens Profile',
-          });
-      } catch (error) {
-          console.error('Error sharing profile:', error);
-      }
-  };
 
   const insets = useSafeAreaInsets();
    // Render loading state
@@ -86,7 +67,7 @@ const HomeScreen = ({ navigation }) => {
               </Text>
               <TouchableOpacity 
                   style={styles.shareButton}
-                  onPress={handleShareProfile}
+                  onPress={() => handleShareProfile(authContext.user.id)}
               >
                   <Ionicons name="share-outline" size={20} color="white" style={styles.shareIcon} />
                   <Text style={styles.shareButtonText}>Share my profile to add friends</Text>
