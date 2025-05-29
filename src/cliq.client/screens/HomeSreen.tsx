@@ -44,10 +44,20 @@ const HomeScreen = ({ navigation }) => {
 
   return (
     <SafeAreaView style={styles.container}>
-      <View style={styles.header}>
-        <Text style={styles.headerTitle}>Frens</Text>
-        <NotificationBell onPress={() => navigation.navigate('Notifications')} />
-      </View>
+      <LinearGradient
+        colors={['#6699FF', '#8C66FF', '#9966FF']}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 1, y: 1 }}
+        style={styles.headerGradient}
+      >
+        <View style={styles.header}>
+          <Text style={styles.headerTitle}>Frens</Text>
+          <NotificationBell 
+            onPress={() => navigation.navigate('Notifications')} 
+            iconColor="white"
+          />        
+        </View>
+      </LinearGradient>
       <FlatList
         data={posts}
         renderItem={({ item }) => (
@@ -94,18 +104,32 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: 'white',
   },
+  headerGradient: {
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: 'rgba(255, 255, 255, 0.2)',
+    shadowColor: '#8C66FF',
+    shadowOffset: {
+      width: 0,
+      height: 4,
+    },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 8,
+  },
   header: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    borderBottomWidth: 1,
-    borderBottomColor: '#e1e4e8',
   },
   headerTitle: {
-    fontSize: 22,
+    fontSize: 25,
     fontWeight: 'bold',
+    color: 'white',
+    textShadowColor: 'rgba(0, 0, 0, 0.3)',
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 2,
   },
   listContent: {
     paddingTop: 16,
