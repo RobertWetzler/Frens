@@ -44,6 +44,7 @@ const prefix = Linking.createURL('/');
 const linking: LinkingOptions<RootStackParamList> = {
   prefixes: [Linking.createURL('/'), 'https://frens-app.com', 'frens://'],
   config: {
+    initialRouteName: "Main",
     screens: {
       Main: {
         screens: {
@@ -220,7 +221,7 @@ const MainApp = () => {
               component={ProfileScreen} 
               options={{ 
                 title: 'Profile',
-                headerShown: true,
+                headerShown: false,
                 headerBackTitleVisible: false,
               }}
             />
@@ -229,7 +230,7 @@ const MainApp = () => {
               component={CommentSection} 
               options={{ 
                 title: 'Comments',
-                headerShown: true,
+                headerShown: false,
                 headerBackTitleVisible: false,
               }} 
             />
@@ -239,7 +240,7 @@ const MainApp = () => {
               options={{
                 title: 'Create Post',
                 presentation: 'modal',
-                headerShown: true,
+                headerShown: false,
                 cardStyleInterpolator: ({ current }) => ({
                   cardStyle: {
                     transform: [
@@ -259,7 +260,7 @@ const MainApp = () => {
               component={CreateCircleScreen} 
               options={{ 
                 title: 'Create Circle',
-                headerShown: true,
+                headerShown: false,
                 headerBackTitleVisible: false,
               }}
             />
