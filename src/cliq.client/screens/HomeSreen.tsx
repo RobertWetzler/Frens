@@ -65,15 +65,19 @@ const HomeScreen = ({ navigation }) => {
               <Text style={styles.emptySubtext}>
                   Connect with friends to see their posts in your feed
               </Text>
+          </View>
+        )}
+        ListFooterComponent={() => (
+          <View style={styles.footerContainer}>
               <TouchableOpacity 
-                  style={styles.shareButton}
+                  style={[styles.shareButton, posts && posts.length > 0 && { marginTop: 20 }]}
                   onPress={() => handleShareProfile(authContext.user.id)}
               >
                   <Ionicons name="share-outline" size={20} color="white" style={styles.shareIcon} />
-                  <Text style={styles.shareButtonText}>Share my profile to add friends</Text>
+                  <Text style={styles.shareButtonText}>Share profile to add frens</Text>
               </TouchableOpacity>
           </View>
-      )}
+        )}
       />
     </SafeAreaView>
   );
@@ -135,6 +139,11 @@ shareButtonText: {
     color: 'white',
     fontSize: 16,
     fontWeight: '600',
+},
+footerContainer: {
+  alignItems: 'center',
+  paddingVertical: 0,
+  paddingHorizontal: 16,
 },
 });
 
