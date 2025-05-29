@@ -35,7 +35,13 @@ public class PostController : ControllerBase
     }
 
     [HttpGet("feed")]
-    public async Task<ActionResult<IEnumerable<PostDto>>> GetFeed(int page=1, int pageSize=20)
+    public async Task<ActionResult<FeedDto>> GetFeed()
+    {
+        return await GetFeedWithPaging(1, 20);
+    }
+
+    [HttpGet("feed/paged")]
+    public async Task<ActionResult<FeedDto>> GetFeedWithPaging(int page, int pageSize)
     {
         var idClaim = this.HttpContext.User.Claims.FirstOrDefault(c => c.Type == "http://schemas.xmlsoap.org/ws/2005/05/identity/claims/nameidentifier");
         Guid userId;

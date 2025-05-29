@@ -33,6 +33,7 @@ const ProfileScreen: React.FC<ProfileScreenProps> = ({ route, navigation }) => {
     const [user, setUser] = useState<UserProfileDto | null>(null);
     const [friendshipStatus, setFriendshipStatus] = useState<FriendshipStatusDto | null>(null);
     const [posts, setPosts] = useState<PostDto[]>([]);
+    const [notificationCount, setNotificationCount] = useState<number>();
     const [isLoading, setIsLoading] = useState(true);
     const [isRefreshing, setIsRefreshing] = useState(false);
     const [error, setError] = useState<string | null>(null);
@@ -46,6 +47,7 @@ const ProfileScreen: React.FC<ProfileScreenProps> = ({ route, navigation }) => {
                 setFriendshipStatus(profileData.friendshipStatus);
             }
             setPosts(profileData.recentPosts);
+            setNotificationCount(profileData.notificationCount);
             setError(null);
         }
         catch (err) {
@@ -147,7 +149,7 @@ const ProfileScreen: React.FC<ProfileScreenProps> = ({ route, navigation }) => {
                             <Ionicons name="settings-outline" size={24} color="#1DA1F2" />
                         </TouchableOpacity>
                     )}
-                    <NotificationBell onPress={() => navigation.navigate('Notifications')} />
+                    <NotificationBell onPress={() => navigation.navigate('Notifications')} notificationCount={notificationCount} />
                 </View>
             </View>
 

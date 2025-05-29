@@ -8,7 +8,7 @@ namespace Cliq.Server.Services;
 public interface IPostService
 {
     Task<PostDto?> GetPostByIdAsync(Guid requestorId, Guid id, bool includeCommentTree = false, int maxDepth = 3);
-    Task<IEnumerable<PostDto>> GetFeedForUserAsync(Guid userId, int page = 1, int pageSize = 20);
+    Task<FeedDto> GetFeedForUserAsync(Guid userId, int page = 1, int pageSize = 20);
     Task<List<PostDto>> GetAllPostsAsync(bool includeCommentCount = false);
     Task<IEnumerable<PostDto>> GetUserPostsAsync(Guid userId, int page = 1, int pageSize = 20);
     Task<PostDto> CreatePostAsync(Guid userId, Guid[] circleIds, string text);
@@ -23,17 +23,20 @@ public class PostService : IPostService
 {
     private readonly CliqDbContext _dbContext;
     private readonly ICommentService _commentService;
+    private readonly IFriendshipService _friendshipService;
     private readonly IMapper _mapper;
     private readonly ILogger<PostService> _logger;
 
     public PostService(
         CliqDbContext dbContext,
         ICommentService commentService,
+        IFriendshipService friendshipService,
         IMapper mapper,
         ILogger<PostService> logger)
     {
         _dbContext = dbContext;
         _commentService = commentService;
+        _friendshipService = friendshipService;
         _mapper = mapper;
         _logger = logger;
     }
@@ -84,7 +87,7 @@ public class PostService : IPostService
     }
 
 
-    public async Task<IEnumerable<PostDto>> GetFeedForUserAsync(Guid userId, int page = 1, int pageSize = 20)
+    public async Task<FeedDto> GetFeedForUserAsync(Guid userId, int page = 1, int pageSize = 20)
     {
         try
         {
@@ -143,8 +146,8 @@ public class PostService : IPostService
                 .Select(p => p.Id)
                 .ToListAsync();
 
-            if (!postIds.Any())
-                return new List<PostDto>();
+            //if (!postIds.Any())
+            //    return new List<PostDto>();
 
             // Step 2: Get posts with comments counts in one query using LEFT JOIN and GROUP BY
             var postsWithComments = await (
@@ -187,7 +190,7 @@ public class PostService : IPostService
 
             this._logger.LogInformation("Done querying database for feed");
             // Combine the data
-            return postsWithComments.Select(pc =>
+            var posts = postsWithComments.Select(pc =>
             {
                 var dto = _mapper.Map<PostDto>(pc.Post);
                 dto.CommentCount = pc.CommentCount;
@@ -201,6 +204,13 @@ public class PostService : IPostService
                     : new List<CirclePublicDto>();
                 return dto;
             }).ToList();
+
+            var notificationCount = await _friendshipService.GetFriendRequestsCountAsync(userId);
+            return new FeedDto
+            {
+                Posts = posts,
+                NotificationCount = notificationCount
+            };
         }
         catch (Exception ex)
         {

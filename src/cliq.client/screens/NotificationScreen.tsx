@@ -26,7 +26,7 @@ const NotificationsScreen: React.FC<NotificationsScreenProps> = ({ navigation })
           Notifications will appear here
         </Text>
         <Text style={styles.subText}>
-          You'll see friend requests, post likes, and comments here when they're available.
+          You'll see friend requests, post likes, and shared circle additions when they're available.
         </Text>
       </View>
     </SafeAreaView>

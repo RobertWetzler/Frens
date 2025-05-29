@@ -63,9 +63,14 @@ namespace Cliq.Server.Controllers
 
             // Get recent posts by this user, only if the calling user has permission
             // to view them (i.e., they are friends or the user is viewing their own profile)
-            if (response.IsCurrentUser || response.FriendshipStatus?.Status == VisibleStatus.Friends)
+            if (response.IsCurrentUser)
             {
-                response.RecentPosts = await _postService.GetUserPostsAsync(userIdToUse, page: 1, pageSize: 10);
+                response.RecentPosts = await _postService.GetUserPostsAsync(currentUserId, page: 1, pageSize: 10);
+                response.NotificationCount = await _friendshipService.GetFriendRequestsCountAsync(currentUserId);
+            }
+            else if (response.FriendshipStatus?.Status == VisibleStatus.Friends)
+            {
+                // TODO: only get posts user has access to view
             }
 
             return Ok(response);
@@ -79,6 +84,7 @@ namespace Cliq.Server.Controllers
             public bool IsCurrentUser { get; set; }
             public FriendshipStatusDto? FriendshipStatus { get; set; }
             public IEnumerable<PostDto> RecentPosts { get; set; } = new List<PostDto>();
+            public int NotificationCount { get; set; } = 0;
         }
     }
 }

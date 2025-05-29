@@ -882,8 +882,8 @@ export class Client {
     /**
      * @return OK
      */
-    postAll(): Promise<PostDto[]> {
-        let url_ = this.baseUrl + "/api/Post";
+    feed(): Promise<FeedDto> {
+        let url_ = this.baseUrl + "/api/Post/feed";
         url_ = url_.replace(/[?&]$/, "");
 
         let options_: RequestInit = {
@@ -894,25 +894,18 @@ export class Client {
         };
 
         return this.http.fetch(url_, options_).then((_response: Response) => {
-            return this.processPostAll(_response);
+            return this.processFeed(_response);
         });
     }
 
-    protected processPostAll(response: Response): Promise<PostDto[]> {
+    protected processFeed(response: Response): Promise<FeedDto> {
         const status = response.status;
         let _headers: any = {}; if (response.headers && response.headers.forEach) { response.headers.forEach((v: any, k: any) => _headers[k] = v); };
         if (status === 200) {
             return response.text().then((_responseText) => {
             let result200: any = null;
             let resultData200 = _responseText === "" ? null : JSON.parse(_responseText, this.jsonParseReviver);
-            if (Array.isArray(resultData200)) {
-                result200 = [] as any;
-                for (let item of resultData200)
-                    result200!.push(PostDto.fromJS(item));
-            }
-            else {
-                result200 = <any>null;
-            }
+            result200 = FeedDto.fromJS(resultData200);
             return result200;
             });
         } else if (status !== 200 && status !== 204) {
@@ -920,7 +913,54 @@ export class Client {
             return throwException("An unexpected server error occurred.", status, _responseText, _headers);
             });
         }
-        return Promise.resolve<PostDto[]>(null as any);
+        return Promise.resolve<FeedDto>(null as any);
+    }
+
+    /**
+     * @param page (optional) 
+     * @param pageSize (optional) 
+     * @return OK
+     */
+    paged(page: number | undefined, pageSize: number | undefined): Promise<FeedDto> {
+        let url_ = this.baseUrl + "/api/Post/feed/paged?";
+        if (page === null)
+            throw new Error("The parameter 'page' cannot be null.");
+        else if (page !== undefined)
+            url_ += "page=" + encodeURIComponent("" + page) + "&";
+        if (pageSize === null)
+            throw new Error("The parameter 'pageSize' cannot be null.");
+        else if (pageSize !== undefined)
+            url_ += "pageSize=" + encodeURIComponent("" + pageSize) + "&";
+        url_ = url_.replace(/[?&]$/, "");
+
+        let options_: RequestInit = {
+            method: "GET",
+            headers: {
+                "Accept": "text/plain"
+            }
+        };
+
+        return this.http.fetch(url_, options_).then((_response: Response) => {
+            return this.processPaged(_response);
+        });
+    }
+
+    protected processPaged(response: Response): Promise<FeedDto> {
+        const status = response.status;
+        let _headers: any = {}; if (response.headers && response.headers.forEach) { response.headers.forEach((v: any, k: any) => _headers[k] = v); };
+        if (status === 200) {
+            return response.text().then((_responseText) => {
+            let result200: any = null;
+            let resultData200 = _responseText === "" ? null : JSON.parse(_responseText, this.jsonParseReviver);
+            result200 = FeedDto.fromJS(resultData200);
+            return result200;
+            });
+        } else if (status !== 200 && status !== 204) {
+            return response.text().then((_responseText) => {
+            return throwException("An unexpected server error occurred.", status, _responseText, _headers);
+            });
+        }
+        return Promise.resolve<FeedDto>(null as any);
     }
 
     /**
@@ -963,60 +1003,6 @@ export class Client {
             });
         }
         return Promise.resolve<PostDto>(null as any);
-    }
-
-    /**
-     * @param page (optional) 
-     * @param pageSize (optional) 
-     * @return OK
-     */
-    feed(page: number | undefined, pageSize: number | undefined): Promise<PostDto[]> {
-        let url_ = this.baseUrl + "/api/Post/feed?";
-        if (page === null)
-            throw new Error("The parameter 'page' cannot be null.");
-        else if (page !== undefined)
-            url_ += "page=" + encodeURIComponent("" + page) + "&";
-        if (pageSize === null)
-            throw new Error("The parameter 'pageSize' cannot be null.");
-        else if (pageSize !== undefined)
-            url_ += "pageSize=" + encodeURIComponent("" + pageSize) + "&";
-        url_ = url_.replace(/[?&]$/, "");
-
-        let options_: RequestInit = {
-            method: "GET",
-            headers: {
-                "Accept": "text/plain"
-            }
-        };
-
-        return this.http.fetch(url_, options_).then((_response: Response) => {
-            return this.processFeed(_response);
-        });
-    }
-
-    protected processFeed(response: Response): Promise<PostDto[]> {
-        const status = response.status;
-        let _headers: any = {}; if (response.headers && response.headers.forEach) { response.headers.forEach((v: any, k: any) => _headers[k] = v); };
-        if (status === 200) {
-            return response.text().then((_responseText) => {
-            let result200: any = null;
-            let resultData200 = _responseText === "" ? null : JSON.parse(_responseText, this.jsonParseReviver);
-            if (Array.isArray(resultData200)) {
-                result200 = [] as any;
-                for (let item of resultData200)
-                    result200!.push(PostDto.fromJS(item));
-            }
-            else {
-                result200 = <any>null;
-            }
-            return result200;
-            });
-        } else if (status !== 200 && status !== 204) {
-            return response.text().then((_responseText) => {
-            return throwException("An unexpected server error occurred.", status, _responseText, _headers);
-            });
-        }
-        return Promise.resolve<PostDto[]>(null as any);
     }
 
     /**
@@ -1273,6 +1259,54 @@ export interface ICreatePostDto {
     circleIds?: string[] | undefined;
 }
 
+export class FeedDto implements IFeedDto {
+    posts?: PostDto[] | undefined;
+    notificationCount?: number;
+
+    constructor(data?: IFeedDto) {
+        if (data) {
+            for (var property in data) {
+                if (data.hasOwnProperty(property))
+                    (<any>this)[property] = (<any>data)[property];
+            }
+        }
+    }
+
+    init(_data?: any) {
+        if (_data) {
+            if (Array.isArray(_data["posts"])) {
+                this.posts = [] as any;
+                for (let item of _data["posts"])
+                    this.posts!.push(PostDto.fromJS(item));
+            }
+            this.notificationCount = _data["notificationCount"];
+        }
+    }
+
+    static fromJS(data: any): FeedDto {
+        data = typeof data === 'object' ? data : {};
+        let result = new FeedDto();
+        result.init(data);
+        return result;
+    }
+
+    toJSON(data?: any) {
+        data = typeof data === 'object' ? data : {};
+        if (Array.isArray(this.posts)) {
+            data["posts"] = [];
+            for (let item of this.posts)
+                data["posts"].push(item.toJSON());
+        }
+        data["notificationCount"] = this.notificationCount;
+        return data;
+    }
+}
+
+export interface IFeedDto {
+    posts?: PostDto[] | undefined;
+    notificationCount?: number;
+}
+
 export class FriendshipDto implements IFriendshipDto {
     id?: string | undefined;
     requester?: UserDto;
@@ -1505,6 +1539,7 @@ export class ProfilePageResponseDto implements IProfilePageResponseDto {
     isCurrentUser?: boolean;
     friendshipStatus?: FriendshipStatusDto;
     recentPosts?: PostDto[] | undefined;
+    notificationCount?: number;
 
     constructor(data?: IProfilePageResponseDto) {
         if (data) {
@@ -1525,6 +1560,7 @@ export class ProfilePageResponseDto implements IProfilePageResponseDto {
                 for (let item of _data["recentPosts"])
                     this.recentPosts!.push(PostDto.fromJS(item));
             }
+            this.notificationCount = _data["notificationCount"];
         }
     }
 
@@ -1545,6 +1581,7 @@ export class ProfilePageResponseDto implements IProfilePageResponseDto {
             for (let item of this.recentPosts)
                 data["recentPosts"].push(item.toJSON());
         }
+        data["notificationCount"] = this.notificationCount;
         return data;
     }
 }
@@ -1554,6 +1591,7 @@ export interface IProfilePageResponseDto {
     isCurrentUser?: boolean;
     friendshipStatus?: FriendshipStatusDto;
     recentPosts?: PostDto[] | undefined;
+    notificationCount?: number;
 }
 
 export class RegisterModel implements IRegisterModel {

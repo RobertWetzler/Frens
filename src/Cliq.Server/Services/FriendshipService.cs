@@ -27,6 +27,7 @@ public interface IFriendshipService
     Task<bool> RemoveFriendshipAsync(Guid userId, Guid friendId);
     Task<bool> BlockUserAsync(Guid userId, Guid userToBlockId);
     Task<IEnumerable<FriendshipDto>> GetFriendRequestsAsync(Guid userId);
+    Task<int> GetFriendRequestsCountAsync(Guid userId);
     Task<IEnumerable<UserDto>> GetFriendsAsync(Guid userId);
     Task<bool> AreFriendsAsync(Guid userId1, Guid userId2);
     Task<Friendship?> GetFriendshipByUserIdsAsync(Guid userId1, Guid userId2);
@@ -229,6 +230,13 @@ public class FriendshipService : IFriendshipService
             .ToListAsync();
 
         return _mapper.Map<IEnumerable<FriendshipDto>>(friendships);
+    }
+
+    public async Task<int> GetFriendRequestsCountAsync(Guid userId)
+    {
+        return await _dbContext.Friendships
+            .Where(f => f.AddresseeId == userId && f.Status == FriendshipStatus.Pending)
+            .CountAsync();
     }
 
     public async Task<Friendship?> GetFriendshipByUserIdsAsync(Guid userId1, Guid userId2)

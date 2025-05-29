@@ -12,7 +12,7 @@ import NotificationBell from 'components/NotificationBell';
 
 
 const HomeScreen = ({ navigation }) => {
-    const { posts, isLoading, error, loadPosts } = useFeed();
+    const { posts, notificationCount, isLoading, error, loadFeed } = useFeed();
     const authContext = useAuth();
     const scrollY = useRef(new Animated.Value(0)).current;
     
@@ -80,6 +80,7 @@ const HomeScreen = ({ navigation }) => {
                         <NotificationBell 
                             onPress={() => navigation.navigate('Notifications')} 
                             iconColor="white"
+                            notificationCount={notificationCount}
                         />        
                     </View>
                 </LinearGradient>
@@ -104,7 +105,7 @@ const HomeScreen = ({ navigation }) => {
                 refreshing={isLoading}
                 onRefresh={() => {
                     // Implement pull-to-refresh functionality
-                    loadPosts();
+                    loadFeed();
                 }}
                 ListEmptyComponent={() => (
                     <View style={styles.emptyContainer}>
