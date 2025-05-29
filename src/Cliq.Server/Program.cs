@@ -42,19 +42,37 @@ builder.Services.AddDbContext<CliqDbContext>(options =>
         var pgUserPass = connUrl.Split("@")[0];
         var pgHostPortDb = connUrl.Split("@")[1];
         var pgHostPort = pgHostPortDb.Split("/")[0];
-        var pgDb = pgHostPortDb.Split("/")[1];
+        var pgDbWithParams = pgHostPortDb.Split("/")[1];
+
+        // Check if there are query parameters and extract them
+        var pgDb = pgDbWithParams;
+        var sslParams = "";
+        if (pgDbWithParams.Contains("?"))
+        {
+            var parts = pgDbWithParams.Split("?");
+            pgDb = parts[0];
+            var queryParams = parts[1];
+            
+            // Check for sslmode=disable
+            if (queryParams.Contains("sslmode=disable"))
+            {
+                sslParams = "SslMode=Disable;";
+            }
+        }
+
         var pgUser = pgUserPass.Split(":")[0];
         var pgPass = pgUserPass.Split(":")[1];
         var pgHost = pgHostPort.Split(":")[0];
         var pgPort = pgHostPort.Split(":")[1];
-        var updatedHost = pgHost.Replace("flycast", "internal");
 
-        connectionString = $"Server={updatedHost};Port={pgPort};User Id={pgUser};Password={pgPass};Database={pgDb};";
+        connectionString = $"Server={pgHost};Port={pgPort};User Id={pgUser};Password={pgPass};Database={pgDb};{sslParams}";
 
-        // Debug: Log the connection string (be careful not to log passwords in real production)
-        Console.WriteLine($"Connection string length: {connectionString.Length}");
-        Console.WriteLine($"Connection string ends with: '{connectionString.Substring(Math.Max(0, connectionString.Length - 20))}'");
-    }
+        // Debug: Log the connection string (excluding password for security)
+        var safeConnectionString = $"Server={pgHost};Port={pgPort};User Id={pgUser};Password=***;Database={pgDb};{sslParams}";
+
+        Console.WriteLine($"Connection string: {safeConnectionString}");
+        Console.WriteLine($"Host: {pgHost}, Port: {pgPort}, Database: {pgDb}, User: {pgUser}");
+}
     else
     {
         // In development, use the connection string from configuration
