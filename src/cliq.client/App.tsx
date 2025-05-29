@@ -31,7 +31,7 @@ type RootStackParamList = {
 type TabParamList = {
     Feed: undefined;
     Groups: undefined;
-    Create: undefined;
+    Post: undefined;
     Calendar: undefined;
     Me: undefined;
 };
@@ -96,10 +96,13 @@ const BottomTabs = ({ navigation }) => {
       screenOptions={({ route }) => ({
         tabBarIcon: ({ focused, color, size }) => {
           let iconName;
-
           if (route.name === 'Feed') {
             iconName = focused ? 'home' : 'home-outline';
-          } else if (route.name === 'Groups') {
+          }
+          else if (route.name === 'Post') {
+            iconName = focused ? 'add' : 'add-outline';
+          }
+          else if (route.name === 'Groups') {
             iconName = focused ? 'people' : 'people-outline';
           } else if (route.name === 'Calendar') {
             iconName = focused ? 'calendar' : 'calendar-outline';
@@ -108,7 +111,7 @@ const BottomTabs = ({ navigation }) => {
           }
 
           // Return null for the Create tab as we'll render a custom button
-          if (route.name === 'Create') return null;
+          //if (route.name === 'Post') return null;
 
           return <Ionicons name={iconName} size={size} color={color} />;
         },
@@ -128,17 +131,17 @@ const BottomTabs = ({ navigation }) => {
       })}
     >
       <Tab.Screen name="Feed" component={HomeScreen} />
-      <Tab.Screen name="Groups" component={GroupsScreen} />
+      {/* <Tab.Screen name="Groups" component={GroupsScreen} /> */}
       <Tab.Screen 
-        name="Create" 
-        component={HomeScreen}
-        options={{
-          tabBarButton: () => (
-            <CreateButton onPress={openCreatePost} />
-          ),
-        }}
+        name="Post"
+        component={CreatePostScreen}
+        // options={{
+        //   tabBarButton: () => (
+        //     <CreateButton onPress={openCreatePost} />
+        //   ),
+        // }}
       />
-      <Tab.Screen name="Calendar" component={CalendarScreen} />
+      {/* <Tab.Screen name="Calendar" component={CalendarScreen} /> */}
       <Tab.Screen name="Me" component={ProfileScreen} />
     </Tab.Navigator>
   );
