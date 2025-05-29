@@ -758,6 +758,43 @@ export class Client {
     }
 
     /**
+     * @return OK
+     */
+    notification(): Promise<NotificationDto> {
+        let url_ = this.baseUrl + "/api/Notification";
+        url_ = url_.replace(/[?&]$/, "");
+
+        let options_: RequestInit = {
+            method: "GET",
+            headers: {
+                "Accept": "text/plain"
+            }
+        };
+
+        return this.http.fetch(url_, options_).then((_response: Response) => {
+            return this.processNotification(_response);
+        });
+    }
+
+    protected processNotification(response: Response): Promise<NotificationDto> {
+        const status = response.status;
+        let _headers: any = {}; if (response.headers && response.headers.forEach) { response.headers.forEach((v: any, k: any) => _headers[k] = v); };
+        if (status === 200) {
+            return response.text().then((_responseText) => {
+            let result200: any = null;
+            let resultData200 = _responseText === "" ? null : JSON.parse(_responseText, this.jsonParseReviver);
+            result200 = NotificationDto.fromJS(resultData200);
+            return result200;
+            });
+        } else if (status !== 200 && status !== 204) {
+            return response.text().then((_responseText) => {
+            return throwException("An unexpected server error occurred.", status, _responseText, _headers);
+            });
+        }
+        return Promise.resolve<NotificationDto>(null as any);
+    }
+
+    /**
      * @param includeCommentTree (optional) 
      * @return OK
      */
@@ -1307,6 +1344,70 @@ export interface IFeedDto {
     notificationCount?: number;
 }
 
+export class FriendRequestDto implements IFriendRequestDto {
+    status?: VisibleStatus;
+    id!: string;
+    requesterId!: string;
+    requester?: UserDto;
+    addresseeId!: string;
+    addressee?: UserDto;
+    createdAt?: Date;
+    acceptedAt?: Date | undefined;
+
+    constructor(data?: IFriendRequestDto) {
+        if (data) {
+            for (var property in data) {
+                if (data.hasOwnProperty(property))
+                    (<any>this)[property] = (<any>data)[property];
+            }
+        }
+    }
+
+    init(_data?: any) {
+        if (_data) {
+            this.status = _data["status"];
+            this.id = _data["id"];
+            this.requesterId = _data["requesterId"];
+            this.requester = _data["requester"] ? UserDto.fromJS(_data["requester"]) : <any>undefined;
+            this.addresseeId = _data["addresseeId"];
+            this.addressee = _data["addressee"] ? UserDto.fromJS(_data["addressee"]) : <any>undefined;
+            this.createdAt = _data["createdAt"] ? new Date(_data["createdAt"].toString()) : <any>undefined;
+            this.acceptedAt = _data["acceptedAt"] ? new Date(_data["acceptedAt"].toString()) : <any>undefined;
+        }
+    }
+
+    static fromJS(data: any): FriendRequestDto {
+        data = typeof data === 'object' ? data : {};
+        let result = new FriendRequestDto();
+        result.init(data);
+        return result;
+    }
+
+    toJSON(data?: any) {
+        data = typeof data === 'object' ? data : {};
+        data["status"] = this.status;
+        data["id"] = this.id;
+        data["requesterId"] = this.requesterId;
+        data["requester"] = this.requester ? this.requester.toJSON() : <any>undefined;
+        data["addresseeId"] = this.addresseeId;
+        data["addressee"] = this.addressee ? this.addressee.toJSON() : <any>undefined;
+        data["createdAt"] = this.createdAt ? this.createdAt.toISOString() : <any>undefined;
+        data["acceptedAt"] = this.acceptedAt ? this.acceptedAt.toISOString() : <any>undefined;
+        return data;
+    }
+}
+
+export interface IFriendRequestDto {
+    status?: VisibleStatus;
+    id: string;
+    requesterId: string;
+    requester?: UserDto;
+    addresseeId: string;
+    addressee?: UserDto;
+    createdAt?: Date;
+    acceptedAt?: Date | undefined;
+}
+
 export class FriendshipDto implements IFriendshipDto {
     id?: string | undefined;
     requester?: UserDto;
@@ -1452,6 +1553,50 @@ export interface ILoginModel {
     email?: string | undefined;
     password?: string | undefined;
     rememberMe?: boolean;
+}
+
+export class NotificationDto implements INotificationDto {
+    friendRequests?: FriendRequestDto[] | undefined;
+
+    constructor(data?: INotificationDto) {
+        if (data) {
+            for (var property in data) {
+                if (data.hasOwnProperty(property))
+                    (<any>this)[property] = (<any>data)[property];
+            }
+        }
+    }
+
+    init(_data?: any) {
+        if (_data) {
+            if (Array.isArray(_data["friendRequests"])) {
+                this.friendRequests = [] as any;
+                for (let item of _data["friendRequests"])
+                    this.friendRequests!.push(FriendRequestDto.fromJS(item));
+            }
+        }
+    }
+
+    static fromJS(data: any): NotificationDto {
+        data = typeof data === 'object' ? data : {};
+        let result = new NotificationDto();
+        result.init(data);
+        return result;
+    }
+
+    toJSON(data?: any) {
+        data = typeof data === 'object' ? data : {};
+        if (Array.isArray(this.friendRequests)) {
+            data["friendRequests"] = [];
+            for (let item of this.friendRequests)
+                data["friendRequests"].push(item.toJSON());
+        }
+        return data;
+    }
+}
+
+export interface INotificationDto {
+    friendRequests?: FriendRequestDto[] | undefined;
 }
 
 export class PostDto implements IPostDto {

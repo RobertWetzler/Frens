@@ -84,6 +84,7 @@ builder.Services.AddPostServices();
 builder.Services.AddCircleServices();
 builder.Services.AddCommentServices();
 builder.Services.AddFriendshipServices();
+builder.Services.AddNotificationsServices();
 // Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();

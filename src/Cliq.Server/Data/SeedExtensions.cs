@@ -113,10 +113,13 @@ public static class SeedExtensions
         var daltin = GetUser(users, "daltin@example.com");
 
         // Add friendships
-        await AddFriendshipsAsync(db, robert, new[] { sierra, spencer, devon, jacob, howard, carolyn, eliza, lauren, barbara, elana, daltin, anya, kevin, mira });
+        await AddFriendshipsAsync(db, robert, new[] { sierra, spencer, devon, jacob, howard, carolyn, eliza, lauren, barbara, elana, daltin });
         await AddFriendshipsAsync(db, sierra, new[] { anya, kevin, mira });
         await AddFriendshipsAsync(db, spencer, new[] { devon, sierra });
         await AddFriendshipsAsync(db, devon, new[] { jacob });
+
+        // Add some outstanding friend requests
+        await AddFriendshipsAsync(db, robert, [anya, kevin, mira], FriendshipStatus.Pending);
 
         // Create circles
         var climbingCircle = await CreateCircleAsync(db, "Climbing Crew", false, robert, new[] { devon, spencer });
@@ -129,7 +132,7 @@ public static class SeedExtensions
         await CreatePostAsync(db, robert, "New hiking trail opened up — let's go!", DateTime.UtcNow.AddHours(-8), new[] { hikingCircle, climbingCircle });
         await CreatePostAsync(db, sierra, "Anyone want to go for a hike Sunday?", DateTime.UtcNow.AddHours(-2), new[] { hikingCircle, sierraFriends });
         await CreatePostAsync(db, howard, "Letting family know: I'll be out mountaineering Sunday.", DateTime.UtcNow.AddHours(-5), new[] { familyCircle });
-
+        
         // Add comments
         await AddCommentTreeAsync(db, post1, new[]
         {
@@ -145,6 +148,7 @@ public static class SeedExtensions
             ),
             new C(spencer, "This will be so hype!!!!!")
         });
+        
     }
 
     private static User GetUser(List<User> users, string email)
@@ -152,14 +156,14 @@ public static class SeedExtensions
         return users.First(u => u.Email == email);
     }
 
-    private static async Task AddFriendshipsAsync(CliqDbContext db, User user, User[] friends)
+    private static async Task AddFriendshipsAsync(CliqDbContext db, User user, User[] friends, FriendshipStatus status = FriendshipStatus.Accepted)
     {
         var friendships = friends.Select(friend => new Friendship
         {
             Id = Guid.NewGuid(),
-            RequesterId = user.Id,
-            AddresseeId = friend.Id,
-            Status = FriendshipStatus.Accepted
+            AddresseeId = user.Id,
+            RequesterId = friend.Id,
+            Status = status
         }).ToList();
 
         await db.Friendships.AddRangeAsync(friendships);

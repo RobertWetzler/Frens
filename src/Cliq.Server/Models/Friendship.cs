@@ -22,6 +22,7 @@ public enum FriendshipStatus
     Blocked
 }
 
+// Used for representing friendship on a user's profile, very minimal
 public class FriendshipStatusDto
 {
     /// <summary>
@@ -33,6 +34,30 @@ public class FriendshipStatusDto
     /// The friendship ID, if applicable (useful for accepting/rejecting requests)
     /// </summary>
     public Guid? FriendshipId { get; set; }
+}
+
+// Used for representing an friend request (e.g. in notifications screen) including data about the user
+public class FriendRequestDto
+{
+    /// <summary>
+    /// Possible values: "none", "friends", "pending_sent", "pending_received", "blocked", "blocked_by"
+    /// </summary>
+    public VisibleStatus Status { get; set; } = VisibleStatus.None;
+
+    /// <summary>
+    /// The friendship ID, if applicable (useful for accepting/rejecting requests)
+    /// </summary>
+    public required Guid Id { get; set; }
+
+    public required Guid RequesterId { get; set; }
+    public UserDto? Requester { get; set; } = null;
+
+    public required Guid AddresseeId { get; set; }
+    public UserDto? Addressee { get; set; } = null;
+
+    public DateTime CreatedAt { get; set; }
+
+    public DateTime? AcceptedAt { get; set; } = null;
 }
 
 public enum VisibleStatus

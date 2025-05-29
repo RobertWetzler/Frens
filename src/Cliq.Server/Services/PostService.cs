@@ -397,4 +397,10 @@ public static class ServiceCollectionExtensions
         services.AddScoped<ICircleService, CircleService>();
         return services;
     }
+
+    public static IServiceCollection AddNotificationsServices(this IServiceCollection services)
+    {
+        services.AddScoped<INotificationService, NotificationService>();
+        return services;
+    }
 }

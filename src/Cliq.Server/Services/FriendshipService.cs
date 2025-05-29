@@ -26,7 +26,7 @@ public interface IFriendshipService
     Task<bool> CancelFriendRequestAsync(Guid friendshipId, Guid userId);
     Task<bool> RemoveFriendshipAsync(Guid userId, Guid friendId);
     Task<bool> BlockUserAsync(Guid userId, Guid userToBlockId);
-    Task<IEnumerable<FriendshipDto>> GetFriendRequestsAsync(Guid userId);
+    Task<IEnumerable<FriendRequestDto>> GetFriendRequestsAsync(Guid userId, bool includeAddressee = false);
     Task<int> GetFriendRequestsCountAsync(Guid userId);
     Task<IEnumerable<UserDto>> GetFriendsAsync(Guid userId);
     Task<bool> AreFriendsAsync(Guid userId1, Guid userId2);
@@ -221,15 +221,18 @@ public class FriendshipService : IFriendshipService
         return true;
     }
 
-    public async Task<IEnumerable<FriendshipDto>> GetFriendRequestsAsync(Guid userId)
+    public async Task<IEnumerable<FriendRequestDto>> GetFriendRequestsAsync(Guid userId, bool includeAddressee = false)
     {
-        var friendships = await _dbContext.Friendships
-            .Where(f => f.AddresseeId == userId && f.Status == FriendshipStatus.Pending)
-            .Include(f => f.Requester)
-            .Include(f => f.Addressee)
-            .ToListAsync();
+        var query = _dbContext.Friendships
+                .Where(f => f.AddresseeId == userId && f.Status == FriendshipStatus.Pending)
+                .Include(f => f.Requester);
+        if (includeAddressee)
+        {
+            query.Include(f => f.Addressee);
+        }
+        var friendRequests = await query.ToListAsync();
 
-        return _mapper.Map<IEnumerable<FriendshipDto>>(friendships);
+        return _mapper.Map<IEnumerable<FriendRequestDto>>(friendRequests);
     }
 
     public async Task<int> GetFriendRequestsCountAsync(Guid userId)

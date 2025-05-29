@@ -21,6 +21,7 @@ public class MappingProfile : Profile
         CreateMap<User, UserDto>();
         CreateMap<User, UserProfileDto>();
         CreateMap<Friendship, FriendshipDto>();
+        CreateMap<Friendship, FriendRequestDto>();
         CreateMap<Comment, CommentDto>()
             // We'll handle replies separately due to their recursive nature
             .ForMember(dest => dest.Replies, opt => opt.Ignore());
