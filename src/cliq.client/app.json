@@ -23,7 +23,30 @@
     },
     "web": {
       "bundler": "metro",
-      "favicon": "./assets/favicon.png"
+      "favicon": "./assets/favicon.png",
+      "name": "Frens",
+      "shortName": "Frens",
+      "lang": "en",
+      "scope": "/",
+      "themeColor": "#1DA1F2",
+      "backgroundColor": "#ffffff",
+      "display": "standalone",
+      "orientation": "portrait",
+      "startUrl": "/",
+      "relatedApplications": [],
+      "preferRelatedApplications": false,
+      "icons": [
+        {
+          "src": "./assets/icon-192.png",
+          "sizes": "192x192",
+          "type": "image/png"
+        },
+        {
+          "src": "./assets/icon-512.png",
+          "sizes": "512x512",
+          "type": "image/png"
+        }
+      ]
     },
     "extra": {
       "apiUrl": "https://localhost:7188"

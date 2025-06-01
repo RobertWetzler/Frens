@@ -3,7 +3,7 @@ import { LinkingOptions, NavigationContainer } from '@react-navigation/native';
 import { createStackNavigator } from '@react-navigation/stack';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { Ionicons } from '@expo/vector-icons';
-import { TouchableOpacity, View, StyleSheet, Animated } from 'react-native';
+import { TouchableOpacity, View, StyleSheet, Animated, Platform } from 'react-native';
 import * as Linking from 'expo-linking';
 
 // Screens
@@ -18,11 +18,11 @@ import { ActivityIndicator, SafeAreaView } from 'react-native';
 import { AuthProvider, useAuth } from 'contexts/AuthContext';
 import CreateCircleScreen from 'screens/CreateCircleScreen';
 import NotificationsScreen from 'screens/NotificationScreen';
+import { useServiceWorker } from './hooks/useServiceWorker';
 
 type RootStackParamList = {
   SignIn: undefined | { returnTo?: string };
-  Main: undefined // This is the key change
-  // TODO change to "Post"
+  Main: undefined
   Comments: { postId: string };
   CreatePost: undefined;
   CreateCircle: undefined;
@@ -83,14 +83,12 @@ const BottomTabs = ({ navigation }) => {
   const animatedValue = useRef(new Animated.Value(0)).current;
   
   const openCreatePost = () => {
-    // First start the animation
     Animated.timing(animatedValue, {
       toValue: 1,
       duration: 300,
       useNativeDriver: true,
     }).start();
     
-    // Navigate to the create post screen
     navigation.navigate('CreatePost');
   };
   
@@ -113,9 +111,6 @@ const BottomTabs = ({ navigation }) => {
             iconName = focused ? 'person' : 'person-outline';
           }
 
-          // Return null for the Create tab as we'll render a custom button
-          //if (route.name === 'Post') return null;
-
           return <Ionicons name={iconName} size={size} color={color} />;
         },
         tabBarActiveTintColor: '#1DA1F2',
@@ -129,22 +124,20 @@ const BottomTabs = ({ navigation }) => {
           right: 0,
           bottom: 0,
           height: 60,
+          // Add safe area for iOS PWA
+          paddingBottom: Platform.OS === 'web' && Platform.select({
+            web: typeof window !== 'undefined' && window.navigator.standalone ? 20 : 0,
+            default: 0
+          }),
         },
         headerShown: false,
       })}
     >
       <Tab.Screen name="Feed" component={HomeScreen} />
-      {/* <Tab.Screen name="Groups" component={GroupsScreen} /> */}
       <Tab.Screen 
         name="Post"
         component={CreatePostScreen}
-        // options={{
-        //   tabBarButton: () => (
-        //     <CreateButton onPress={openCreatePost} />
-        //   ),
-        // }}
       />
-      {/* <Tab.Screen name="Calendar" component={CalendarScreen} /> */}
       <Tab.Screen name="Me" component={ProfileScreen} />
     </Tab.Navigator>
   );
@@ -154,6 +147,9 @@ const MainApp = () => {
   const { isAuthenticated, isAuthLoading } = useAuth();
   const [initialURL, setInitialURL] = useState<string | null>(null);
   const [isReady, setIsReady] = useState(false);
+
+  // Register service worker
+  useServiceWorker();
 
   useEffect(() => {
     const getInitialURL = async () => {
@@ -171,37 +167,70 @@ const MainApp = () => {
     }
   }, [isReady]);
 
-    // Helper function to check if URL needs redirect after auth
-    const shouldRedirectAfterAuth = (url: string | null): boolean => {
-      if (!url) return false;
+  // PWA Install prompt handler
+  useEffect(() => {
+    if (Platform.OS === 'web') {
+      // Hide address bar on mobile browsers
+      const hideAddressBar = () => {
+        window.scrollTo(0, 1);
+      };
       
-      try {
-        const parsedUrl = new URL(url);
-        const pathname = parsedUrl.pathname;
-        
-        // Don't redirect for root paths or main tab routes
-        if (pathname === '/' || 
-            pathname === '/feed' || 
-            pathname === '/groups' || 
-            pathname === '/calendar' || 
-            pathname === '/me' || 
-            pathname === '') {
-          return false;
+      // Prevent zoom on double tap
+      let lastTouchEnd = 0;
+      const preventZoom = (e) => {
+        const now = new Date().getTime();
+        if (now - lastTouchEnd <= 300) {
+          e.preventDefault();
         }
-        
-        // Redirect for specific protected routes
-        return pathname.startsWith('/profile/') || 
-               pathname.startsWith('/post/') || 
-               pathname.startsWith('/create-');
-      } catch (error) {
-        // If URL parsing fails, don't redirect
+        lastTouchEnd = now;
+      };
+      
+      document.addEventListener('touchend', preventZoom, false);
+      window.addEventListener('load', hideAddressBar);
+      
+      return () => {
+        document.removeEventListener('touchend', preventZoom, false);
+        window.removeEventListener('load', hideAddressBar);
+      };
+    }
+  }, []);
+
+  const shouldRedirectAfterAuth = (url: string | null): boolean => {
+    if (!url) return false;
+    
+    try {
+      const parsedUrl = new URL(url);
+      const pathname = parsedUrl.pathname;
+      
+      if (pathname === '/' || 
+          pathname === '/feed' || 
+          pathname === '/groups' || 
+          pathname === '/calendar' || 
+          pathname === '/me' || 
+          pathname === '') {
         return false;
       }
-    };
-  // Show loading screen while checking auth state
+      
+      return pathname.startsWith('/profile/') || 
+             pathname.startsWith('/post/') || 
+             pathname.startsWith('/create-');
+    } catch (error) {
+      return false;
+    }
+  };
+
   if (isAuthLoading || !isReady) {
     return (
-      <SafeAreaView style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
+      <SafeAreaView style={{ 
+        flex: 1, 
+        justifyContent: 'center', 
+        alignItems: 'center',
+        // Ensure full screen on iOS PWA
+        paddingTop: Platform.OS === 'web' && Platform.select({
+          web: typeof window !== 'undefined' && window.navigator.standalone ? 40 : 0,
+          default: 0
+        })
+      }}>
         <ActivityIndicator size={36} color="#1DA1F2" />
       </SafeAreaView>
     );
@@ -219,7 +248,6 @@ const MainApp = () => {
         }}
       >
         {isAuthenticated ? (
-          // Authenticated stack - all protected routes
           <Stack.Group>
             <Stack.Screen name="Main" component={BottomTabs} />
             <Stack.Screen 
@@ -281,13 +309,11 @@ const MainApp = () => {
             />
           </Stack.Group>
         ) : (
-          // Auth stack - only auth screen available when not authenticated
           <Stack.Screen 
             name="SignIn" 
             component={SignInScreen}
             initialParams={authParams}
             options={{
-              // Prevent going back
               headerLeft: () => null,
               gestureEnabled: false,
             }}

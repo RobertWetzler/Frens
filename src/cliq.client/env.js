@@ -1,6 +1,6 @@
 const ENV = {
   development: {
-    API_URL: 'http://localhost:8080', // Your .NET server port
+    API_URL: 'https://localhost:7188', // Your .NET server port
     //API_URL: 'http://172.20.10.3:5265', // Your .NET server port
   },
   production: {
