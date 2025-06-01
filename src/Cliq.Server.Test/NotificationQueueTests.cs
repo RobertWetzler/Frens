@@ -173,7 +173,7 @@ public class PushNotificationSystemTests : IClassFixture<DatabaseFixture>
         // Setup successful push response
         _mockPushClient.Setup(x => x.RequestPushMessageDeliveryAsync(
             It.IsAny<PushSubscription>(), 
-            It.IsAny<PushMessage>(), 
+            It.IsAny<PushSubscription>(), It.IsAny<PushMessage>(), 
             It.IsAny<CancellationToken>()))
             .ReturnsAsync(new PushMessageDeliveryResult(HttpStatusCode.OK, null));
 
@@ -206,7 +206,7 @@ public class PushNotificationSystemTests : IClassFixture<DatabaseFixture>
         
         // Setup failed push response
         _mockPushClient.Setup(x => x.RequestPushMessageDeliveryAsync(
-            It.IsAny<PushMessage>(), 
+            It.IsAny<PushSubscription>(), It.IsAny<PushMessage>(), 
             It.IsAny<CancellationToken>()))
             .ReturnsAsync(new PushMessageDeliveryResult(HttpStatusCode.BadRequest, "Invalid endpoint"));
 
@@ -239,7 +239,7 @@ public class PushNotificationSystemTests : IClassFixture<DatabaseFixture>
         using var context = _fixture.CreateContext();
         
         _mockPushClient.Setup(x => x.RequestPushMessageDeliveryAsync(
-            It.IsAny<PushMessage>(), 
+            It.IsAny<PushSubscription>(), It.IsAny<PushMessage>(), 
             It.IsAny<CancellationToken>()))
             .ReturnsAsync(new PushMessageDeliveryResult(HttpStatusCode.OK, null));
 
@@ -266,7 +266,7 @@ public class PushNotificationSystemTests : IClassFixture<DatabaseFixture>
 
         // Assert - Only one delivery should be processed
         _mockPushClient.Verify(x => x.RequestPushMessageDeliveryAsync(
-            It.IsAny<PushMessage>(), 
+            It.IsAny<PushSubscription>(), It.IsAny<PushMessage>(), 
             It.IsAny<CancellationToken>()), Times.Once);
 
         // Verify lease state
@@ -290,7 +290,7 @@ public class PushNotificationSystemTests : IClassFixture<DatabaseFixture>
         using var context = _fixture.CreateContext();
         
         _mockPushClient.Setup(x => x.RequestPushMessageDeliveryAsync(
-            It.IsAny<PushMessage>(), 
+            It.IsAny<PushSubscription>(), It.IsAny<PushMessage>(), 
             It.IsAny<CancellationToken>()))
             .ReturnsAsync(new PushMessageDeliveryResult(HttpStatusCode.BadRequest, "Failed"));
 
@@ -330,7 +330,7 @@ public class PushNotificationSystemTests : IClassFixture<DatabaseFixture>
         using var context = _fixture.CreateContext();
         
         _mockPushClient.Setup(x => x.RequestPushMessageDeliveryAsync(
-            It.IsAny<PushMessage>(), 
+            It.IsAny<PushSubscription>(), It.IsAny<PushMessage>(), 
             It.IsAny<CancellationToken>()))
             .ReturnsAsync(new PushMessageDeliveryResult(HttpStatusCode.OK, null));
 
@@ -355,7 +355,7 @@ public class PushNotificationSystemTests : IClassFixture<DatabaseFixture>
 
         // Assert
         _mockPushClient.Verify(x => x.RequestPushMessageDeliveryAsync(
-            It.IsAny<PushMessage>(), 
+            It.IsAny<PushSubscription>(), It.IsAny<PushMessage>(), 
             It.IsAny<CancellationToken>()), Times.Once);
 
         var updatedDelivery = await context.Set<NotificationDelivery>()
@@ -374,7 +374,7 @@ public class PushNotificationSystemTests : IClassFixture<DatabaseFixture>
         using var context2 = _fixture.CreateContext();
         
         _mockPushClient.Setup(x => x.RequestPushMessageDeliveryAsync(
-            It.IsAny<PushMessage>(), 
+            It.IsAny<PushSubscription>(), It.IsAny<PushMessage>(), 
             It.IsAny<CancellationToken>()))
             .ReturnsAsync(new PushMessageDeliveryResult(HttpStatusCode.OK, null));
 
@@ -399,7 +399,7 @@ public class PushNotificationSystemTests : IClassFixture<DatabaseFixture>
 
         // Assert - Should only be called once due to leasing mechanism
         _mockPushClient.Verify(x => x.RequestPushMessageDeliveryAsync(
-            It.IsAny<PushMessage>(), 
+            It.IsAny<PushSubscription>(), It.IsAny<PushMessage>(), 
             It.IsAny<CancellationToken>()), Times.Once);
 
         // Verify final state
@@ -434,7 +434,7 @@ public class PushNotificationSystemTests : IClassFixture<DatabaseFixture>
 
         // Setup mock to succeed on second call (after lease expires)
         _mockPushClient.Setup(x => x.RequestPushMessageDeliveryAsync(
-            It.IsAny<PushMessage>(), 
+            It.IsAny<PushSubscription>(), It.IsAny<PushMessage>(), 
             It.IsAny<CancellationToken>()))
             .ReturnsAsync(new PushMessageDeliveryResult(HttpStatusCode.OK, null));
 
@@ -449,7 +449,7 @@ public class PushNotificationSystemTests : IClassFixture<DatabaseFixture>
 
         // Assert
         _mockPushClient.Verify(x => x.RequestPushMessageDeliveryAsync(
-            It.IsAny<PushMessage>(), 
+            It.IsAny<PushSubscription>(), It.IsAny<PushMessage>(), 
             It.IsAny<CancellationToken>()), Times.Once);
 
         var finalDelivery = await context.Set<NotificationDelivery>()
@@ -470,7 +470,7 @@ public class PushNotificationSystemTests : IClassFixture<DatabaseFixture>
         using var context = _fixture.CreateContext();
         
         _mockPushClient.Setup(x => x.RequestPushMessageDeliveryAsync(
-            It.IsAny<PushMessage>(), 
+            It.IsAny<PushSubscription>(), It.IsAny<PushMessage>(), 
             It.IsAny<CancellationToken>()))
             .ReturnsAsync(new PushMessageDeliveryResult(HttpStatusCode.OK, null));
 
@@ -500,7 +500,7 @@ public class PushNotificationSystemTests : IClassFixture<DatabaseFixture>
 
         // Verify push client was called for each subscription
         _mockPushClient.Verify(x => x.RequestPushMessageDeliveryAsync(
-            It.IsAny<PushMessage>(), 
+            It.IsAny<PushSubscription>(), It.IsAny<PushMessage>(), 
             It.IsAny<CancellationToken>()), Times.Exactly(2));
     }
 

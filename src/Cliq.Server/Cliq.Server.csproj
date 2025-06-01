@@ -4,15 +4,16 @@
 		<TargetFramework>net8.0</TargetFramework>
 		<Nullable>enable</Nullable>
 		<ImplicitUsings>enable</ImplicitUsings>
-		<!-- <SpaRoot>..\cliq.client</SpaRoot>
+		<SpaRoot>..\cliq.client</SpaRoot>
 		<SpaProxyLaunchCommand>npx expo start</SpaProxyLaunchCommand>
-		<SpaProxyServerUrl>http://localhost:8081</SpaProxyServerUrl> -->
+		<SpaProxyServerUrl>http://localhost:8081</SpaProxyServerUrl>
 	</PropertyGroup>
 
 	<ItemGroup>
 		<PackageReference Include="AutoMapper.Extensions.Microsoft.DependencyInjection" Version="12.0.1" />
 		<PackageReference Include="BCrypt.Net-Next" Version="4.0.3" />
 		<PackageReference Include="DotNetEnv" Version="3.1.1" />
+		<PackageReference Include="Lib.AspNetCore.WebPush" Version="2.2.2" />
 		<PackageReference Include="Microsoft.AspNetCore.Authentication.JwtBearer" Version="8.0.11" />
 		<PackageReference Include="Microsoft.AspNetCore.Identity" Version="2.3.1" />
 		<PackageReference Include="Microsoft.AspNetCore.Identity.EntityFrameworkCore" Version="8.0.10" />
@@ -43,11 +44,11 @@
 		<Exec Command="$(NSwagExe) openapi2tsclient /input:swagger.json /output:Scripts/MyController.ts" />
 	</Target>
 	-->
-	<!--
+	
 	<ItemGroup>
 		<ProjectReference Include="..\cliq.client\cliq.client.esproj">
 			<ReferenceOutputAssembly>false</ReferenceOutputAssembly>
 		</ProjectReference>
 	</ItemGroup>
-	-->
+	
 </Project>

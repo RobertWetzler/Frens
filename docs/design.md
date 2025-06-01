@@ -5,9 +5,16 @@ Bell on top right of Feed and Profile screen
 - Notifications screen shows list of notifications
     - E.g. <Avatar /> Robert sent you a friend request! <Approve Button />
         -
-
-NotificationCount for now driven by friend reqeusts table
-- soon, also driven by being added to a shared circle
+# Notifications
+Aim to support web initially with [Declarative Web Push](https://webkit.org/blog/16535/meet-declarative-web-push/). See if the .net core lib supports this format.
+## Notification Queue
+### Adding notification
+Any part of the code can call TryAddNotification()
+For each Notification added to notification table, add NotificationDelivery entity for every subscription the user has in PushSubscriptions.
+### Dequeuing a notification
+Set a lock on each NotificationDelivery entity pulled from the table so other instances of the web server wont duplicate sending it. 
+## Display in UI
+NotificationCount for now driven by friend reqeusts table and notifications table
 - notification will require table in DB, to be deleted when user views/exs it
 
 Feed/Profile/Anywhere with Bell -> Gets notification count

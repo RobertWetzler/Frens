@@ -1,5 +1,6 @@
 using Cliq.Server.Models;
-
+using Microsoft.Extensions.Options;
+using Lib.Net.Http.WebPush;
 namespace Cliq.Server.Services;
 
 public interface INotificationService
@@ -14,7 +15,7 @@ public class NotificationService : INotificationService
     {
         _friendshipService = friendshipService;
     }
-    
+
     // TODO: Implement other notification types (e.g. mentions, comments, etc.)
     public async Task<NotificationDto> GetNotifications(Guid userId)
     {
@@ -24,8 +25,4 @@ public class NotificationService : INotificationService
             friendRequests = friendRequests
         };
     }
-}
-public class NotificationDto
-{
-    public IEnumerable<FriendRequestDto> friendRequests { get; set; }
 }

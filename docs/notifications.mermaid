@@ -1,0 +1,31 @@
+---
+config:
+  theme: neo-dark
+---
+sequenceDiagram
+    autonumber
+    participant User as User (iOS Safari PWA)
+    participant Frontend as React Native Web App (PWA)
+    participant PushManager as PushManager API
+    participant Server as ASP.NET Core Server
+    participant DB as Subscription Database
+    participant VAPID as VAPID Key Store
+    participant PushService as Push Service (e.g., Apple Web Push Provider)
+    participant SystemUI as WebKit System UI
+    Note over User, Frontend: Initial interaction
+    User->>Frontend: Loads PWA from Home Screen
+    Frontend->>PushManager: navigator.pushManager.subscribe({ userVisibleOnly: true })
+    PushManager-->>Frontend: PushSubscription (incl. endpoint, keys, expirationTime)
+    Frontend->>Server: Send PushSubscription JSON
+    Server->>DB: Store subscription info securely
+    Note over Server, DB: PushSubscription includes endpoint, p256dh, auth
+    Note over Server: Notification Trigger Begins (e.g., user event, scheduler)
+    Server->>DB: Fetch relevant PushSubscriptions
+    Server->>VAPID: Get VAPID Public & Private Keys
+    Server->>Server: Compose notification payload (JSON)
+    Server->>PushService: POST /send<br/>Headers: Authorization (VAPID JWT)<br/>Body: Encrypted payload + endpoint
+    Note right of Server: VAPID JWT = Signed using private key<br/>Includes 'sub', 'aud', 'exp'
+    Note right of PushService: Push Service authenticates JWT<br/>Routes to correct iOS device
+    PushService->>SystemUI: Deliver push to iOS (associated with endpoint)
+    SystemUI->>User: Shows notification in Notification Center
+    Note over User: Declarative Web Push<br/>iOS uses JSON payload and displays UI<br/>No service worker needed

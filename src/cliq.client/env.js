@@ -1,8 +1,10 @@
 const ENV = {
   development: {
-    //API_URL: 'https://localhost:7188', // Your .NET server port
-    API_URL: 'https://192.0.0.2:7188', 
-    API_URL: 'https://roberts-macbook-air.local:7188',
+    API_URL: 'https://localhost:7188', // Your .NET server port
+    //API_URL: 'https://192.0.0.2:7188', 
+    //API_URL: 'https://192.0.0.2:7188', 
+    // Use for hotspot development on MacBook
+    //  API_URL: 'https://roberts-macbook-air.local:7188',
   },
   production: {
     // TODO: Change to Frens domain once I buy a domain name

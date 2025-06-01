@@ -1,4 +1,6 @@
+using Cliq.Server.Models;
 using Cliq.Server.Services;
+using Cliq.Server.Store;
 using Cliq.Utilities;
 using Microsoft.AspNetCore.Mvc;
 
@@ -8,7 +10,8 @@ namespace Cliq.Server.Controllers;
 [ApiController]
 public class NotificationController : ControllerBase
 {
-    public INotificationService _notificationService;
+    private INotificationService _notificationService;
+    private readonly IPushSubscriptionStore _subscriptionStore;
     public NotificationController(INotificationService notificationService)
     {
         _notificationService = notificationService;
@@ -22,5 +25,18 @@ public class NotificationController : ControllerBase
             return Unauthorized();
         }
         return Ok(await _notificationService.GetNotifications(userId));
+    }
+
+    [HttpPost("subscriptions")]
+    public async Task<IActionResult> StoreSubscription([FromBody]PushSubscriptionDto subscription)
+    {
+        if(!AuthUtils.TryGetUserIdFromToken(HttpContext, out var userId))
+        {
+            return Unauthorized();
+        }
+
+        await _subscriptionStore.StoreSubscriptionAsync(userId, subscription);
+
+        return NoContent();
     }
 }

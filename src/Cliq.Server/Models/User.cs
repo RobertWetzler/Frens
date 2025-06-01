@@ -1,4 +1,5 @@
-﻿using Microsoft.AspNetCore.Identity;
+﻿using Lib.Net.Http.WebPush;
+using Microsoft.AspNetCore.Identity;
 
 namespace Cliq.Server.Models;
 
@@ -19,6 +20,7 @@ public class User : IdentityUser<Guid>
     public ICollection<Friendship> FriendRequestsSent { get; set; } = new List<Friendship>();
     public ICollection<Friendship> FriendRequestsReceived { get; set; } = new List<Friendship>();
     public ICollection<Circle> OwnedCircles { get; set; }
+    public ICollection<EfPushSubscription> PushSubscriptions { get; set; }
 }
 
 public class UserDto

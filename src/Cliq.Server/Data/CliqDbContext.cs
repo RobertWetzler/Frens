@@ -14,6 +14,9 @@ public class CliqDbContext : IdentityDbContext<User, CliqRole, Guid>
     public DbSet<Circle> Circles { get; set; }
     public DbSet<CircleMembership> CircleMemberships { get; set; }
     public DbSet<CirclePost> CirclePosts { get; set; }
+    public DbSet<EfPushSubscription> PushSubscriptions { get; set; }
+    public DbSet<Notification> Notifications { get; set; }
+    public DbSet<NotificationDelivery> NotificationDeliveries { get; set; }
 
     public CliqDbContext(
             DbContextOptions<CliqDbContext> options,
@@ -130,5 +133,103 @@ public class CliqDbContext : IdentityDbContext<User, CliqRole, Guid>
 
         modelBuilder.Entity<Circle>()
             .HasIndex(c => c.OwnerId);    // For admin tools
+
+        // NOTIFICATIONS
+        // ========== EfPushSubscription ==========
+        modelBuilder.Entity<EfPushSubscription>(entity =>
+        {
+            entity.HasKey(p => p.Id);
+
+            entity.Property(p => p.Endpoint).IsRequired();
+            entity.Property(p => p.P256DH).IsRequired();
+            entity.Property(p => p.Auth).IsRequired();
+            entity.Property(p => p.CreatedAt).HasDefaultValueSql("CURRENT_TIMESTAMP");
+
+            entity.HasIndex(p => p.Endpoint).IsUnique();
+            entity.HasIndex(p => p.UserId); // For querying subscriptions by user
+            entity
+                .HasOne(p => p.User)
+                .WithMany(u => u.PushSubscriptions) // or .WithMany(u => u.PushSubscriptions) if you're adding reverse nav
+                .HasForeignKey(p => p.UserId)
+                .IsRequired(false)
+                .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        // ========== Notification ==========
+        modelBuilder.Entity<Notification>(entity =>
+        {
+            entity.HasKey(n => n.Id);
+
+            entity.Property(n => n.Id)
+                  .HasColumnName("id")
+                  .HasDefaultValueSql("gen_random_uuid()");
+
+            entity.Property(n => n.UserId)
+                  .HasColumnName("user_id")
+                  .IsRequired();
+
+            entity.Property(n => n.Message)
+                  .HasColumnName("message")
+                  .IsRequired();
+
+            entity.Property(n => n.Metadata)
+                  .HasColumnName("metadata")
+                  .HasColumnType("jsonb");
+
+            entity.Property(n => n.CreatedAt)
+                  .HasColumnName("created_at")
+                  .HasDefaultValueSql("NOW()")
+                  .IsRequired();
+
+            entity.HasMany(n => n.Deliveries)
+                  .WithOne(d => d.Notification)
+                  .HasForeignKey(d => d.NotificationId)
+                  .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        // ========== NotificationDelivery ==========
+        modelBuilder.Entity<NotificationDelivery>(entity =>
+        {
+            entity.ToTable("notification_delivery");
+
+            entity.HasKey(d => d.Id);
+
+            entity.Property(d => d.Id)
+                  .HasColumnName("id")
+                  .HasDefaultValueSql("gen_random_uuid()");
+
+            entity.Property(d => d.NotificationId)
+                  .HasColumnName("notification_id")
+                  .IsRequired();
+
+            entity.Property(d => d.PushSubscriptionEndpoint)
+                  .HasColumnName("push_subscription_endpoint");
+
+            entity.Property(d => d.Status)
+                  .HasColumnName("status")
+                  .HasDefaultValue("pending")
+                  .IsRequired();
+
+            entity.Property(d => d.Retries)
+                  .HasColumnName("retries")
+                  .HasDefaultValue(0)
+                  .IsRequired();
+
+            entity.Property(d => d.CreatedAt)
+                  .HasColumnName("created_at")
+                  .HasDefaultValueSql("NOW()")
+                  .IsRequired();
+
+            entity.Property(d => d.LockedBy)
+                  .HasColumnName("locked_by");
+
+            entity.Property(d => d.LockedUntil)
+                  .HasColumnName("locked_until");
+
+            entity.HasOne<EfPushSubscription>()
+                  .WithMany()
+                  .HasForeignKey(d => d.SubscriptionId)
+                  .OnDelete(DeleteBehavior.Restrict);
+        });
     }
 }
