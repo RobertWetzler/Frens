@@ -1,6 +1,6 @@
-import React, { useEffect } from 'react';
-import { View, Text, StyleSheet, StatusBar, Platform } from 'react-native';
-import ShaderBackground from '../components/ShaderBackground';
+import React, { useEffect, useRef } from 'react';
+import { View, Text, StyleSheet, StatusBar, Platform, Button, Animated } from 'react-native';
+import ShaderBackground, { ShaderBackgroundRef } from '../components/ShaderBackground';
 import { EmailSignInButton } from 'components/EmailSignInButton';
 
 interface SignInScreenProps {
@@ -10,6 +10,31 @@ interface SignInScreenProps {
 
 export default function SignInScreen({ route, navigation }: SignInScreenProps) {
     const returnTo = route?.params?.returnTo;
+    const shaderRef = useRef<ShaderBackgroundRef>(null);
+    const fadeAnim = useRef(new Animated.Value(1)).current; // Initial opacity is 1 (visible)
+
+    const handleExpandBlobs = () => {
+        shaderRef.current?.animateRadius(0.85, 300000); // Animate to 0.8 over 2 seconds
+        
+        // Fade out the UI elements
+        Animated.timing(fadeAnim, {
+            toValue: 0,
+            duration: 800, // Fade out over 800ms
+            useNativeDriver: true,
+        }).start();
+    };
+
+    const handleShrinkBlobs = () => {
+        shaderRef.current?.animateRadius(0.18, 10000); // Animate back to 0.18 over 1 second
+        
+        // Fade in the UI elements
+        Animated.timing(fadeAnim, {
+            toValue: 1,
+            duration: 600, // Fade in over 600ms
+            useNativeDriver: true,
+        }).start();
+    };
+
     useEffect(() => {
         // Update the DOM directly to chagne the top bar to be white, for aesthetic consistency
         // TODO: Change default to white and only make purple on homeScreen
@@ -32,17 +57,28 @@ export default function SignInScreen({ route, navigation }: SignInScreenProps) {
             }
         };
     }, []);
+
     return (
         <View style={styles.container}>
             <StatusBar backgroundColor="#FFFFFF" />
-            <ShaderBackground />
+            <ShaderBackground ref={shaderRef} />
             <View style={styles.contentContainer}>
-                <Text style={styles.appName}>Frens</Text>
-                <Text style={styles.subtitle}>Connect with your community</Text>
-                <View style={styles.signInContainer}>
-                    <Text style={styles.signInText}>Sign in to continue</Text>
-                    <EmailSignInButton returnTo={returnTo} navigation={navigation} />
-                </View>
+                <Animated.View style={[styles.animatedContent, { opacity: fadeAnim }]}>
+                    <Text style={styles.appName}>Frens</Text>
+                    <Text style={styles.subtitle}>Connect with your community</Text>
+                    <View style={styles.signInContainer}>
+                        <Text style={styles.signInText}>Sign in to continue</Text>
+                        {/* <Button title="Expand Blobs" onPress={handleExpandBlobs} />
+                        <Button title="Shrink Blobs" onPress={handleShrinkBlobs} /> */}
+                        <View style={styles.buttonWrapper}>
+                            <EmailSignInButton returnTo={returnTo} navigation={navigation} 
+                            onPress={handleExpandBlobs}
+                            onCancelPress={handleShrinkBlobs}
+                            />
+                        </View>
+
+                    </View>
+                </Animated.View>
             </View>
         </View>
     );
@@ -59,6 +95,10 @@ const styles = StyleSheet.create({
         justifyContent: 'center',
         alignItems: 'center',
     },
+    animatedContent: {
+        alignItems: 'center',
+        width: '100%',
+    },
     appName: {
         fontSize: 48,
         fontWeight: '700',
@@ -69,9 +109,14 @@ const styles = StyleSheet.create({
         textShadowOffset: { width: 0, height: 1 },
         textShadowRadius: 4,
     },
+    buttonWrapper: {
+        width: '100%',
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
     subtitle: {
         fontSize: 18,
-        color: '#666',
+        color: '#000',
         marginBottom: 48,
     },
     signInContainer: {
@@ -86,7 +131,7 @@ const styles = StyleSheet.create({
     },
     signInText: {
         fontSize: 16,
-        color: '#666',
+        color: '#000',
         marginBottom: 16,
     },
 });

@@ -10,9 +10,11 @@ import * as Linking from 'expo-linking';
 interface EmailSignInButtonProps {
     returnTo?: string;
     navigation?: any;
+    onPress?: () => void;
+    onCancelPress?: () => void;
 }
 
-export const EmailSignInButton = ({ returnTo, navigation }: EmailSignInButtonProps) => {
+export const EmailSignInButton = ({ returnTo, navigation, onPress, onCancelPress }: EmailSignInButtonProps) => {
     const { login } = useAuth();
 
     const { signInWithEmail, signUpWithEmail, loading } = useEmailAuth()
@@ -123,6 +125,22 @@ export const EmailSignInButton = ({ returnTo, navigation }: EmailSignInButtonPro
             // Handle error (e.g., show error message)
         }
     }
+    
+    const handleButtonPress = () => {
+        // Wait 3 seconds before showing the modal
+        setTimeout(() => {
+            setModalVisible(true);
+        }, 1750);
+        // Call the parent callback
+        onPress?.();
+    };
+
+    const handleCancelButtonPress = () => {
+        // Wait 3 seconds before showing the modal
+        setModalVisible(false);
+        // Call the parent callback
+        onCancelPress?.();
+    };
 
     const handleTosPress = () => {
         console.log('ToS pressed') // For debugging
@@ -133,7 +151,7 @@ export const EmailSignInButton = ({ returnTo, navigation }: EmailSignInButtonPro
         <View>
             <Pressable
                 style={styles.button}
-                onPress={() => setModalVisible(true)}
+                onPress={handleButtonPress}
                 disabled={loading}
             >
                 <Text style={styles.buttonText}>
@@ -251,7 +269,7 @@ export const EmailSignInButton = ({ returnTo, navigation }: EmailSignInButtonPro
 
                         <Pressable
                             style={styles.closeButton}
-                            onPress={() => setModalVisible(false)}
+                            onPress={handleCancelButtonPress}
                         >
                             <Text style={styles.closeButtonText}>Close</Text>
                         </Pressable>
@@ -281,7 +299,7 @@ const styles = StyleSheet.create({
         justifyContent: 'center',
         alignItems: 'center',
         borderRadius: 5,
-        marginHorizontal: 20,
+        //marginHorizontal: 20,
     },
     buttonText: {
         color: '#fff',
@@ -292,7 +310,7 @@ const styles = StyleSheet.create({
         flex: 1,
         justifyContent: 'center',
         alignItems: 'center',
-        backgroundColor: 'rgba(0, 0, 0, 0.4)',
+       // backgroundColor: 'rgba(0, 0, 0, 0.4)',
     },
     overlay: {
         ...StyleSheet.absoluteFillObject,

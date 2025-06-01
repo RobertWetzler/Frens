@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useRef, useImperativeHandle, forwardRef } from 'react';
 import { GLView } from 'expo-gl';
 import { Dimensions, StyleSheet } from 'react-native'
 
@@ -14,29 +14,14 @@ const vertexShader = `
   }
 `;
 
-// Fragment shader with simple color animation
-/*
-const fragmentShader = `
-  precision highp float;
-  uniform float time;
-  varying vec2 vUv;
-  
-  void main() {
-    vec3 color = 0.5 + 0.5 * cos(time + vUv.xyx + vec3(0.0, 2.0, 4.0));
-    gl_FragColor = vec4(color, 1.0);
-  }
-`;
-*/
-// Blobs!!!
-
 const fragmentShader = `
 precision highp float;
 uniform float time;
 uniform vec2 resolution;
+uniform float metaballRadius;  // Changed from const to uniform
 varying vec2 vUv;
 
 // Adjustable parameters
-const float METABALL_RADIUS = 0.18;      // Size of each blob
 const float FIELD_THRESHOLD = 0.99;      // When to start blending with background
 const float COLOR_VARIANCE = 0.1;        // How much colors can vary (0.0 - 1.0)
 const float MOVEMENT_SPEED = 0.5;        // Speed of blob movement
@@ -138,9 +123,9 @@ void main() {
     vec3 totalColor = vec3(0.0);
     vec3 totalNormal = vec3(0.0, 0.0, 1.0);
     
-    // First pass: calculate fields and normals
+    // First pass: calculate fields and normals - now using uniform metaballRadius
     for(int i = 0; i < 3; i++) {
-        float field = metaball(uv, positions[i], METABALL_RADIUS);
+        float field = metaball(uv, positions[i], metaballRadius);
         balls[i].field = field;
         balls[i].normal = calculateNormal(uv, positions[i], field);
         totalField += field;
@@ -161,14 +146,28 @@ void main() {
 }
 `;
 
-const ShaderBackground = () => {
+export interface ShaderBackgroundRef {
+    animateRadius: (targetRadius: number, duration?: number) => void;
+}
+
+const ShaderBackground = forwardRef<ShaderBackgroundRef>((props, ref) => {
     let gl = null;
     let program = null;
     let positionLocation = null;
     let texCoordLocation = null;
     let timeLocation = null;
     let resolutionLocation = null;
+    let metaballRadiusLocation = null;
     let startTime = null;
+    
+    // Animation state
+    const animationRef = useRef({
+        currentRadius: 0.18,
+        targetRadius: 0.18,
+        animationStartTime: null,
+        animationDuration: 1000, // 1 second default
+        isAnimating: false
+    });
 
     const createShader = (type, source) => {
         const shader = gl.createShader(type);
@@ -181,6 +180,38 @@ const ShaderBackground = () => {
             return null;
         }
         return shader;
+    };
+
+    const animateRadius = (targetRadius: number, duration: number = 1000) => {
+        animationRef.current.targetRadius = targetRadius;
+        animationRef.current.animationStartTime = Date.now();
+        animationRef.current.animationDuration = duration;
+        animationRef.current.isAnimating = true;
+    };
+
+    useImperativeHandle(ref, () => ({
+        animateRadius
+    }));
+
+    const updateRadius = () => {
+        if (!animationRef.current.isAnimating) return;
+
+        const now = Date.now();
+        const elapsed = now - animationRef.current.animationStartTime;
+        const progress = Math.min(elapsed / animationRef.current.animationDuration, 1);
+        
+        // Smooth easing function (ease-out)
+        const easedProgress = 1 - Math.pow(1 - progress, 3);
+        
+        const startRadius = animationRef.current.currentRadius;
+        const targetRadius = animationRef.current.targetRadius;
+        
+        animationRef.current.currentRadius = startRadius + (targetRadius - startRadius) * easedProgress;
+        
+        if (progress >= 1) {
+            animationRef.current.isAnimating = false;
+            animationRef.current.currentRadius = targetRadius;
+        }
     };
 
     const setupGL = (glContext) => {
@@ -205,6 +236,7 @@ const ShaderBackground = () => {
         texCoordLocation = gl.getAttribLocation(program, 'texCoord');
         timeLocation = gl.getUniformLocation(program, 'time');
         resolutionLocation = gl.getUniformLocation(program, 'resolution');
+        metaballRadiusLocation = gl.getUniformLocation(program, 'metaballRadius');
 
         // Create buffers
         const positions = new Float32Array([
@@ -232,6 +264,8 @@ const ShaderBackground = () => {
         // Start render loop
         startTime = Date.now();
         const render = () => {
+            updateRadius(); // Update animation
+            
             const time = (Date.now() - startTime) * 0.001;
             const { width, height } = Dimensions.get('window');
 
@@ -244,6 +278,7 @@ const ShaderBackground = () => {
             // Set uniforms
             gl.uniform1f(timeLocation, time);
             gl.uniform2f(resolutionLocation, width, height);
+            gl.uniform1f(metaballRadiusLocation, animationRef.current.currentRadius);
 
             // Set attributes
             gl.bindBuffer(gl.ARRAY_BUFFER, positionBuffer);
@@ -270,7 +305,7 @@ const ShaderBackground = () => {
             onContextCreate={setupGL}
             />
     );
-};
+});
 
 const styles = StyleSheet.create({
     container: {
@@ -278,6 +313,5 @@ const styles = StyleSheet.create({
         backgroundColor: 'transparent',
     },
 });
-
 
 export default ShaderBackground;
