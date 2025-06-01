@@ -4,9 +4,9 @@
 		<TargetFramework>net8.0</TargetFramework>
 		<Nullable>enable</Nullable>
 		<ImplicitUsings>enable</ImplicitUsings>
-		<SpaRoot>..\cliq.client</SpaRoot>
-		<SpaProxyLaunchCommand>npm run start</SpaProxyLaunchCommand>
-		<SpaProxyServerUrl>https://localhost:19006</SpaProxyServerUrl>
+		<!-- <SpaRoot>..\cliq.client</SpaRoot>
+		<SpaProxyLaunchCommand>npx expo start</SpaProxyLaunchCommand>
+		<SpaProxyServerUrl>http://localhost:8081</SpaProxyServerUrl> -->
 	</PropertyGroup>
 
 	<ItemGroup>
@@ -43,10 +43,11 @@
 		<Exec Command="$(NSwagExe) openapi2tsclient /input:swagger.json /output:Scripts/MyController.ts" />
 	</Target>
 	-->
+	<!--
 	<ItemGroup>
 		<ProjectReference Include="..\cliq.client\cliq.client.esproj">
 			<ReferenceOutputAssembly>false</ReferenceOutputAssembly>
 		</ProjectReference>
 	</ItemGroup>
-
+	-->
 </Project>

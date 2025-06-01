@@ -17,7 +17,6 @@
       "applicationUrl": "http://localhost:5265",
       "environmentVariables": {
         "ASPNETCORE_ENVIRONMENT": "Development",
-        "ASPNETCORE_HOSTINGSTARTUPASSEMBLIES": "Microsoft.AspNetCore.SpaProxy"
       }
     },
     "https": {
@@ -25,10 +24,9 @@
       "dotnetRunMessages": true,
       "launchBrowser": true,
       "launchUrl": "swagger",
-      "applicationUrl": "https://0.0.0.0:7188;http://0.0.0.0:5265",
+      "applicationUrl": "https://0.0.0.0:7188;http://0.0.0.0:5188",
       "environmentVariables": {
         "ASPNETCORE_ENVIRONMENT": "Development",
-        "ASPNETCORE_HOSTINGSTARTUPASSEMBLIES": "Microsoft.AspNetCore.SpaProxy"
       }
     },
     "IIS Express": {

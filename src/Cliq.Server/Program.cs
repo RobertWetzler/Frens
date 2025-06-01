@@ -24,8 +24,22 @@ var builder = WebApplication.CreateBuilder(args);
 // Listen on all interfaces
 builder.WebHost.ConfigureKestrel(serverOptions =>
 {
-    serverOptions.ListenAnyIP(8080); // Listen on all interfaces
+    if (builder.Environment.IsDevelopment())
+    {
+        // Development: Listen on both HTTP and HTTPS (Allows testing PWA installability)
+        serverOptions.ListenAnyIP(5188); // HTTP
+        serverOptions.ListenAnyIP(7188, listenOptions =>
+        {
+            listenOptions.UseHttps(); // HTTPS
+        });
+    }
+    else
+    {
+        // Production: Listen only on port 8080 (fly.io handles HTTPS termination)
+        serverOptions.ListenAnyIP(8080);
+    }
 });
+
 
 // Add services to the container.
 builder.Services.AddDbContext<CliqDbContext>(options =>

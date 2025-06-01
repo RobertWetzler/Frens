@@ -1,5 +1,16 @@
 version: '3.8'
 services:
+  cliq-dev:
+    build:
+      context: .
+      dockerfile: src/Cliq.Server/Dockerfile.dev
+    ports:
+      - "7188:7188"  # HTTPS
+      - "5188:5188"  # HTTP
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Development
+      - ASPNETCORE_URLS=https://+:7188;http://+:5188
+    container_name: cliq-dev
   db:
     image: postgres:13
     environment:
