@@ -319,6 +319,7 @@ const styles = StyleSheet.create({
     },
     modalContent: {
         width: '80%',
+        maxWidth: 400, // Add this to limit the width on desktop
         backgroundColor: '#fff',
         borderRadius: 10,
         padding: 20,
