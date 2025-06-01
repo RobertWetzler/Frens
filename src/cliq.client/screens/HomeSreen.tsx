@@ -58,7 +58,7 @@ const HomeScreen = ({ navigation }) => {
         );
     }
 
-    return (
+    return ( 
         <SafeAreaView style={styles.container}>
             <Animated.View
                 style={[
@@ -70,9 +70,9 @@ const HomeScreen = ({ navigation }) => {
                 ]}
             >
                 <LinearGradient
-                    colors={['#6699FF', '#8C66FF', '#9966FF']}
-                    start={{ x: 0, y: 0 }}
-                    end={{ x: 1, y: 1 }}
+                    colors={['#6699FF', '#9966FF','#8C66FF']}
+                    start={{ x: 0, y: 1 }}
+                    end={{ x: 0, y: 0 }}
                     style={styles.headerGradient}
                 >
                     <View style={styles.header}>

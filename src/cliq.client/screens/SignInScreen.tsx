@@ -1,5 +1,5 @@
-import React from 'react';
-import { View, Text, StyleSheet } from 'react-native';
+import React, { useEffect } from 'react';
+import { View, Text, StyleSheet, StatusBar, Platform } from 'react-native';
 import ShaderBackground from '../components/ShaderBackground';
 import { EmailSignInButton } from 'components/EmailSignInButton';
 
@@ -10,9 +10,31 @@ interface SignInScreenProps {
 
 export default function SignInScreen({ route, navigation }: SignInScreenProps) {
     const returnTo = route?.params?.returnTo;
-
+    useEffect(() => {
+        // Update the DOM directly to chagne the top bar to be white, for aesthetic consistency
+        // TODO: Change default to white and only make purple on homeScreen
+        // This is only necessary for web, as React Native handles status bar on mobile
+        if (Platform.OS === 'web') {
+            // Update theme color for this screen
+            const metaThemeColor = document.querySelector('meta[name="theme-color"]');
+            if (metaThemeColor) {
+                metaThemeColor.setAttribute('content', '#FFFFFF');
+            }
+        }
+        
+        return () => {
+            if (Platform.OS === 'web') {
+                // Reset to default when leaving screen
+                const metaThemeColor = document.querySelector('meta[name="theme-color"]');
+                if (metaThemeColor) {
+                    metaThemeColor.setAttribute('content', '#8C66FF'); // or your default color
+                }
+            }
+        };
+    }, []);
     return (
         <View style={styles.container}>
+            <StatusBar backgroundColor="#FFFFFF" />
             <ShaderBackground />
             <View style={styles.contentContainer}>
                 <Text style={styles.appName}>Frens</Text>

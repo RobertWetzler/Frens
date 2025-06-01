@@ -1,7 +1,8 @@
 const ENV = {
   development: {
-    API_URL: 'https://localhost:7188', // Your .NET server port
-    //API_URL: 'http://172.20.10.3:5265', // Your .NET server port
+    //API_URL: 'https://localhost:7188', // Your .NET server port
+    API_URL: 'https://192.0.0.2:7188', 
+    API_URL: 'https://roberts-macbook-air.local:7188',
   },
   production: {
     // TODO: Change to Frens domain once I buy a domain name
@@ -16,7 +17,8 @@ const detectEnvironment = () => {
       
       // Check if running on localhost or development servers
       if (hostname === 'localhost' || 
-          hostname === '127.0.0.1' || 
+          hostname === '127.0.0.1' ||
+          hostname.includes('roberts-macbook-air') || 
           hostname.includes('expo') || 
           window.location.port === '19006') {
           return 'development';
