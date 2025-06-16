@@ -13,7 +13,8 @@ public class DatabaseFixture : IDisposable
     public DatabaseFixture()
     {
         _connectionString = Environment.GetEnvironmentVariable("TEST_DATABASE_CONNECTION_STRING")
-            ?? "Host=localhost;Database=cliq_test;Username=postgres;Password=postgres;Port=5433";
+            ?? "Host=localhost;Database=cliq_test;Username=postgres;Password=postgres;Port=5433;Include Error Detail=True";
+
         _environment = new HostingEnvironment { EnvironmentName = "Testing" };
 
         // Ensure database exists

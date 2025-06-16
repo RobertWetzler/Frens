@@ -26,19 +26,22 @@ public class PostService : IPostService
     private readonly IFriendshipService _friendshipService;
     private readonly IMapper _mapper;
     private readonly ILogger<PostService> _logger;
+    private readonly IEventNotificationService? _eventNotificationService;
 
     public PostService(
         CliqDbContext dbContext,
         ICommentService commentService,
         IFriendshipService friendshipService,
         IMapper mapper,
-        ILogger<PostService> logger)
+        ILogger<PostService> logger,
+        IEventNotificationService? eventNotificationService = null)
     {
         _dbContext = dbContext;
         _commentService = commentService;
         _friendshipService = friendshipService;
         _mapper = mapper;
         _logger = logger;
+        _eventNotificationService = eventNotificationService;
     }
 
     public async Task<PostDto?> GetPostByIdAsync(Guid requestorId, Guid id, bool includeCommentTree = true, int maxDepth = 3)
@@ -305,6 +308,17 @@ public class PostService : IPostService
             }).ToList();
             await _dbContext.CirclePosts.AddRangeAsync(circlePosts);
             await SaveChangesAsync();
+
+            // Send notifications to circle members asynchronously
+            try
+            {
+                _eventNotificationService?.SendNewPostNotificationAsync(post.Id, userId, text, circleIds);
+            }
+            catch (Exception ex)
+            {
+                // Log error but don't fail the post creation
+                _logger.LogWarning(ex, "Failed to send post notifications for post {PostId}", post.Id);
+            }
 
             // Reload the post with relationships
             await _dbContext.Entry(post)

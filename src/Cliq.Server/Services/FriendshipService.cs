@@ -1,6 +1,7 @@
 using AutoMapper;
 using Cliq.Server.Data;
 using Cliq.Server.Models;
+using Cliq.Server.Services;
 using Microsoft.EntityFrameworkCore;
 using System;
 using System.Collections.Generic;
@@ -10,9 +11,9 @@ using System.Threading.Tasks;
 
 public class FriendshipDto
 {
-    public string Id { get; set; }
-    public UserDto Requester { get; set; }
-    public UserDto Addressee { get; set; }
+    public required string Id { get; set; }
+    public required UserDto Requester { get; set; }
+    public required UserDto Addressee { get; set; }
     public FriendshipStatus Status { get; set; }
     public DateTime CreatedAt { get; set; }
     public DateTime? AcceptedAt { get; set; }
@@ -38,11 +39,13 @@ public class FriendshipService : IFriendshipService
 {
     private readonly CliqDbContext _dbContext;
     private readonly IMapper _mapper;
+    private readonly IEventNotificationService? _eventNotificationService;
 
-    public FriendshipService(CliqDbContext dbContext, IMapper mapper)
+    public FriendshipService(CliqDbContext dbContext, IMapper mapper, IEventNotificationService? eventNotificationService = null)
     {
         _dbContext = dbContext;
         _mapper = mapper;
+        _eventNotificationService = eventNotificationService;
     }
 
     public async Task<FriendshipDto> SendFriendRequestAsync(Guid requesterId, Guid addresseeId)
@@ -116,6 +119,17 @@ public class FriendshipService : IFriendshipService
         await _dbContext.Friendships.AddAsync(newFriendship);
         await _dbContext.SaveChangesAsync();
 
+        // Send notification to addressee
+        try
+        {
+            _eventNotificationService?.SendFriendRequestNotificationAsync(requesterId, addresseeId, newFriendship.Id);
+        }
+        catch (Exception ex)
+        {
+            // Log error but don't fail the friend request
+            Console.WriteLine($"Failed to send friend request notification: {ex.Message}");
+        }
+
         // Reload friendship with user details
         var newFriendshipWithDetails = await GetFriendshipWithDetailsAsync(newFriendship.Id);
         return _mapper.Map<FriendshipDto>(newFriendshipWithDetails);
@@ -135,6 +149,17 @@ public class FriendshipService : IFriendshipService
         friendship.Status = FriendshipStatus.Accepted;
         friendship.AcceptedAt = DateTime.UtcNow;
         await _dbContext.SaveChangesAsync();
+
+        // Send notification to requester
+        try
+        {
+            _eventNotificationService?.SendFriendRequestAcceptedNotificationAsync(userId, friendship.RequesterId);
+        }
+        catch (Exception ex)
+        {
+            // Log error but don't fail the acceptance
+            Console.WriteLine($"Failed to send friend request accepted notification: {ex.Message}");
+        }
 
         // Reload friendship with user details
         var updatedFriendship = await GetFriendshipWithDetailsAsync(friendship.Id);

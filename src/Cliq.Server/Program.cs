@@ -17,6 +17,7 @@ using Cliq.Server.Models;
 using System.Security.Claims;
 using System.Text.Json.Serialization;
 using Cliq.Server.Services.PushNotifications;
+using Microsoft.OpenApi.Models;
 
 DotNetEnv.Env.Load();
 
@@ -118,10 +119,38 @@ builder.Services.AddCircleServices();
 builder.Services.AddCommentServices();
 builder.Services.AddFriendshipServices();
 builder.Services.AddNotificationServices(builder.Configuration);
+builder.Services.AddScoped<IEventNotificationService, EventNotificationService>();
 // Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle
 builder.Services.AddEndpointsApiExplorer();
-builder.Services.AddSwaggerGen();
-
+builder.Services.AddSwaggerGen(option =>
+{
+    // The following basically adds a text box in Swagger UI to enter a Bearer token
+    // Taken from https://stackoverflow.com/questions/77750604/how-to-integrate-swagger-into-asp-net-core-web-api-with-identity-server
+    option.SwaggerDoc("v1", new OpenApiInfo { Title = "Demo API", Version = "v1" });
+    option.AddSecurityDefinition("Bearer", new OpenApiSecurityScheme
+    {
+        In = ParameterLocation.Header,
+        Description = "Please enter a valid token",
+        Name = "Authorization",
+        Type = SecuritySchemeType.Http,
+        BearerFormat = "JWT",
+        Scheme = "Bearer"
+    });
+    option.AddSecurityRequirement(new OpenApiSecurityRequirement
+    {
+        {
+            new OpenApiSecurityScheme
+            {
+                Reference = new OpenApiReference
+                {
+                    Type=ReferenceType.SecurityScheme,
+                    Id="Bearer"
+                }
+            },
+            new string[]{}
+        }
+    });
+});
 if (builder.Environment.IsDevelopment())
 {
     builder.Services.AddCors(options =>

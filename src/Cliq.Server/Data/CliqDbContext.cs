@@ -202,6 +202,10 @@ public class CliqDbContext : IdentityDbContext<User, CliqRole, Guid>
                   .HasColumnName("notification_id")
                   .IsRequired();
 
+            entity.Property(d => d.SubscriptionId)
+                  .HasColumnName("subscription_id")
+                  .IsRequired();
+
             entity.Property(d => d.PushSubscriptionEndpoint)
                   .HasColumnName("push_subscription_endpoint");
 
@@ -226,7 +230,7 @@ public class CliqDbContext : IdentityDbContext<User, CliqRole, Guid>
             entity.Property(d => d.LockedUntil)
                   .HasColumnName("locked_until");
 
-            entity.HasOne<EfPushSubscription>()
+            entity.HasOne(d => d.Subscription)
                   .WithMany()
                   .HasForeignKey(d => d.SubscriptionId)
                   .OnDelete(DeleteBehavior.Restrict);
