@@ -76,41 +76,43 @@ public class PushNotificationQueueService : IPushNotificationQueueService
         }
     }
 
-    public async Task<List<NotificationDelivery>> DequeueAsync(int batchSize, CancellationToken cancellationToken = default)
-    {
-        using var transaction = await _dbContext.Database.BeginTransactionAsync(IsolationLevel.RepeatableRead, cancellationToken);
+public async Task<List<NotificationDelivery>> DequeueAsync(int batchSize, CancellationToken cancellationToken = default)
+{
+    using var transaction = await _dbContext.Database.BeginTransactionAsync(IsolationLevel.RepeatableRead, cancellationToken);
 
-        var deliveries = await _dbContext.Set<NotificationDelivery>()
-            .FromSql($@"
-            SELECT * FROM notification_delivery
+    // Atomically update and return the locked records
+    var deliveryIds = await _dbContext.Database.SqlQueryRaw<Guid>($@"
+        UPDATE notification_delivery 
+        SET status = 'processing', 
+            locked_by = {_instanceId}, 
+            locked_until = NOW() + INTERVAL '1 minute'
+        WHERE id IN (
+            SELECT id FROM notification_delivery
             WHERE status = 'pending'
               AND (locked_until IS NULL OR locked_until < NOW())
             ORDER BY created_at
             LIMIT {batchSize}
             FOR UPDATE SKIP LOCKED
-        ")
-            .Include(d => d.Notification)
-            .Include(d => d.Subscription)
-            .ToListAsync(cancellationToken);
+        )
+        RETURNING id
+    ").ToListAsync(cancellationToken);
 
-        if (!deliveries.Any())
-        {
-            await transaction.RollbackAsync(cancellationToken);
-            return new();
-        }
-
-        foreach (var delivery in deliveries)
-        {
-            delivery.Status = "processing";
-            delivery.LockedBy = _instanceId;
-            delivery.LockedUntil = DateTime.UtcNow + _lockLeaseDuration;
-        }
-
-        await _dbContext.SaveChangesAsync(cancellationToken);
-        await transaction.CommitAsync(cancellationToken);
-
-        return deliveries;
+    if (!deliveryIds.Any())
+    {
+        await transaction.RollbackAsync(cancellationToken);
+        return new();
     }
+
+    // Now fetch the full objects with includes
+    var deliveries = await _dbContext.Set<NotificationDelivery>()
+        .Where(d => deliveryIds.Contains(d.Id))
+        .Include(d => d.Notification)
+        .Include(d => d.Subscription)
+        .ToListAsync(cancellationToken);
+
+    await transaction.CommitAsync(cancellationToken);
+    return deliveries;
+}
 
     public async Task MarkAsSentAsync(Guid deliveryId)
     {
