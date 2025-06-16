@@ -795,6 +795,44 @@ export class Client {
     }
 
     /**
+     * @param body (optional) 
+     * @return OK
+     */
+    subscriptions(body: PushSubscriptionDto | undefined): Promise<void> {
+        let url_ = this.baseUrl + "/api/Notification/subscriptions";
+        url_ = url_.replace(/[?&]$/, "");
+
+        const content_ = JSON.stringify(body);
+
+        let options_: RequestInit = {
+            body: content_,
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json",
+            }
+        };
+
+        return this.http.fetch(url_, options_).then((_response: Response) => {
+            return this.processSubscriptions(_response);
+        });
+    }
+
+    protected processSubscriptions(response: Response): Promise<void> {
+        const status = response.status;
+        let _headers: any = {}; if (response.headers && response.headers.forEach) { response.headers.forEach((v: any, k: any) => _headers[k] = v); };
+        if (status === 200) {
+            return response.text().then((_responseText) => {
+            return;
+            });
+        } else if (status !== 200 && status !== 204) {
+            return response.text().then((_responseText) => {
+            return throwException("An unexpected server error occurred.", status, _responseText, _headers);
+            });
+        }
+        return Promise.resolve<void>(null as any);
+    }
+
+    /**
      * @param includeCommentTree (optional) 
      * @return OK
      */
@@ -1737,6 +1775,50 @@ export interface IProfilePageResponseDto {
     friendshipStatus?: FriendshipStatusDto;
     recentPosts?: PostDto[] | undefined;
     notificationCount?: number;
+}
+
+export class PushSubscriptionDto implements IPushSubscriptionDto {
+    endpoint?: string | undefined;
+    p256DH?: string | undefined;
+    auth?: string | undefined;
+
+    constructor(data?: IPushSubscriptionDto) {
+        if (data) {
+            for (var property in data) {
+                if (data.hasOwnProperty(property))
+                    (<any>this)[property] = (<any>data)[property];
+            }
+        }
+    }
+
+    init(_data?: any) {
+        if (_data) {
+            this.endpoint = _data["endpoint"];
+            this.p256DH = _data["p256DH"];
+            this.auth = _data["auth"];
+        }
+    }
+
+    static fromJS(data: any): PushSubscriptionDto {
+        data = typeof data === 'object' ? data : {};
+        let result = new PushSubscriptionDto();
+        result.init(data);
+        return result;
+    }
+
+    toJSON(data?: any) {
+        data = typeof data === 'object' ? data : {};
+        data["endpoint"] = this.endpoint;
+        data["p256DH"] = this.p256DH;
+        data["auth"] = this.auth;
+        return data;
+    }
+}
+
+export interface IPushSubscriptionDto {
+    endpoint?: string | undefined;
+    p256DH?: string | undefined;
+    auth?: string | undefined;
 }
 
 export class RegisterModel implements IRegisterModel {

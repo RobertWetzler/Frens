@@ -4,11 +4,13 @@ import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import Post from '../components/Post';
+import getEnvVars from 'env'
 import { useFeed } from 'hooks/usePosts';
 import ShaderBackground from 'components/ShaderBackground';
 import { useAuth } from 'contexts/AuthContext';
 import { handleShareProfile } from 'utils/share';
 import NotificationBell from 'components/NotificationBell';
+import NotificationSubscribeButton from 'components/NotificationSubscribeButton';
 
 
 const HomeScreen = ({ navigation }) => {
@@ -118,6 +120,16 @@ const HomeScreen = ({ navigation }) => {
                 )}
                 ListFooterComponent={() => (
                     <View style={styles.footerContainer}>
+                        <NotificationSubscribeButton
+                            applicationServerKey={getEnvVars().VAPID_PUBLIC_KEY}
+                            onSubscriptionChange={(subscription) => {
+                                if (subscription) {
+                                    console.log('User subscribed to notifications');
+                                    // Send subscription to your server
+                                }
+                            }}
+                            style={posts && posts.length > 0 && { marginTop: 20 }}
+                        />
                         <TouchableOpacity 
                             style={[styles.shareButton, posts && posts.length > 0 && { marginTop: 20 }]}
                             onPress={() => handleShareProfile(authContext.user.id)}
