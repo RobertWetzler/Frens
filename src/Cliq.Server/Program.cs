@@ -222,8 +222,18 @@ builder.Services.ConfigureApplicationCookie(options =>
 });
 # endregion
 var jwtSettings = builder.Configuration.GetSection("JwtSettings");
-var key = Encoding.ASCII.GetBytes(jwtSettings["Secret"]);
 
+var key = Encoding.ASCII.GetBytes(jwtSettings["Secret"]);
+// Get key from env variable in production
+if (string.IsNullOrEmpty(jwtSettings["Secret"]))
+{
+    var envKey = Environment.GetEnvironmentVariable("JWT_SECRET");
+    if (string.IsNullOrEmpty(envKey))
+    {
+        throw new InvalidOperationException("JWT secret is not configured. Set JWT_SECRET environment variable or configure JwtSettings in appsettings.");
+    }
+    key = Encoding.ASCII.GetBytes(envKey); 
+}
 builder.Services.AddAuthentication(options =>
 {
     options.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;

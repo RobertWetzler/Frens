@@ -11,7 +11,7 @@ const ENV = {
   production: {
     // TODO: Change to Frens domain once I buy a domain name
     API_URL: 'https://cliq-server.fly.dev', // Production API endpoint
-    VAPID_PUBLIC_KEY: 'BCs0Nh-yet4gbF_-xqsSEAJLFFE9iDcXBE2dade9YzkDyy-6UaJ8uFh2tcIT__ht38M2PqwlLs7Bu_aHL7_HmDA'
+    VAPID_PUBLIC_KEY: 'BIw5zCVYA6Mh7HjPtZhqlt9ZNp5mNOh6sZaT7znRtiPIaWEWy4e7KOtYfs7erRMKTy4sKqEAqnrj-Tvd3SpRCZY'
   }
 };
 
