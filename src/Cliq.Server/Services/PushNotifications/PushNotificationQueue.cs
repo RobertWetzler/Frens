@@ -18,12 +18,13 @@ public interface IPushNotificationQueueService
 }
 public class PushNotificationQueueService : IPushNotificationQueueService
 {
-    private readonly CliqDbContext _dbContext;
+    private readonly IServiceScopeFactory _serviceScopeFactory;
     private string _instanceId;
     private readonly TimeSpan _lockLeaseDuration = TimeSpan.FromMinutes(1);
-    public PushNotificationQueueService(CliqDbContext cliqDbContext)
+    
+    public PushNotificationQueueService(IServiceScopeFactory serviceScopeFactory)
     {
-        _dbContext = cliqDbContext;
+        _serviceScopeFactory = serviceScopeFactory;
         // Read instance ID from environment variable
         _instanceId = Environment.GetEnvironmentVariable("FLY_MACHINE_ID") ?? string.Empty;
         if (string.IsNullOrEmpty(_instanceId))
@@ -36,7 +37,10 @@ public class PushNotificationQueueService : IPushNotificationQueueService
 
     public async Task AddAsync(Guid userId, string message, string metadata)
     {
-        using var transaction = await _dbContext.Database.BeginTransactionAsync();
+        using var scope = _serviceScopeFactory.CreateScope();
+        var dbContext = scope.ServiceProvider.GetRequiredService<CliqDbContext>();
+        
+        using var transaction = await dbContext.Database.BeginTransactionAsync();
 
         try
         {
@@ -49,11 +53,11 @@ public class PushNotificationQueueService : IPushNotificationQueueService
                 CreatedAt = DateTime.UtcNow,
             };
 
-            _dbContext.Notifications.Add(notification);
-            await _dbContext.SaveChangesAsync(); // Save to get Notification.Id
+            dbContext.Notifications.Add(notification);
+            await dbContext.SaveChangesAsync(); // Save to get Notification.Id
 
             // Step 2: Fetch all subscriptions for the user
-            var subscriptions = await _dbContext.Set<EfPushSubscription>()
+            var subscriptions = await dbContext.Set<EfPushSubscription>()
                 .Where(s => s.UserId == userId)
                 .ToListAsync();
 
@@ -68,10 +72,10 @@ public class PushNotificationQueueService : IPushNotificationQueueService
                 CreatedAt = DateTime.UtcNow
             });
 
-            _dbContext.AddRange(deliveries);
+            dbContext.AddRange(deliveries);
 
             // Step 4: Save deliveries and commit
-            await _dbContext.SaveChangesAsync();
+            await dbContext.SaveChangesAsync();
             await transaction.CommitAsync();
         }
         catch
@@ -83,7 +87,10 @@ public class PushNotificationQueueService : IPushNotificationQueueService
 
     public async Task AddBulkAsync(IEnumerable<Guid> userIds, string message, string metadata)
     {
-        using var transaction = await _dbContext.Database.BeginTransactionAsync();
+        using var scope = _serviceScopeFactory.CreateScope();
+        var dbContext = scope.ServiceProvider.GetRequiredService<CliqDbContext>();
+        
+        using var transaction = await dbContext.Database.BeginTransactionAsync();
 
         try
         {
@@ -95,7 +102,7 @@ public class PushNotificationQueueService : IPushNotificationQueueService
             }
 
             // Step 1: Get all subscriptions for all users in one query
-            var allSubscriptions = await _dbContext.Set<EfPushSubscription>()
+            var allSubscriptions = await dbContext.Set<EfPushSubscription>()
                 .Where(s => userIdsList.Contains(s.UserId ?? Guid.Empty))
                 .ToListAsync();
 
@@ -114,8 +121,8 @@ public class PushNotificationQueueService : IPushNotificationQueueService
                 CreatedAt = DateTime.UtcNow,
             }).ToList();
 
-            _dbContext.Notifications.AddRange(notifications);
-            await _dbContext.SaveChangesAsync(); // Save to get Notification.Ids
+            dbContext.Notifications.AddRange(notifications);
+            await dbContext.SaveChangesAsync(); // Save to get Notification.Ids
 
             // Step 3: Create deliveries for all subscriptions
             var deliveries = new List<NotificationDelivery>();
@@ -133,8 +140,8 @@ public class PushNotificationQueueService : IPushNotificationQueueService
                 }));
             }
 
-            _dbContext.AddRange(deliveries);
-            await _dbContext.SaveChangesAsync();
+            dbContext.AddRange(deliveries);
+            await dbContext.SaveChangesAsync();
             await transaction.CommitAsync();
         }
         catch
@@ -160,10 +167,13 @@ public class PushNotificationQueueService : IPushNotificationQueueService
 
 public async Task<List<NotificationDelivery>> DequeueAsync(int batchSize, CancellationToken cancellationToken = default)
 {
-    using var transaction = await _dbContext.Database.BeginTransactionAsync(IsolationLevel.RepeatableRead, cancellationToken);
+    using var scope = _serviceScopeFactory.CreateScope();
+    var dbContext = scope.ServiceProvider.GetRequiredService<CliqDbContext>();
+    
+    using var transaction = await dbContext.Database.BeginTransactionAsync(IsolationLevel.RepeatableRead, cancellationToken);
 
     // Atomically update and return the locked records
-    var deliveryIds = await _dbContext.Database.SqlQueryRaw<Guid>(@"
+    var deliveryIds = await dbContext.Database.SqlQueryRaw<Guid>(@"
         UPDATE notification_delivery 
         SET status = 'processing', 
             locked_by = {0}, 
@@ -186,7 +196,7 @@ public async Task<List<NotificationDelivery>> DequeueAsync(int batchSize, Cancel
     }
 
     // Now fetch the full objects with includes
-    var deliveries = await _dbContext.Set<NotificationDelivery>()
+    var deliveries = await dbContext.Set<NotificationDelivery>()
         .Where(d => deliveryIds.Contains(d.Id))
         .Include(d => d.Notification)
         .Include(d => d.Subscription)
@@ -198,26 +208,32 @@ public async Task<List<NotificationDelivery>> DequeueAsync(int batchSize, Cancel
 
     public async Task MarkAsSentAsync(Guid deliveryId)
     {
-        var delivery = await _dbContext.Set<NotificationDelivery>().FindAsync(deliveryId);
+        using var scope = _serviceScopeFactory.CreateScope();
+        var dbContext = scope.ServiceProvider.GetRequiredService<CliqDbContext>();
+        
+        var delivery = await dbContext.Set<NotificationDelivery>().FindAsync(deliveryId);
         if (delivery != null)
         {
             delivery.Status = "sent";
             delivery.LockedBy = null;
             delivery.LockedUntil = null;
-            await _dbContext.SaveChangesAsync();
+            await dbContext.SaveChangesAsync();
         }
     }
 
     public async Task MarkAsFailedAsync(Guid deliveryId)
     {
-        var delivery = await _dbContext.Set<NotificationDelivery>().FindAsync(deliveryId);
+        using var scope = _serviceScopeFactory.CreateScope();
+        var dbContext = scope.ServiceProvider.GetRequiredService<CliqDbContext>();
+        
+        var delivery = await dbContext.Set<NotificationDelivery>().FindAsync(deliveryId);
         if (delivery != null)
         {
             delivery.Retries++;
             delivery.Status = delivery.Retries >= 3 ? "failed" : "pending";
             delivery.LockedBy = null;
             delivery.LockedUntil = null;
-            await _dbContext.SaveChangesAsync();
+            await dbContext.SaveChangesAsync();
         }
     }
 }

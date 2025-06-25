@@ -12,7 +12,10 @@ public class Notification
 {
     public Guid Id { get; set; }
     public Guid? UserId { get; set; } = null!;
+    public string Title { get; set; } = null!;
     public string Message { get; set; } = null!;
+    public int? AppBadge { get; set; } = null!;
+    public string? Navigate { get; set; } = null!;
     public string? Metadata { get; set; } // JSON
     public DateTime CreatedAt { get; set; }
 

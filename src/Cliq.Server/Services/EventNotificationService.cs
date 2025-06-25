@@ -10,11 +10,11 @@ namespace Cliq.Server.Services;
 /// </summary>
 public interface IEventNotificationService
 {
-    Task SendFriendRequestNotificationAsync(Guid requesterId, Guid addresseeId, Guid friendshipId);
-    Task SendFriendRequestAcceptedNotificationAsync(Guid accepterId, Guid requesterId);
-    Task SendNewPostNotificationAsync(Guid postId, Guid authorId, string postText, IEnumerable<Guid> circleIds);
-    Task SendNewCommentNotificationAsync(Guid commentId, Guid postId, Guid postAuthorId, Guid commenterId, string commentText);
-    Task SendCommentReplyNotificationAsync(Guid replyId, Guid postId, Guid parentCommentId, Guid parentCommentAuthorId, Guid replierId, string replyText);
+    Task SendFriendRequestNotificationAsync(Guid requesterId, Guid addresseeId, Guid friendshipId, string requesterName);
+    Task SendFriendRequestAcceptedNotificationAsync(Guid accepterId, Guid requesterId, string requesterName);
+    Task SendNewPostNotificationAsync(Guid postId, Guid authorId, string postText, IEnumerable<Guid> circleIds, string authorName);
+    Task SendNewCommentNotificationAsync(Guid commentId, Guid postId, Guid postAuthorId, Guid commenterId, string commentText, string commenterName);
+    Task SendCommentReplyNotificationAsync(Guid replyId, Guid postId, Guid parentCommentId, Guid parentCommentAuthorId, Guid replierId, string replyText, string commenterName);
     Task SendAppAnnouncementAsync(string title, string body, string? actionUrl = null);
 }
 
@@ -29,32 +29,29 @@ public class EventNotificationService : IEventNotificationService
         _dbContext = dbContext;
     }
 
-    public async Task SendFriendRequestNotificationAsync(Guid requesterId, Guid addresseeId, Guid friendshipId)
+    public async Task SendFriendRequestNotificationAsync(Guid requesterId, Guid addresseeId, Guid friendshipId, string requesterName)
     {
-        var requester = await GetUserNameAsync(requesterId);
         var notificationData = new FriendRequestNotificationData
         {
             RequesterId = requesterId,
             FriendshipId = friendshipId
         };
 
-        await _notificationQueue.AddNotificationAsync(addresseeId, notificationData, requester);
+        await _notificationQueue.AddNotificationAsync(addresseeId, notificationData, requesterName);
     }
 
-    public async Task SendFriendRequestAcceptedNotificationAsync(Guid accepterId, Guid requesterId)
+    public async Task SendFriendRequestAcceptedNotificationAsync(Guid accepterId, Guid requesterId, string accepterName)
     {
-        var accepter = await GetUserNameAsync(accepterId);
         var notificationData = new FriendRequestAcceptedNotificationData
         {
             AccepterId = accepterId
         };
 
-        await _notificationQueue.AddNotificationAsync(requesterId, notificationData, accepter);
+        await _notificationQueue.AddNotificationAsync(requesterId, notificationData, accepterName);
     }
 
-    public async Task SendNewPostNotificationAsync(Guid postId, Guid authorId, string postText, IEnumerable<Guid> circleIds)
+    public async Task SendNewPostNotificationAsync(Guid postId, Guid authorId, string postText, IEnumerable<Guid> circleIds, string authorName)
     {
-        var author = await GetUserNameAsync(authorId);
         var circleIdsList = circleIds.ToList();
 
         // Get all circle members excluding the author
@@ -73,16 +70,15 @@ public class EventNotificationService : IEventNotificationService
                 PostText = postText
             };
 
-            await _notificationQueue.AddNotificationBulkAsync(recipientUserIds, notificationData, author);
+            await _notificationQueue.AddNotificationBulkAsync(recipientUserIds, notificationData, authorName);
         }
     }
 
-    public async Task SendNewCommentNotificationAsync(Guid commentId, Guid postId, Guid postAuthorId, Guid commenterId, string commentText)
+    public async Task SendNewCommentNotificationAsync(Guid commentId, Guid postId, Guid postAuthorId, Guid commenterId, string commentText, string commenterName)
     {
         // Don't notify if commenting on own post
         if (postAuthorId == commenterId) return;
 
-        var commenter = await GetUserNameAsync(commenterId);
         var notificationData = new NewCommentNotificationData
         {
             CommentId = commentId,
@@ -91,15 +87,14 @@ public class EventNotificationService : IEventNotificationService
             CommentText = commentText
         };
 
-        await _notificationQueue.AddNotificationAsync(postAuthorId, notificationData, commenter);
+        await _notificationQueue.AddNotificationAsync(postAuthorId, notificationData, commenterName);
     }
 
-    public async Task SendCommentReplyNotificationAsync(Guid replyId, Guid postId, Guid parentCommentId, Guid parentCommentAuthorId, Guid replierId, string replyText)
+    public async Task SendCommentReplyNotificationAsync(Guid replyId, Guid postId, Guid parentCommentId, Guid parentCommentAuthorId, Guid replierId, string replyText, string replierName)
     {
         // Don't notify if replying to own comment
         if (parentCommentAuthorId == replierId) return;
 
-        var replier = await GetUserNameAsync(replierId);
         var notificationData = new CommentReplyNotificationData
         {
             ReplyId = replyId,
@@ -109,7 +104,7 @@ public class EventNotificationService : IEventNotificationService
             ReplyText = replyText
         };
 
-        await _notificationQueue.AddNotificationAsync(parentCommentAuthorId, notificationData, replier);
+        await _notificationQueue.AddNotificationAsync(parentCommentAuthorId, notificationData, replierName);
     }
 
     public async Task SendAppAnnouncementAsync(string title, string body, string? actionUrl = null)
@@ -130,11 +125,5 @@ public class EventNotificationService : IEventNotificationService
 
             await _notificationQueue.AddNotificationBulkAsync(allUserIds, notificationData);
         }
-    }
-
-    private async Task<string> GetUserNameAsync(Guid userId)
-    {
-        var user = await _dbContext.Users.FindAsync(userId);
-        return user?.Name ?? "Someone";
     }
 }

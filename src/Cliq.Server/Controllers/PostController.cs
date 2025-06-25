@@ -21,7 +21,6 @@ public class PostController : ControllerBase
     [HttpGet("{id}")]
     public async Task<ActionResult<PostDto>> GetPost(Guid id, bool includeCommentTree = true)
     {
-        // TODO: Auhtorization to ensure use is either owner or member of shared circle
         if(!AuthUtils.TryGetUserIdFromToken(HttpContext, out var userId))
         {
             return Unauthorized();

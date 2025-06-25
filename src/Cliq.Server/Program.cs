@@ -278,24 +278,16 @@ if (app.Environment.IsDevelopment())
 {
     app.UseSwagger();
     app.UseSwaggerUI();
-    using (var scope = app.Services.CreateScope())
-    {
-        var db = scope.ServiceProvider.GetRequiredService<CliqDbContext>();
-
-        // For development, delete and recreate the database to ensure clean migrations
-        await db.Database.EnsureDeletedAsync();
-        await db.Database.MigrateAsync();
-
-        await SeedExtensions.SeedDevelopmentDataAsync(app.Services);
-    }
 }
-else
+
+using (var scope = app.Services.CreateScope())
 {
-    // In production, only apply migrations
-    using (var scope = app.Services.CreateScope())
+    var db = scope.ServiceProvider.GetRequiredService<CliqDbContext>();
+    await db.Database.MigrateAsync();
+    
+    if (app.Environment.IsDevelopment())
     {
-        var db = scope.ServiceProvider.GetRequiredService<CliqDbContext>();
-        await db.Database.MigrateAsync();
+        await SeedExtensions.SeedDevelopmentDataAsync(app.Services);
     }
 }
 

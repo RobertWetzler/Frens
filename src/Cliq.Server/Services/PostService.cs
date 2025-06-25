@@ -281,8 +281,8 @@ public class PostService : IPostService
 
     public async Task<PostDto> CreatePostAsync(Guid userId, Guid[] circleIds, string text)
     {
-        // TODO: Use a method from UserService for finding User by ID
-        if (await this._dbContext.Users.FirstOrDefaultAsync(u => u.Id == userId) == null)
+        var user = await this._dbContext.Users.FirstOrDefaultAsync(u => u.Id == userId);
+        if (user == null)
         {
             throw new Microsoft.AspNetCore.Http.BadHttpRequestException($"Cannot create post for invalid user {userId}");
         }
@@ -312,7 +312,7 @@ public class PostService : IPostService
             // Send notifications to circle members asynchronously
             try
             {
-                _eventNotificationService?.SendNewPostNotificationAsync(post.Id, userId, text, circleIds);
+                _eventNotificationService?.SendNewPostNotificationAsync(post.Id, userId, text, circleIds, user.Name);
             }
             catch (Exception ex)
             {

@@ -18,7 +18,10 @@ namespace Cliq.Server.Migrations
                 {
                     id = table.Column<Guid>(type: "uuid", nullable: false, defaultValueSql: "gen_random_uuid()"),
                     user_id = table.Column<Guid>(type: "uuid", nullable: false),
+                    title = table.Column<string>(type: "text", nullable: false),
                     message = table.Column<string>(type: "text", nullable: false),
+                    app_badge = table.Column<int>(type: "integer", nullable: true),
+                    navigate = table.Column<string>(type: "text", nullable: true),
                     metadata = table.Column<string>(type: "jsonb", nullable: true),
                     created_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: false, defaultValueSql: "NOW()")
                 },

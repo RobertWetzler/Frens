@@ -53,15 +53,28 @@ internal class PushNotificationsDequeuer : IHostedService
                 }
                 messages.RemoveAt(0); // Remove processed message
             }
+            await Task.Delay(TimeSpan.FromSeconds(SLEEP_SECONDS));
         }
-        await Task.Delay(TimeSpan.FromSeconds(SLEEP_SECONDS));
     }
     
-    private async Task ProcessMessageAsync(NotificationDelivery notification)
+    private async Task ProcessMessageAsync(NotificationDelivery notificationDelivery)
     {
-        Console.WriteLine($"Processing notification {notification.Id} for endpoint {notification.PushSubscriptionEndpoint}");
-        var subscription = notification.Subscription.ToPushSubscription();
-        var message = new PushMessage(notification.Notification.Message);
+        Console.WriteLine($"Processing notification {notificationDelivery.Id} for endpoint {notificationDelivery.PushSubscriptionEndpoint}");
+        var subscription = notificationDelivery.Subscription.ToPushSubscription();
+        var notification = notificationDelivery.Notification;
+        var payload = new
+        {
+            web_push = 8030,
+            notification = new
+            {
+                title = notification.Title,
+                body = notification.Message,
+                navigate = notification.Navigate ?? "https://cliq-server.fly.dev",
+                app_badge = notification.AppBadge ?? 0,
+            }
+        };
+        var content = System.Text.Json.JsonSerializer.Serialize(payload);
+        var message = new PushMessage(content);
         await _webPushNotificationService.SendNotificationAsync(subscription, message);
     }
 }

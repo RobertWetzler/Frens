@@ -13,13 +13,13 @@ public interface IPushNotificationService
 public class WebPushNotificationService : IPushNotificationService
 {
     private readonly PushServiceClient _pushClient;
-    private readonly IPushSubscriptionStore _pushSubscriptionStore;
+    private readonly IServiceScopeFactory _serviceScopeFactory;
     private readonly ILogger _logger;
 
-    public WebPushNotificationService(PushServiceClient pushClient, IPushSubscriptionStore pushSubscriptionStore, ILogger<WebPushNotificationService> logger)
+    public WebPushNotificationService(PushServiceClient pushClient, IServiceScopeFactory serviceScopeFactory, ILogger<WebPushNotificationService> logger)
     {
         _pushClient = pushClient;
-        _pushSubscriptionStore = pushSubscriptionStore;
+        _serviceScopeFactory = serviceScopeFactory;
         _logger = logger;
     }
 
@@ -52,7 +52,9 @@ public class WebPushNotificationService : IPushNotificationService
         {
             if ((pushServiceClientException.StatusCode == HttpStatusCode.NotFound) || (pushServiceClientException.StatusCode == HttpStatusCode.Gone))
             {
-                await _pushSubscriptionStore.RemoveSubscriptionAsync(subscription.Endpoint);
+                using var scope = _serviceScopeFactory.CreateScope();
+                var pushSubscriptionStore = scope.ServiceProvider.GetRequiredService<IPushSubscriptionStore>();
+                await pushSubscriptionStore.RemoveSubscriptionAsync(subscription.Endpoint);
                 _logger?.LogInformation("Subscription has expired or is no longer valid and has been removed.");
             }
         }

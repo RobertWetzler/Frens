@@ -1,0 +1,32 @@
+{
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "name": "C#: Cliq.Server Debug",
+            "type": "dotnet",
+            "request": "launch",
+            "projectPath": "${workspaceFolder}/src/Cliq.Server/Cliq.Server.csproj",
+            "justMyCode": false,
+            "requireExactSource": false,
+            "suppressJITOptimizations": true,
+            "enableStepFiltering": false,
+            "env": {
+                "DOTNET_EnableSourceLink": "1"
+            },
+            "symbolOptions": {
+                "searchMicrosoftSymbolServer": true,
+                "searchNuGetOrgSymbolServer": true,
+                "cachePath": "/Users/robertwetzler/.dotnet/symbolcache",
+                "moduleFilter": {
+                    "mode": "loadAllButExcluded",
+                    "excludedModules": []
+                }
+            },
+            "sourceLinkOptions": {
+                "*": {
+                    "enabled": true
+                }
+            }
+        }
+    ]
+}

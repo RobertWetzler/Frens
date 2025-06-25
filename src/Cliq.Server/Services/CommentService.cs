@@ -15,23 +15,36 @@ public class CommentService : ICommentService
 {
     private readonly CliqDbContext _dbContext;
     private readonly IMapper _mapper;
+    private readonly IEventNotificationService _eventNotificationService;
+    private readonly ILogger _logger;
 
-    public CommentService(CliqDbContext dbContext, IMapper mapper)
+    public CommentService(CliqDbContext dbContext,
+        IMapper mapper,
+        IEventNotificationService eventNotificationService,
+        ILogger<PostService> logger
+        )
     {
         _dbContext = dbContext;
         _mapper = mapper;
+        _eventNotificationService = eventNotificationService;
+        _logger = logger;
     }
 
     public async Task<CommentDto> CreateCommentAsync(string text, Guid userId, Guid postId, Guid? parentCommentId = null)
     {
-        if (parentCommentId != null)
+        var parentPost = await _dbContext.Posts
+            .FirstOrDefaultAsync(p => p.Id == postId);
+        if (parentPost == null)
+            throw new ArgumentException("Parent post not found");
+
+        Comment? parentComment = null;
+        if (parentCommentId.HasValue)
         {
             // Verify parent comment exists and belongs to the same post
-            var parentComment = await _dbContext.Comments
-                .FirstOrDefaultAsync(c => c.Id == parentCommentId && c.PostId == postId);
-
-            if (parentComment == null)
-                throw new ArgumentException("Parent comment not found or doesn't belong to specified post");
+            parentComment = await _dbContext.Comments
+                .Include(c => c.User) // Include User data for notifications
+                .FirstOrDefaultAsync(c => c.Id == parentCommentId && c.PostId == postId)
+                ?? throw new ArgumentException("Parent comment not found or doesn't belong to specified post");
         }
 
         var comment = new Comment
@@ -44,22 +57,60 @@ public class CommentService : ICommentService
             Date = DateTime.UtcNow
         };
 
+        CommentDto result;
+        Comment commentWithUser;
         try
         {
             await _dbContext.Comments.AddAsync(comment);
             await _dbContext.SaveChangesAsync();
             // Fetch the newly created comment with User data included
-            var commentWithUser = await _dbContext.Comments
+            commentWithUser = await _dbContext.Comments
                 .Include(c => c.User)
                 .FirstAsync(c => c.Id == comment.Id);
 
-            return _mapper.Map<CommentDto>(commentWithUser);
+            result = _mapper.Map<CommentDto>(commentWithUser);
         }
         catch (DbUpdateException ex) when (ex.InnerException is PostgresException pgEx &&
                                          pgEx.SqlState == PostgresErrorCodes.ForeignKeyViolation)
         {
             throw new ArgumentException("Parent post not found");
         }
+
+        // Send notification of comment
+        try
+        {
+            // To post author
+            if (parentPost.UserId != userId && commentWithUser.User != null)
+            {
+                await _eventNotificationService.SendNewCommentNotificationAsync(
+                    commentId: comment.Id,
+                    postId: postId,
+                    postAuthorId: parentPost.UserId,
+                    commenterId: userId,
+                    commentText: text,
+                    commenterName: commentWithUser.User!.Name);
+            }
+
+            // To parent comment author (if applicable)
+            if (parentComment != null && parentComment.User != null && parentComment.User.Id != userId) // Don't notify if replying to own comment
+            {
+                await _eventNotificationService.SendCommentReplyNotificationAsync(
+                    replyId: commentWithUser.Id,
+                    postId: postId,
+                    parentCommentId: parentCommentId!.Value,
+                    parentCommentAuthorId: parentComment.User.Id,
+                    replierId: userId,
+                    replyText: text,
+                    commenterName: commentWithUser.User!.Name);
+            }
+        }
+        catch (Exception ex)
+        {
+            // Log error but don't fail the post creation
+            _logger.LogWarning(ex, "Failed to send post notifications for comment {CommentId}", comment.Id);
+        }
+
+        return result;
     }
 
     // New method to efficiently get comment count for posts

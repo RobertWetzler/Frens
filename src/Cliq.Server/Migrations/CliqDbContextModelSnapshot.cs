@@ -225,6 +225,10 @@ namespace Cliq.Server.Migrations
                         .HasColumnName("id")
                         .HasDefaultValueSql("gen_random_uuid()");
 
+                    b.Property<int?>("AppBadge")
+                        .HasColumnType("integer")
+                        .HasColumnName("app_badge");
+
                     b.Property<DateTime>("CreatedAt")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("timestamp with time zone")
@@ -239,6 +243,15 @@ namespace Cliq.Server.Migrations
                     b.Property<string>("Metadata")
                         .HasColumnType("jsonb")
                         .HasColumnName("metadata");
+
+                    b.Property<string>("Navigate")
+                        .HasColumnType("text")
+                        .HasColumnName("navigate");
+
+                    b.Property<string>("Title")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("title");
 
                     b.Property<Guid?>("UserId")
                         .IsRequired()

@@ -11,9 +11,9 @@ public static class ServiceCollectionExtensions
         // Configure push notification options
         services.Configure<PushNotificationOptions>(configuration.GetSection(PushNotificationOptions.SectionName));
         
-        services.AddScoped<WebPushNotificationService>();
-        services.AddScoped<IPushNotificationQueueService, PushNotificationQueueService>();
-        services.AddScoped<PushNotificationsDequeuer>();
+        services.AddSingleton<WebPushNotificationService>();
+        services.AddSingleton<IPushNotificationQueueService, PushNotificationQueueService>();
+        services.AddHostedService<PushNotificationsDequeuer>();
         services.AddScoped<INotificationService, NotificationService>();
         services.AddScoped<IPushSubscriptionStore, PushSubscriptionStore>();
         

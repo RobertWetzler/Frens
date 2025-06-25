@@ -168,9 +168,19 @@ public class CliqDbContext : IdentityDbContext<User, CliqRole, Guid>
                   .HasColumnName("user_id")
                   .IsRequired();
 
+            entity.Property(n => n.Title)
+                    .HasColumnName("title")
+                    .IsRequired();  
+
             entity.Property(n => n.Message)
                   .HasColumnName("message")
                   .IsRequired();
+
+            entity.Property(n => n.AppBadge)
+                  .HasColumnName("app_badge");
+
+            entity.Property(n => n.Navigate)
+                  .HasColumnName("navigate");
 
             entity.Property(n => n.Metadata)
                   .HasColumnName("metadata")

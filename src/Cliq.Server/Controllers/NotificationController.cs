@@ -10,10 +10,11 @@ namespace Cliq.Server.Controllers;
 [ApiController]
 public class NotificationController : ControllerBase
 {
-    private INotificationService _notificationService;
+    private readonly INotificationService _notificationService;
     private readonly IPushSubscriptionStore _subscriptionStore;
-    public NotificationController(INotificationService notificationService)
+    public NotificationController(INotificationService notificationService, IPushSubscriptionStore subscriptionStore)
     {
+        _subscriptionStore = subscriptionStore;
         _notificationService = notificationService;
     }
 

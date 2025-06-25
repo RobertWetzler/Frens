@@ -122,7 +122,7 @@ public class FriendshipService : IFriendshipService
         // Send notification to addressee
         try
         {
-            _eventNotificationService?.SendFriendRequestNotificationAsync(requesterId, addresseeId, newFriendship.Id);
+            _eventNotificationService?.SendFriendRequestNotificationAsync(requesterId, addresseeId, newFriendship.Id, requester.Name);
         }
         catch (Exception ex)
         {
@@ -138,6 +138,7 @@ public class FriendshipService : IFriendshipService
     public async Task<FriendshipDto> AcceptFriendRequestAsync(Guid friendshipId, Guid userId)
     {
         var friendship = await _dbContext.Friendships
+            .Include(f => f.Requester)
             .FirstOrDefaultAsync(f => f.Id == friendshipId && f.AddresseeId == userId);
 
         if (friendship == null)
@@ -153,7 +154,7 @@ public class FriendshipService : IFriendshipService
         // Send notification to requester
         try
         {
-            _eventNotificationService?.SendFriendRequestAcceptedNotificationAsync(userId, friendship.RequesterId);
+            _eventNotificationService?.SendFriendRequestAcceptedNotificationAsync(userId, friendship.RequesterId, friendship.Requester.Name);
         }
         catch (Exception ex)
         {

@@ -56,9 +56,11 @@ public class NotificationTestController : ControllerBase
         }
     }
 
+/*
     /// <summary>
     /// Send a test notification to specific users
     /// </summary>
+    /// 
     [HttpPost("test-friend-request")]
     public async Task<IActionResult> SendTestFriendRequest([FromBody] TestFriendRequestRequest request)
     {
@@ -84,7 +86,9 @@ public class NotificationTestController : ControllerBase
             return BadRequest(new { error = ex.Message });
         }
     }
+    */
 }
+
 
 public class AppAnnouncementRequest
 {
