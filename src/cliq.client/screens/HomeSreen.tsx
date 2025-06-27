@@ -128,18 +128,19 @@ const HomeScreen = ({ navigation }) => {
                         </Text>
                     </View>
                 )}
+                ListHeaderComponent={() => (
+                    <NotificationSubscribeButton
+                        applicationServerKey={getEnvVars().VAPID_PUBLIC_KEY}
+                        onSubscriptionChange={(subscription) => {
+                            if (subscription) {
+                                console.log('User subscribed to notifications');
+                                // Send subscription to your server
+                            }
+                        }}
+                    />
+                )}
                 ListFooterComponent={() => (
                     <View style={styles.footerContainer}>
-                        <NotificationSubscribeButton
-                            applicationServerKey={getEnvVars().VAPID_PUBLIC_KEY}
-                            onSubscriptionChange={(subscription) => {
-                                if (subscription) {
-                                    console.log('User subscribed to notifications');
-                                    // Send subscription to your server
-                                }
-                            }}
-                            style={posts && posts.length > 0 && { marginTop: 20 }}
-                        />
                         <TouchableOpacity
                             style={[styles.shareButton, posts && posts.length > 0 && { marginTop: 20 }]}
                             onPress={() => handleShareProfile(authContext.user.id)}
