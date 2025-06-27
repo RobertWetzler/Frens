@@ -34,20 +34,22 @@ public class EventNotificationService : IEventNotificationService
         var notificationData = new FriendRequestNotificationData
         {
             RequesterId = requesterId,
+            RequesterName = requesterName,
             FriendshipId = friendshipId
         };
 
-        await _notificationQueue.AddNotificationAsync(addresseeId, notificationData, requesterName);
+        await _notificationQueue.AddAsync(addresseeId, notificationData);
     }
 
     public async Task SendFriendRequestAcceptedNotificationAsync(Guid accepterId, Guid requesterId, string accepterName)
     {
         var notificationData = new FriendRequestAcceptedNotificationData
         {
-            AccepterId = accepterId
+            AccepterId = accepterId,
+            AccepterName = accepterName,
         };
 
-        await _notificationQueue.AddNotificationAsync(requesterId, notificationData, accepterName);
+        await _notificationQueue.AddAsync(requesterId, notificationData);
     }
 
     public async Task SendNewPostNotificationAsync(Guid postId, Guid authorId, string postText, IEnumerable<Guid> circleIds, string authorName)
@@ -67,10 +69,11 @@ public class EventNotificationService : IEventNotificationService
             {
                 PostId = postId,
                 AuthorId = authorId,
+                AuthorName = authorName,
                 PostText = postText
             };
 
-            await _notificationQueue.AddNotificationBulkAsync(recipientUserIds, notificationData, authorName);
+            await _notificationQueue.AddBulkAsync(recipientUserIds, notificationData);
         }
     }
 
@@ -84,10 +87,11 @@ public class EventNotificationService : IEventNotificationService
             CommentId = commentId,
             PostId = postId,
             CommenterId = commenterId,
+            CommenterName = commenterName,
             CommentText = commentText
         };
 
-        await _notificationQueue.AddNotificationAsync(postAuthorId, notificationData, commenterName);
+        await _notificationQueue.AddAsync(postAuthorId, notificationData);
     }
 
     public async Task SendCommentReplyNotificationAsync(Guid replyId, Guid postId, Guid parentCommentId, Guid parentCommentAuthorId, Guid replierId, string replyText, string replierName)
@@ -101,10 +105,11 @@ public class EventNotificationService : IEventNotificationService
             PostId = postId,
             ParentCommentId = parentCommentId,
             ReplierId = replierId,
+            ReplierName = replierName,
             ReplyText = replyText
         };
 
-        await _notificationQueue.AddNotificationAsync(parentCommentAuthorId, notificationData, replierName);
+        await _notificationQueue.AddAsync(parentCommentAuthorId, notificationData);
     }
 
     public async Task SendAppAnnouncementAsync(string title, string body, string? actionUrl = null)
@@ -123,7 +128,7 @@ public class EventNotificationService : IEventNotificationService
                 ActionUrl = actionUrl
             };
 
-            await _notificationQueue.AddNotificationBulkAsync(allUserIds, notificationData);
+            await _notificationQueue.AddBulkAsync(allUserIds, notificationData);
         }
     }
 }

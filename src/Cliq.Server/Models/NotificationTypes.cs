@@ -21,8 +21,9 @@ public enum NotificationType
 public abstract class NotificationData
 {
     public NotificationType Type { get; set; }
-    public abstract string GetMessage(string? actorName = null);
-    public abstract object GetMetadata();
+    public virtual string Title { get; set; }
+    public virtual string Message { get; set; }
+    public virtual string Metadata { get; set; }
 }
 
 /// <summary>
@@ -32,25 +33,34 @@ public class FriendRequestNotificationData : NotificationData
 {
     public Guid RequesterId { get; set; }
     public Guid FriendshipId { get; set; }
+    public required string RequesterName { get; set; }
 
     public FriendRequestNotificationData()
     {
         Type = NotificationType.FriendRequest;
     }
 
-    public override string GetMessage(string? actorName = null)
+    public override string Title
     {
-        return $"{actorName ?? "Someone"} sent you a friend request";
+        get => $"{RequesterName}";
+        set { }
     }
 
-    public override object GetMetadata()
+    public override string Message
     {
-        return new
+        get => $"sent you a friend request";
+        set { }
+    }
+
+    public override string Metadata
+    {
+        get => new
         {
             Type = Type.ToString(),
             RequesterId,
             FriendshipId
-        };
+        }.ToJson();
+        set { }
     }
 }
 
@@ -60,24 +70,33 @@ public class FriendRequestNotificationData : NotificationData
 public class FriendRequestAcceptedNotificationData : NotificationData
 {
     public Guid AccepterId { get; set; }
+    public required string AccepterName { get; set; }
 
     public FriendRequestAcceptedNotificationData()
     {
         Type = NotificationType.FriendRequestAccepted;
     }
 
-    public override string GetMessage(string? actorName = null)
+    public override string Title
     {
-        return $"{actorName ?? "Someone"} accepted your friend request";
+        get => $"{AccepterName}";
+        set { }
     }
 
-    public override object GetMetadata()
+    public override string Message
     {
-        return new
+        get => "accepted your friend request";
+        set { }
+    }
+
+    public override string Metadata
+    {
+        get => new
         {
             Type = Type.ToString(),
             AccepterId
-        };
+        }.ToJson();
+        set { }
     }
 }
 
@@ -88,6 +107,7 @@ public class NewPostNotificationData : NotificationData
 {
     public Guid PostId { get; set; }
     public Guid AuthorId { get; set; }
+    public required string AuthorName { get; set; }
     public string PostText { get; set; } = string.Empty;
 
     public NewPostNotificationData()
@@ -95,21 +115,31 @@ public class NewPostNotificationData : NotificationData
         Type = NotificationType.NewPost;
     }
 
-    public override string GetMessage(string? actorName = null)
+    public override string Title
     {
-        var preview = PostText.Length > 50 ? PostText[..50] + "..." : PostText;
-        return $"{actorName ?? "Someone"} shared a new post: \"{preview}\"";
+        get => $"{AuthorName}";
+        set { }
     }
 
-    public override object GetMetadata()
+    public override string Message
     {
-        return new
+        get
+        {
+            return PostText.Length > 50 ? PostText[..50] + "..." : PostText;
+        }
+        set { }
+    }
+
+    public override string Metadata
+    {
+        get => new
         {
             Type = Type.ToString(),
             PostId,
             AuthorId,
             PostText
-        };
+        }.ToJson();
+        set { }
     }
 }
 
@@ -121,6 +151,7 @@ public class NewCommentNotificationData : NotificationData
     public Guid CommentId { get; set; }
     public Guid PostId { get; set; }
     public Guid CommenterId { get; set; }
+    public required string CommenterName { get; set; }
     public string CommentText { get; set; } = string.Empty;
 
     public NewCommentNotificationData()
@@ -128,21 +159,29 @@ public class NewCommentNotificationData : NotificationData
         Type = NotificationType.NewComment;
     }
 
-    public override string GetMessage(string? actorName = null)
+    public override string Title
     {
-        return $"{actorName ?? "Someone"} commented on your post";
+        get => $"{CommenterName}";
+        set { }
     }
 
-    public override object GetMetadata()
+    public override string Message
     {
-        return new
+        get => "commented on your post";
+        set { }
+    }
+
+    public override string Metadata
+    {
+        get => new
         {
             Type = Type.ToString(),
             CommentId,
             PostId,
             CommenterId,
             CommentText
-        };
+        }.ToJson();
+        set { }
     }
 }
 
@@ -155,6 +194,7 @@ public class CommentReplyNotificationData : NotificationData
     public Guid PostId { get; set; }
     public Guid ParentCommentId { get; set; }
     public Guid ReplierId { get; set; }
+    public required string ReplierName { get; set; }
     public string ReplyText { get; set; } = string.Empty;
 
     public CommentReplyNotificationData()
@@ -162,14 +202,21 @@ public class CommentReplyNotificationData : NotificationData
         Type = NotificationType.CommentReply;
     }
 
-    public override string GetMessage(string? actorName = null)
+    public override string Title
     {
-        return $"{actorName ?? "Someone"} replied to your comment";
+        get => $"{ReplierName}";
+        set { }
     }
 
-    public override object GetMetadata()
+    public override string Message
     {
-        return new
+        get => "replied to your comment";
+        set { }
+    }
+
+    public override string Metadata
+    {
+        get => new
         {
             Type = Type.ToString(),
             ReplyId,
@@ -177,7 +224,8 @@ public class CommentReplyNotificationData : NotificationData
             ParentCommentId,
             ReplierId,
             ReplyText
-        };
+        }.ToJson();
+        set { }
     }
 }
 
@@ -186,7 +234,7 @@ public class CommentReplyNotificationData : NotificationData
 /// </summary>
 public class AppAnnouncementNotificationData : NotificationData
 {
-    public string Title { get; set; } = string.Empty;
+    public string AnnouncementTitle { get; set; } = string.Empty;
     public string Body { get; set; } = string.Empty;
     public string? ActionUrl { get; set; }
 
@@ -195,19 +243,35 @@ public class AppAnnouncementNotificationData : NotificationData
         Type = NotificationType.AppAnnouncement;
     }
 
-    public override string GetMessage(string? actorName = null)
+    public override string Title
     {
-        return $"{Title}: {Body}";
+        get => AnnouncementTitle;
+        set { }
     }
 
-    public override object GetMetadata()
+    public override string Message
     {
-        return new
+        get => Body;
+        set { }
+    }
+
+    public override string Metadata
+    {
+        get => new
         {
             Type = Type.ToString(),
-            Title,
+            Title = AnnouncementTitle,
             Body,
             ActionUrl
-        };
+        }.ToJson();
+        set { }
+    }
+}
+
+public static class JsonExtensions
+{
+    public static string ToJson(this object obj)
+    {
+        return System.Text.Json.JsonSerializer.Serialize(obj);
     }
 }

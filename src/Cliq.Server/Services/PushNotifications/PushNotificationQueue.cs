@@ -8,10 +8,8 @@ namespace Cliq.Server.Services.PushNotifications;
 
 public interface IPushNotificationQueueService
 {
-    Task AddAsync(Guid userId, string message, string metadata);
-    Task AddBulkAsync(IEnumerable<Guid> userIds, string message, string metadata);
-    Task AddNotificationAsync<T>(Guid userId, T notificationData, string? actorName = null) where T : NotificationData;
-    Task AddNotificationBulkAsync<T>(IEnumerable<Guid> userIds, T notificationData, string? actorName = null) where T : NotificationData;
+    Task AddAsync(Guid userId, NotificationData notificationData);
+    Task AddBulkAsync(IEnumerable<Guid> userIds, NotificationData notificationData);
     Task<List<NotificationDelivery>> DequeueAsync(int batchSize, CancellationToken cancellationToken = default);
     Task MarkAsSentAsync(Guid deliveryId);
     Task MarkAsFailedAsync(Guid deliveryId);
@@ -35,7 +33,7 @@ public class PushNotificationQueueService : IPushNotificationQueueService
         }
     }
 
-    public async Task AddAsync(Guid userId, string message, string metadata)
+    public async Task AddAsync(Guid userId, NotificationData notificationData)
     {
         using var scope = _serviceScopeFactory.CreateScope();
         var dbContext = scope.ServiceProvider.GetRequiredService<CliqDbContext>();
@@ -48,8 +46,9 @@ public class PushNotificationQueueService : IPushNotificationQueueService
             var notification = new Notification
             {
                 UserId = userId,
-                Message = message,
-                Metadata = metadata,
+                Title = notificationData.Title,
+                Message = notificationData.Message,
+                Metadata = notificationData.Metadata,
                 CreatedAt = DateTime.UtcNow,
             };
 
@@ -85,7 +84,7 @@ public class PushNotificationQueueService : IPushNotificationQueueService
         }
     }
 
-    public async Task AddBulkAsync(IEnumerable<Guid> userIds, string message, string metadata)
+    public async Task AddBulkAsync(IEnumerable<Guid> userIds, NotificationData notifcationData)
     {
         using var scope = _serviceScopeFactory.CreateScope();
         var dbContext = scope.ServiceProvider.GetRequiredService<CliqDbContext>();
@@ -116,8 +115,9 @@ public class PushNotificationQueueService : IPushNotificationQueueService
             var notifications = userIdsList.Select(userId => new Notification
             {
                 UserId = userId,
-                Message = message,
-                Metadata = metadata,
+                Title = notifcationData.Title,
+                Message = notifcationData.Message,
+                Metadata = notifcationData.Metadata,
                 CreatedAt = DateTime.UtcNow,
             }).ToList();
 
@@ -149,20 +149,6 @@ public class PushNotificationQueueService : IPushNotificationQueueService
             await transaction.RollbackAsync();
             throw;
         }
-    }
-
-    public async Task AddNotificationAsync<T>(Guid userId, T notificationData, string? actorName = null) where T : NotificationData
-    {
-        var message = notificationData.GetMessage(actorName);
-        var metadata = JsonSerializer.Serialize(notificationData.GetMetadata(), new JsonSerializerOptions { PropertyNamingPolicy = JsonNamingPolicy.CamelCase });
-        await AddAsync(userId, message, metadata);
-    }
-
-    public async Task AddNotificationBulkAsync<T>(IEnumerable<Guid> userIds, T notificationData, string? actorName = null) where T : NotificationData
-    {
-        var message = notificationData.GetMessage(actorName);
-        var metadata = JsonSerializer.Serialize(notificationData.GetMetadata(), new JsonSerializerOptions { PropertyNamingPolicy = JsonNamingPolicy.CamelCase });
-        await AddBulkAsync(userIds, message, metadata);
     }
 
 public async Task<List<NotificationDelivery>> DequeueAsync(int batchSize, CancellationToken cancellationToken = default)

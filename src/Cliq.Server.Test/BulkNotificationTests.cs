@@ -112,7 +112,7 @@ public class BulkNotificationTests : IClassFixture<DatabaseFixture>
         };
 
         // Act
-        await queueService.AddNotificationAsync(userId, notificationData, "John Doe");
+        await queueService.AddAsync(userId, notificationData, "John Doe");
 
         // Assert
         var notifications = await context.Set<Notification>()

@@ -5,7 +5,7 @@ const ENV = {
     //API_URL: 'https://192.0.0.2:7188', 
     // Use for hotspot development on MacBook
     //API_URL: 'https://roberts-macbook-air.local:7188',
-    API_URL: 'https://192.168.0.102:7189',
+    API_URL: 'https://192.168.0.106:7189',
     VAPID_PUBLIC_KEY: 'BCs0Nh-yet4gbF_-xqsSEAJLFFE9iDcXBE2dade9YzkDyy-6UaJ8uFh2tcIT__ht38M2PqwlLs7Bu_aHL7_HmDA'
   },
   production: {

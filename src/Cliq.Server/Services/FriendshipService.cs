@@ -139,6 +139,7 @@ public class FriendshipService : IFriendshipService
     {
         var friendship = await _dbContext.Friendships
             .Include(f => f.Requester)
+            .Include(f => f.Addressee)
             .FirstOrDefaultAsync(f => f.Id == friendshipId && f.AddresseeId == userId);
 
         if (friendship == null)
@@ -154,7 +155,7 @@ public class FriendshipService : IFriendshipService
         // Send notification to requester
         try
         {
-            _eventNotificationService?.SendFriendRequestAcceptedNotificationAsync(userId, friendship.RequesterId, friendship.Requester.Name);
+            _eventNotificationService?.SendFriendRequestAcceptedNotificationAsync(userId, friendship.RequesterId, friendship.Addressee.Name);
         }
         catch (Exception ex)
         {

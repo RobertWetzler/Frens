@@ -134,8 +134,8 @@ public static class SeedExtensions
         await CreatePostAsync(db, howard, "Letting family know: I'll be out mountaineering Sunday.", DateTime.UtcNow.AddHours(-5), new[] { familyCircle });
         
         // Add comments
-        await AddCommentTreeAsync(db, post1, new[]
-        {
+        await AddCommentTreeAsync(db, post1,
+        [
             new C(devon, "Sick where should we go climb",
                 new C(robert, "Lets go to Red Rock",
                     new C(devon, "Oh hell yea plus some cheeky vegas gambling eh?",
@@ -147,7 +147,7 @@ public static class SeedExtensions
                 new C(robert, "Or Vantage")
             ),
             new C(spencer, "This will be so hype!!!!!")
-        });
+        ]);
         
     }
 
