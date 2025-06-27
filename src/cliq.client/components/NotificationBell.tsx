@@ -13,8 +13,13 @@ const NotificationBell: React.FC<NotificationBellProps> = ({
   notificationCount = 3, // Mock number for now
   iconColor = '#1DA1F2'
 }) => {
+  const handlePress = () => {
+    console.log('Notification bell pressed');
+    onPress();
+  };
+
   return (
-    <TouchableOpacity style={styles.container} onPress={onPress}>
+    <TouchableOpacity style={styles.container} onPress={handlePress}>
       <Ionicons name="notifications-outline" size={24} color={iconColor} />
       {notificationCount > 0 && (
         <View style={styles.badge}>

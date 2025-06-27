@@ -14,7 +14,7 @@ const NotificationSubscribeButton: React.FC<NotificationSubscribeButtonProps> = 
   onSubscriptionChange,
   style
 }) => {
-  const { subscribe, isLoading, error, subscription, isSupported } = useAddNotifications({
+  const { subscribe, isLoading, error, subscription, isSupported, hasExistingSubscription, isPWAInstalled } = useAddNotifications({
     applicationServerKey
   });
 
@@ -28,8 +28,13 @@ const NotificationSubscribeButton: React.FC<NotificationSubscribeButtonProps> = 
     return null;
   }
 
-  // Don't render if already subscribed
-  if (subscription) {
+  // Don't render if not installed as PWA
+  if (!isPWAInstalled) {
+    return null;
+  }
+
+  // Don't render if already subscribed or has existing subscription
+  if (subscription || hasExistingSubscription) {
     return null;
   }
 

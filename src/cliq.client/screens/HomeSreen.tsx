@@ -1,4 +1,4 @@
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { Text, View, FlatList, StyleSheet, SafeAreaView, ActivityIndicator, TouchableOpacity, Share, Animated } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -11,13 +11,15 @@ import { useAuth } from 'contexts/AuthContext';
 import { handleShareProfile } from 'utils/share';
 import NotificationBell from 'components/NotificationBell';
 import NotificationSubscribeButton from 'components/NotificationSubscribeButton';
+import PWAInstallBanner from 'components/PWAInstallBanner';
 
 
 const HomeScreen = ({ navigation }) => {
     const { posts, notificationCount, isLoading, error, loadFeed } = useFeed();
     const authContext = useAuth();
     const scrollY = useRef(new Animated.Value(0)).current;
-    
+    const [isPWABannerVisible, setIsPWABannerVisible] = useState(true);
+
     // Useful for debugging hook transitions
     /*
     useEffect(() => {
@@ -60,34 +62,39 @@ const HomeScreen = ({ navigation }) => {
         );
     }
 
-    return ( 
+    return (
         <SafeAreaView style={styles.container}>
+            <PWAInstallBanner
+                onDismiss={() => setIsPWABannerVisible(false)}
+                onVisibilityChange={setIsPWABannerVisible}
+            />
             <Animated.View
                 style={[
                     styles.headerContainer,
                     {
                         opacity: headerOpacity,
                         transform: [{ translateY: headerTranslateY }],
+                        top: isPWABannerVisible ? 66 : 0, // Adjust based on banner visibility (exact banner height)
                     },
                 ]}
             >
                 <LinearGradient
-                    colors={['#6699FF', '#9966FF','#8C66FF']}
+                    colors={['#6699FF', '#9966FF', '#8C66FF']}
                     start={{ x: 0, y: 1 }}
                     end={{ x: 0, y: 0 }}
                     style={styles.headerGradient}
                 >
                     <View style={styles.header}>
                         <Text style={styles.headerTitle}>Frens</Text>
-                        <NotificationBell 
-                            onPress={() => navigation.navigate('Notifications')} 
+                        <NotificationBell
+                            onPress={() => navigation.navigate('Notifications')}
                             iconColor="white"
                             notificationCount={notificationCount}
-                        />        
+                        />
                     </View>
                 </LinearGradient>
             </Animated.View>
-            
+
             <FlatList
                 data={posts}
                 renderItem={({ item }) => (
@@ -96,7 +103,10 @@ const HomeScreen = ({ navigation }) => {
                 keyExtractor={(item) => item.id}
                 contentContainerStyle={[
                     styles.listContent,
-                    { paddingBottom: insets.bottom + 60 } // Add extra padding for the tab bar
+                    {
+                        paddingTop: isPWABannerVisible ? 122 : 56, // Exact total height: banner(66) + header(56) or just header(56)
+                        paddingBottom: insets.bottom + 60
+                    }
                 ]}
                 onScroll={Animated.event(
                     [{ nativeEvent: { contentOffset: { y: scrollY } } }],
@@ -130,7 +140,7 @@ const HomeScreen = ({ navigation }) => {
                             }}
                             style={posts && posts.length > 0 && { marginTop: 20 }}
                         />
-                        <TouchableOpacity 
+                        <TouchableOpacity
                             style={[styles.shareButton, posts && posts.length > 0 && { marginTop: 20 }]}
                             onPress={() => handleShareProfile(authContext.user.id)}
                         >
@@ -184,7 +194,7 @@ const styles = StyleSheet.create({
         textShadowRadius: 2,
     },
     listContent: {
-        paddingTop: 80, // Add padding to account for the absolute positioned header
+        // Base padding will be set dynamically in the component
     },
     errorText: {
         color: 'red',
