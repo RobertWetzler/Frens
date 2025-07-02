@@ -125,7 +125,7 @@ public static class SeedExtensions
         var climbingCircle = await CreateCircleAsync(db, "Climbing Crew", false, robert, new[] { devon, spencer });
         var hikingCircle = await CreateCircleAsync(db, "Hiking Buddies", true, robert, new[] { sierra, jacob });
         var familyCircle = await CreateCircleAsync(db, "Family", false, robert, new[] { howard, elana, daltin, carolyn });
-        var sierraFriends = await CreateCircleAsync(db, "Sierra's Friends", false, sierra, new[] { anya, kevin, mira });
+        var sierraFriends = await CreateCircleAsync(db, "Sierra's Friends", true, sierra, new[] { anya, kevin, mira, robert });
 
         // Create posts
         var post1 = await CreatePostAsync(db, robert, "Planning a climbing trip this weekend!", DateTime.UtcNow.AddHours(-10), new[] { climbingCircle });

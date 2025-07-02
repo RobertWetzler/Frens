@@ -65,7 +65,7 @@ const CreateCircleScreen = ({ navigation }) => {
     try {
       setIsSubmitting(true);
       await ApiClient.call(c => 
-        c.circle(new CircleCreationDto({
+        c.circlePOST(new CircleCreationDto({
           name: circleName,
           isShared: isShared,
           userIdsToAdd: selectedFriendIds

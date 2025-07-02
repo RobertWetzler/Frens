@@ -10,6 +10,7 @@ import * as Linking from 'expo-linking';
 import HomeScreen from './screens/HomeSreen';
 import CommentSection from './components/CommentSection';
 import GroupsScreen from './screens/GroupScreen';
+import CirclesScreen from './screens/CirclesScreen';
 import CalendarScreen from './screens/CalendarScreen';
 import ProfileScreen from './screens/ProfileScreen';
 import SignInScreen from './screens/SignInScreen';
@@ -32,6 +33,7 @@ type RootStackParamList = {
 
 type TabParamList = {
     Feed: undefined;
+    Circles: undefined;
     Groups: undefined;
     Post: undefined;
     Calendar: undefined;
@@ -51,6 +53,7 @@ const linking: LinkingOptions<RootStackParamList> = {
       Main: {
         screens: {
           Feed: '',
+          Circles: 'circles',
           Groups: 'groups',
           Calendar: 'calendar',
           Me: 'me',
@@ -100,11 +103,14 @@ const BottomTabs = ({ navigation }) => {
           if (route.name === 'Feed') {
             iconName = focused ? 'home' : 'home-outline';
           }
+          else if (route.name === 'Circles') {
+            iconName = focused ? 'people' : 'people-outline';
+          }
           else if (route.name === 'Post') {
             iconName = focused ? 'add' : 'add-outline';
           }
           else if (route.name === 'Groups') {
-            iconName = focused ? 'people' : 'people-outline';
+            iconName = focused ? 'albums' : 'albums-outline';
           } else if (route.name === 'Calendar') {
             iconName = focused ? 'calendar' : 'calendar-outline';
           } else if (route.name === 'Me') {
@@ -126,7 +132,7 @@ const BottomTabs = ({ navigation }) => {
           height: 60,
           // Add safe area for iOS PWA
           paddingBottom: Platform.OS === 'web' && Platform.select({
-            web: typeof window !== 'undefined' && window.navigator.standalone ? 20 : 0,
+            web: typeof window !== 'undefined' && (window.navigator as any).standalone ? 20 : 0,
             default: 0
           }),
         },
@@ -134,6 +140,7 @@ const BottomTabs = ({ navigation }) => {
       })}
     >
       <Tab.Screen name="Feed" component={HomeScreen} />
+      <Tab.Screen name="Circles" component={CirclesScreen} />
       <Tab.Screen 
         name="Post"
         component={CreatePostScreen}
@@ -227,7 +234,7 @@ const MainApp = () => {
         alignItems: 'center',
         // Ensure full screen on iOS PWA
         paddingTop: Platform.OS === 'web' && Platform.select({
-          web: typeof window !== 'undefined' && window.navigator.standalone ? 40 : 0,
+          web: typeof window !== 'undefined' && (window.navigator as any).standalone ? 40 : 0,
           default: 0
         })
       }}>

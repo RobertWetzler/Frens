@@ -183,7 +183,7 @@ export class Client {
      * @param body (optional) 
      * @return OK
      */
-    circle(body: CircleCreationDto | undefined): Promise<CirclePublicDto> {
+    circlePOST(body: CircleCreationDto | undefined): Promise<CirclePublicDto> {
         let url_ = this.baseUrl + "/api/Circle";
         url_ = url_.replace(/[?&]$/, "");
 
@@ -199,11 +199,11 @@ export class Client {
         };
 
         return this.http.fetch(url_, options_).then((_response: Response) => {
-            return this.processCircle(_response);
+            return this.processCirclePOST(_response);
         });
     }
 
-    protected processCircle(response: Response): Promise<CirclePublicDto> {
+    protected processCirclePOST(response: Response): Promise<CirclePublicDto> {
         const status = response.status;
         let _headers: any = {}; if (response.headers && response.headers.forEach) { response.headers.forEach((v: any, k: any) => _headers[k] = v); };
         if (status === 200) {
@@ -268,7 +268,51 @@ export class Client {
     /**
      * @return OK
      */
-    circleAll2(circleId: string): Promise<CirclePublicDto[]> {
+    withMembers(): Promise<CircleWithMembersDto[]> {
+        let url_ = this.baseUrl + "/api/Circle/with-members";
+        url_ = url_.replace(/[?&]$/, "");
+
+        let options_: RequestInit = {
+            method: "GET",
+            headers: {
+                "Accept": "text/plain"
+            }
+        };
+
+        return this.http.fetch(url_, options_).then((_response: Response) => {
+            return this.processWithMembers(_response);
+        });
+    }
+
+    protected processWithMembers(response: Response): Promise<CircleWithMembersDto[]> {
+        const status = response.status;
+        let _headers: any = {}; if (response.headers && response.headers.forEach) { response.headers.forEach((v: any, k: any) => _headers[k] = v); };
+        if (status === 200) {
+            return response.text().then((_responseText) => {
+            let result200: any = null;
+            let resultData200 = _responseText === "" ? null : JSON.parse(_responseText, this.jsonParseReviver);
+            if (Array.isArray(resultData200)) {
+                result200 = [] as any;
+                for (let item of resultData200)
+                    result200!.push(CircleWithMembersDto.fromJS(item));
+            }
+            else {
+                result200 = <any>null;
+            }
+            return result200;
+            });
+        } else if (status !== 200 && status !== 204) {
+            return response.text().then((_responseText) => {
+            return throwException("An unexpected server error occurred.", status, _responseText, _headers);
+            });
+        }
+        return Promise.resolve<CircleWithMembersDto[]>(null as any);
+    }
+
+    /**
+     * @return OK
+     */
+    circleGET(circleId: string): Promise<CirclePublicDto> {
         let url_ = this.baseUrl + "/api/Circle/{circleId}";
         if (circleId === undefined || circleId === null)
             throw new Error("The parameter 'circleId' must be defined.");
@@ -283,25 +327,18 @@ export class Client {
         };
 
         return this.http.fetch(url_, options_).then((_response: Response) => {
-            return this.processCircleAll2(_response);
+            return this.processCircleGET(_response);
         });
     }
 
-    protected processCircleAll2(response: Response): Promise<CirclePublicDto[]> {
+    protected processCircleGET(response: Response): Promise<CirclePublicDto> {
         const status = response.status;
         let _headers: any = {}; if (response.headers && response.headers.forEach) { response.headers.forEach((v: any, k: any) => _headers[k] = v); };
         if (status === 200) {
             return response.text().then((_responseText) => {
             let result200: any = null;
             let resultData200 = _responseText === "" ? null : JSON.parse(_responseText, this.jsonParseReviver);
-            if (Array.isArray(resultData200)) {
-                result200 = [] as any;
-                for (let item of resultData200)
-                    result200!.push(CirclePublicDto.fromJS(item));
-            }
-            else {
-                result200 = <any>null;
-            }
+            result200 = CirclePublicDto.fromJS(resultData200);
             return result200;
             });
         } else if (status !== 200 && status !== 204) {
@@ -309,7 +346,43 @@ export class Client {
             return throwException("An unexpected server error occurred.", status, _responseText, _headers);
             });
         }
-        return Promise.resolve<CirclePublicDto[]>(null as any);
+        return Promise.resolve<CirclePublicDto>(null as any);
+    }
+
+    /**
+     * @return OK
+     */
+    circleDELETE(circleId: string): Promise<void> {
+        let url_ = this.baseUrl + "/api/Circle/{circleId}";
+        if (circleId === undefined || circleId === null)
+            throw new Error("The parameter 'circleId' must be defined.");
+        url_ = url_.replace("{circleId}", encodeURIComponent("" + circleId));
+        url_ = url_.replace(/[?&]$/, "");
+
+        let options_: RequestInit = {
+            method: "DELETE",
+            headers: {
+            }
+        };
+
+        return this.http.fetch(url_, options_).then((_response: Response) => {
+            return this.processCircleDELETE(_response);
+        });
+    }
+
+    protected processCircleDELETE(response: Response): Promise<void> {
+        const status = response.status;
+        let _headers: any = {}; if (response.headers && response.headers.forEach) { response.headers.forEach((v: any, k: any) => _headers[k] = v); };
+        if (status === 200) {
+            return response.text().then((_responseText) => {
+            return;
+            });
+        } else if (status !== 200 && status !== 204) {
+            return response.text().then((_responseText) => {
+            return throwException("An unexpected server error occurred.", status, _responseText, _headers);
+            });
+        }
+        return Promise.resolve<void>(null as any);
     }
 
     /**
@@ -833,6 +906,44 @@ export class Client {
     }
 
     /**
+     * @param body (optional) 
+     * @return OK
+     */
+    announcement(body: AppAnnouncementRequest | undefined): Promise<void> {
+        let url_ = this.baseUrl + "/api/NotificationTest/announcement";
+        url_ = url_.replace(/[?&]$/, "");
+
+        const content_ = JSON.stringify(body);
+
+        let options_: RequestInit = {
+            body: content_,
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json",
+            }
+        };
+
+        return this.http.fetch(url_, options_).then((_response: Response) => {
+            return this.processAnnouncement(_response);
+        });
+    }
+
+    protected processAnnouncement(response: Response): Promise<void> {
+        const status = response.status;
+        let _headers: any = {}; if (response.headers && response.headers.forEach) { response.headers.forEach((v: any, k: any) => _headers[k] = v); };
+        if (status === 200) {
+            return response.text().then((_responseText) => {
+            return;
+            });
+        } else if (status !== 200 && status !== 204) {
+            return response.text().then((_responseText) => {
+            return throwException("An unexpected server error occurred.", status, _responseText, _headers);
+            });
+        }
+        return Promise.resolve<void>(null as any);
+    }
+
+    /**
      * @param includeCommentTree (optional) 
      * @return OK
      */
@@ -1123,6 +1234,50 @@ export class Client {
     }
 }
 
+export class AppAnnouncementRequest implements IAppAnnouncementRequest {
+    title!: string | undefined;
+    body!: string | undefined;
+    actionUrl?: string | undefined;
+
+    constructor(data?: IAppAnnouncementRequest) {
+        if (data) {
+            for (var property in data) {
+                if (data.hasOwnProperty(property))
+                    (<any>this)[property] = (<any>data)[property];
+            }
+        }
+    }
+
+    init(_data?: any) {
+        if (_data) {
+            this.title = _data["title"];
+            this.body = _data["body"];
+            this.actionUrl = _data["actionUrl"];
+        }
+    }
+
+    static fromJS(data: any): AppAnnouncementRequest {
+        data = typeof data === 'object' ? data : {};
+        let result = new AppAnnouncementRequest();
+        result.init(data);
+        return result;
+    }
+
+    toJSON(data?: any) {
+        data = typeof data === 'object' ? data : {};
+        data["title"] = this.title;
+        data["body"] = this.body;
+        data["actionUrl"] = this.actionUrl;
+        return data;
+    }
+}
+
+export interface IAppAnnouncementRequest {
+    title: string | undefined;
+    body: string | undefined;
+    actionUrl?: string | undefined;
+}
+
 export class CircleCreationDto implements ICircleCreationDto {
     name!: string | undefined;
     isShared!: boolean;
@@ -1177,7 +1332,7 @@ export interface ICircleCreationDto {
 
 export class CirclePublicDto implements ICirclePublicDto {
     id?: string;
-    name?: string | undefined;
+    name!: string | undefined;
     isShared?: boolean;
     isOwner?: boolean;
 
@@ -1218,9 +1373,73 @@ export class CirclePublicDto implements ICirclePublicDto {
 
 export interface ICirclePublicDto {
     id?: string;
-    name?: string | undefined;
+    name: string | undefined;
     isShared?: boolean;
     isOwner?: boolean;
+}
+
+export class CircleWithMembersDto implements ICircleWithMembersDto {
+    id?: string;
+    name!: string | undefined;
+    isShared?: boolean;
+    isOwner?: boolean;
+    owner?: UserDto;
+    members?: UserDto[] | undefined;
+
+    constructor(data?: ICircleWithMembersDto) {
+        if (data) {
+            for (var property in data) {
+                if (data.hasOwnProperty(property))
+                    (<any>this)[property] = (<any>data)[property];
+            }
+        }
+    }
+
+    init(_data?: any) {
+        if (_data) {
+            this.id = _data["id"];
+            this.name = _data["name"];
+            this.isShared = _data["isShared"];
+            this.isOwner = _data["isOwner"];
+            this.owner = _data["owner"] ? UserDto.fromJS(_data["owner"]) : <any>undefined;
+            if (Array.isArray(_data["members"])) {
+                this.members = [] as any;
+                for (let item of _data["members"])
+                    this.members!.push(UserDto.fromJS(item));
+            }
+        }
+    }
+
+    static fromJS(data: any): CircleWithMembersDto {
+        data = typeof data === 'object' ? data : {};
+        let result = new CircleWithMembersDto();
+        result.init(data);
+        return result;
+    }
+
+    toJSON(data?: any) {
+        data = typeof data === 'object' ? data : {};
+        data["id"] = this.id;
+        data["name"] = this.name;
+        data["isShared"] = this.isShared;
+        data["isOwner"] = this.isOwner;
+        data["owner"] = this.owner ? this.owner.toJSON() : <any>undefined;
+        if (Array.isArray(this.members)) {
+            data["members"] = [];
+            for (let item of this.members)
+                data["members"].push(item.toJSON());
+        }
+        return data;
+    }
+}
+
+export interface ICircleWithMembersDto {
+    id?: string;
+    name: string | undefined;
+    isShared?: boolean;
+    isOwner?: boolean;
+    owner?: UserDto;
+    members?: UserDto[] | undefined;
 }
 
 export class CommentDto implements ICommentDto {
@@ -1447,9 +1666,9 @@ export interface IFriendRequestDto {
 }
 
 export class FriendshipDto implements IFriendshipDto {
-    id?: string | undefined;
-    requester?: UserDto;
-    addressee?: UserDto;
+    id!: string | undefined;
+    requester!: UserDto;
+    addressee!: UserDto;
     status?: FriendshipStatus;
     createdAt?: Date;
     acceptedAt?: Date | undefined;
@@ -1461,13 +1680,17 @@ export class FriendshipDto implements IFriendshipDto {
                     (<any>this)[property] = (<any>data)[property];
             }
         }
+        if (!data) {
+            this.requester = new UserDto();
+            this.addressee = new UserDto();
+        }
     }
 
     init(_data?: any) {
         if (_data) {
             this.id = _data["id"];
-            this.requester = _data["requester"] ? UserDto.fromJS(_data["requester"]) : <any>undefined;
-            this.addressee = _data["addressee"] ? UserDto.fromJS(_data["addressee"]) : <any>undefined;
+            this.requester = _data["requester"] ? UserDto.fromJS(_data["requester"]) : new UserDto();
+            this.addressee = _data["addressee"] ? UserDto.fromJS(_data["addressee"]) : new UserDto();
             this.status = _data["status"];
             this.createdAt = _data["createdAt"] ? new Date(_data["createdAt"].toString()) : <any>undefined;
             this.acceptedAt = _data["acceptedAt"] ? new Date(_data["acceptedAt"].toString()) : <any>undefined;
@@ -1494,9 +1717,9 @@ export class FriendshipDto implements IFriendshipDto {
 }
 
 export interface IFriendshipDto {
-    id?: string | undefined;
-    requester?: UserDto;
-    addressee?: UserDto;
+    id: string | undefined;
+    requester: UserDto;
+    addressee: UserDto;
     status?: FriendshipStatus;
     createdAt?: Date;
     acceptedAt?: Date | undefined;

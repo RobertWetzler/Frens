@@ -11,6 +11,8 @@ public interface ICircleService
     Task<CirclePublicDto> CreateCircleAsync(Guid creatorId, CircleCreationDto circleDto);
     Task<IEnumerable<CirclePublicDto>> GetUserOwnedCirclesAsync(Guid userId);
     Task<IEnumerable<CirclePublicDto>> GetUserMemberCirclesAsync(Guid userId);
+    Task<IEnumerable<CircleWithMembersDto>> GetUserCirclesWithMembersAsync(Guid userId);
+    Task DeleteCircleAsync(Guid requestorId, Guid circleId);
 }
 
 public class CircleService : ICircleService
@@ -122,6 +124,11 @@ public class CircleService : ICircleService
             .Include(c => c.Members)
             .FirstOrDefaultAsync(c => c.Id == circleId);
 
+        if (circle == null)
+        {
+            throw new BadHttpRequestException($"Circle {circleId} not found");
+        }
+
         var requestorIsOwner = requestorId == circle.OwnerId;
         var requestorIsMemberOfShared = circle.IsShared && circle.Members.Any(m => m.UserId == requestorId);
         if (!requestorIsOwner && !requestorIsMemberOfShared)
@@ -157,7 +164,7 @@ public class CircleService : ICircleService
             .Where(cm => cm.UserId == userId)
             .Include(cm => cm.Circle)
             .Select(cm => cm.Circle)
-            .Where(c => c.IsShared && c.OwnerId != userId); // Only include shared circles and ones the user does not own (to avoid duplicates, those get marked seperately)
+            .Where(c => c != null && c.IsShared && c.OwnerId != userId); // Only include shared circles and ones the user does not own (to avoid duplicates, those get marked seperately)
 
         // Get circles where user is the owner
         var ownedCircles = _dbContext.Circles
@@ -198,6 +205,111 @@ public class CircleService : ICircleService
         {
             throw new UnauthorizedAccessException(
                 $"User is not a member of circle(s): {string.Join(", ", unauthorizedCircleIds)}");
+        }
+    }
+
+    public async Task<IEnumerable<CircleWithMembersDto>> GetUserCirclesWithMembersAsync(Guid userId)
+    {
+        if (await this._dbContext.Users.FirstOrDefaultAsync(u => u.Id == userId) == null)
+        {
+            throw new BadHttpRequestException($"Cannot get circles for invalid user {userId}");
+        }
+
+        // Get circles where user is a member (through CircleMembership)
+        var memberCircles = await _dbContext.Circles
+            .Where(c => c.Members.Any(m => m.UserId == userId) && c.IsShared && c.OwnerId != userId)
+            .Include(c => c.Owner)
+            .Include(c => c.Members)
+                .ThenInclude(m => m.User)
+            .ToListAsync();
+
+        // Get circles where user is the owner
+        var ownedCircles = await _dbContext.Circles
+            .Where(c => c.OwnerId == userId)
+            .Include(c => c.Members)
+                .ThenInclude(m => m.User)
+            .ToListAsync();
+
+        var result = new List<CircleWithMembersDto>();
+
+        // Map member circles
+        foreach (var circle in memberCircles)
+        {
+            result.Add(new CircleWithMembersDto
+            {
+                Id = circle.Id,
+                Name = circle.Name,
+                IsShared = circle.IsShared,
+                IsOwner = false,
+                Owner = circle.Owner != null ? new UserDto { Id = circle.Owner.Id, Name = circle.Owner.Name } : null,
+                Members = circle.Members?.Select(m => new UserDto { Id = m.User?.Id ?? Guid.Empty, Name = m.User?.Name ?? "Unknown" }).ToList() ?? new List<UserDto>()
+            });
+        }
+
+        // Map owned circles
+        foreach (var circle in ownedCircles)
+        {
+            result.Add(new CircleWithMembersDto
+            {
+                Id = circle.Id,
+                Name = circle.Name,
+                IsShared = circle.IsShared,
+                IsOwner = true,
+                Owner = null, // Current user is the owner, no need to show this
+                Members = circle.Members?.Select(m => new UserDto { Id = m.User?.Id ?? Guid.Empty, Name = m.User?.Name ?? "Unknown" }).ToList() ?? new List<UserDto>()
+            });
+        }
+
+        return result;
+    }
+
+    public async Task DeleteCircleAsync(Guid requestorId, Guid circleId)
+    {
+        var circle = await _dbContext.Circles
+            .Include(c => c.Members)
+            .Include(c => c.Posts)
+            .FirstOrDefaultAsync(c => c.Id == circleId);
+
+        if (circle == null)
+        {
+            throw new BadHttpRequestException($"Circle {circleId} not found");
+        }
+
+        // Only the owner can delete the circle
+        if (circle.OwnerId != requestorId)
+        {
+            throw new UnauthorizedAccessException($"User {requestorId} is not authorized to delete circle {circleId}");
+        }
+
+        // Start a transaction to ensure all operations succeed or fail together
+        using var transaction = await _dbContext.Database.BeginTransactionAsync();
+        try
+        {
+            // Remove all posts associated with this circle
+            if (circle.Posts != null && circle.Posts.Any())
+            {
+                _dbContext.CirclePosts.RemoveRange(circle.Posts);
+            }
+
+            // Remove all memberships
+            if (circle.Members != null && circle.Members.Any())
+            {
+                _dbContext.CircleMemberships.RemoveRange(circle.Members);
+            }
+
+            // Remove the circle itself
+            _dbContext.Circles.Remove(circle);
+
+            await _dbContext.SaveChangesAsync();
+            await transaction.CommitAsync();
+
+            _logger.LogInformation("Circle {CircleId} deleted by user {UserId}", circleId, requestorId);
+        }
+        catch (Exception ex)
+        {
+            await transaction.RollbackAsync();
+            _logger.LogError(ex, "Error deleting circle {CircleId} for user: {UserId}", circleId, requestorId);
+            throw;
         }
     }
 }
