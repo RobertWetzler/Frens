@@ -12,27 +12,59 @@ export default function SignInScreen({ route, navigation }: SignInScreenProps) {
     const returnTo = route?.params?.returnTo;
     const shaderRef = useRef<ShaderBackgroundRef>(null);
     const fadeAnim = useRef(new Animated.Value(1)).current; // Initial opacity is 1 (visible)
+    const scaleAnim = useRef(new Animated.Value(1)).current; // Initial scale is 1 (normal size)
+    const blurAnim = useRef(new Animated.Value(0)).current; // Initial blur is 0 (no blur)
 
     const handleExpandBlobs = () => {
         shaderRef.current?.animateRadius(0.85, 300000); // Animate to 0.8 over 2 seconds
         
-        // Fade out the UI elements
-        Animated.timing(fadeAnim, {
-            toValue: 0,
-            duration: 800, // Fade out over 800ms
-            useNativeDriver: true,
-        }).start();
+        // Create parallel animations for zoom effect
+        Animated.parallel([
+            // Fade out the UI elements
+            Animated.timing(fadeAnim, {
+                toValue: 0,
+                duration: 800, // Fade out over 800ms
+                useNativeDriver: true,
+            }),
+            // Scale up dramatically to simulate flying towards user
+            Animated.timing(scaleAnim, {
+                toValue: 3.5, // Scale to 3.5x size
+                duration: 1200, // Scale over 1.2 seconds
+                useNativeDriver: true,
+            }),
+            // Add blur effect during zoom
+            Animated.timing(blurAnim, {
+                toValue: 10, // Maximum blur
+                duration: 1000, // Blur over 1 second
+                useNativeDriver: false, // Blur can't use native driver
+            }),
+        ]).start();
     };
 
     const handleShrinkBlobs = () => {
         shaderRef.current?.animateRadius(0.18, 10000); // Animate back to 0.18 over 1 second
         
-        // Fade in the UI elements
-        Animated.timing(fadeAnim, {
-            toValue: 1,
-            duration: 600, // Fade in over 600ms
-            useNativeDriver: true,
-        }).start();
+        // Create parallel animations to reset zoom effect
+        Animated.parallel([
+            // Fade in the UI elements
+            Animated.timing(fadeAnim, {
+                toValue: 1,
+                duration: 600, // Fade in over 600ms
+                useNativeDriver: true,
+            }),
+            // Scale back to normal size
+            Animated.timing(scaleAnim, {
+                toValue: 1, // Scale back to normal
+                duration: 800, // Scale back over 800ms
+                useNativeDriver: true,
+            }),
+            // Remove blur effect
+            Animated.timing(blurAnim, {
+                toValue: 0, // No blur
+                duration: 600, // Remove blur over 600ms
+                useNativeDriver: false,
+            }),
+        ]).start();
     };
 
     useEffect(() => {
@@ -63,7 +95,31 @@ export default function SignInScreen({ route, navigation }: SignInScreenProps) {
             <StatusBar backgroundColor="#FFFFFF" />
             <ShaderBackground ref={shaderRef} />
             <View style={styles.contentContainer}>
-                <Animated.View style={[styles.animatedContent, { opacity: fadeAnim }]}>
+                <Animated.View style={[
+                    styles.animatedContent, 
+                    { 
+                        opacity: fadeAnim,
+                        transform: [{ scale: scaleAnim }],
+                        // Add blur effect for web platforms
+                        ...(Platform.OS === 'web' ? {
+                            filter: blurAnim.interpolate({
+                                inputRange: [0, 10],
+                                outputRange: ['blur(0px)', 'blur(10px)'],
+                                extrapolate: 'clamp',
+                            }),
+                        } : {
+                            // For mobile, we can simulate motion blur with reduced opacity during scaling
+                            opacity: Animated.multiply(
+                                fadeAnim,
+                                blurAnim.interpolate({
+                                    inputRange: [0, 10],
+                                    outputRange: [1, 0.7],
+                                    extrapolate: 'clamp',
+                                })
+                            ),
+                        }),
+                    }
+                ]}>
                     <Text style={styles.appName}>Frens</Text>
                     <Text style={styles.subtitle}>Connect with your community</Text>
                     <View style={styles.signInContainer}>
@@ -94,10 +150,13 @@ const styles = StyleSheet.create({
         flex: 1,
         justifyContent: 'center',
         alignItems: 'center',
+        overflow: 'hidden', // Prevent content from spilling outside container
     },
     animatedContent: {
         alignItems: 'center',
         width: '100%',
+        // Ensure the content can scale without being clipped
+        transformOrigin: 'center',
     },
     appName: {
         fontSize: 48,
