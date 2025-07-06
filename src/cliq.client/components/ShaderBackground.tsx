@@ -1,6 +1,6 @@
-import React, { useRef, useImperativeHandle, forwardRef } from 'react';
+import React, { useRef, useImperativeHandle, forwardRef, useEffect, useState } from 'react';
 import { GLView } from 'expo-gl';
-import { Dimensions, StyleSheet } from 'react-native'
+import { Dimensions, StyleSheet, Platform, View } from 'react-native'
 
 // Basic vertex shader - passes texture coordinates to fragment shader
 const vertexShader = `
@@ -25,7 +25,7 @@ varying vec2 vUv;
 const float FIELD_THRESHOLD = 0.99;      // When to start blending with background
 const float COLOR_VARIANCE = 0.1;        // How much colors can vary (0.0 - 1.0)
 const float MOVEMENT_SPEED = 0.5;        // Speed of blob movement
-const float TIME_OFFSET = 19.5;          // Starting time offset
+const float TIME_OFFSET = 20.38;          // Starting time offset
 const float NOISE_SCALE = 2.0;           // Scale of the noise pattern
 const float MOVEMENT_RANGE = 0.5;        // How far blobs move from center
 const float COLOR_CLAMP = 0.2;           // Max color variation from base
@@ -151,6 +151,8 @@ export interface ShaderBackgroundRef {
 }
 
 const ShaderBackground = forwardRef<ShaderBackgroundRef>((props, ref) => {
+    console.log('ShaderBackground: Component rendering, Platform.OS:', Platform.OS);
+    
     let gl = null;
     let program = null;
     let positionLocation = null;
@@ -168,6 +170,13 @@ const ShaderBackground = forwardRef<ShaderBackgroundRef>((props, ref) => {
         animationDuration: 1000, // 1 second default
         isAnimating: false
     });
+
+    useEffect(() => {
+        console.log('ShaderBackground: Component mounted');
+        return () => {
+            console.log('ShaderBackground: Component unmounting');
+        };
+    }, []);
 
     const createShader = (type, source) => {
         const shader = gl.createShader(type);
@@ -215,11 +224,17 @@ const ShaderBackground = forwardRef<ShaderBackgroundRef>((props, ref) => {
     };
 
     const setupGL = (glContext) => {
+        console.log('ShaderBackground: Setting up GL context', glContext);
         gl = glContext;
 
         // Create shader program
         const vertShader = createShader(gl.VERTEX_SHADER, vertexShader);
         const fragShader = createShader(gl.FRAGMENT_SHADER, fragmentShader);
+
+        if (!vertShader || !fragShader) {
+            console.error('ShaderBackground: Failed to create shaders');
+            return;
+        }
 
         program = gl.createProgram();
         gl.attachShader(program, vertShader);
@@ -230,6 +245,8 @@ const ShaderBackground = forwardRef<ShaderBackgroundRef>((props, ref) => {
             console.error('Program link error:', gl.getProgramInfoLog(program));
             return;
         }
+
+        console.log('ShaderBackground: Shaders compiled and linked successfully');
 
         // Get locations
         positionLocation = gl.getAttribLocation(program, 'position');
@@ -303,7 +320,7 @@ const ShaderBackground = forwardRef<ShaderBackgroundRef>((props, ref) => {
         <GLView
             style={styles.container}
             onContextCreate={setupGL}
-            />
+        />
     );
 });
 
@@ -311,6 +328,7 @@ const styles = StyleSheet.create({
     container: {
         ...StyleSheet.absoluteFillObject, // This makes it fill the screen
         backgroundColor: 'transparent',
+        pointerEvents: 'none', // Ensure no touch interference
     },
 });
 

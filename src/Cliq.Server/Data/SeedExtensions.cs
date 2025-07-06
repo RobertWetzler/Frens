@@ -132,6 +132,10 @@ public static class SeedExtensions
         await CreatePostAsync(db, robert, "New hiking trail opened up — let's go!", DateTime.UtcNow.AddHours(-8), new[] { hikingCircle, climbingCircle });
         await CreatePostAsync(db, sierra, "Anyone want to go for a hike Sunday?", DateTime.UtcNow.AddHours(-2), new[] { hikingCircle, sierraFriends });
         await CreatePostAsync(db, howard, "Letting family know: I'll be out mountaineering Sunday.", DateTime.UtcNow.AddHours(-5), new[] { familyCircle });
+        await CreatePostAsync(db, howard, "Letting family know: I'll be out mountaineering Sunday.", DateTime.UtcNow.AddHours(-5), new[] { familyCircle });
+        await CreatePostAsync(db, howard, "Letting family know: I'll be out mountaineering Sunday.", DateTime.UtcNow.AddHours(-5), new[] { familyCircle });
+        await CreatePostAsync(db, howard, "Letting family know: I'll be out mountaineering Sunday.", DateTime.UtcNow.AddHours(-5), new[] { familyCircle });
+        await CreatePostAsync(db, howard, "Letting family know: I'll be out mountaineering Sunday.", DateTime.UtcNow.AddHours(-5), new[] { familyCircle });
         
         // Add comments
         await AddCommentTreeAsync(db, post1,

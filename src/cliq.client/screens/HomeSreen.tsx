@@ -6,19 +6,25 @@ import { LinearGradient } from 'expo-linear-gradient';
 import Post from '../components/Post';
 import getEnvVars from 'env'
 import { useFeed } from 'hooks/usePosts';
-import ShaderBackground from 'components/ShaderBackground';
 import { useAuth } from 'contexts/AuthContext';
 import { handleShareProfile } from 'utils/share';
 import NotificationBell from 'components/NotificationBell';
 import NotificationSubscribeButton from 'components/NotificationSubscribeButton';
 import PWAInstallBanner from 'components/PWAInstallBanner';
+import { useShaderBackground } from 'contexts/ShaderBackgroundContext';
 
 
 const HomeScreen = ({ navigation }) => {
     const { posts, notificationCount, isLoading, error, loadFeed } = useFeed();
     const authContext = useAuth();
+    const { isExpanded, animateToExpanded } = useShaderBackground();
     const scrollY = useRef(new Animated.Value(0)).current;
     const [isPWABannerVisible, setIsPWABannerVisible] = useState(true);
+    const [isFirstLoad, setIsFirstLoad] = useState(true);
+
+    // Calculate how many posts should be animated (visible on initial screen load)
+    const VISIBLE_POSTS_COUNT = 7;
+    const ANIMATION_DELAY = 1000;
 
     // Useful for debugging hook transitions
     /*
@@ -27,6 +33,25 @@ const HomeScreen = ({ navigation }) => {
         console.log('Is Loading:', isLoading);
         console.log('Error:', error);
     }, [posts, isLoading, error]);  */
+
+    // Ensure shader background is expanded when HomeScreen is displayed
+    useEffect(() => {
+        if (!isExpanded) {
+            animateToExpanded();
+        }
+    }, [isExpanded, animateToExpanded]);
+
+    // Mark that we've moved past first load when posts come in
+    useEffect(() => {
+        if (posts && posts.length > 0 && !isLoading) {
+            // Calculate total animation time: 2s initial delay + time for all visible posts to animate
+            const totalAnimationTime = ANIMATION_DELAY + (VISIBLE_POSTS_COUNT * 150) + 600; // +600ms for last animation to complete
+            const timer = setTimeout(() => {
+                setIsFirstLoad(false);
+            }, totalAnimationTime);
+            return () => clearTimeout(timer);
+        }
+    }, [posts, isLoading]);
 
     const insets = useSafeAreaInsets();
 
@@ -46,7 +71,7 @@ const HomeScreen = ({ navigation }) => {
     // Render loading state
     if (isLoading) {
         return (
-            <SafeAreaView style={styles.container}>
+            <SafeAreaView style={[styles.container, isExpanded && styles.expandedContainer]}>
                 <ActivityIndicator size={36} color="#0000ff" />
             </SafeAreaView>
         );
@@ -55,15 +80,14 @@ const HomeScreen = ({ navigation }) => {
     // Render error state
     if (error) {
         return (
-            <SafeAreaView style={styles.container}>
-                <ShaderBackground />
+            <SafeAreaView style={[styles.container, isExpanded && styles.expandedContainer]}>
                 <Text style={styles.errorText}>{error}</Text>
             </SafeAreaView>
         );
     }
 
     return (
-        <SafeAreaView style={styles.container}>
+        <SafeAreaView style={[styles.container, isExpanded && styles.expandedContainer]}>
             <PWAInstallBanner
                 onDismiss={() => setIsPWABannerVisible(false)}
                 onVisibilityChange={setIsPWABannerVisible}
@@ -97,14 +121,24 @@ const HomeScreen = ({ navigation }) => {
 
             <FlatList
                 data={posts}
-                renderItem={({ item }) => (
-                    <Post post={item} navigation={navigation} />
-                )}
+                renderItem={({ item, index }) => {
+                    const shouldAnimate = isFirstLoad && index < VISIBLE_POSTS_COUNT;
+                    const animationDelay = shouldAnimate ? ANIMATION_DELAY + (index * 150) : 0; // 2 second initial delay + stagger
+                    
+                    return (
+                        <Post 
+                            post={item} 
+                            navigation={navigation}
+                            shouldAnimate={shouldAnimate}
+                            animationDelay={animationDelay}
+                        />
+                    );
+                }}
                 keyExtractor={(item) => item.id}
                 contentContainerStyle={[
                     styles.listContent,
                     {
-                        paddingTop: isPWABannerVisible ? 122 : 56, // Exact total height: banner(66) + header(56) or just header(56)
+                        paddingTop: isPWABannerVisible ? 122 : 76, // Exact total height: banner(66) + header(56) or just header(56)
                         paddingBottom: insets.bottom + 60
                     }
                 ]}
@@ -160,12 +194,15 @@ const styles = StyleSheet.create({
         flex: 1,
         backgroundColor: 'white',
     },
+    expandedContainer: {
+        backgroundColor: 'transparent',
+    },
     headerContainer: {
         position: 'absolute',
         top: 0,
         left: 0,
         right: 0,
-        zIndex: 1000,
+        zIndex: 1000, // High z-index to stay above shader background
     },
     headerGradient: {
         paddingHorizontal: 16,

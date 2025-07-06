@@ -20,6 +20,8 @@ import { AuthProvider, useAuth } from 'contexts/AuthContext';
 import CreateCircleScreen from 'screens/CreateCircleScreen';
 import NotificationsScreen from 'screens/NotificationScreen';
 import { useServiceWorker } from './hooks/useServiceWorker';
+import { ShaderBackgroundProvider } from 'contexts/ShaderBackgroundContext';
+import GlobalShaderBackground from 'components/GlobalShaderBackground';
 
 type RootStackParamList = {
   SignIn: undefined | { returnTo?: string };
@@ -248,10 +250,26 @@ const MainApp = () => {
     : undefined;
 
   return (
-    <NavigationContainer linking={linking}>
+    <View style={styles.mainAppContainer}>
+      <NavigationContainer 
+        linking={linking}
+        theme={{
+          dark: false,
+          colors: {
+            primary: '#1DA1F2',
+            background: 'transparent', // Make navigation background transparent
+            card: 'transparent', // Make card backgrounds transparent
+            text: '#000000',
+            border: '#E1E8ED',
+            notification: '#FF3B30',
+          },
+        }}
+      >
       <Stack.Navigator
         screenOptions={{
           headerShown: false,
+          cardStyle: { backgroundColor: 'transparent' }, // Make stack screen backgrounds transparent
+          animationEnabled: true,
         }}
       >
         {isAuthenticated ? (
@@ -323,15 +341,22 @@ const MainApp = () => {
             options={{
               headerLeft: () => null,
               gestureEnabled: false,
+              cardStyle: { backgroundColor: 'transparent' }, // Ensure transparent background
             }}
           />
         )}
       </Stack.Navigator>
     </NavigationContainer>
+    </View>
   );
 };
 
 const styles = StyleSheet.create({
+  mainAppContainer: {
+    flex: 1,
+    backgroundColor: 'transparent',
+    zIndex: 10, // Higher z-index to ensure it's above shader background
+  },
   createButtonContainer: {
     bottom: 15,
   },
@@ -356,7 +381,15 @@ const styles = StyleSheet.create({
 export default function App() {
   return (
     <AuthProvider>
-      <MainApp />
+      <ShaderBackgroundProvider>
+        {/* Wrapper View creates proper sibling relationship between shader background and MainApp,
+            allowing z-index layering to work correctly with React Navigation's DOM structure.
+            Needed for preventing MainApp UI from blocking background. */}
+        <View style={{ flex: 1 }}>
+          <GlobalShaderBackground />
+          <MainApp />
+        </View>
+      </ShaderBackgroundProvider>
     </AuthProvider>
   );
 }

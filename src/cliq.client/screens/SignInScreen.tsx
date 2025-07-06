@@ -1,6 +1,6 @@
 import React, { useEffect, useRef } from 'react';
 import { View, Text, StyleSheet, StatusBar, Platform, Button, Animated } from 'react-native';
-import ShaderBackground, { ShaderBackgroundRef } from '../components/ShaderBackground';
+import { useShaderBackground } from '../contexts/ShaderBackgroundContext';
 import { EmailSignInButton } from 'components/EmailSignInButton';
 
 interface SignInScreenProps {
@@ -10,13 +10,13 @@ interface SignInScreenProps {
 
 export default function SignInScreen({ route, navigation }: SignInScreenProps) {
     const returnTo = route?.params?.returnTo;
-    const shaderRef = useRef<ShaderBackgroundRef>(null);
+    const { shaderRef, animateToExpanded, animateToCollapsed } = useShaderBackground();
     const fadeAnim = useRef(new Animated.Value(1)).current; // Initial opacity is 1 (visible)
     const scaleAnim = useRef(new Animated.Value(1)).current; // Initial scale is 1 (normal size)
     const blurAnim = useRef(new Animated.Value(0)).current; // Initial blur is 0 (no blur)
 
     const handleExpandBlobs = () => {
-        shaderRef.current?.animateRadius(0.85, 300000); // Animate to 0.8 over 2 seconds
+        animateToExpanded(); // Use context method
         
         // Create parallel animations for zoom effect
         Animated.parallel([
@@ -42,7 +42,7 @@ export default function SignInScreen({ route, navigation }: SignInScreenProps) {
     };
 
     const handleShrinkBlobs = () => {
-        shaderRef.current?.animateRadius(0.18, 10000); // Animate back to 0.18 over 1 second
+        animateToCollapsed(); // Use context method
         
         // Create parallel animations to reset zoom effect
         Animated.parallel([
@@ -93,7 +93,6 @@ export default function SignInScreen({ route, navigation }: SignInScreenProps) {
     return (
         <View style={styles.container}>
             <StatusBar backgroundColor="#FFFFFF" />
-            <ShaderBackground ref={shaderRef} />
             <View style={styles.contentContainer}>
                 <Animated.View style={[
                     styles.animatedContent, 
@@ -143,20 +142,25 @@ export default function SignInScreen({ route, navigation }: SignInScreenProps) {
 const styles = StyleSheet.create({
     container: {
         flex: 1,
-        backgroundColor: 'white',
+        backgroundColor: 'transparent', // Keep transparent to show shader background
         padding: 20,
+        zIndex: 1, // Ensure content is above shader background
     },
     contentContainer: {
         flex: 1,
         justifyContent: 'center',
         alignItems: 'center',
         overflow: 'hidden', // Prevent content from spilling outside container
+        zIndex: 2, // Higher than container
+        backgroundColor: 'transparent', // Ensure transparency
     },
     animatedContent: {
         alignItems: 'center',
         width: '100%',
         // Ensure the content can scale without being clipped
         transformOrigin: 'center',
+        zIndex: 3, // Highest z-index for content
+        backgroundColor: 'transparent', // Ensure transparency
     },
     appName: {
         fontSize: 48,
@@ -187,6 +191,7 @@ const styles = StyleSheet.create({
         //shadowOpacity: 0.1,
         //shadowRadius: 4,
         elevation: 3,
+        zIndex: 14, // Make sure content is above shader background
     },
     signInText: {
         fontSize: 16,

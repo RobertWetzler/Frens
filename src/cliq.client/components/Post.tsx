@@ -1,5 +1,5 @@
-import React from 'react';
-import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
+import React, { useEffect, useRef } from 'react';
+import { View, Text, TouchableOpacity, StyleSheet, Animated } from 'react-native';
 import { PostDto as PostType} from 'services/generated/generatedClient'
 import { Ionicons } from '@expo/vector-icons';
 
@@ -7,9 +7,51 @@ interface PostProps {
   post: PostType,
   navigation?: any;
   isNavigable?: boolean;
+  animationDelay?: number;
+  shouldAnimate?: boolean;
 }
 
-const Post: React.FC<PostProps> = ({ post, navigation, isNavigable = true }) => {
+const Post: React.FC<PostProps> = ({ post, navigation, isNavigable = true, animationDelay = 0, shouldAnimate = false }) => {
+  const translateY = useRef(new Animated.Value(shouldAnimate ? 100 : 0)).current;
+  const opacity = useRef(new Animated.Value(shouldAnimate ? 0 : 1)).current;
+  const scale = useRef(new Animated.Value(shouldAnimate ? 0.8 : 1)).current;
+
+  useEffect(() => {
+    // console.log(`Post ${post.id}: shouldAnimate=${shouldAnimate}, delay=${animationDelay}`);
+    
+    if (shouldAnimate) {
+      // Start the elastic spring animation with staggered delay
+      const animateIn = () => {
+        console.log(`Starting animation for post ${post.id}`);
+        Animated.parallel([
+          Animated.timing(opacity, {
+            toValue: 1,
+            duration: 600,
+            useNativeDriver: true,
+          }),
+          Animated.spring(translateY, {
+            toValue: 0,
+            tension: 50,
+            friction: 8,
+            useNativeDriver: true,
+          }),
+          Animated.spring(scale, {
+            toValue: 1,
+            tension: 100,
+            friction: 7,
+            useNativeDriver: true,
+          }),
+        ]).start(() => {
+          console.log(`Animation completed for post ${post.id}`);
+        });
+      };
+
+      // Apply staggered delay
+      const timer = setTimeout(animateIn, animationDelay);
+      return () => clearTimeout(timer);
+    }
+  }, [shouldAnimate, animationDelay, opacity, translateY, scale, post.id]);
+
   const sharedWithText = post.sharedWithCircles && post.sharedWithCircles.length > 0 
     ? post.sharedWithCircles.map(c => c.name).join(", ")
     : "you";
@@ -34,7 +76,18 @@ const Post: React.FC<PostProps> = ({ post, navigation, isNavigable = true }) => 
   };
 
   return (
-    <View style={styles.container}>
+    <Animated.View 
+      style={[
+        styles.container,
+        {
+          transform: [
+            { translateY },
+            { scale }
+          ],
+          opacity,
+        }
+      ]}
+    >
       <View style={styles.header}>
         <View style={styles.authorContainer}>
           <Text style={styles.author}>{post.user.name}</Text>
@@ -52,7 +105,7 @@ const Post: React.FC<PostProps> = ({ post, navigation, isNavigable = true }) => 
           <Text style={styles.actionButtonText}>{post.commentCount} comments</Text>
         </TouchableOpacity>
       )}
-    </View>
+    </Animated.View>
   );
 };
 
@@ -61,8 +114,19 @@ const styles = StyleSheet.create({
     backgroundColor: 'white',
     padding: 15,
     paddingHorizontal: 10,
+    marginHorizontal: 12,
+    marginVertical: 6,
+    borderRadius: 12,
     borderBottomWidth: 1,
     borderBottomColor: '#e1e8ed',  // Twitter-like separator color
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.1,
+    shadowRadius: 8,
+    elevation: 4,
   },
   
   header: {
