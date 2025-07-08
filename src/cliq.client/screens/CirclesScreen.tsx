@@ -13,19 +13,48 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { useFocusEffect } from '@react-navigation/native';
 import { useCirclesWithMembers } from '../hooks/useCircle';
+import { useAuth } from '../contexts/AuthContext';
 
 const CirclesScreen = ({ navigation }) => {
-  const { circles, isLoading, error, deleteCircle, loadCircles } = useCirclesWithMembers();
+  const { 
+    circles, 
+    isLoading, 
+    error, 
+    deleteCircle, 
+    loadCircles, 
+    removeUsersFromCircle,
+    addUsersToCircle,
+    isRemovingUser: isRemovingUserHook,
+    isAddingUser
+  } = useCirclesWithMembers();
+  const { user } = useAuth();
+  
+  // Add logging to track circles state changes
+  React.useEffect(() => {
+    console.log('CirclesScreen: circles state updated, count:', circles.length);
+    console.log('CirclesScreen: circles:', circles.map(c => ({ id: c.id, name: c.name, memberCount: c.members?.length || 0 })));
+  }, [circles]);
   const [expandedCircles, setExpandedCircles] = useState<Set<string>>(new Set());
   const [deleteModalVisible, setDeleteModalVisible] = useState(false);
   const [circleToDelete, setCircleToDelete] = useState<{id: string, name: string} | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
   const [menuVisible, setMenuVisible] = useState<string | null>(null);
+  const [removeUserModalVisible, setRemoveUserModalVisible] = useState(false);
+  const [userToRemove, setUserToRemove] = useState<{circleId: string, userId: string, userName: string, circleName: string} | null>(null);
+  const [isRemovingUser, setIsRemovingUser] = useState(false);
+  const [removingUserId, setRemovingUserId] = useState<string | null>(null);
 
-  // Refresh circles when screen comes into focus
+  //Refresh circles when screen comes into focus
+  // TODO - This could be optimized to use the state of the hooks instead of reloading everything, but for some reason its still needed.
   useFocusEffect(
     useCallback(() => {
-      loadCircles();
+      console.log('CirclesScreen: useFocusEffect triggered, calling loadCircles...');
+      const refreshCircles = async () => {
+        console.log('CirclesScreen: About to call loadCircles...');
+        await loadCircles();
+        console.log('CirclesScreen: loadCircles completed');
+      };
+      refreshCircles();
     }, [loadCircles])
   );
 
@@ -66,6 +95,37 @@ const CirclesScreen = ({ navigation }) => {
   const cancelDelete = () => {
     setDeleteModalVisible(false);
     setCircleToDelete(null);
+  };
+
+  const handleRemoveUser = (circleId: string, userId: string, userName: string, circleName: string) => {
+    console.log('handleRemoveUser called with:', { circleId, userId, userName, circleName });
+    setUserToRemove({ circleId, userId, userName, circleName });
+    setRemoveUserModalVisible(true);
+  };
+
+  const confirmRemoveUser = async () => {
+    if (!userToRemove) return;
+    
+    setIsRemovingUser(true);
+    setRemovingUserId(userToRemove.userId);
+    console.log('Remove user confirmed, calling removeUsersFromCircle API');
+    const success = await removeUsersFromCircle(userToRemove.circleId, [userToRemove.userId]);
+    console.log('Remove user result:', success);
+    
+    setIsRemovingUser(false);
+    setRemovingUserId(null);
+    setRemoveUserModalVisible(false);
+    setUserToRemove(null);
+    
+    if (!success) {
+      console.error('Failed to remove user from circle');
+    }
+  };
+
+  const cancelRemoveUser = () => {
+    setRemoveUserModalVisible(false);
+    setUserToRemove(null);
+    setRemovingUserId(null);
   };
 
   const toggleMenu = (circleId: string) => {
@@ -254,6 +314,20 @@ const CirclesScreen = ({ navigation }) => {
                                   </Text>
                                 </View>
                                 <Text style={styles.memberName}>{member.name}</Text>
+                                {member.id !== user?.id && (
+                                  <TouchableOpacity
+                                    style={styles.removeUserButton}
+                                    onPress={() => handleRemoveUser(circle.id || '', member.id || '', member.name || '', circle.name || '')}
+                                    hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+                                    disabled={removingUserId === member.id}
+                                  >
+                                    {removingUserId === member.id ? (
+                                      <ActivityIndicator size="small" color="#999999" />
+                                    ) : (
+                                      <Ionicons name="close" size={18} color="#999999" />
+                                    )}
+                                  </TouchableOpacity>
+                                )}
                               </View>
                             ))
                           ) : (
@@ -384,6 +458,49 @@ const CirclesScreen = ({ navigation }) => {
                   <ActivityIndicator size="small" color="#FFFFFF" />
                 ) : (
                   <Text style={styles.deleteButtonText}>Delete</Text>
+                )}
+              </Pressable>
+            </View>
+          </View>
+        </View>
+      </Modal>
+
+      {/* Remove User Confirmation Modal */}
+      <Modal
+        visible={removeUserModalVisible}
+        transparent={true}
+        animationType="fade"
+        onRequestClose={cancelRemoveUser}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContainer}>
+            <View style={styles.modalHeader}>
+              <Ionicons name="warning" size={24} color="#FF6B6B" />
+              <Text style={styles.modalTitle}>Remove User</Text>
+            </View>
+            
+            <Text style={styles.modalMessage}>
+              Are you sure you want to remove "{userToRemove?.userName}" from the circle "{userToRemove?.circleName}"? This action cannot be undone.
+            </Text>
+            
+            <View style={styles.modalButtons}>
+              <Pressable
+                style={[styles.modalButton, styles.cancelButton]}
+                onPress={cancelRemoveUser}
+                disabled={isRemovingUser}
+              >
+                <Text style={styles.cancelButtonText}>Cancel</Text>
+              </Pressable>
+              
+              <Pressable
+                style={[styles.modalButton, styles.modalDeleteButton]}
+                onPress={confirmRemoveUser}
+                disabled={isRemovingUser}
+              >
+                {isRemovingUser ? (
+                  <ActivityIndicator size="small" color="#FFFFFF" />
+                ) : (
+                  <Text style={styles.deleteButtonText}>Remove</Text>
                 )}
               </Pressable>
             </View>
@@ -663,6 +780,11 @@ const styles = StyleSheet.create({
   memberName: {
     fontSize: 16,
     color: '#333333',
+    flex: 1,
+  },
+  removeUserButton: {
+    padding: 4,
+    marginLeft: 8,
   },
   noMembersText: {
     fontSize: 14,

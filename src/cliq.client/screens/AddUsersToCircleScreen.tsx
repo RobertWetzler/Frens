@@ -12,7 +12,8 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { Avatar } from '../components/Avatar';
-import { useFriends, useAddUsersToCircle } from '../hooks/useFriends';
+import { useFriends } from '../hooks/useFriends';
+import { useCirclesWithMembers } from '../hooks/useCircle';
 
 interface AddUsersToCircleScreenProps {
   navigation: any;
@@ -28,7 +29,7 @@ interface AddUsersToCircleScreenProps {
 const AddUsersToCircleScreen: React.FC<AddUsersToCircleScreenProps> = ({ navigation, route }) => {
   const { circleId, circleName, existingUserIds } = route.params;
   const { friends, isLoading, error } = useFriends();
-  const { addUsersToCircle, isLoading: isSubmitting } = useAddUsersToCircle();
+  const { addUsersToCircle, isAddingUser: isSubmitting } = useCirclesWithMembers();
   const [searchText, setSearchText] = useState('');
   const [selectedUserIds, setSelectedUserIds] = useState<Set<string>>(new Set());
 

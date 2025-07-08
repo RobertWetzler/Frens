@@ -20,7 +20,7 @@ public class CircleController : ControllerBase
     [HttpGet]
     public async Task<ActionResult<IEnumerable<CirclePublicDto>>> GetUserMemberCircle()
     {
-        if(!AuthUtils.TryGetUserIdFromToken(this.HttpContext, out var userId))
+        if (!AuthUtils.TryGetUserIdFromToken(this.HttpContext, out var userId))
         {
             return Unauthorized();
         }
@@ -30,7 +30,7 @@ public class CircleController : ControllerBase
     [HttpGet("own")]
     public async Task<ActionResult<IEnumerable<CirclePublicDto>>> GetUserOwnedCircle()
     {
-        if(!AuthUtils.TryGetUserIdFromToken(this.HttpContext, out var userId))
+        if (!AuthUtils.TryGetUserIdFromToken(this.HttpContext, out var userId))
         {
             return Unauthorized();
         }
@@ -40,7 +40,7 @@ public class CircleController : ControllerBase
     [HttpGet("with-members")]
     public async Task<ActionResult<IEnumerable<CircleWithMembersDto>>> GetUserCirclesWithMembers()
     {
-        if(!AuthUtils.TryGetUserIdFromToken(this.HttpContext, out var userId))
+        if (!AuthUtils.TryGetUserIdFromToken(this.HttpContext, out var userId))
         {
             return Unauthorized();
         }
@@ -51,7 +51,7 @@ public class CircleController : ControllerBase
     public async Task<ActionResult<CirclePublicDto>> GetCircle(Guid circleId)
     {
         // TODO: Auhtorization to ensure use is either owner or member of shared circle
-        if(!AuthUtils.TryGetUserIdFromToken(this.HttpContext, out var userId))
+        if (!AuthUtils.TryGetUserIdFromToken(this.HttpContext, out var userId))
         {
             return Unauthorized();
         }
@@ -66,24 +66,24 @@ public class CircleController : ControllerBase
     [HttpPost]
     public async Task<ActionResult<CirclePublicDto>> CreateCircle([FromBody] CircleCreationDto circleDto)
     {
-        if(!AuthUtils.TryGetUserIdFromToken(this.HttpContext, out var userId))
+        if (!AuthUtils.TryGetUserIdFromToken(this.HttpContext, out var userId))
         {
             return Unauthorized();
         }
         var createdCircle = await _circleService.CreateCircleAsync(userId, circleDto);
         return CreatedAtAction(nameof(GetCircle),
             new { circleId = createdCircle.Id }, // Route values
-            new CirclePublicDto{ Id = createdCircle.Id, Name = createdCircle.Name, IsShared = createdCircle.IsShared});
+            new CirclePublicDto { Id = createdCircle.Id, Name = createdCircle.Name, IsShared = createdCircle.IsShared });
     }
 
     [HttpDelete("{circleId}")]
     public async Task<ActionResult> DeleteCircle(Guid circleId)
     {
-        if(!AuthUtils.TryGetUserIdFromToken(this.HttpContext, out var userId))
+        if (!AuthUtils.TryGetUserIdFromToken(this.HttpContext, out var userId))
         {
             return Unauthorized();
         }
-        
+
         try
         {
             await _circleService.DeleteCircleAsync(userId, circleId);
@@ -100,9 +100,9 @@ public class CircleController : ControllerBase
     }
 
     [HttpPost("users")]
-    public async Task<ActionResult> AddUsersToCircle([FromBody] AddUsersToCircleRequest request)
+    public async Task<ActionResult> AddUsersToCircle([FromBody] UpdateUsersInCircleRequest request)
     {
-        if(!AuthUtils.TryGetUserIdFromToken(this.HttpContext, out var userId))
+        if (!AuthUtils.TryGetUserIdFromToken(this.HttpContext, out var userId))
         {
             return Unauthorized();
         }
@@ -128,9 +128,39 @@ public class CircleController : ControllerBase
             return BadRequest(ex.Message);
         }
     }
+    
+    [HttpDelete("users")]
+    public async Task<ActionResult> RemoveUsersFromCircle([FromBody] UpdateUsersInCircleRequest request)
+    {
+        if (!AuthUtils.TryGetUserIdFromToken(this.HttpContext, out var userId))
+        {
+            return Unauthorized();
+        }
+        var circleId = request.CircleId;
+        var userIds = request.UserIds;
+
+        if (userIds == null || userIds.Length == 0)
+        {
+            return BadRequest("No user IDs provided");
+        }
+
+        try
+        {
+            await _circleService.RemoveUsersFromCircleAsync(userId, circleId, userIds);
+            return Ok(new { message = $"Successfully removed {userIds.Length} users from circle" });
+        }
+        catch (UnauthorizedAccessException ex)
+        {
+            return Forbid(ex.Message);
+        }
+        catch (BadHttpRequestException ex)
+        {
+            return BadRequest(ex.Message);
+        }
+    }
 }
 
-public record AddUsersToCircleRequest
+public class UpdateUsersInCircleRequest
 {
     public required Guid CircleId { get; init; }
     public required Guid[] UserIds { get; init; } 

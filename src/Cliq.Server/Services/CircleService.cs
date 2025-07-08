@@ -14,6 +14,7 @@ public interface ICircleService
     Task<IEnumerable<CircleWithMembersDto>> GetUserCirclesWithMembersAsync(Guid userId);
     Task DeleteCircleAsync(Guid requestorId, Guid circleId);
     Task AddUsersToCircleAsync(Guid requestorId, Guid circleId, Guid[] userIdsToAdd);
+    Task RemoveUsersFromCircleAsync(Guid userId, Guid circleId, Guid[] userIds);
 }
 
 public class CircleService : ICircleService
@@ -405,5 +406,65 @@ public class CircleService : ICircleService
             _logger.LogError(ex, "Error adding users to circle {CircleId} for user: {RequestorId}", circleId, requestorId);
             throw;
         }
+    }
+
+    public Task RemoveUsersFromCircleAsync(Guid userId, Guid circleId, Guid[] userIds)
+    {
+        if (userIds == null || userIds.Length == 0)
+        {
+            return Task.CompletedTask; // Nothing to remove
+        }
+
+        // Single query to get circle info and check ownership
+        var circleInfo = _dbContext.Circles
+            .Where(c => c.Id == circleId)
+            .Select(c => new
+            {
+                CircleId = c.Id,
+                OwnerId = c.OwnerId,
+                ExistingMemberIds = c.Members.Select(m => m.UserId).ToList()
+            })
+            .FirstOrDefault();
+
+        if (circleInfo == null)
+        {
+            throw new BadHttpRequestException($"Circle {circleId} not found");
+        }
+
+        // Check if requestor is the owner
+        if (circleInfo.OwnerId != userId)
+        {
+            throw new UnauthorizedAccessException($"User {userId} is not authorized to remove users from circle {circleId}");
+        }
+
+        // Filter out users who are not members
+        var usersToRemove = userIds.Where(id => circleInfo.ExistingMemberIds.Contains(id)).ToArray();
+        if (usersToRemove.Length == 0)
+        {
+            return Task.CompletedTask; // No valid users to remove
+        }
+
+        // Start transaction and remove all validated users
+        using var transaction = _dbContext.Database.BeginTransaction();
+        try
+        {
+            var membershipsToRemove = _dbContext.CircleMemberships
+                .Where(cm => cm.CircleId == circleId && usersToRemove.Contains(cm.UserId));
+
+            _dbContext.CircleMemberships.RemoveRange(membershipsToRemove);
+            _dbContext.SaveChanges();
+            transaction.Commit();
+
+            _logger.LogInformation("Removed {Count} users from circle {CircleId} by user {UserId}", 
+                usersToRemove.Length, circleId, userId);
+        }
+        catch (Exception ex)
+        {
+            transaction.Rollback();
+            _logger.LogError(ex, "Error removing users from circle {CircleId} for user: {UserId}", circleId, userId);
+            throw;
+        }
+
+        return Task.CompletedTask;
     }
 }
