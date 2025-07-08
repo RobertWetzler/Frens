@@ -17,6 +17,7 @@ import { useMemberCircles } from 'hooks/useCircle';
 import ShaderBackground from 'components/ShaderBackground';
 import { CreatePostDto } from 'services/generated/generatedClient';
 import { useFocusEffect } from '@react-navigation/native';
+import Header from 'components/Header';
 
 
 const CreatePostScreen = ({ navigation, route }) => {
@@ -99,19 +100,16 @@ const CreatePostScreen = ({ navigation, route }) => {
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
         style={styles.keyboardAvoid}
       >
-        <View style={styles.header}>
-          <TouchableOpacity onPress={() => navigation.goBack()}>
-            <Ionicons name="close" size={24} color="#1DA1F2" />
-          </TouchableOpacity>
-          <Text style={styles.headerTitle}>Create Post</Text>
-          <TouchableOpacity
-            style={[styles.postButton, !isPostValid() && styles.postButtonDisabled]}
-            onPress={handleSubmit}
-            disabled={!isPostValid()}
-          >
-            <Text style={styles.postButtonText}>Post</Text>
-          </TouchableOpacity>
-        </View>
+        <Header
+          title="Create Post"
+          onBackPress={() => navigation.goBack()}
+          backButtonIcon="close"
+          rightButton={{
+            label: "Post",
+            onPress: handleSubmit,
+            disabled: !isPostValid()
+          }}
+        />
 
         <TextInput
           style={styles.input}
@@ -207,19 +205,6 @@ const styles = StyleSheet.create({
   keyboardAvoid: {
     flex: 1,
   },
-  header: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingHorizontal: 15,
-    paddingVertical: 10,
-    borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: '#ccc',
-  },
-  headerTitle: {
-    fontSize: 18,
-    fontWeight: '600',
-  },
   circleSection: {
     flexDirection: 'row',
     justifyContent: 'space-between',
@@ -280,19 +265,6 @@ const styles = StyleSheet.create({
     textAlignVertical: 'top',
     minHeight: 120,
     borderColor: "white"
-  },
-  postButton: {
-    backgroundColor: '#1DA1F2',
-    paddingVertical: 6,
-    paddingHorizontal: 15,
-    borderRadius: 20,
-  },
-  postButtonDisabled: {
-    backgroundColor: '#8EC5F4',
-  },
-  postButtonText: {
-    color: '#fff',
-    fontWeight: '600',
   },
   createCircleButton: {
     flexDirection: 'row',

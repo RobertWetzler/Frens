@@ -14,6 +14,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useFocusEffect } from '@react-navigation/native';
 import { useCirclesWithMembers } from '../hooks/useCircle';
 import { useAuth } from '../contexts/AuthContext';
+import Header from '../components/Header';
 
 const CirclesScreen = ({ navigation }) => {
   const { 
@@ -153,15 +154,10 @@ const CirclesScreen = ({ navigation }) => {
   if (isLoading) {
     return (
       <SafeAreaView style={styles.container}>
-        <View style={styles.header}>
-          <TouchableOpacity 
-            style={styles.backButton}
-            onPress={() => navigation.goBack()}
-          >
-            <Ionicons name="arrow-back" size={24} color="#1DA1F2" />
-          </TouchableOpacity>
-          <Text style={styles.headerTitle}>Circles</Text>
-        </View>
+        <Header
+          title="Circles"
+          onBackPress={() => navigation.goBack()}
+        />
         <View style={styles.loadingContainer}>
           <ActivityIndicator size="large" color="#1DA1F2" />
           <Text style={styles.loadingText}>Loading circles...</Text>
@@ -173,15 +169,10 @@ const CirclesScreen = ({ navigation }) => {
   if (error) {
     return (
       <SafeAreaView style={styles.container}>
-        <View style={styles.header}>
-          <TouchableOpacity 
-            style={styles.backButton}
-            onPress={() => navigation.goBack()}
-          >
-            <Ionicons name="arrow-back" size={24} color="#1DA1F2" />
-          </TouchableOpacity>
-          <Text style={styles.headerTitle}>Circles</Text>
-        </View>
+        <Header
+          title="Circles"
+          onBackPress={() => navigation.goBack()}
+        />
         <View style={styles.errorContainer}>
           <Ionicons name="alert-circle" size={48} color="#FF6B6B" />
           <Text style={styles.errorText}>{error}</Text>
@@ -192,15 +183,10 @@ const CirclesScreen = ({ navigation }) => {
 
   return (
     <SafeAreaView style={styles.container}>
-      <View style={styles.header}>
-        <TouchableOpacity 
-          style={styles.backButton}
-          onPress={() => navigation.goBack()}
-        >
-          <Ionicons name="arrow-back" size={24} color="#1DA1F2" />
-        </TouchableOpacity>
-        <Text style={styles.headerTitle}>Circles</Text>
-      </View>
+      <Header
+        title="Circles"
+        onBackPress={() => navigation.goBack()}
+      />
       
       <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
         <TouchableOpacity 
@@ -480,7 +466,7 @@ const CirclesScreen = ({ navigation }) => {
             </View>
             
             <Text style={styles.modalMessage}>
-              Are you sure you want to remove "{userToRemove?.userName}" from the circle "{userToRemove?.circleName}"? This action cannot be undone.
+              Are you sure you want to remove "{userToRemove?.userName}" from the circle "{userToRemove?.circleName}"?
             </Text>
             
             <View style={styles.modalButtons}>

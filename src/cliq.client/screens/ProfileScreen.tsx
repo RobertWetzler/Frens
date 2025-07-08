@@ -17,6 +17,7 @@ import Post from '../components/Post';
 import { useAuth } from 'contexts/AuthContext';
 import { handleShareProfile } from 'utils/share';
 import NotificationBell from 'components/NotificationBell';
+import Header from 'components/Header';
 
 interface ProfileScreenProps {
     route?: { params?: { userId?: string } };
@@ -124,34 +125,28 @@ const ProfileScreen: React.FC<ProfileScreenProps> = ({ route, navigation }) => {
 
     return (
         <SafeAreaView style={styles.container}>
-            <View style={styles.header}>
-                {/* TODO: Show back button if deep-linked to this page, or if deeplinked to own profile show with bottom tabs, or have React-Navigation drive the header */}
-                {!isOwnProfile  && (
-                    <TouchableOpacity
-                        style={styles.backButton}
-                        onPress={() => navigation.goBack()}
-                    >
-                        <Ionicons name="arrow-back" size={24} color="#1DA1F2" />
-                    </TouchableOpacity>
-                )}
-                <Text style={styles.headerTitle}>
-                    {isOwnProfile ? 'My Profile' : 'Profile'}
-                </Text>
-                <View style={styles.headerActions}>
-                    <TouchableOpacity 
-                        style={styles.shareButton} 
-                        onPress={() => handleShareProfile(userId)}
-                    >
-                        <Ionicons name="share-outline" size={24} color="#1DA1F2" />
-                    </TouchableOpacity>
-                    {isOwnProfile && (
-                        <TouchableOpacity style={styles.editButton} onPress={() => navigation.navigate('EditProfile')}>
-                            <Ionicons name="settings-outline" size={24} color="#1DA1F2" />
+            <Header
+                title={isOwnProfile ? 'My Profile' : 'Profile'}
+                onBackPress={!isOwnProfile ? () => navigation.goBack() : undefined}
+                showBackButton={!isOwnProfile}
+                titleAlign="left"
+                rightActions={
+                    <View style={styles.headerActions}>
+                        <TouchableOpacity 
+                            style={styles.shareButton} 
+                            onPress={() => handleShareProfile(userId)}
+                        >
+                            <Ionicons name="share-outline" size={24} color="#1DA1F2" />
                         </TouchableOpacity>
-                    )}
-                    <NotificationBell onPress={() => navigation.navigate('Notifications')} notificationCount={notificationCount} />
-                </View>
-            </View>
+                        {isOwnProfile && (
+                            <TouchableOpacity style={styles.editButton} onPress={() => navigation.navigate('EditProfile')}>
+                                <Ionicons name="settings-outline" size={24} color="#1DA1F2" />
+                            </TouchableOpacity>
+                        )}
+                        <NotificationBell onPress={() => navigation.navigate('Notifications')} notificationCount={notificationCount} />
+                    </View>
+                }
+            />
 
             <FlatList
                 ListHeaderComponent={
@@ -268,24 +263,6 @@ const styles = StyleSheet.create({
     retryButtonText: {
         color: 'white',
         fontWeight: 'bold',
-    },
-    header: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        justifyContent: 'space-between',
-        paddingHorizontal: 16,
-        paddingVertical: 12,
-        borderBottomWidth: 1,
-        borderBottomColor: '#e1e4e8',
-    },
-    backButton: {
-        padding: 8,
-    },
-    headerTitle: {
-        fontSize: 18,
-        fontWeight: 'bold',
-        flex: 1,
-        textAlign: 'center',
     },
     headerActions: {
         flexDirection: 'row',
