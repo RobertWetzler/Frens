@@ -35,6 +35,8 @@
 		<PackageReference Include="NSwag.Core" Version="14.2.0" />
 		<PackageReference Include="NSwag.MSBuild" Version="14.2.0" />
 		<PackageReference Include="Swashbuckle.AspNetCore" Version="7.1.0" />
+		<PackageReference Include="AWSSDK.S3" Version="3.7.402.8" />
+		<PackageReference Include="AWSSDK.Extensions.NETCore.Setup" Version="3.7.301" />
 	</ItemGroup>
 	<!-- Determine how to resolve nswag exe command. On MacOS it should be: dotnet "/Users/robertwetzler/.nuget/packages/nswag.msbuild/14.2.0/build/../tools/Net80/dotnet-nswag.dll"
 	https://github.com/RicoSuter/NSwag/issues/2444#issuecomment-604284806

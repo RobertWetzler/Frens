@@ -16,17 +16,20 @@ namespace Cliq.Server.Controllers
         private readonly UserManager<User> _userManager;
         private readonly IFriendshipService _friendshipService;
         private readonly IPostService _postService;
+        private readonly IUserService _userService;
         private readonly IMapper _mapper;
 
         public ProfileController(
             UserManager<User> userManager,
             IFriendshipService friendshipService,
             IPostService postService,
+            IUserService userService,
             IMapper mapper)
         {
             _userManager = userManager;
             _friendshipService = friendshipService;
             _postService = postService;
+            _userService = userService;
             _mapper = mapper;
         }
 
@@ -74,6 +77,65 @@ namespace Cliq.Server.Controllers
             }
 
             return Ok(response);
+        }
+
+        [HttpPost("upload-image")]
+        public async Task<ActionResult<UserProfileDto>> UploadProfileImage(IFormFile image)
+        {
+            var currentUserId = Guid.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
+            
+            if (image == null || image.Length == 0)
+            {
+                return BadRequest(new { error = "No image file provided" });
+            }
+
+            try
+            {
+                var updatedProfile = await _userService.UpdateProfileImageAsync(currentUserId, image);
+                return Ok(updatedProfile);
+            }
+            catch (ArgumentException ex)
+            {
+                return BadRequest(new { error = ex.Message });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { error = "Failed to upload image" });
+            }
+        }
+
+        [HttpDelete("remove-image")]
+        public async Task<ActionResult<UserProfileDto>> RemoveProfileImage()
+        {
+            var currentUserId = Guid.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
+
+            try
+            {
+                var updatedProfile = await _userService.RemoveProfileImageAsync(currentUserId);
+                return Ok(updatedProfile);
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { error = "Failed to remove image" });
+            }
+        }
+
+        [HttpGet("image-url/{userId}")]
+        public async Task<ActionResult<string>> GetProfileImageUrl(Guid userId)
+        {
+            try
+            {
+                var imageUrl = await _userService.GetProfileImageUrlAsync(userId);
+                if (imageUrl == null)
+                {
+                    return NotFound(new { error = "No profile image found" });
+                }
+                return Ok(new { imageUrl });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { error = "Failed to get image URL" });
+            }
         }
 
 

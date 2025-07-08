@@ -2,6 +2,7 @@ using AutoMapper;
 using Cliq.Server.Data;
 using Cliq.Server.Services;
 using Cliq.Server.Utilities;
+using Cliq.Server.Models;
 using Microsoft.EntityFrameworkCore;
 using System.Text;
 using Microsoft.Extensions.DependencyInjection;
@@ -13,11 +14,12 @@ using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Identity.UI;
 using Cliq.Server.Auth;
-using Cliq.Server.Models;
 using System.Security.Claims;
 using System.Text.Json.Serialization;
 using Cliq.Server.Services.PushNotifications;
 using Microsoft.OpenApi.Models;
+using Amazon.S3;
+using Amazon.Extensions.NETCore.Setup;
 
 DotNetEnv.Env.Load();
 
@@ -120,6 +122,41 @@ builder.Services.AddCommentServices();
 builder.Services.AddFriendshipServices();
 builder.Services.AddNotificationServices(builder.Configuration);
 builder.Services.AddScoped<IEventNotificationService, EventNotificationService>();
+
+// Configure S3 settings
+builder.Services.Configure<S3Settings>(builder.Configuration.GetSection("S3Settings"));
+
+// Configure AWS S3 client
+var awsOptions = new AWSOptions
+{
+    Region = Amazon.RegionEndpoint.GetBySystemName(
+        builder.Configuration["S3Settings:Region"] ?? "us-east-1")
+};
+
+// Use environment variables for AWS credentials in production
+if (!string.IsNullOrEmpty(Environment.GetEnvironmentVariable("AWS_ACCESS_KEY_ID")))
+{
+    awsOptions.Credentials = new Amazon.Runtime.BasicAWSCredentials(
+        Environment.GetEnvironmentVariable("AWS_ACCESS_KEY_ID"),
+        Environment.GetEnvironmentVariable("AWS_SECRET_ACCESS_KEY"));
+}
+else
+{
+    // Fallback to configuration for development
+    var accessKey = builder.Configuration["S3Settings:AccessKey"];
+    var secretKey = builder.Configuration["S3Settings:SecretKey"];
+    if (!string.IsNullOrEmpty(accessKey) && !string.IsNullOrEmpty(secretKey))
+    {
+        awsOptions.Credentials = new Amazon.Runtime.BasicAWSCredentials(accessKey, secretKey);
+    }
+}
+
+builder.Services.AddDefaultAWSOptions(awsOptions);
+builder.Services.AddAWSService<IAmazonS3>();
+
+// Register file upload and user services
+builder.Services.AddScoped<IFileUploadService, S3FileUploadService>();
+builder.Services.AddScoped<IUserService, UserService>();
 // Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen(option =>

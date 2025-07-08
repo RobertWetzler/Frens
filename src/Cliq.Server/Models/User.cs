@@ -15,18 +15,21 @@ public class User : IdentityUser<Guid>
     }
     public required string Name { get; set; }
     public string Bio { get; set; } = string.Empty;
+    public string? ProfileImageUrl { get; set; }
+    public string? ProfileImageKey { get; set; } // S3 object key for deletion
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
     public DateTime? LastLogin { get; set; }
     public ICollection<Friendship> FriendRequestsSent { get; set; } = new List<Friendship>();
     public ICollection<Friendship> FriendRequestsReceived { get; set; } = new List<Friendship>();
-    public ICollection<Circle> OwnedCircles { get; set; }
-    public ICollection<EfPushSubscription> PushSubscriptions { get; set; }
+    public ICollection<Circle> OwnedCircles { get; set; } = new List<Circle>();
+    public ICollection<EfPushSubscription> PushSubscriptions { get; set; } = new List<EfPushSubscription>();
 }
 
 public class UserDto
 {
     public required Guid Id { get; set; }
     public required string Name { get; set; }
+    public string? ProfileImageUrl { get; set; }
 }
 
 public class UserProfileDto
@@ -34,5 +37,6 @@ public class UserProfileDto
     public required Guid Id { get; set; }
     public required string Name { get; set; }
     public string Bio { get; set; } = string.Empty;
+    public string? ProfileImageUrl { get; set; }
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
 }
