@@ -98,4 +98,40 @@ public class CircleController : ControllerBase
             return NotFound(ex.Message);
         }
     }
+
+    [HttpPost("users")]
+    public async Task<ActionResult> AddUsersToCircle([FromBody] AddUsersToCircleRequest request)
+    {
+        if(!AuthUtils.TryGetUserIdFromToken(this.HttpContext, out var userId))
+        {
+            return Unauthorized();
+        }
+        var circleId = request.CircleId;
+        var userIds = request.UserIds;
+
+        if (userIds == null || userIds.Length == 0)
+        {
+            return BadRequest("No user IDs provided");
+        }
+
+        try
+        {
+            await _circleService.AddUsersToCircleAsync(userId, circleId, userIds);
+            return Ok(new { message = $"Successfully added {userIds.Length} users to circle" });
+        }
+        catch (UnauthorizedAccessException ex)
+        {
+            return Forbid(ex.Message);
+        }
+        catch (BadHttpRequestException ex)
+        {
+            return BadRequest(ex.Message);
+        }
+    }
+}
+
+public record AddUsersToCircleRequest
+{
+    public required Guid CircleId { get; init; }
+    public required Guid[] UserIds { get; init; } 
 }

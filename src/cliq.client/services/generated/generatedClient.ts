@@ -386,6 +386,44 @@ export class Client {
     }
 
     /**
+     * @param body (optional) 
+     * @return OK
+     */
+    users(body: AddUsersToCircleRequest | undefined): Promise<void> {
+        let url_ = this.baseUrl + "/api/Circle/users";
+        url_ = url_.replace(/[?&]$/, "");
+
+        const content_ = JSON.stringify(body);
+
+        let options_: RequestInit = {
+            body: content_,
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json",
+            }
+        };
+
+        return this.http.fetch(url_, options_).then((_response: Response) => {
+            return this.processUsers(_response);
+        });
+    }
+
+    protected processUsers(response: Response): Promise<void> {
+        const status = response.status;
+        let _headers: any = {}; if (response.headers && response.headers.forEach) { response.headers.forEach((v: any, k: any) => _headers[k] = v); };
+        if (status === 200) {
+            return response.text().then((_responseText) => {
+            return;
+            });
+        } else if (status !== 200 && status !== 204) {
+            return response.text().then((_responseText) => {
+            return throwException("An unexpected server error occurred.", status, _responseText, _headers);
+            });
+        }
+        return Promise.resolve<void>(null as any);
+    }
+
+    /**
      * @param text (optional) 
      * @param postId (optional) 
      * @param parentCommentid (optional) 
@@ -1232,6 +1270,54 @@ export class Client {
         }
         return Promise.resolve<ProfilePageResponseDto>(null as any);
     }
+}
+
+export class AddUsersToCircleRequest implements IAddUsersToCircleRequest {
+    circleId!: string;
+    userIds!: string[] | undefined;
+
+    constructor(data?: IAddUsersToCircleRequest) {
+        if (data) {
+            for (var property in data) {
+                if (data.hasOwnProperty(property))
+                    (<any>this)[property] = (<any>data)[property];
+            }
+        }
+    }
+
+    init(_data?: any) {
+        if (_data) {
+            this.circleId = _data["circleId"];
+            if (Array.isArray(_data["userIds"])) {
+                this.userIds = [] as any;
+                for (let item of _data["userIds"])
+                    this.userIds!.push(item);
+            }
+        }
+    }
+
+    static fromJS(data: any): AddUsersToCircleRequest {
+        data = typeof data === 'object' ? data : {};
+        let result = new AddUsersToCircleRequest();
+        result.init(data);
+        return result;
+    }
+
+    toJSON(data?: any) {
+        data = typeof data === 'object' ? data : {};
+        data["circleId"] = this.circleId;
+        if (Array.isArray(this.userIds)) {
+            data["userIds"] = [];
+            for (let item of this.userIds)
+                data["userIds"].push(item);
+        }
+        return data;
+    }
+}
+
+export interface IAddUsersToCircleRequest {
+    circleId: string;
+    userIds: string[] | undefined;
 }
 
 export class AppAnnouncementRequest implements IAppAnnouncementRequest {

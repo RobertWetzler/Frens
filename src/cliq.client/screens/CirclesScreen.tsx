@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useCallback } from 'react';
 import {
   View,
   Text,
@@ -11,15 +11,23 @@ import {
   Pressable,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { useFocusEffect } from '@react-navigation/native';
 import { useCirclesWithMembers } from '../hooks/useCircle';
 
 const CirclesScreen = ({ navigation }) => {
-  const { circles, isLoading, error, deleteCircle } = useCirclesWithMembers();
+  const { circles, isLoading, error, deleteCircle, loadCircles } = useCirclesWithMembers();
   const [expandedCircles, setExpandedCircles] = useState<Set<string>>(new Set());
   const [deleteModalVisible, setDeleteModalVisible] = useState(false);
   const [circleToDelete, setCircleToDelete] = useState<{id: string, name: string} | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
   const [menuVisible, setMenuVisible] = useState<string | null>(null);
+
+  // Refresh circles when screen comes into focus
+  useFocusEffect(
+    useCallback(() => {
+      loadCircles();
+    }, [loadCircles])
+  );
 
   const toggleCircleExpansion = (circleId: string) => {
     const newExpanded = new Set(expandedCircles);
@@ -223,7 +231,20 @@ const CirclesScreen = ({ navigation }) => {
 
                       {isExpanded && (
                         <View style={styles.membersContainer}>
-                          <Text style={styles.membersTitle}>Members:</Text>
+                          <View style={styles.membersHeader}>
+                            <Text style={styles.membersTitle}>Members:</Text>
+                            <TouchableOpacity
+                              style={styles.addUserButton}
+                              onPress={() => navigation.navigate('AddUsersToCircle', {
+                                circleId: circle.id,
+                                circleName: circle.name,
+                                existingUserIds: circle.members?.map(m => m.id) || []
+                              })}
+                            >
+                              <Ionicons name="person-add" size={20} color="#1DA1F2" />
+                              <Text style={styles.addUserButtonText}>Add User</Text>
+                            </TouchableOpacity>
+                          </View>
                           {circle.members && circle.members.length > 0 ? (
                             circle.members.map((member) => (
                               <View key={member.id} style={styles.memberItem}>
@@ -592,12 +613,33 @@ const styles = StyleSheet.create({
     borderTopWidth: 1,
     borderTopColor: '#E1E8ED',
   },
+  membersHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 12,
+    marginTop: 8,
+  },
   membersTitle: {
     fontSize: 16,
     fontWeight: '600',
     color: '#333333',
-    marginBottom: 12,
-    marginTop: 8,
+  },
+  addUserButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    backgroundColor: '#F0F8FF',
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#1DA1F2',
+  },
+  addUserButtonText: {
+    fontSize: 14,
+    fontWeight: '500',
+    color: '#1DA1F2',
+    marginLeft: 6,
   },
   memberItem: {
     flexDirection: 'row',

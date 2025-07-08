@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { CirclePublicDto, CircleWithMembersDto } from '../services/generated/generatedClient';
 import { ApiClient } from 'services/apiClient';
 
@@ -7,7 +7,7 @@ export function useMemberCircles() {
     const [isLoading, setIsLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
 
-    const loadCircles = async () => {
+    const loadCircles = useCallback(async () => {
         try {
             setIsLoading(true);
             const circleList = await ApiClient.call(c => c.circleAll());
@@ -20,7 +20,7 @@ export function useMemberCircles() {
         } finally {
             setIsLoading(false);
         }
-    };
+    }, []);
 
     useEffect(() => {
         loadCircles();
@@ -34,7 +34,7 @@ export function useCirclesWithMembers() {
     const [isLoading, setIsLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
 
-    const loadCircles = async () => {
+    const loadCircles = useCallback(async () => {
         try {
             setIsLoading(true);
             const circleList = await ApiClient.call(c => c.withMembers());
@@ -47,9 +47,9 @@ export function useCirclesWithMembers() {
         } finally {
             setIsLoading(false);
         }
-    };
+    }, []);
 
-    const deleteCircle = async (circleId: string) => {
+    const deleteCircle = useCallback(async (circleId: string) => {
         try {
             console.log('deleteCircle called with circleId:', circleId);
             await ApiClient.call(c => c.circleDELETE(circleId));
@@ -62,7 +62,7 @@ export function useCirclesWithMembers() {
             setError('Failed to delete circle');
             return false;
         }
-    };
+    }, []);
 
     useEffect(() => {
         loadCircles();

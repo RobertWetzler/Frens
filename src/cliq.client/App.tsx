@@ -18,6 +18,7 @@ import CreatePostScreen from './screens/CreatePostScreen';
 import { ActivityIndicator, SafeAreaView } from 'react-native';
 import { AuthProvider, useAuth } from 'contexts/AuthContext';
 import CreateCircleScreen from 'screens/CreateCircleScreen';
+import AddUsersToCircleScreen from 'screens/AddUsersToCircleScreen';
 import NotificationsScreen from 'screens/NotificationScreen';
 import { useServiceWorker } from './hooks/useServiceWorker';
 import { ShaderBackgroundProvider } from 'contexts/ShaderBackgroundContext';
@@ -29,6 +30,7 @@ type RootStackParamList = {
   Comments: { postId: string };
   CreatePost: undefined;
   CreateCircle: undefined;
+  AddUsersToCircle: { circleId: string; circleName: string; existingUserIds: string[] };
   Profile: { userId: string };
   Notifications: undefined;
 };
@@ -268,7 +270,7 @@ const MainApp = () => {
       <Stack.Navigator
         screenOptions={{
           headerShown: false,
-          cardStyle: { backgroundColor: 'transparent' }, // Make stack screen backgrounds transparent
+          cardStyle: { backgroundColor: 'transparent', flex: 1 }, // Add flex: 1 for proper scrolling
           animationEnabled: true,
         }}
       >
@@ -319,6 +321,15 @@ const MainApp = () => {
               component={CreateCircleScreen} 
               options={{ 
                 title: 'Create Circle',
+                headerShown: false,
+                headerBackTitleVisible: false,
+              }}
+            />
+            <Stack.Screen 
+              name="AddUsersToCircle" 
+              component={AddUsersToCircleScreen} 
+              options={{ 
+                title: 'Add Users',
                 headerShown: false,
                 headerBackTitleVisible: false,
               }}

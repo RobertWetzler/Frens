@@ -13,6 +13,7 @@ public interface ICircleService
     Task<IEnumerable<CirclePublicDto>> GetUserMemberCirclesAsync(Guid userId);
     Task<IEnumerable<CircleWithMembersDto>> GetUserCirclesWithMembersAsync(Guid userId);
     Task DeleteCircleAsync(Guid requestorId, Guid circleId);
+    Task AddUsersToCircleAsync(Guid requestorId, Guid circleId, Guid[] userIdsToAdd);
 }
 
 public class CircleService : ICircleService
@@ -309,6 +310,99 @@ public class CircleService : ICircleService
         {
             await transaction.RollbackAsync();
             _logger.LogError(ex, "Error deleting circle {CircleId} for user: {UserId}", circleId, requestorId);
+            throw;
+        }
+    }
+
+    public async Task AddUsersToCircleAsync(Guid requestorId, Guid circleId, Guid[] userIdsToAdd)
+    {
+        if (userIdsToAdd == null || userIdsToAdd.Length == 0)
+        {
+            return; // Nothing to add
+        }
+
+        // Single query to get circle info, check ownership, and get existing members
+        var circleInfo = await _dbContext.Circles
+            .Where(c => c.Id == circleId)
+            .Select(c => new
+            {
+                CircleId = c.Id,
+                OwnerId = c.OwnerId,
+                ExistingMemberIds = c.Members.Select(m => m.UserId).ToList()
+            })
+            .FirstOrDefaultAsync();
+
+        if (circleInfo == null)
+        {
+            throw new BadHttpRequestException($"Circle {circleId} not found");
+        }
+
+        // Check if requestor is the owner
+        if (circleInfo.OwnerId != requestorId)
+        {
+            throw new UnauthorizedAccessException($"User {requestorId} is not authorized to add users to circle {circleId}");
+        }
+
+        // Filter out users who are already members
+        var newUserIds = userIdsToAdd.Where(id => !circleInfo.ExistingMemberIds.Contains(id)).ToArray();
+        if (newUserIds.Length == 0)
+        {
+            return; // All users are already members
+        }
+
+        // Single query to validate friendships and user existence
+        var friendshipAndUserValidation = await _dbContext.Users
+            .Where(u => newUserIds.Contains(u.Id))
+            .Select(u => new
+            {
+                UserId = u.Id,
+                IsFriend = _dbContext.Friendships.Any(f => 
+                    ((f.RequesterId == requestorId && f.AddresseeId == u.Id) ||
+                     (f.RequesterId == u.Id && f.AddresseeId == requestorId)) &&
+                    f.Status == FriendshipStatus.Accepted)
+            })
+            .ToListAsync();
+
+        // Check if all users exist
+        var existingUserIds = friendshipAndUserValidation.Select(v => v.UserId).ToList();
+        var nonExistentUserIds = newUserIds.Where(id => !existingUserIds.Contains(id)).ToList();
+        if (nonExistentUserIds.Any())
+        {
+            throw new BadHttpRequestException($"Cannot add non-existent users to circle: {string.Join(", ", nonExistentUserIds)}");
+        }
+
+        // Check if all users are friends with the requestor
+        var nonFriendUserIds = friendshipAndUserValidation
+            .Where(v => !v.IsFriend)
+            .Select(v => v.UserId)
+            .ToList();
+        if (nonFriendUserIds.Any())
+        {
+            throw new BadHttpRequestException($"Cannot add non-friend users to circle: {string.Join(", ", nonFriendUserIds)}");
+        }
+
+        // Start transaction and add all validated users
+        using var transaction = await _dbContext.Database.BeginTransactionAsync();
+        try
+        {
+            var memberships = newUserIds.Select(userId => new CircleMembership
+            {
+                CircleId = circleId,
+                UserId = userId,
+                IsModerator = false
+            });
+
+            await _dbContext.CircleMemberships.AddRangeAsync(memberships);
+            await _dbContext.SaveChangesAsync();
+            await transaction.CommitAsync();
+
+            _logger.LogInformation("Added {Count} users to circle {CircleId} by user {RequestorId}", 
+                newUserIds.Length, circleId, requestorId);
+        }
+        catch (Exception ex)
+        {
+            await transaction.RollbackAsync();
+            _logger.LogError(ex, "Error adding users to circle {CircleId} for user: {RequestorId}", circleId, requestorId);
             throw;
         }
     }
