@@ -167,7 +167,7 @@ public class NewCommentNotificationData : NotificationData
 
     public override string Message
     {
-        get => "commented on your post";
+        get => "commented: " + (CommentText.Length > 50 ? CommentText[..50] + "..." : CommentText);
         set { }
     }
 

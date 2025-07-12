@@ -17,7 +17,7 @@ primary_region = 'ord'
 [[services]]
   protocol = 'tcp'
   internal_port = 5432
-  auto_stop_machines = 'stop'
+  auto_stop_machines = 'off'
   auto_start_machines = true
 
   [[services.ports]]
@@ -32,7 +32,7 @@ primary_region = 'ord'
 [[services]]
   protocol = 'tcp'
   internal_port = 5433
-  auto_stop_machines = 'stop'
+  auto_stop_machines = 'off'
   auto_start_machines = true
 
   [[services.ports]]
