@@ -5,22 +5,24 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import Post from '../components/Post';
 import getEnvVars from 'env'
-import { useFeed } from 'hooks/usePosts';
+import { useFilteredFeed } from 'hooks/usePosts';
 import { useAuth } from 'contexts/AuthContext';
 import { handleShareProfile } from 'utils/share';
 import NotificationBell from 'components/NotificationBell';
 import NotificationSubscribeButton from 'components/NotificationSubscribeButton';
 import PWAInstallBanner from 'components/PWAInstallBanner';
+import CircleFilter from 'components/CircleFilter';
 import { useShaderBackground } from 'contexts/ShaderBackgroundContext';
 
 
 const HomeScreen = ({ navigation }) => {
-    const { posts, notificationCount, isLoading, error, loadFeed } = useFeed();
+    const { posts, circles, notificationCount, isLoading, isFiltering, isPostTransition, error, loadFeed, selectedCircleIds, updateFilter, clearFilter } = useFilteredFeed();
     const authContext = useAuth();
     const { isExpanded, animateToExpanded } = useShaderBackground();
     const scrollY = useRef(new Animated.Value(0)).current;
     const [isPWABannerVisible, setIsPWABannerVisible] = useState(true);
     const [isFirstLoad, setIsFirstLoad] = useState(true);
+    const [isFilterExpanded, setIsFilterExpanded] = useState(false);
 
     // Calculate how many posts should be animated (visible on initial screen load)
     const VISIBLE_POSTS_COUNT = 7;
@@ -41,9 +43,9 @@ const HomeScreen = ({ navigation }) => {
         }
     }, [isExpanded, animateToExpanded]);
 
-    // Mark that we've moved past first load when posts come in
+    // Mark that we've moved past first load when posts come in (only for initial load)
     useEffect(() => {
-        if (posts && posts.length > 0 && !isLoading) {
+        if (posts && posts.length > 0 && !isLoading && isFirstLoad) {
             // Calculate total animation time: 2s initial delay + time for all visible posts to animate
             const totalAnimationTime = ANIMATION_DELAY + (VISIBLE_POSTS_COUNT * 150) + 600; // +600ms for last animation to complete
             const timer = setTimeout(() => {
@@ -51,9 +53,44 @@ const HomeScreen = ({ navigation }) => {
             }, totalAnimationTime);
             return () => clearTimeout(timer);
         }
-    }, [posts, isLoading]);
+    }, [posts, isLoading, isFirstLoad]);
+
+    // Track when posts arrive after filtering to trigger re-animation
+    const [shouldAnimateAfterFilter, setShouldAnimateAfterFilter] = useState(false);
+    
+    useEffect(() => {
+        if (posts && posts.length > 0 && isPostTransition) {
+            setShouldAnimateAfterFilter(true);
+            // Reset after animation completes
+            const totalAnimationTime = (VISIBLE_POSTS_COUNT * 150) + 600;
+            const timer = setTimeout(() => {
+                setShouldAnimateAfterFilter(false);
+            }, totalAnimationTime);
+            return () => clearTimeout(timer);
+        }
+    }, [posts, isPostTransition]);
 
     const insets = useSafeAreaInsets();
+
+    // Circle filter handlers
+    const handleCircleToggle = (circleId: string) => {
+        const newSelectedIds = selectedCircleIds.includes(circleId)
+            ? selectedCircleIds.filter(id => id !== circleId)
+            : [...selectedCircleIds, circleId];
+        updateFilter(newSelectedIds);
+        // Close the dropdown after selection
+        setIsFilterExpanded(false);
+    };
+
+    const handleClearAllFilters = () => {
+        clearFilter();
+        // Close the dropdown after clearing
+        setIsFilterExpanded(false);
+    };
+
+    const handleToggleFilterExpanded = () => {
+        setIsFilterExpanded(!isFilterExpanded);
+    };
 
     // Header animation values
     const headerOpacity = scrollY.interpolate({
@@ -119,11 +156,21 @@ const HomeScreen = ({ navigation }) => {
                 </LinearGradient>
             </Animated.View>
 
+            {/* Circle Filter */}
             <FlatList
                 data={posts}
                 renderItem={({ item, index }) => {
-                    const shouldAnimate = isFirstLoad && index < VISIBLE_POSTS_COUNT;
-                    const animationDelay = shouldAnimate ? ANIMATION_DELAY + (index * 150) : 0; // 2 second initial delay + stagger
+                    // Animate on initial load OR after filtering
+                    const shouldAnimate = (isFirstLoad && index < VISIBLE_POSTS_COUNT) || shouldAnimateAfterFilter;
+                    
+                    let animationDelay = 0;
+                    if (isFirstLoad && index < VISIBLE_POSTS_COUNT) {
+                        // Initial load: long delay + stagger
+                        animationDelay = ANIMATION_DELAY + (index * 150);
+                    } else if (shouldAnimateAfterFilter) {
+                        // Filter transition: immediate stagger, no initial delay
+                        animationDelay = index * 150;
+                    }
                     
                     return (
                         <Post 
@@ -135,10 +182,45 @@ const HomeScreen = ({ navigation }) => {
                     );
                 }}
                 keyExtractor={(item) => item.id}
+                ListHeaderComponent={() => (
+                    <View>
+                        {/* Only show circle filter if user has more than one circle */}
+                        {circles && circles.length > 1 && (
+                            <View style={styles.filterContainer}>
+                                <CircleFilter
+                                    circles={circles}
+                                    selectedCircleIds={selectedCircleIds}
+                                    onCircleToggle={handleCircleToggle}
+                                    onClearAll={handleClearAllFilters}
+                                    isExpanded={isFilterExpanded}
+                                    onToggleExpanded={handleToggleFilterExpanded}
+                                    shouldAnimate={isFirstLoad}
+                                    animationDelay={ANIMATION_DELAY}
+                                />
+                                {/* Subtle filtering indicator */}
+                                {isFiltering && (
+                                    <View style={styles.filteringIndicator}>
+                                        <ActivityIndicator size="small" color="#666" />
+                                        <Text style={styles.filteringText}>Updating feed...</Text>
+                                    </View>
+                                )}
+                            </View>
+                        )}
+                        <NotificationSubscribeButton
+                            applicationServerKey={getEnvVars().VAPID_PUBLIC_KEY}
+                            onSubscriptionChange={(subscription) => {
+                                if (subscription) {
+                                    console.log('User subscribed to notifications');
+                                    // Send subscription to your server
+                                }
+                            }}
+                        />
+                    </View>
+                )}
                 contentContainerStyle={[
                     styles.listContent,
                     {
-                        paddingTop: isPWABannerVisible ? 122 : 76, // Exact total height: banner(66) + header(56) or just header(56)
+                        paddingTop: isPWABannerVisible ? 122 : 76, // Header height + banner height + spacing
                         paddingBottom: insets.bottom + 60
                     }
                 ]}
@@ -147,32 +229,29 @@ const HomeScreen = ({ navigation }) => {
                     { useNativeDriver: false }
                 )}
                 scrollEventThrottle={16}
+                scrollEnabled={!isFilterExpanded} // Disable scrolling when filter dropdown is expanded
                 // Add these props for better UX
                 refreshing={isLoading}
                 onRefresh={() => {
                     // Implement pull-to-refresh functionality
                     loadFeed();
                 }}
-                ListEmptyComponent={() => (
-                    <View style={styles.emptyContainer}>
-                        <Ionicons name="people-outline" size={64} color="#e1e4e8" />
-                        <Text style={styles.emptyText}>No posts found</Text>
-                        <Text style={styles.emptySubtext}>
-                            Connect with friends to see their posts in your feed
-                        </Text>
-                    </View>
-                )}
-                ListHeaderComponent={() => (
-                    <NotificationSubscribeButton
-                        applicationServerKey={getEnvVars().VAPID_PUBLIC_KEY}
-                        onSubscriptionChange={(subscription) => {
-                            if (subscription) {
-                                console.log('User subscribed to notifications');
-                                // Send subscription to your server
-                            }
-                        }}
-                    />
-                )}
+                ListEmptyComponent={() => {
+                    // Don't show empty state while loading, filtering, transitioning, or animating
+                    if (isLoading || isFiltering || isPostTransition || shouldAnimateAfterFilter || isFirstLoad) {
+                        return null;
+                    }
+                    
+                    return (
+                        <View style={styles.emptyContainer}>
+                            <Ionicons name="people-outline" size={64} color="#e1e4e8" />
+                            <Text style={styles.emptyText}>No posts found</Text>
+                            <Text style={styles.emptySubtext}>
+                                Connect with friends to see their posts in your feed
+                            </Text>
+                        </View>
+                    );
+                }}
                 ListFooterComponent={() => (
                     <View style={styles.footerContainer}>
                         <TouchableOpacity
@@ -230,6 +309,23 @@ const styles = StyleSheet.create({
         textShadowColor: 'rgba(0, 0, 0, 0.3)',
         textShadowOffset: { width: 0, height: 1 },
         textShadowRadius: 2,
+    },
+    filterContainer: {
+        marginHorizontal: 16,
+        marginVertical: 2,
+    },
+    filteringIndicator: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'center',
+        paddingVertical: 8,
+        marginTop: 8,
+    },
+    filteringText: {
+        marginLeft: 8,
+        fontSize: 14,
+        color: '#666',
+        fontStyle: 'italic',
     },
     listContent: {
         // Base padding will be set dynamically in the component

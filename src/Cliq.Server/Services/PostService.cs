@@ -9,6 +9,7 @@ public interface IPostService
 {
     Task<PostDto?> GetPostByIdAsync(Guid requestorId, Guid id, bool includeCommentTree = false, int maxDepth = 3);
     Task<FeedDto> GetFeedForUserAsync(Guid userId, int page = 1, int pageSize = 20);
+    Task<FeedDto> GetFilteredFeedForUserAsync(Guid userId, Guid[]? circleIds, int page = 1, int pageSize = 20);
     Task<List<PostDto>> GetAllPostsAsync(bool includeCommentCount = false);
     Task<IEnumerable<PostDto>> GetUserPostsAsync(Guid userId, int page = 1, int pageSize = 20);
     Task<PostDto> CreatePostAsync(Guid userId, Guid[] circleIds, string text);
@@ -24,6 +25,7 @@ public class PostService : IPostService
     private readonly CliqDbContext _dbContext;
     private readonly ICommentService _commentService;
     private readonly IFriendshipService _friendshipService;
+    private readonly ICircleService _circleService;
     private readonly IMapper _mapper;
     private readonly ILogger<PostService> _logger;
     private readonly IEventNotificationService? _eventNotificationService;
@@ -32,6 +34,7 @@ public class PostService : IPostService
         CliqDbContext dbContext,
         ICommentService commentService,
         IFriendshipService friendshipService,
+        ICircleService circleService,
         IMapper mapper,
         ILogger<PostService> logger,
         IEventNotificationService? eventNotificationService = null)
@@ -39,6 +42,7 @@ public class PostService : IPostService
         _dbContext = dbContext;
         _commentService = commentService;
         _friendshipService = friendshipService;
+        _circleService = circleService;
         _mapper = mapper;
         _logger = logger;
         _eventNotificationService = eventNotificationService;
@@ -209,15 +213,119 @@ public class PostService : IPostService
             }).ToList();
 
             var notificationCount = await _friendshipService.GetFriendRequestsCountAsync(userId);
+            var userCircles = await _circleService.GetUserMemberCirclesAsync(userId);
+            
             return new FeedDto
             {
                 Posts = posts,
-                NotificationCount = notificationCount
+                NotificationCount = notificationCount,
+                UserCircles = userCircles.ToList()
             };
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error retrieving feed for user: {UserId}", userId);
+            throw;
+        }
+    }
+
+    public async Task<FeedDto> GetFilteredFeedForUserAsync(Guid userId, Guid[]? circleIds, int page = 1, int pageSize = 20)
+    {
+        try
+        {
+            IQueryable<Post> baseQuery;
+            
+            if (circleIds == null || circleIds.Length == 0)
+            {
+                // If no circles specified, return all posts user has access to (same as GetFeedForUserAsync)
+                baseQuery = _dbContext.Posts
+                    .Where(p => p.SharedWithCircles.Any(cp =>
+                        cp.Circle != null && cp.Circle.Members.Any(m => m.UserId == userId)));
+            }
+            else
+            {
+                // Filter by specific circles
+                baseQuery = _dbContext.Posts
+                    .Where(p => p.SharedWithCircles.Any(cp =>
+                        circleIds.Contains(cp.CircleId) &&
+                        cp.Circle != null && cp.Circle.Members.Any(m => m.UserId == userId)));
+            }
+
+            // Step 1: Get post IDs for pagination
+            var postIds = await baseQuery
+                .OrderByDescending(p => p.Date)
+                .Skip((page - 1) * pageSize)
+                .Take(pageSize)
+                .Select(p => p.Id)
+                .ToListAsync();
+
+            // Step 2: Get posts with comment counts
+            var postsWithComments = await (
+                from p in _dbContext.Posts.Include(p => p.User)
+                where postIds.Contains(p.Id)
+                join c in _dbContext.Comments
+                    on p.Id equals c.PostId into comments
+                orderby p.Date descending
+                select new
+                {
+                    Post = p,
+                    CommentCount = comments.Count()
+                })
+                .AsNoTracking()
+                .ToListAsync();
+
+            // Step 3: Get circle information
+            var circleInfo = await (
+                from cp in _dbContext.CirclePosts
+                where postIds.Contains(cp.PostId)
+                join c in _dbContext.Circles on cp.CircleId equals c.Id
+                join m in _dbContext.CircleMemberships on c.Id equals m.CircleId
+                where m.UserId == userId
+                select new
+                {
+                    PostId = cp.PostId,
+                    CircleId = c.Id,
+                    CircleName = c.Name,
+                    IsShared = c.IsShared,
+                    SharedAt = cp.SharedAt
+                })
+                .AsNoTracking()
+                .ToListAsync();
+
+            // Group circle info by post ID for easy lookup
+            var circlesByPost = circleInfo
+                .GroupBy(c => c.PostId)
+                .ToDictionary(g => g.Key, g => g.ToList());
+
+            // Combine the data
+            var posts = postsWithComments.Select(pc =>
+            {
+                var dto = _mapper.Map<PostDto>(pc.Post);
+                dto.CommentCount = pc.CommentCount;
+                dto.SharedWithCircles = circlesByPost.ContainsKey(pc.Post.Id)
+                    ? circlesByPost[pc.Post.Id].Select(c => new CirclePublicDto
+                    {
+                        Id = c.CircleId,
+                        Name = c.CircleName,
+                        IsShared = c.IsShared,
+                    }).ToList()
+                    : new List<CirclePublicDto>();
+                return dto;
+            }).ToList();
+
+            var notificationCount = await _friendshipService.GetFriendRequestsCountAsync(userId);
+            var userCircles = await _circleService.GetUserMemberCirclesAsync(userId);
+            
+            return new FeedDto
+            {
+                Posts = posts,
+                NotificationCount = notificationCount,
+                UserCircles = userCircles.ToList()
+            };
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error retrieving filtered feed for user: {UserId}, circleIds: {CircleIds}", userId, circleIds != null ? string.Join(",", circleIds) : "null");
             throw;
         }
     }

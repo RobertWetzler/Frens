@@ -17,9 +17,12 @@ const Post: React.FC<PostProps> = ({ post, navigation, isNavigable = true, anima
   const scale = useRef(new Animated.Value(shouldAnimate ? 0.8 : 1)).current;
 
   useEffect(() => {
-    // console.log(`Post ${post.id}: shouldAnimate=${shouldAnimate}, delay=${animationDelay}`);
-    
+    // Reset animation values when shouldAnimate changes
     if (shouldAnimate) {
+      translateY.setValue(100);
+      opacity.setValue(0);
+      scale.setValue(0.8);
+      
       // Start the elastic spring animation with staggered delay
       const animateIn = () => {
         console.log(`Starting animation for post ${post.id}`);
@@ -49,6 +52,11 @@ const Post: React.FC<PostProps> = ({ post, navigation, isNavigable = true, anima
       // Apply staggered delay
       const timer = setTimeout(animateIn, animationDelay);
       return () => clearTimeout(timer);
+    } else {
+      // If not animating, ensure values are set to final state
+      translateY.setValue(0);
+      opacity.setValue(1);
+      scale.setValue(1);
     }
   }, [shouldAnimate, animationDelay, opacity, translateY, scale, post.id]);
 

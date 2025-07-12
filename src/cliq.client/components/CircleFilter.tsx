@@ -5,8 +5,9 @@ import {
   TouchableOpacity,
   StyleSheet,
   Animated,
-  FlatList,
+  ScrollView,
   Pressable,
+  Modal,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { CirclePublicDto } from '../services/generated/generatedClient';
@@ -80,7 +81,7 @@ const CircleFilter: React.FC<CircleFilterProps> = ({
 
   const maxHeight = animatedHeight.interpolate({
     inputRange: [0, 1],
-    outputRange: [0, 230], // Increased max height for the dropdown
+    outputRange: [0, 320], // Increased max height to accommodate more circles
   });
 
   const getDisplayText = () => {
@@ -92,32 +93,6 @@ const CircleFilter: React.FC<CircleFilterProps> = ({
     } else {
       return `${selectedCircleIds.length} Circles`;
     }
-  };
-
-  const renderCircleItem = ({ item }: { item: CirclePublicDto }) => {
-    const isSelected = selectedCircleIds.includes(item.id || '');
-    
-    return (
-      <TouchableOpacity
-        style={[styles.circleItem, isSelected && styles.selectedCircleItem]}
-        onPress={() => onCircleToggle(item.id || '')}
-        activeOpacity={0.7}
-      >
-        <View style={styles.circleItemContent}>
-          <Text style={[styles.circleText, isSelected && styles.selectedCircleText]}>
-            {item.name}
-          </Text>
-          <View style={styles.circleInfo}>
-            {item.isOwner && (
-              <Ionicons name="crown" size={14} color={isSelected ? '#fff' : '#666'} />
-            )}
-            {isSelected && (
-              <Ionicons name="checkmark" size={16} color="#fff" style={styles.checkmark} />
-            )}
-          </View>
-        </View>
-      </TouchableOpacity>
-    );
   };
 
   return (
@@ -160,40 +135,72 @@ const CircleFilter: React.FC<CircleFilterProps> = ({
         )}
       </TouchableOpacity>
 
-      {/* Dropdown */}
-      <Animated.View style={[styles.dropdown, { maxHeight }]}>
-        <View style={styles.dropdownContent}>
-          {/* Clear All Button */}
-          {selectedCircleIds.length > 0 && (
-            <TouchableOpacity
-              style={styles.clearAllButton}
-              onPress={onClearAll}
-              activeOpacity={0.7}
-            >
-              <Ionicons name="close-circle" size={16} color="#666" />
-              <Text style={styles.clearAllText}>Clear All</Text>
-            </TouchableOpacity>
-          )}
-          
-          {/* Circle List */}
-          <FlatList
-            data={circles}
-            renderItem={renderCircleItem}
-            keyExtractor={(item) => item.id || ''}
-            style={styles.circleList}
-            showsVerticalScrollIndicator={false}
-            nestedScrollEnabled={true}
-          />
-        </View>
-      </Animated.View>
-
-      {/* Backdrop for closing dropdown */}
-      {isExpanded && (
-        <Pressable
-          style={styles.backdrop}
+      {/* Modal Dropdown */}
+      <Modal
+        visible={isExpanded}
+        transparent={true}
+        animationType="fade"
+        onRequestClose={onToggleExpanded}
+      >
+        <Pressable 
+          style={styles.modalOverlay}
           onPress={onToggleExpanded}
-        />
-      )}
+        >
+          <View style={styles.modalDropdown}>
+            <Pressable onPress={(e) => e.stopPropagation()}>
+              <View style={styles.dropdownContent}>
+                {/* Clear All Button */}
+                {selectedCircleIds.length > 0 && (
+                  <TouchableOpacity
+                    style={styles.clearAllButton}
+                    onPress={onClearAll}
+                    activeOpacity={0.7}
+                  >
+                    <Ionicons name="close-circle" size={16} color="#666" />
+                    <Text style={styles.clearAllText}>Clear All</Text>
+                  </TouchableOpacity>
+                )}
+                
+                {/* Circle List */}
+                <ScrollView
+                  style={styles.circleList}
+                  showsVerticalScrollIndicator={true}
+                  scrollEnabled={true}
+                  bounces={false}
+                  overScrollMode="never"
+                >
+                  {circles.map((item) => {
+                    const isSelected = selectedCircleIds.includes(item.id || '');
+                    
+                    return (
+                      <TouchableOpacity
+                        key={item.id || ''}
+                        style={[styles.circleItem, isSelected && styles.selectedCircleItem]}
+                        onPress={() => onCircleToggle(item.id || '')}
+                        activeOpacity={0.7}
+                      >
+                        <View style={styles.circleItemContent}>
+                          <Text style={[styles.circleText, isSelected && styles.selectedCircleText]}>
+                            {item.name}
+                          </Text>
+                          <View style={styles.circleInfo}>
+                            {item.isOwner 
+                            //  && (<Ionicons name="crown" size={14} color={isSelected ? '#fff' : '#666'} />)
+                            }
+                            {isSelected && (
+                              <Ionicons name="checkmark" size={16} color="#fff" style={styles.checkmark} />
+                            )}
+                          </View>
+                        </View>
+                      </TouchableOpacity>
+                    );
+                  })}
+                </ScrollView>
+              </View>
+            </Pressable>
+          </View>
+        </Pressable>
+      </Modal>
     </Animated.View>
   );
 };
@@ -248,10 +255,16 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontWeight: 'bold',
   },
-  dropdown: {
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.1)',
+    justifyContent: 'flex-start',
+    paddingTop: 120, // Moved down from 100 to 140
+  },
+  modalDropdown: {
+    marginHorizontal: 16,
     backgroundColor: 'white',
     borderRadius: 12,
-    marginTop: 8,
     shadowColor: '#000',
     shadowOffset: {
       width: 0,
@@ -259,8 +272,8 @@ const styles = StyleSheet.create({
     },
     shadowOpacity: 0.15,
     shadowRadius: 8,
-    elevation: 6,
-    overflow: 'hidden',
+    elevation: 1000,
+    maxHeight: 400, // Set a reasonable max height
   },
   dropdownContent: {
     paddingHorizontal: 8,
@@ -281,7 +294,7 @@ const styles = StyleSheet.create({
     fontWeight: '500',
   },
   circleList: {
-    maxHeight: 180,
+    maxHeight: 300, // Increased to work better in modal
   },
   circleItem: {
     paddingHorizontal: 12,
@@ -313,14 +326,6 @@ const styles = StyleSheet.create({
   },
   checkmark: {
     marginLeft: 4,
-  },
-  backdrop: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
-    zIndex: -1,
   },
 });
 
