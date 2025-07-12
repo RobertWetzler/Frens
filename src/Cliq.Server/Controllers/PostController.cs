@@ -40,7 +40,7 @@ public class PostController : ControllerBase
     }
 
     [HttpGet("feed/paged")]
-    public async Task<ActionResult<FeedDto>> GetFeedWithPaging(int page, int pageSize)
+    public async Task<ActionResult<FeedDto>> GetFeedWithPaging(int page, int pageSize = 50)
     {
         var idClaim = this.HttpContext.User.Claims.FirstOrDefault(c => c.Type == "http://schemas.xmlsoap.org/ws/2005/05/identity/claims/nameidentifier");
         Guid userId;
@@ -49,6 +49,35 @@ public class PostController : ControllerBase
             return Unauthorized();
         }
         var feed = await _postService.GetFeedForUserAsync(userId, page, pageSize);
+        return Ok(feed);
+    }
+
+    [HttpGet("feed/filtered")]
+    public async Task<ActionResult<FeedDto>> GetFilteredFeed(int page = 1, int pageSize = 50, [FromQuery] string? circleIds = null)
+    {
+        var idClaim = this.HttpContext.User.Claims.FirstOrDefault(c => c.Type == "http://schemas.xmlsoap.org/ws/2005/05/identity/claims/nameidentifier");
+        Guid userId;
+        if (idClaim == null || !Guid.TryParse(idClaim.Value, out userId))
+        {
+            return Unauthorized();
+        }
+
+        // Parse circle IDs if provided
+        Guid[]? circleIdArray = null;
+        if (!string.IsNullOrEmpty(circleIds))
+        {
+            var circleIdStrings = circleIds.Split(',');
+            circleIdArray = new Guid[circleIdStrings.Length];
+            for (int i = 0; i < circleIdStrings.Length; i++)
+            {
+                if (!Guid.TryParse(circleIdStrings[i], out circleIdArray[i]))
+                {
+                    return BadRequest($"Invalid circle ID: {circleIdStrings[i]}");
+                }
+            }
+        }
+
+        var feed = await _postService.GetFilteredFeedForUserAsync(userId, circleIdArray, page, pageSize);
         return Ok(feed);
     }
 
