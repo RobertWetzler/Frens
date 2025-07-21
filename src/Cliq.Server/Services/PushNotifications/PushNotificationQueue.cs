@@ -3,6 +3,7 @@ using System.Text.Json;
 using Cliq.Server.Data;
 using Cliq.Server.Models;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging;
 
 namespace Cliq.Server.Services.PushNotifications;
 
@@ -17,12 +18,14 @@ public interface IPushNotificationQueueService
 public class PushNotificationQueueService : IPushNotificationQueueService
 {
     private readonly IServiceScopeFactory _serviceScopeFactory;
+    private readonly ISilentDbContextFactory _silentDbContextFactory;
     private string _instanceId;
     private readonly TimeSpan _lockLeaseDuration = TimeSpan.FromMinutes(1);
     
-    public PushNotificationQueueService(IServiceScopeFactory serviceScopeFactory)
+    public PushNotificationQueueService(IServiceScopeFactory serviceScopeFactory, ISilentDbContextFactory silentDbContextFactory)
     {
         _serviceScopeFactory = serviceScopeFactory;
+        _silentDbContextFactory = silentDbContextFactory;
         // Read instance ID from environment variable
         _instanceId = Environment.GetEnvironmentVariable("FLY_MACHINE_ID") ?? string.Empty;
         if (string.IsNullOrEmpty(_instanceId))
@@ -153,9 +156,7 @@ public class PushNotificationQueueService : IPushNotificationQueueService
 
 public async Task<List<NotificationDelivery>> DequeueAsync(int batchSize, CancellationToken cancellationToken = default)
 {
-    using var scope = _serviceScopeFactory.CreateScope();
-    var dbContext = scope.ServiceProvider.GetRequiredService<CliqDbContext>();
-    
+    using var dbContext = _silentDbContextFactory.CreateContext();
     using var transaction = await dbContext.Database.BeginTransactionAsync(IsolationLevel.RepeatableRead, cancellationToken);
 
     // Atomically update and return the locked records

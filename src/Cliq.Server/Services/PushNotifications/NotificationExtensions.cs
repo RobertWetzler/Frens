@@ -13,6 +13,7 @@ public static class ServiceCollectionExtensions
         
         services.AddSingleton<WebPushNotificationService>();
         services.AddSingleton<IPushNotificationQueueService, PushNotificationQueueService>();
+        services.AddSingleton<ISilentDbContextFactory, SilentDbContextFactory>();
         services.AddHostedService<PushNotificationsDequeuer>();
         services.AddScoped<INotificationService, NotificationService>();
         services.AddScoped<IPushSubscriptionStore, PushSubscriptionStore>();

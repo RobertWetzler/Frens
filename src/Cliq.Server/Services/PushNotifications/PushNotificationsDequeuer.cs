@@ -8,15 +8,20 @@ internal class PushNotificationsDequeuer : IHostedService
 {
     private readonly IPushNotificationQueueService _notificationQueue;
     private readonly WebPushNotificationService _webPushNotificationService;
+    private readonly ILogger<PushNotificationsDequeuer> _logger;
     private readonly CancellationTokenSource _stopTokenSource = new CancellationTokenSource();
-    private Task _dequeueMessagesTask;
+    private Task _dequeueMessagesTask = Task.CompletedTask;
     private const int BATCH_SIZE = 1;
     private const int SLEEP_SECONDS = 1;
 
-    public PushNotificationsDequeuer(IPushNotificationQueueService notificationQueue, WebPushNotificationService webPushNotificationService)
+    public PushNotificationsDequeuer(
+        IPushNotificationQueueService notificationQueue, 
+        WebPushNotificationService webPushNotificationService,
+        ILogger<PushNotificationsDequeuer> logger)
     {
         _notificationQueue = notificationQueue ?? throw new ArgumentNullException(nameof(notificationQueue));
         _webPushNotificationService = webPushNotificationService ?? throw new ArgumentNullException(nameof(webPushNotificationService));
+        _logger = logger ?? throw new ArgumentNullException(nameof(logger));
     }
     public Task StartAsync(CancellationToken cancellationToken)
     {
@@ -35,6 +40,10 @@ internal class PushNotificationsDequeuer : IHostedService
         while (!_stopTokenSource.IsCancellationRequested)
         {
             var messages = await _notificationQueue.DequeueAsync(BATCH_SIZE, _stopTokenSource.Token);
+            if (messages.Count > 0)
+            {
+                _logger.LogInformation("Sending {NotificationCount} notifications", messages.Count);
+            }
             while (messages.Count > 0 && !_stopTokenSource.IsCancellationRequested)
             {
                 var message = messages[0];
@@ -48,7 +57,7 @@ internal class PushNotificationsDequeuer : IHostedService
                 catch (Exception ex)
                 {
                     // Log the error and mark as failed
-                    Console.WriteLine($"Error processing message {message.Id}: {ex.Message}");
+                    _logger.LogError(ex, "Error processing notification message {MessageId}", message.Id);
                     await _notificationQueue.MarkAsFailedAsync(message.Id);
                 }
                 messages.RemoveAt(0); // Remove processed message
@@ -59,7 +68,8 @@ internal class PushNotificationsDequeuer : IHostedService
     
     private async Task ProcessMessageAsync(NotificationDelivery notificationDelivery)
     {
-        Console.WriteLine($"Processing notification {notificationDelivery.Id} for endpoint {notificationDelivery.PushSubscriptionEndpoint}");
+        _logger.LogInformation("Processing notification {NotificationId} for endpoint {Endpoint}", 
+            notificationDelivery.Id, notificationDelivery.PushSubscriptionEndpoint);
         var subscription = notificationDelivery.Subscription.ToPushSubscription();
         var notification = notificationDelivery.Notification;
         var payload = new

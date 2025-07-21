@@ -7,6 +7,7 @@
 		<SpaRoot>..\cliq.client</SpaRoot>
 		<SpaProxyLaunchCommand>npx expo start</SpaProxyLaunchCommand>
 		<SpaProxyServerUrl>http://localhost:8081</SpaProxyServerUrl>
+		<BuildFrontendEnabled>true</BuildFrontendEnabled>
 	</PropertyGroup>
 
 	<ItemGroup>
@@ -44,6 +45,10 @@
 		<Exec Command="$(NSwagExe) openapi2tsclient /input:swagger.json /output:Scripts/MyController.ts" />
 	</Target>
 	-->
+	
+	<Target Name="BuildFrontend" BeforeTargets="Build" Condition="'$(BuildFrontendEnabled)' == 'true'">
+		<Exec Command="./build-frontend.sh" WorkingDirectory="$(MSBuildProjectDirectory)" />
+	</Target>
 	
 	<ItemGroup>
 		<ProjectReference Include="..\cliq.client\cliq.client.esproj">
