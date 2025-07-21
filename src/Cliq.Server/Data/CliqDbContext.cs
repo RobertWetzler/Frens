@@ -17,6 +17,7 @@ public class CliqDbContext : IdentityDbContext<User, CliqRole, Guid>
     public DbSet<EfPushSubscription> PushSubscriptions { get; set; }
     public DbSet<Notification> Notifications { get; set; }
     public DbSet<NotificationDelivery> NotificationDeliveries { get; set; }
+    public DbSet<EventRsvp> EventRsvps { get; set; }
 
     public CliqDbContext(
             DbContextOptions<CliqDbContext> options,
@@ -244,6 +245,63 @@ public class CliqDbContext : IdentityDbContext<User, CliqRole, Guid>
                   .WithMany()
                   .HasForeignKey(d => d.SubscriptionId)
                   .OnDelete(DeleteBehavior.Restrict);
+        });
+
+        // ========== Event (Inheritance) ==========
+        // Configure Table Per Hierarchy inheritance
+        modelBuilder.Entity<Post>()
+            .HasDiscriminator<string>("PostType")
+            .HasValue<Post>("Post")
+            .HasValue<Post>("") // Handle existing posts with empty discriminator
+            .HasValue<Event>("Event");
+
+        // Event-specific configuration
+        modelBuilder.Entity<Event>()
+            .Property(e => e.Title)
+            .IsRequired()
+            .HasMaxLength(500);
+
+        modelBuilder.Entity<Event>()
+            .Property(e => e.Location)
+            .HasMaxLength(500);
+
+        modelBuilder.Entity<Event>()
+            .Property(e => e.Timezone)
+            .HasMaxLength(50)
+            .HasDefaultValue("UTC");
+
+        modelBuilder.Entity<Event>()
+            .Property(e => e.RecurrenceRule)
+            .HasMaxLength(1000);
+
+        modelBuilder.Entity<Event>()
+            .HasMany(e => e.Rsvps)
+            .WithOne(r => r.Event)
+            .HasForeignKey(r => r.EventId)
+            .OnDelete(DeleteBehavior.Cascade);
+
+        // ========== EventRsvp ==========
+        modelBuilder.Entity<EventRsvp>(entity =>
+        {
+            entity.HasKey(r => r.Id);
+
+            entity.Property(r => r.Status)
+                  .IsRequired();
+
+            entity.Property(r => r.ResponseDate)
+                  .HasDefaultValueSql("NOW()");
+
+            entity.Property(r => r.Notes)
+                  .HasMaxLength(1000);
+
+            entity.HasOne(r => r.User)
+                  .WithMany()
+                  .HasForeignKey(r => r.UserId)
+                  .OnDelete(DeleteBehavior.Cascade);
+
+            // Unique constraint: one RSVP per user per event
+            entity.HasIndex(r => new { r.EventId, r.UserId })
+                  .IsUnique();
         });
     }
 }

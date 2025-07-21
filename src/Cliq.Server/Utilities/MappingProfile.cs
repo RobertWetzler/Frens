@@ -13,8 +13,8 @@ public class MappingProfile : Profile
                 src.SharedWithCircles.Select(cp => new CirclePublicDto
                 {
                     Id = cp.CircleId,
-                    Name = cp.Circle.Name,
-                    IsShared = cp.Circle.IsShared,
+                    Name = cp.Circle != null ? cp.Circle.Name : string.Empty,
+                    IsShared = cp.Circle != null ? cp.Circle.IsShared : false,
                     // Shows if author of post is user of the circle.
                     //IsOwner = cp.Circle.OwnerId == src.UserId
                 })));        
@@ -26,6 +26,21 @@ public class MappingProfile : Profile
             // We'll handle replies separately due to their recursive nature
             .ForMember(dest => dest.Replies, opt => opt.Ignore());
         CreateMap<Circle, CirclePublicDto>();
+        
+        // CirclePost mapping
+        // TODO THIS SHOULD NOT BE MAPPED
+        CreateMap<CirclePost, CirclePublicDto>()
+            .ForMember(dest => dest.Id, opt => opt.MapFrom(src => src.CircleId))
+            .ForMember(dest => dest.Name, opt => opt.MapFrom(src => src.Circle != null ? src.Circle.Name : string.Empty))
+            .ForMember(dest => dest.IsShared, opt => opt.MapFrom(src => src.Circle != null ? src.Circle.IsShared : false));
+        
+        // Event mappings
+        CreateMap<Event, EventDto>()
+            .ForMember(dest => dest.GoingCount, opt => opt.Ignore())
+            .ForMember(dest => dest.MaybeCount, opt => opt.Ignore())
+            .ForMember(dest => dest.NotGoingCount, opt => opt.Ignore())
+            .ForMember(dest => dest.CurrentUserRsvp, opt => opt.Ignore());
+        CreateMap<EventRsvp, EventRsvpDto>();
     }
 }
 
