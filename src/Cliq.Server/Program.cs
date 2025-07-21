@@ -294,6 +294,15 @@ var app = builder.Build();
 
 app.UseDefaultFiles();
 app.UseStaticFiles();
+
+// Serve custom Swagger assets from Assets folder
+app.UseStaticFiles(new StaticFileOptions
+{
+    FileProvider = new Microsoft.Extensions.FileProviders.PhysicalFileProvider(
+        Path.Combine(Directory.GetCurrentDirectory(), "Assets", "swagger")),
+    RequestPath = ""
+});
+
 // TODO Figure out correct CORS for mobile app
 app.UseCors("ExpoApp");
 // Configure the HTTP request pipeline.
