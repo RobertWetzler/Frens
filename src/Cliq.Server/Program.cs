@@ -118,6 +118,7 @@ builder.Services.AddPostServices();
 builder.Services.AddCircleServices();
 builder.Services.AddCommentServices();
 builder.Services.AddFriendshipServices();
+builder.Services.AddEventServices();
 builder.Services.AddNotificationServices(builder.Configuration);
 builder.Services.AddScoped<IEventNotificationService, EventNotificationService>();
 // Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle
@@ -126,11 +127,19 @@ builder.Services.AddSwaggerGen(option =>
 {
     // The following basically adds a text box in Swagger UI to enter a Bearer token
     // Taken from https://stackoverflow.com/questions/77750604/how-to-integrate-swagger-into-asp-net-core-web-api-with-identity-server
-    option.SwaggerDoc("v1", new OpenApiInfo { Title = "Demo API", Version = "v1" });
+    option.SwaggerDoc("v1", new OpenApiInfo { 
+        Title = "Cliq API", 
+        Version = "v1",
+        Description = builder.Environment.IsDevelopment() ? 
+            "Development API - Use /api/testauth/generate-test-token to get a test JWT token for authentication" : 
+            "Cliq API"
+    });
     option.AddSecurityDefinition("Bearer", new OpenApiSecurityScheme
     {
         In = ParameterLocation.Header,
-        Description = "Please enter a valid token",
+        Description = builder.Environment.IsDevelopment() ? 
+            "Please enter a valid token. In development, call /api/testauth/generate-test-token to get a test token." : 
+            "Please enter a valid token",
         Name = "Authorization",
         Type = SecuritySchemeType.Http,
         BearerFormat = "JWT",
@@ -291,7 +300,12 @@ app.UseCors("ExpoApp");
 if (app.Environment.IsDevelopment())
 {
     app.UseSwagger();
-    app.UseSwaggerUI();
+    app.UseSwaggerUI(c =>
+    {
+        c.SwaggerEndpoint("/swagger/v1/swagger.json", "Demo API V1");
+        c.InjectStylesheet("/swagger-custom.css");
+        c.InjectJavascript("/swagger-custom.js");
+    });
 }
 
 using (var scope = app.Services.CreateScope())
