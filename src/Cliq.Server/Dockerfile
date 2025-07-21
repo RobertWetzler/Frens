@@ -16,7 +16,7 @@ COPY src/Cliq.Server ./
 COPY --from=client-build /client/cliq.client/dist ./wwwroot
 
 RUN dotnet restore
-RUN dotnet publish -c Release -o /app
+RUN dotnet publish -c Release -o /app -p:BuildFrontendEnabled=false
 
 # ---------- final stage ----------
 FROM mcr.microsoft.com/dotnet/aspnet:${DOTNET_SDK_VERSION}

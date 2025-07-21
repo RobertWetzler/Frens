@@ -167,7 +167,7 @@ public class NewCommentNotificationData : NotificationData
 
     public override string Message
     {
-        get => "commented on your post";
+        get => "commented: " + (CommentText.Length > 50 ? CommentText[..50] + "..." : CommentText);
         set { }
     }
 
@@ -210,7 +210,7 @@ public class CommentReplyNotificationData : NotificationData
 
     public override string Message
     {
-        get => "replied to your comment";
+        get => "replied: " + (ReplyText.Length > 50 ? ReplyText[..50] + "..." : ReplyText);
         set { }
     }
 
