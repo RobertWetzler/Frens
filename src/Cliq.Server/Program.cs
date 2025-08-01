@@ -16,6 +16,7 @@ using Cliq.Server.Auth;
 using Cliq.Server.Models;
 using System.Security.Claims;
 using System.Text.Json.Serialization;
+using System.Linq;
 using Cliq.Server.Services.PushNotifications;
 using Microsoft.OpenApi.Models;
 
@@ -101,6 +102,7 @@ builder.Services.AddDbContext<CliqDbContext>(options =>
 builder.Services.AddControllers().AddJsonOptions(o =>
 {
     o.JsonSerializerOptions.Converters.Add(new JsonStringEnumConverter());
+    o.JsonSerializerOptions.TypeInfoResolverChain.Add(new DefaultJsonTypeInfoResolver());
 });
 // Require authentication for all controllers by default
 builder.Services.AddMvcCore(options =>
@@ -134,6 +136,7 @@ builder.Services.AddSwaggerGen(option =>
             "Development API - Use /api/testauth/generate-test-token to get a test JWT token for authentication" : 
             "Cliq API"
     });
+    
     option.AddSecurityDefinition("Bearer", new OpenApiSecurityScheme
     {
         In = ParameterLocation.Header,

@@ -1,4 +1,7 @@
 ﻿using System.ComponentModel.DataAnnotations;
+using System.Text.Json.Serialization;
+using System.Runtime.Serialization;
+using Cliq.Server.Utilities;
 
 namespace Cliq.Server.Models;
 
@@ -16,6 +19,8 @@ public class Post
     public ICollection<CirclePost> SharedWithCircles { get; set; } = new List<CirclePost>();
 }
 
+[JsonConverter(typeof(JsonInheritanceConverter))]
+[KnownType(typeof(EventDto))]
 public class PostDto
 {
     public required Guid Id { get; set; }

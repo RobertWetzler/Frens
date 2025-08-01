@@ -78,6 +78,10 @@ public class EventController : ControllerBase
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error creating event for user {UserId}", userId);
+            if (ex is BadHttpRequestException)
+            {
+                return BadRequest(ex.Message);
+            }
             return StatusCode(500, "An error occurred while creating the event");
         }
     }

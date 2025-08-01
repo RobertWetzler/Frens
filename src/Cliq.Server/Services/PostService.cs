@@ -81,9 +81,38 @@ public class PostService : IPostService
         // User is authorized, load full post data with user info
         var fullPost = await _dbContext.Posts
             .Include(p => p.User)
+            .Include(p => ((Event)p).Rsvps.Where(r => r.Status != RsvpStatus.NoResponse))
+                .ThenInclude(r => r.User)
             .FirstOrDefaultAsync(p => p.Id == id);
 
-        var dto = _mapper.Map<PostDto>(fullPost);
+        PostDto dto;
+        
+        // Check if the post is an event and map accordingly
+        if (fullPost is Event eventPost)
+        {
+            var eventDto = _mapper.Map<EventDto>(eventPost);
+            
+            // Calculate RSVP counts
+            eventDto.GoingCount = eventPost.Rsvps.Count(r => r.Status == RsvpStatus.Going);
+            eventDto.MaybeCount = eventPost.Rsvps.Count(r => r.Status == RsvpStatus.Maybe);
+            eventDto.NotGoingCount = eventPost.Rsvps.Count(r => r.Status == RsvpStatus.NotGoing);
+            
+            // Check if the current user has RSVP'd
+            var userRsvp = eventPost.Rsvps.FirstOrDefault(r => r.UserId == requestorId);
+            eventDto.CurrentUserRsvp = userRsvp?.Status;
+            
+            // Map RSVP details
+            eventDto.Rsvps = eventPost.Rsvps
+                .Where(r => r.Status != RsvpStatus.NoResponse)
+                .Select(r => _mapper.Map<EventRsvpDto>(r))
+                .ToList();
+            
+            dto = eventDto;
+        }
+        else
+        {
+            dto = _mapper.Map<PostDto>(fullPost);
+        }
 
         if (includeCommentTree)
         {
@@ -157,8 +186,12 @@ public class PostService : IPostService
             //    return new List<PostDto>();
 
             // Step 2: Get posts with comments counts in one query using LEFT JOIN and GROUP BY
+            // Include event-specific data and RSVP information for events
             var postsWithComments = await (
-                from p in _dbContext.Posts.Include(p => p.User)
+                from p in _dbContext.Posts
+                    .Include(p => p.User)
+                    .Include(p => ((Event)p).Rsvps.Where(r => r.Status != RsvpStatus.NoResponse))
+                        .ThenInclude(r => r.User)
                 where postIds.Contains(p.Id)
                 join c in _dbContext.Comments
                     on p.Id equals c.PostId into comments
@@ -199,7 +232,35 @@ public class PostService : IPostService
             // Combine the data
             var posts = postsWithComments.Select(pc =>
             {
-                var dto = _mapper.Map<PostDto>(pc.Post);
+                PostDto dto;
+                
+                // Check if the post is an event and map accordingly
+                if (pc.Post is Event eventPost)
+                {
+                    var eventDto = _mapper.Map<EventDto>(eventPost);
+                    
+                    // Calculate RSVP counts
+                    eventDto.GoingCount = eventPost.Rsvps.Count(r => r.Status == RsvpStatus.Going);
+                    eventDto.MaybeCount = eventPost.Rsvps.Count(r => r.Status == RsvpStatus.Maybe);
+                    eventDto.NotGoingCount = eventPost.Rsvps.Count(r => r.Status == RsvpStatus.NotGoing);
+                    
+                    // Check if the current user has RSVP'd
+                    var userRsvp = eventPost.Rsvps.FirstOrDefault(r => r.UserId == userId);
+                    eventDto.CurrentUserRsvp = userRsvp?.Status;
+                    
+                    // Map RSVP details
+                    eventDto.Rsvps = eventPost.Rsvps
+                        .Where(r => r.Status != RsvpStatus.NoResponse)
+                        .Select(r => _mapper.Map<EventRsvpDto>(r))
+                        .ToList();
+                    
+                    dto = eventDto;
+                }
+                else
+                {
+                    dto = _mapper.Map<PostDto>(pc.Post);
+                }
+                
                 dto.CommentCount = pc.CommentCount;
                 dto.SharedWithCircles = circlesByPost.ContainsKey(pc.Post.Id)
                     ? circlesByPost[pc.Post.Id].Select(c => new CirclePublicDto
@@ -261,7 +322,10 @@ public class PostService : IPostService
 
             // Step 2: Get posts with comment counts
             var postsWithComments = await (
-                from p in _dbContext.Posts.Include(p => p.User)
+                from p in _dbContext.Posts
+                    .Include(p => p.User)
+                    .Include(p => ((Event)p).Rsvps.Where(r => r.Status != RsvpStatus.NoResponse))
+                        .ThenInclude(r => r.User)
                 where postIds.Contains(p.Id)
                 join c in _dbContext.Comments
                     on p.Id equals c.PostId into comments
@@ -300,7 +364,35 @@ public class PostService : IPostService
             // Combine the data
             var posts = postsWithComments.Select(pc =>
             {
-                var dto = _mapper.Map<PostDto>(pc.Post);
+                PostDto dto;
+                
+                // Check if the post is an event and map accordingly
+                if (pc.Post is Event eventPost)
+                {
+                    var eventDto = _mapper.Map<EventDto>(eventPost);
+                    
+                    // Calculate RSVP counts
+                    eventDto.GoingCount = eventPost.Rsvps.Count(r => r.Status == RsvpStatus.Going);
+                    eventDto.MaybeCount = eventPost.Rsvps.Count(r => r.Status == RsvpStatus.Maybe);
+                    eventDto.NotGoingCount = eventPost.Rsvps.Count(r => r.Status == RsvpStatus.NotGoing);
+                    
+                    // Check if the current user has RSVP'd
+                    var userRsvp = eventPost.Rsvps.FirstOrDefault(r => r.UserId == userId);
+                    eventDto.CurrentUserRsvp = userRsvp?.Status;
+                    
+                    // Map RSVP details
+                    eventDto.Rsvps = eventPost.Rsvps
+                        .Where(r => r.Status != RsvpStatus.NoResponse)
+                        .Select(r => _mapper.Map<EventRsvpDto>(r))
+                        .ToList();
+                    
+                    dto = eventDto;
+                }
+                else
+                {
+                    dto = _mapper.Map<PostDto>(pc.Post);
+                }
+                
                 dto.CommentCount = pc.CommentCount;
                 dto.SharedWithCircles = circlesByPost.ContainsKey(pc.Post.Id)
                     ? circlesByPost[pc.Post.Id].Select(c => new CirclePublicDto
@@ -338,6 +430,8 @@ public class PostService : IPostService
             var result = await (
                 from p in _dbContext.Posts
                     .Include(p => p.User)
+                    .Include(p => ((Event)p).Rsvps.Where(r => r.Status != RsvpStatus.NoResponse))
+                        .ThenInclude(r => r.User)
                     .OrderByDescending(p => p.Date)
                 join c in _dbContext.Comments
                     on p.Id equals c.PostId into comments
@@ -351,7 +445,31 @@ public class PostService : IPostService
 
             return result.Select(pc =>
             {
-                var dto = _mapper.Map<PostDto>(pc.Post);
+                PostDto dto;
+                
+                // Check if the post is an event and map accordingly
+                if (pc.Post is Event eventPost)
+                {
+                    var eventDto = _mapper.Map<EventDto>(eventPost);
+                    
+                    // Calculate RSVP counts (no userId available, so no CurrentUserRsvp)
+                    eventDto.GoingCount = eventPost.Rsvps.Count(r => r.Status == RsvpStatus.Going);
+                    eventDto.MaybeCount = eventPost.Rsvps.Count(r => r.Status == RsvpStatus.Maybe);
+                    eventDto.NotGoingCount = eventPost.Rsvps.Count(r => r.Status == RsvpStatus.NotGoing);
+                    
+                    // Map RSVP details
+                    eventDto.Rsvps = eventPost.Rsvps
+                        .Where(r => r.Status != RsvpStatus.NoResponse)
+                        .Select(r => _mapper.Map<EventRsvpDto>(r))
+                        .ToList();
+                    
+                    dto = eventDto;
+                }
+                else
+                {
+                    dto = _mapper.Map<PostDto>(pc.Post);
+                }
+                
                 dto.CommentCount = pc.CommentCount;
                 return dto;
             }).ToList();

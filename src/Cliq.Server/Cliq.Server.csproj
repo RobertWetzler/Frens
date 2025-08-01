@@ -31,6 +31,7 @@
 			<IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
 			<PrivateAssets>all</PrivateAssets>
 		</PackageReference>
+		<PackageReference Include="NJsonSchema" Version="11.4.0" />
 		<PackageReference Include="Npgsql.EntityFrameworkCore.PostgreSQL" Version="8.0.10" />
 		<PackageReference Include="NSwag.AspNetCore" Version="14.2.0" />
 		<PackageReference Include="NSwag.Core" Version="14.2.0" />

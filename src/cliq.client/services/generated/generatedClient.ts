@@ -514,6 +514,446 @@ export class Client {
     }
 
     /**
+     * @param includeRsvps (optional) 
+     * @return OK
+     */
+    eventGET(id: string, includeRsvps: boolean | undefined): Promise<EventDto> {
+        let url_ = this.baseUrl + "/api/Event/{id}?";
+        if (id === undefined || id === null)
+            throw new Error("The parameter 'id' must be defined.");
+        url_ = url_.replace("{id}", encodeURIComponent("" + id));
+        if (includeRsvps === null)
+            throw new Error("The parameter 'includeRsvps' cannot be null.");
+        else if (includeRsvps !== undefined)
+            url_ += "includeRsvps=" + encodeURIComponent("" + includeRsvps) + "&";
+        url_ = url_.replace(/[?&]$/, "");
+
+        let options_: RequestInit = {
+            method: "GET",
+            headers: {
+                "Accept": "text/plain"
+            }
+        };
+
+        return this.http.fetch(url_, options_).then((_response: Response) => {
+            return this.processEventGET(_response);
+        });
+    }
+
+    protected processEventGET(response: Response): Promise<EventDto> {
+        const status = response.status;
+        let _headers: any = {}; if (response.headers && response.headers.forEach) { response.headers.forEach((v: any, k: any) => _headers[k] = v); };
+        if (status === 200) {
+            return response.text().then((_responseText) => {
+            let result200: any = null;
+            let resultData200 = _responseText === "" ? null : JSON.parse(_responseText, this.jsonParseReviver);
+            result200 = EventDto.fromJS(resultData200);
+            return result200;
+            });
+        } else if (status !== 200 && status !== 204) {
+            return response.text().then((_responseText) => {
+            return throwException("An unexpected server error occurred.", status, _responseText, _headers);
+            });
+        }
+        return Promise.resolve<EventDto>(null as any);
+    }
+
+    /**
+     * @param body (optional) 
+     * @return OK
+     */
+    eventPUT(id: string, body: UpdateEventDto | undefined): Promise<EventDto> {
+        let url_ = this.baseUrl + "/api/Event/{id}";
+        if (id === undefined || id === null)
+            throw new Error("The parameter 'id' must be defined.");
+        url_ = url_.replace("{id}", encodeURIComponent("" + id));
+        url_ = url_.replace(/[?&]$/, "");
+
+        const content_ = JSON.stringify(body);
+
+        let options_: RequestInit = {
+            body: content_,
+            method: "PUT",
+            headers: {
+                "Content-Type": "application/json",
+                "Accept": "text/plain"
+            }
+        };
+
+        return this.http.fetch(url_, options_).then((_response: Response) => {
+            return this.processEventPUT(_response);
+        });
+    }
+
+    protected processEventPUT(response: Response): Promise<EventDto> {
+        const status = response.status;
+        let _headers: any = {}; if (response.headers && response.headers.forEach) { response.headers.forEach((v: any, k: any) => _headers[k] = v); };
+        if (status === 200) {
+            return response.text().then((_responseText) => {
+            let result200: any = null;
+            let resultData200 = _responseText === "" ? null : JSON.parse(_responseText, this.jsonParseReviver);
+            result200 = EventDto.fromJS(resultData200);
+            return result200;
+            });
+        } else if (status !== 200 && status !== 204) {
+            return response.text().then((_responseText) => {
+            return throwException("An unexpected server error occurred.", status, _responseText, _headers);
+            });
+        }
+        return Promise.resolve<EventDto>(null as any);
+    }
+
+    /**
+     * @return OK
+     */
+    eventDELETE(id: string): Promise<void> {
+        let url_ = this.baseUrl + "/api/Event/{id}";
+        if (id === undefined || id === null)
+            throw new Error("The parameter 'id' must be defined.");
+        url_ = url_.replace("{id}", encodeURIComponent("" + id));
+        url_ = url_.replace(/[?&]$/, "");
+
+        let options_: RequestInit = {
+            method: "DELETE",
+            headers: {
+            }
+        };
+
+        return this.http.fetch(url_, options_).then((_response: Response) => {
+            return this.processEventDELETE(_response);
+        });
+    }
+
+    protected processEventDELETE(response: Response): Promise<void> {
+        const status = response.status;
+        let _headers: any = {}; if (response.headers && response.headers.forEach) { response.headers.forEach((v: any, k: any) => _headers[k] = v); };
+        if (status === 200) {
+            return response.text().then((_responseText) => {
+            return;
+            });
+        } else if (status !== 200 && status !== 204) {
+            return response.text().then((_responseText) => {
+            return throwException("An unexpected server error occurred.", status, _responseText, _headers);
+            });
+        }
+        return Promise.resolve<void>(null as any);
+    }
+
+    /**
+     * @param page (optional) 
+     * @param pageSize (optional) 
+     * @return OK
+     */
+    upcoming(page: number | undefined, pageSize: number | undefined): Promise<EventDto[]> {
+        let url_ = this.baseUrl + "/api/Event/upcoming?";
+        if (page === null)
+            throw new Error("The parameter 'page' cannot be null.");
+        else if (page !== undefined)
+            url_ += "page=" + encodeURIComponent("" + page) + "&";
+        if (pageSize === null)
+            throw new Error("The parameter 'pageSize' cannot be null.");
+        else if (pageSize !== undefined)
+            url_ += "pageSize=" + encodeURIComponent("" + pageSize) + "&";
+        url_ = url_.replace(/[?&]$/, "");
+
+        let options_: RequestInit = {
+            method: "GET",
+            headers: {
+                "Accept": "text/plain"
+            }
+        };
+
+        return this.http.fetch(url_, options_).then((_response: Response) => {
+            return this.processUpcoming(_response);
+        });
+    }
+
+    protected processUpcoming(response: Response): Promise<EventDto[]> {
+        const status = response.status;
+        let _headers: any = {}; if (response.headers && response.headers.forEach) { response.headers.forEach((v: any, k: any) => _headers[k] = v); };
+        if (status === 200) {
+            return response.text().then((_responseText) => {
+            let result200: any = null;
+            let resultData200 = _responseText === "" ? null : JSON.parse(_responseText, this.jsonParseReviver);
+            if (Array.isArray(resultData200)) {
+                result200 = [] as any;
+                for (let item of resultData200)
+                    result200!.push(EventDto.fromJS(item));
+            }
+            else {
+                result200 = <any>null;
+            }
+            return result200;
+            });
+        } else if (status !== 200 && status !== 204) {
+            return response.text().then((_responseText) => {
+            return throwException("An unexpected server error occurred.", status, _responseText, _headers);
+            });
+        }
+        return Promise.resolve<EventDto[]>(null as any);
+    }
+
+    /**
+     * @param page (optional) 
+     * @param pageSize (optional) 
+     * @return OK
+     */
+    myEvents(page: number | undefined, pageSize: number | undefined): Promise<EventDto[]> {
+        let url_ = this.baseUrl + "/api/Event/my-events?";
+        if (page === null)
+            throw new Error("The parameter 'page' cannot be null.");
+        else if (page !== undefined)
+            url_ += "page=" + encodeURIComponent("" + page) + "&";
+        if (pageSize === null)
+            throw new Error("The parameter 'pageSize' cannot be null.");
+        else if (pageSize !== undefined)
+            url_ += "pageSize=" + encodeURIComponent("" + pageSize) + "&";
+        url_ = url_.replace(/[?&]$/, "");
+
+        let options_: RequestInit = {
+            method: "GET",
+            headers: {
+                "Accept": "text/plain"
+            }
+        };
+
+        return this.http.fetch(url_, options_).then((_response: Response) => {
+            return this.processMyEvents(_response);
+        });
+    }
+
+    protected processMyEvents(response: Response): Promise<EventDto[]> {
+        const status = response.status;
+        let _headers: any = {}; if (response.headers && response.headers.forEach) { response.headers.forEach((v: any, k: any) => _headers[k] = v); };
+        if (status === 200) {
+            return response.text().then((_responseText) => {
+            let result200: any = null;
+            let resultData200 = _responseText === "" ? null : JSON.parse(_responseText, this.jsonParseReviver);
+            if (Array.isArray(resultData200)) {
+                result200 = [] as any;
+                for (let item of resultData200)
+                    result200!.push(EventDto.fromJS(item));
+            }
+            else {
+                result200 = <any>null;
+            }
+            return result200;
+            });
+        } else if (status !== 200 && status !== 204) {
+            return response.text().then((_responseText) => {
+            return throwException("An unexpected server error occurred.", status, _responseText, _headers);
+            });
+        }
+        return Promise.resolve<EventDto[]>(null as any);
+    }
+
+    /**
+     * @param body (optional) 
+     * @return OK
+     */
+    eventPOST(body: CreateEventDto | undefined): Promise<EventDto> {
+        let url_ = this.baseUrl + "/api/Event";
+        url_ = url_.replace(/[?&]$/, "");
+
+        const content_ = JSON.stringify(body);
+
+        let options_: RequestInit = {
+            body: content_,
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json",
+                "Accept": "text/plain"
+            }
+        };
+
+        return this.http.fetch(url_, options_).then((_response: Response) => {
+            return this.processEventPOST(_response);
+        });
+    }
+
+    protected processEventPOST(response: Response): Promise<EventDto> {
+        const status = response.status;
+        let _headers: any = {}; if (response.headers && response.headers.forEach) { response.headers.forEach((v: any, k: any) => _headers[k] = v); };
+        if (status === 200) {
+            return response.text().then((_responseText) => {
+            let result200: any = null;
+            let resultData200 = _responseText === "" ? null : JSON.parse(_responseText, this.jsonParseReviver);
+            result200 = EventDto.fromJS(resultData200);
+            return result200;
+            });
+        } else if (status !== 200 && status !== 204) {
+            return response.text().then((_responseText) => {
+            return throwException("An unexpected server error occurred.", status, _responseText, _headers);
+            });
+        }
+        return Promise.resolve<EventDto>(null as any);
+    }
+
+    /**
+     * @param body (optional) 
+     * @return OK
+     */
+    rsvpPOST(id: string, body: CreateRsvpDto | undefined): Promise<EventRsvpDto> {
+        let url_ = this.baseUrl + "/api/Event/{id}/rsvp";
+        if (id === undefined || id === null)
+            throw new Error("The parameter 'id' must be defined.");
+        url_ = url_.replace("{id}", encodeURIComponent("" + id));
+        url_ = url_.replace(/[?&]$/, "");
+
+        const content_ = JSON.stringify(body);
+
+        let options_: RequestInit = {
+            body: content_,
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json",
+                "Accept": "text/plain"
+            }
+        };
+
+        return this.http.fetch(url_, options_).then((_response: Response) => {
+            return this.processRsvpPOST(_response);
+        });
+    }
+
+    protected processRsvpPOST(response: Response): Promise<EventRsvpDto> {
+        const status = response.status;
+        let _headers: any = {}; if (response.headers && response.headers.forEach) { response.headers.forEach((v: any, k: any) => _headers[k] = v); };
+        if (status === 200) {
+            return response.text().then((_responseText) => {
+            let result200: any = null;
+            let resultData200 = _responseText === "" ? null : JSON.parse(_responseText, this.jsonParseReviver);
+            result200 = EventRsvpDto.fromJS(resultData200);
+            return result200;
+            });
+        } else if (status !== 200 && status !== 204) {
+            return response.text().then((_responseText) => {
+            return throwException("An unexpected server error occurred.", status, _responseText, _headers);
+            });
+        }
+        return Promise.resolve<EventRsvpDto>(null as any);
+    }
+
+    /**
+     * @return OK
+     */
+    rsvpDELETE(id: string): Promise<void> {
+        let url_ = this.baseUrl + "/api/Event/{id}/rsvp";
+        if (id === undefined || id === null)
+            throw new Error("The parameter 'id' must be defined.");
+        url_ = url_.replace("{id}", encodeURIComponent("" + id));
+        url_ = url_.replace(/[?&]$/, "");
+
+        let options_: RequestInit = {
+            method: "DELETE",
+            headers: {
+            }
+        };
+
+        return this.http.fetch(url_, options_).then((_response: Response) => {
+            return this.processRsvpDELETE(_response);
+        });
+    }
+
+    protected processRsvpDELETE(response: Response): Promise<void> {
+        const status = response.status;
+        let _headers: any = {}; if (response.headers && response.headers.forEach) { response.headers.forEach((v: any, k: any) => _headers[k] = v); };
+        if (status === 200) {
+            return response.text().then((_responseText) => {
+            return;
+            });
+        } else if (status !== 200 && status !== 204) {
+            return response.text().then((_responseText) => {
+            return throwException("An unexpected server error occurred.", status, _responseText, _headers);
+            });
+        }
+        return Promise.resolve<void>(null as any);
+    }
+
+    /**
+     * @return OK
+     */
+    rsvps(id: string): Promise<EventRsvpDto[]> {
+        let url_ = this.baseUrl + "/api/Event/{id}/rsvps";
+        if (id === undefined || id === null)
+            throw new Error("The parameter 'id' must be defined.");
+        url_ = url_.replace("{id}", encodeURIComponent("" + id));
+        url_ = url_.replace(/[?&]$/, "");
+
+        let options_: RequestInit = {
+            method: "GET",
+            headers: {
+                "Accept": "text/plain"
+            }
+        };
+
+        return this.http.fetch(url_, options_).then((_response: Response) => {
+            return this.processRsvps(_response);
+        });
+    }
+
+    protected processRsvps(response: Response): Promise<EventRsvpDto[]> {
+        const status = response.status;
+        let _headers: any = {}; if (response.headers && response.headers.forEach) { response.headers.forEach((v: any, k: any) => _headers[k] = v); };
+        if (status === 200) {
+            return response.text().then((_responseText) => {
+            let result200: any = null;
+            let resultData200 = _responseText === "" ? null : JSON.parse(_responseText, this.jsonParseReviver);
+            if (Array.isArray(resultData200)) {
+                result200 = [] as any;
+                for (let item of resultData200)
+                    result200!.push(EventRsvpDto.fromJS(item));
+            }
+            else {
+                result200 = <any>null;
+            }
+            return result200;
+            });
+        } else if (status !== 200 && status !== 204) {
+            return response.text().then((_responseText) => {
+            return throwException("An unexpected server error occurred.", status, _responseText, _headers);
+            });
+        }
+        return Promise.resolve<EventRsvpDto[]>(null as any);
+    }
+
+    /**
+     * @return OK
+     */
+    ical(id: string): Promise<void> {
+        let url_ = this.baseUrl + "/api/Event/{id}/ical";
+        if (id === undefined || id === null)
+            throw new Error("The parameter 'id' must be defined.");
+        url_ = url_.replace("{id}", encodeURIComponent("" + id));
+        url_ = url_.replace(/[?&]$/, "");
+
+        let options_: RequestInit = {
+            method: "GET",
+            headers: {
+            }
+        };
+
+        return this.http.fetch(url_, options_).then((_response: Response) => {
+            return this.processIcal(_response);
+        });
+    }
+
+    protected processIcal(response: Response): Promise<void> {
+        const status = response.status;
+        let _headers: any = {}; if (response.headers && response.headers.forEach) { response.headers.forEach((v: any, k: any) => _headers[k] = v); };
+        if (status === 200) {
+            return response.text().then((_responseText) => {
+            return;
+            });
+        } else if (status !== 200 && status !== 204) {
+            return response.text().then((_responseText) => {
+            return throwException("An unexpected server error occurred.", status, _responseText, _headers);
+            });
+        }
+        return Promise.resolve<void>(null as any);
+    }
+
+    /**
      * @return OK
      */
     sendRequest(addresseeId: string): Promise<FriendshipDto> {
@@ -1360,6 +1800,77 @@ export class Client {
         }
         return Promise.resolve<ProfilePageResponseDto>(null as any);
     }
+
+    /**
+     * @param email (optional) 
+     * @return OK
+     */
+    generateTestToken(email: string | undefined): Promise<void> {
+        let url_ = this.baseUrl + "/api/TestAuth/generate-test-token?";
+        if (email === null)
+            throw new Error("The parameter 'email' cannot be null.");
+        else if (email !== undefined)
+            url_ += "email=" + encodeURIComponent("" + email) + "&";
+        url_ = url_.replace(/[?&]$/, "");
+
+        let options_: RequestInit = {
+            method: "GET",
+            headers: {
+            }
+        };
+
+        return this.http.fetch(url_, options_).then((_response: Response) => {
+            return this.processGenerateTestToken(_response);
+        });
+    }
+
+    protected processGenerateTestToken(response: Response): Promise<void> {
+        const status = response.status;
+        let _headers: any = {}; if (response.headers && response.headers.forEach) { response.headers.forEach((v: any, k: any) => _headers[k] = v); };
+        if (status === 200) {
+            return response.text().then((_responseText) => {
+            return;
+            });
+        } else if (status !== 200 && status !== 204) {
+            return response.text().then((_responseText) => {
+            return throwException("An unexpected server error occurred.", status, _responseText, _headers);
+            });
+        }
+        return Promise.resolve<void>(null as any);
+    }
+
+    /**
+     * @return OK
+     */
+    testUsers(): Promise<void> {
+        let url_ = this.baseUrl + "/api/TestAuth/test-users";
+        url_ = url_.replace(/[?&]$/, "");
+
+        let options_: RequestInit = {
+            method: "GET",
+            headers: {
+            }
+        };
+
+        return this.http.fetch(url_, options_).then((_response: Response) => {
+            return this.processTestUsers(_response);
+        });
+    }
+
+    protected processTestUsers(response: Response): Promise<void> {
+        const status = response.status;
+        let _headers: any = {}; if (response.headers && response.headers.forEach) { response.headers.forEach((v: any, k: any) => _headers[k] = v); };
+        if (status === 200) {
+            return response.text().then((_responseText) => {
+            return;
+            });
+        } else if (status !== 200 && status !== 204) {
+            return response.text().then((_responseText) => {
+            return throwException("An unexpected server error occurred.", status, _responseText, _headers);
+            });
+        }
+        return Promise.resolve<void>(null as any);
+    }
 }
 
 export class AppAnnouncementRequest implements IAppAnnouncementRequest {
@@ -1633,6 +2144,90 @@ export interface ICommentDto {
     replies?: CommentDto[] | undefined;
 }
 
+export class CreateEventDto implements ICreateEventDto {
+    title!: string | undefined;
+    text!: string | undefined;
+    startDateTime!: Date;
+    endDateTime?: Date | undefined;
+    location?: string | undefined;
+    timezone?: string | undefined;
+    maxAttendees?: number | undefined;
+    isAllDay?: boolean;
+    isRecurring?: boolean;
+    recurrenceRule?: string | undefined;
+    circleIds?: string[] | undefined;
+
+    constructor(data?: ICreateEventDto) {
+        if (data) {
+            for (var property in data) {
+                if (data.hasOwnProperty(property))
+                    (<any>this)[property] = (<any>data)[property];
+            }
+        }
+    }
+
+    init(_data?: any) {
+        if (_data) {
+            this.title = _data["title"];
+            this.text = _data["text"];
+            this.startDateTime = _data["startDateTime"] ? new Date(_data["startDateTime"].toString()) : <any>undefined;
+            this.endDateTime = _data["endDateTime"] ? new Date(_data["endDateTime"].toString()) : <any>undefined;
+            this.location = _data["location"];
+            this.timezone = _data["timezone"];
+            this.maxAttendees = _data["maxAttendees"];
+            this.isAllDay = _data["isAllDay"];
+            this.isRecurring = _data["isRecurring"];
+            this.recurrenceRule = _data["recurrenceRule"];
+            if (Array.isArray(_data["circleIds"])) {
+                this.circleIds = [] as any;
+                for (let item of _data["circleIds"])
+                    this.circleIds!.push(item);
+            }
+        }
+    }
+
+    static fromJS(data: any): CreateEventDto {
+        data = typeof data === 'object' ? data : {};
+        let result = new CreateEventDto();
+        result.init(data);
+        return result;
+    }
+
+    toJSON(data?: any) {
+        data = typeof data === 'object' ? data : {};
+        data["title"] = this.title;
+        data["text"] = this.text;
+        data["startDateTime"] = this.startDateTime ? this.startDateTime.toISOString() : <any>undefined;
+        data["endDateTime"] = this.endDateTime ? this.endDateTime.toISOString() : <any>undefined;
+        data["location"] = this.location;
+        data["timezone"] = this.timezone;
+        data["maxAttendees"] = this.maxAttendees;
+        data["isAllDay"] = this.isAllDay;
+        data["isRecurring"] = this.isRecurring;
+        data["recurrenceRule"] = this.recurrenceRule;
+        if (Array.isArray(this.circleIds)) {
+            data["circleIds"] = [];
+            for (let item of this.circleIds)
+                data["circleIds"].push(item);
+        }
+        return data;
+    }
+}
+
+export interface ICreateEventDto {
+    title: string | undefined;
+    text: string | undefined;
+    startDateTime: Date;
+    endDateTime?: Date | undefined;
+    location?: string | undefined;
+    timezone?: string | undefined;
+    maxAttendees?: number | undefined;
+    isAllDay?: boolean;
+    isRecurring?: boolean;
+    recurrenceRule?: string | undefined;
+    circleIds?: string[] | undefined;
+}
+
 export class CreatePostDto implements ICreatePostDto {
     text?: string | undefined;
     circleIds?: string[] | undefined;
@@ -1679,6 +2274,250 @@ export class CreatePostDto implements ICreatePostDto {
 export interface ICreatePostDto {
     text?: string | undefined;
     circleIds?: string[] | undefined;
+}
+
+export class CreateRsvpDto implements ICreateRsvpDto {
+    status!: RsvpStatus;
+    notes?: string | undefined;
+
+    constructor(data?: ICreateRsvpDto) {
+        if (data) {
+            for (var property in data) {
+                if (data.hasOwnProperty(property))
+                    (<any>this)[property] = (<any>data)[property];
+            }
+        }
+    }
+
+    init(_data?: any) {
+        if (_data) {
+            this.status = _data["status"];
+            this.notes = _data["notes"];
+        }
+    }
+
+    static fromJS(data: any): CreateRsvpDto {
+        data = typeof data === 'object' ? data : {};
+        let result = new CreateRsvpDto();
+        result.init(data);
+        return result;
+    }
+
+    toJSON(data?: any) {
+        data = typeof data === 'object' ? data : {};
+        data["status"] = this.status;
+        data["notes"] = this.notes;
+        return data;
+    }
+}
+
+export interface ICreateRsvpDto {
+    status: RsvpStatus;
+    notes?: string | undefined;
+}
+
+export class EventDto implements IEventDto {
+    id!: string;
+    userId!: string;
+    date!: Date;
+    text!: string | undefined;
+    user?: UserDto;
+    comments?: CommentDto[] | undefined;
+    sharedWithCircles?: CirclePublicDto[] | undefined;
+    commentCount?: number;
+    title!: string | undefined;
+    startDateTime!: Date;
+    endDateTime?: Date | undefined;
+    location?: string | undefined;
+    timezone?: string | undefined;
+    maxAttendees?: number | undefined;
+    isAllDay?: boolean;
+    isRecurring?: boolean;
+    recurrenceRule?: string | undefined;
+    goingCount?: number;
+    maybeCount?: number;
+    notGoingCount?: number;
+    currentUserRsvp?: RsvpStatus;
+    rsvps?: EventRsvpDto[] | undefined;
+
+    constructor(data?: IEventDto) {
+        if (data) {
+            for (var property in data) {
+                if (data.hasOwnProperty(property))
+                    (<any>this)[property] = (<any>data)[property];
+            }
+        }
+    }
+
+    init(_data?: any) {
+        if (_data) {
+            this.id = _data["id"];
+            this.userId = _data["userId"];
+            this.date = _data["date"] ? new Date(_data["date"].toString()) : <any>undefined;
+            this.text = _data["text"];
+            this.user = _data["user"] ? UserDto.fromJS(_data["user"]) : <any>undefined;
+            if (Array.isArray(_data["comments"])) {
+                this.comments = [] as any;
+                for (let item of _data["comments"])
+                    this.comments!.push(CommentDto.fromJS(item));
+            }
+            if (Array.isArray(_data["sharedWithCircles"])) {
+                this.sharedWithCircles = [] as any;
+                for (let item of _data["sharedWithCircles"])
+                    this.sharedWithCircles!.push(CirclePublicDto.fromJS(item));
+            }
+            this.commentCount = _data["commentCount"];
+            this.title = _data["title"];
+            this.startDateTime = _data["startDateTime"] ? new Date(_data["startDateTime"].toString()) : <any>undefined;
+            this.endDateTime = _data["endDateTime"] ? new Date(_data["endDateTime"].toString()) : <any>undefined;
+            this.location = _data["location"];
+            this.timezone = _data["timezone"];
+            this.maxAttendees = _data["maxAttendees"];
+            this.isAllDay = _data["isAllDay"];
+            this.isRecurring = _data["isRecurring"];
+            this.recurrenceRule = _data["recurrenceRule"];
+            this.goingCount = _data["goingCount"];
+            this.maybeCount = _data["maybeCount"];
+            this.notGoingCount = _data["notGoingCount"];
+            this.currentUserRsvp = _data["currentUserRsvp"];
+            if (Array.isArray(_data["rsvps"])) {
+                this.rsvps = [] as any;
+                for (let item of _data["rsvps"])
+                    this.rsvps!.push(EventRsvpDto.fromJS(item));
+            }
+        }
+    }
+
+    static fromJS(data: any): EventDto {
+        data = typeof data === 'object' ? data : {};
+        let result = new EventDto();
+        result.init(data);
+        return result;
+    }
+
+    toJSON(data?: any) {
+        data = typeof data === 'object' ? data : {};
+        data["id"] = this.id;
+        data["userId"] = this.userId;
+        data["date"] = this.date ? this.date.toISOString() : <any>undefined;
+        data["text"] = this.text;
+        data["user"] = this.user ? this.user.toJSON() : <any>undefined;
+        if (Array.isArray(this.comments)) {
+            data["comments"] = [];
+            for (let item of this.comments)
+                data["comments"].push(item.toJSON());
+        }
+        if (Array.isArray(this.sharedWithCircles)) {
+            data["sharedWithCircles"] = [];
+            for (let item of this.sharedWithCircles)
+                data["sharedWithCircles"].push(item.toJSON());
+        }
+        data["commentCount"] = this.commentCount;
+        data["title"] = this.title;
+        data["startDateTime"] = this.startDateTime ? this.startDateTime.toISOString() : <any>undefined;
+        data["endDateTime"] = this.endDateTime ? this.endDateTime.toISOString() : <any>undefined;
+        data["location"] = this.location;
+        data["timezone"] = this.timezone;
+        data["maxAttendees"] = this.maxAttendees;
+        data["isAllDay"] = this.isAllDay;
+        data["isRecurring"] = this.isRecurring;
+        data["recurrenceRule"] = this.recurrenceRule;
+        data["goingCount"] = this.goingCount;
+        data["maybeCount"] = this.maybeCount;
+        data["notGoingCount"] = this.notGoingCount;
+        data["currentUserRsvp"] = this.currentUserRsvp;
+        if (Array.isArray(this.rsvps)) {
+            data["rsvps"] = [];
+            for (let item of this.rsvps)
+                data["rsvps"].push(item.toJSON());
+        }
+        return data;
+    }
+}
+
+export interface IEventDto {
+    id: string;
+    userId: string;
+    date: Date;
+    text: string | undefined;
+    user?: UserDto;
+    comments?: CommentDto[] | undefined;
+    sharedWithCircles?: CirclePublicDto[] | undefined;
+    commentCount?: number;
+    title: string | undefined;
+    startDateTime: Date;
+    endDateTime?: Date | undefined;
+    location?: string | undefined;
+    timezone?: string | undefined;
+    maxAttendees?: number | undefined;
+    isAllDay?: boolean;
+    isRecurring?: boolean;
+    recurrenceRule?: string | undefined;
+    goingCount?: number;
+    maybeCount?: number;
+    notGoingCount?: number;
+    currentUserRsvp?: RsvpStatus;
+    rsvps?: EventRsvpDto[] | undefined;
+}
+
+export class EventRsvpDto implements IEventRsvpDto {
+    id!: string;
+    eventId!: string;
+    userId!: string;
+    status!: RsvpStatus;
+    responseDate?: Date;
+    notes?: string | undefined;
+    user?: UserDto;
+
+    constructor(data?: IEventRsvpDto) {
+        if (data) {
+            for (var property in data) {
+                if (data.hasOwnProperty(property))
+                    (<any>this)[property] = (<any>data)[property];
+            }
+        }
+    }
+
+    init(_data?: any) {
+        if (_data) {
+            this.id = _data["id"];
+            this.eventId = _data["eventId"];
+            this.userId = _data["userId"];
+            this.status = _data["status"];
+            this.responseDate = _data["responseDate"] ? new Date(_data["responseDate"].toString()) : <any>undefined;
+            this.notes = _data["notes"];
+            this.user = _data["user"] ? UserDto.fromJS(_data["user"]) : <any>undefined;
+        }
+    }
+
+    static fromJS(data: any): EventRsvpDto {
+        data = typeof data === 'object' ? data : {};
+        let result = new EventRsvpDto();
+        result.init(data);
+        return result;
+    }
+
+    toJSON(data?: any) {
+        data = typeof data === 'object' ? data : {};
+        data["id"] = this.id;
+        data["eventId"] = this.eventId;
+        data["userId"] = this.userId;
+        data["status"] = this.status;
+        data["responseDate"] = this.responseDate ? this.responseDate.toISOString() : <any>undefined;
+        data["notes"] = this.notes;
+        data["user"] = this.user ? this.user.toJSON() : <any>undefined;
+        return data;
+    }
+}
+
+export interface IEventRsvpDto {
+    id: string;
+    eventId: string;
+    userId: string;
+    status: RsvpStatus;
+    responseDate?: Date;
+    notes?: string | undefined;
+    user?: UserDto;
 }
 
 export class FeedDto implements IFeedDto {
@@ -2228,6 +3067,13 @@ export interface IRegisterModel {
     password?: string | undefined;
 }
 
+export enum RsvpStatus {
+    NoResponse = "NoResponse",
+    Going = "Going",
+    Maybe = "Maybe",
+    NotGoing = "NotGoing",
+}
+
 export class SignInResponseDto implements ISignInResponseDto {
     user!: UserDto;
     token!: string | undefined;
@@ -2269,6 +3115,78 @@ export class SignInResponseDto implements ISignInResponseDto {
 export interface ISignInResponseDto {
     user: UserDto;
     token: string | undefined;
+}
+
+export class UpdateEventDto implements IUpdateEventDto {
+    title?: string | undefined;
+    text?: string | undefined;
+    startDateTime?: Date | undefined;
+    endDateTime?: Date | undefined;
+    location?: string | undefined;
+    timezone?: string | undefined;
+    maxAttendees?: number | undefined;
+    isAllDay?: boolean | undefined;
+    isRecurring?: boolean | undefined;
+    recurrenceRule?: string | undefined;
+
+    constructor(data?: IUpdateEventDto) {
+        if (data) {
+            for (var property in data) {
+                if (data.hasOwnProperty(property))
+                    (<any>this)[property] = (<any>data)[property];
+            }
+        }
+    }
+
+    init(_data?: any) {
+        if (_data) {
+            this.title = _data["title"];
+            this.text = _data["text"];
+            this.startDateTime = _data["startDateTime"] ? new Date(_data["startDateTime"].toString()) : <any>undefined;
+            this.endDateTime = _data["endDateTime"] ? new Date(_data["endDateTime"].toString()) : <any>undefined;
+            this.location = _data["location"];
+            this.timezone = _data["timezone"];
+            this.maxAttendees = _data["maxAttendees"];
+            this.isAllDay = _data["isAllDay"];
+            this.isRecurring = _data["isRecurring"];
+            this.recurrenceRule = _data["recurrenceRule"];
+        }
+    }
+
+    static fromJS(data: any): UpdateEventDto {
+        data = typeof data === 'object' ? data : {};
+        let result = new UpdateEventDto();
+        result.init(data);
+        return result;
+    }
+
+    toJSON(data?: any) {
+        data = typeof data === 'object' ? data : {};
+        data["title"] = this.title;
+        data["text"] = this.text;
+        data["startDateTime"] = this.startDateTime ? this.startDateTime.toISOString() : <any>undefined;
+        data["endDateTime"] = this.endDateTime ? this.endDateTime.toISOString() : <any>undefined;
+        data["location"] = this.location;
+        data["timezone"] = this.timezone;
+        data["maxAttendees"] = this.maxAttendees;
+        data["isAllDay"] = this.isAllDay;
+        data["isRecurring"] = this.isRecurring;
+        data["recurrenceRule"] = this.recurrenceRule;
+        return data;
+    }
+}
+
+export interface IUpdateEventDto {
+    title?: string | undefined;
+    text?: string | undefined;
+    startDateTime?: Date | undefined;
+    endDateTime?: Date | undefined;
+    location?: string | undefined;
+    timezone?: string | undefined;
+    maxAttendees?: number | undefined;
+    isAllDay?: boolean | undefined;
+    isRecurring?: boolean | undefined;
+    recurrenceRule?: string | undefined;
 }
 
 export class UpdateUsersInCircleRequest implements IUpdateUsersInCircleRequest {
