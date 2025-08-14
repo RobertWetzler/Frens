@@ -26,6 +26,7 @@ export const EmailSignInButton = ({ returnTo, navigation, onPress, onCancelPress
     // Stuff for TOS, Age Verification
     const [dateOfBirth, setDateOfBirth] = useState<Date | null>(null)
     const [dateError, setDateError] = useState<string>('')
+    const [passwordError, setPasswordError] = useState<string>('')
     const [submitError, setSubmitError] = useState<Error>(null)
     const [tosAccepted, setTosAccepted] = useState(false)
     const [showTos, setShowTos] = useState(false)
@@ -43,7 +44,38 @@ export const EmailSignInButton = ({ returnTo, navigation, onPress, onCancelPress
         return age >= 13
     }
 
+    const validatePassword = (password: string): string[] => {
+        const errors: string[] = []
+        
+        if (password.length < 6) {
+            errors.push("Passwords must be at least 6 characters.")
+        }
+        
+        if (!/[^a-zA-Z0-9]/.test(password)) {
+            errors.push("Passwords must have at least one non alphanumeric character.")
+        }
+        
+        if (!/[0-9]/.test(password)) {
+            errors.push("Passwords must have at least one digit ('0'-'9').")
+        }
+        
+        if (!/[A-Z]/.test(password)) {
+            errors.push("Passwords must have at least one uppercase ('A'-'Z').")
+        }
+        
+        return errors
+    }
+
     const handleSignUp = async (): Promise<EmailAuthResponse> => {
+        // Clear previous errors
+        setPasswordError('')
+        setSubmitError(null)
+        
+        if (!username || username.trim() === '') {
+            setSubmitError(new Error('Please enter your name'))
+            return
+        }
+        
         if (!dateOfBirth) {
             setDateError('Please enter your date of birth')
             return
@@ -55,17 +87,25 @@ export const EmailSignInButton = ({ returnTo, navigation, onPress, onCancelPress
         }
         setDateError('')
 
+        // Validate password before proceeding
+        const passwordErrors = validatePassword(password)
+        if (passwordErrors.length > 0) {
+            setPasswordError(passwordErrors.join(' '))
+            return
+        }
+
         if (!tosAccepted) {
             setSubmitError(new Error('Please accept the Terms of Service to continue'))
             return
         }
-        setSubmitError(null)
 
         // Proceed with sign up
         try {
             return await signUpWithEmail(username, email, password)
         } catch (error) {
             console.error('Sign up error:', error)
+            setSubmitError(error)
+            throw error
         }
     }
 
@@ -76,6 +116,8 @@ export const EmailSignInButton = ({ returnTo, navigation, onPress, onCancelPress
         setDateOfBirth(null)
         setTosAccepted(false)
         setDateError('')
+        setPasswordError('')
+        setSubmitError(null)
     }
 
     const handlePostLoginRedirect = async () => {
@@ -97,12 +139,16 @@ export const EmailSignInButton = ({ returnTo, navigation, onPress, onCancelPress
 
     const handleAuth = async () => {
         try {
-            let result: ISignInResponseDto, error: Error;
+            let authResponse: EmailAuthResponse;
             if (isSignUp) {
-                ({ result, error } = await handleSignUp());
+                authResponse = await handleSignUp();
             } else {
-                ({ result, error } = await signInWithEmail(email, password));
+                // Clear password error for sign in
+                setPasswordError('')
+                authResponse = await signInWithEmail(email, password);
             }
+
+            const { result, error } = authResponse;
 
             if (error) throw error
 
@@ -122,7 +168,12 @@ export const EmailSignInButton = ({ returnTo, navigation, onPress, onCancelPress
             }
         } catch (error) {
             console.error('Authentication error:', error)
-            // Handle error (e.g., show error message)
+            
+            // For sign in, display the error as a general submit error
+            if (!isSignUp) {
+                setSubmitError(error)
+            }
+            // For sign up, errors are already handled in handleSignUp
         }
     }
     
@@ -203,13 +254,26 @@ export const EmailSignInButton = ({ returnTo, navigation, onPress, onCancelPress
                             placeholder="Password"
                             placeholderTextColor="#666"
                             value={password}
-                            onChangeText={setPassword}
+                            onChangeText={(text) => {
+                                setPassword(text)
+                                // Clear password error when user starts typing
+                                if (passwordError) {
+                                    setPasswordError('')
+                                }
+                            }}
                             textContentType={isSignUp ? "newPassword" : "password"}
                             autoComplete={isSignUp ? "new-password" : "current-password"}
                             secureTextEntry
                             returnKeyType="done"
                             onSubmitEditing={handleAuth}
                         />
+
+                        {/* Display password error */}
+                        {passwordError && (
+                            <View style={styles.passwordErrorContainer}>
+                                <Text style={styles.errorText}>{passwordError}</Text>
+                            </View>
+                        )}
 
                         {/* Extra signup bits */}
                         {isSignUp && (
@@ -258,7 +322,13 @@ export const EmailSignInButton = ({ returnTo, navigation, onPress, onCancelPress
 
                         <Pressable
                             style={styles.switchButton}
-                            onPress={() => setIsSignUp(!isSignUp)}
+                            onPress={() => {
+                                setIsSignUp(!isSignUp)
+                                // Clear errors when switching modes
+                                setPasswordError('')
+                                setSubmitError(null)
+                                setDateError('')
+                            }}
                         >
                             <Text style={styles.switchButtonText}>
                                 {isSignUp
@@ -444,5 +514,10 @@ const styles = StyleSheet.create({
         color: 'red',
         fontSize: 12,
         marginTop: 5,
+    },
+    passwordErrorContainer: {
+        width: '100%',
+        marginTop: 5,
+        marginBottom: 5,
     }
 })
