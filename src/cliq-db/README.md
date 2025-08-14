@@ -55,8 +55,53 @@ WHERE "Id" = 'user-id-here';
 
 ## Database Management
 
-### Scale to Zero Configuration
-Commands to use (From https://fly.io/docs/postgres/managing/scale-to-zero/)
+### Disable Scale to Zero (Keep Database Always Running)
+
+To ensure your database is always available and doesn't scale to zero due to inactivity:
+
+1. **Remove the scale-to-zero environment variable** from `fly.toml`:
+   ```toml
+   [env]
+     PRIMARY_REGION = 'ord'
+     # Remove this line: FLY_SCALE_TO_ZERO = "1h"
+   ```
+
+2. **Configure services to never auto-stop** in `fly.toml`:
+   ```toml
+   [[services]]
+     protocol = 'tcp'
+     internal_port = 5432
+     auto_stop_machines = 'off'  # Prevents automatic stopping
+     auto_start_machines = true
+     min_machines_running = 1    # Ensures at least 1 machine is always running
+   ```
+
+3. **Verify your current image version**:
+   ```bash
+   fly image show --app cliq-db
+   ```
+
+4. **Deploy the configuration changes**:
+   ```bash
+   fly deploy . --image flyio/postgres-flex:17.2
+   ```
+
+5. **Verify the changes were applied**:
+   ```bash
+   fly config show --app cliq-db
+   fly status --app cliq-db
+   ```
+
+### Current Configuration Status
+- ✅ Scale-to-zero: **DISABLED** (removed `FLY_SCALE_TO_ZERO`)
+- ✅ Auto-stop machines: **OFF** (`auto_stop_machines = 'off'`)
+- ✅ Minimum machines: **1** (`min_machines_running = 1`)
+- ✅ Database is always available
+
+### Scale to Zero Configuration (Legacy Instructions)
+*Note: These instructions are for reference only. Scale-to-zero has been disabled for reliability.*
+
+Commands from [Fly.io docs](https://fly.io/docs/postgres/managing/scale-to-zero/):
 
 ```bash
 fly config save --app cliq-db
@@ -74,11 +119,32 @@ fly image show --app cliq-db
 
 Deploy your changes:
 ```bash
-fly deploy . --image flyio/postgres-flex:15.2
-```l file in this dir corresponds to the cliq-db postgres app in fly.io.
+fly deploy . --image flyio/postgres-flex:17.2
+```
 
-Commands to use (From https://fly.io/docs/postgres/managing/scale-to-zero/)
-fly config save --app 
+## Backup Management
+
+### Automatic Snapshots
+Fly.io automatically creates daily snapshots of your database volume:
+
+```bash
+# List existing snapshots
+fly volumes snapshots list vol_4y7z78j2120w23p4
+
+# Create a manual snapshot
+fly volumes snapshots create vol_4y7z78j2120w23p4
+```
+
+### Manual Database Backup
+For additional safety, you can create manual database dumps:
+
+```bash
+# Create a backup of the entire database
+fly postgres connect -a cliq-db -c "pg_dump cliq_server" > backup.sql
+
+# Restore from backup (if needed)
+fly postgres connect -a cliq-db -c "psql cliq_server < backup.sql"
+``` 
 
 Open the fly.toml file and remove the following line from the [env] section:
   FLY_SCALE_TO_ZERO = "1h"
