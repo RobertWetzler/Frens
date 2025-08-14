@@ -1,0 +1,254 @@
+.App {
+  text-align: center;
+  min-height: 100vh;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', sans-serif;
+}
+
+.App-header {
+  padding: 20px;
+  background: rgba(0, 0, 0, 0.1);
+  margin-bottom: 30px;
+}
+
+.App-header h1 {
+  margin: 0 0 10px 0;
+  font-size: 2.5rem;
+  font-weight: 300;
+}
+
+.App-header p {
+  margin: 0;
+  opacity: 0.8;
+  font-size: 1.1rem;
+}
+
+.App-content {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 0 20px;
+  display: flex;
+  gap: 40px;
+  align-items: flex-start;
+  flex-wrap: wrap;
+  justify-content: center;
+  position: relative;
+}
+
+.canvas-container {
+  flex: 1;
+  min-width: 300px;
+  max-width: 600px;
+  position: sticky;
+  top: 20px;
+  z-index: 10;
+}
+
+.controls {
+  flex: 1;
+  min-width: 300px;
+  max-width: 400px;
+  background: rgba(255, 255, 255, 0.1);
+  padding: 30px;
+  border-radius: 12px;
+  backdrop-filter: blur(10px);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+.control-group {
+  margin-bottom: 25px;
+}
+
+.control-group label {
+  display: block;
+  margin-bottom: 8px;
+  font-weight: 500;
+  font-size: 0.95rem;
+}
+
+.control-group input[type="range"] {
+  width: 100%;
+  height: 6px;
+  border-radius: 3px;
+  background: rgba(255, 255, 255, 0.2);
+  outline: none;
+  -webkit-appearance: none;
+  margin-bottom: 10px;
+}
+
+.control-group input[type="range"]::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: #ffffff;
+  cursor: pointer;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.3);
+}
+
+.control-group input[type="range"]::-moz-range-thumb {
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: #ffffff;
+  cursor: pointer;
+  border: none;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.3);
+}
+
+.control-group select {
+  width: 100%;
+  padding: 10px 15px;
+  border: none;
+  border-radius: 6px;
+  background: rgba(255, 255, 255, 0.9);
+  color: #333;
+  font-size: 0.95rem;
+  cursor: pointer;
+}
+
+.control-group select:focus {
+  outline: 2px solid rgba(255, 255, 255, 0.5);
+}
+
+.control-group button {
+  padding: 12px 20px;
+  border: none;
+  border-radius: 6px;
+  background: rgba(255, 255, 255, 0.9);
+  color: #333;
+  font-size: 0.95rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.control-group button:hover {
+  background: #ffffff;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+}
+
+.animation-controls button {
+  width: 100%;
+  background: linear-gradient(45deg, #ff6b6b, #ffd93d);
+  color: white;
+  font-weight: 600;
+}
+
+.animation-controls button:hover {
+  background: linear-gradient(45deg, #ff5252, #ffcc02);
+}
+
+.export-controls {
+  margin-top: 30px;
+  padding-top: 25px;
+  border-top: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+.export-button {
+  width: 100%;
+  padding: 15px 25px;
+  background: linear-gradient(45deg, #667eea, #764ba2);
+  color: white;
+  font-weight: 600;
+  font-size: 1.1rem;
+  border: 2px solid rgba(255, 255, 255, 0.3);
+}
+
+.export-button:hover {
+  background: linear-gradient(45deg, #5a6fd8, #6a4190);
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.3);
+}
+
+@media (max-width: 768px) {
+  .App-content {
+    flex-direction: column;
+    align-items: center;
+  }
+  
+  .canvas-container {
+    position: relative;
+    top: unset;
+    max-width: 90vw;
+    min-width: unset;
+  }
+  
+  .controls {
+    max-width: 90vw;
+    min-width: unset;
+  }
+  
+  .App-header h1 {
+    font-size: 2rem;
+  }
+}
+
+/* Blob Controls Styles */
+.blob-controls h3 {
+  margin: 0 0 15px 0;
+  font-size: 1.1rem;
+  color: rgba(255, 255, 255, 0.9);
+}
+
+.blob-actions {
+  display: flex;
+  gap: 10px;
+  margin-bottom: 15px;
+}
+
+.blob-actions button {
+  flex: 1;
+  padding: 8px 12px;
+  font-size: 0.85rem;
+}
+
+.blob-control {
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 8px;
+  padding: 15px;
+  margin-bottom: 15px;
+}
+
+.blob-control h4 {
+  margin: 0 0 10px 0;
+  font-size: 0.9rem;
+  color: rgba(255, 255, 255, 0.8);
+}
+
+.blob-position, .blob-color, .blob-radius {
+  margin-bottom: 10px;
+}
+
+.blob-position label, .blob-color label, .blob-radius label {
+  font-size: 0.8rem;
+  margin-bottom: 4px;
+}
+
+.remove-blob-btn {
+  width: 100%;
+  background: linear-gradient(45deg, #ff4757, #ff3838);
+  color: white;
+  font-size: 0.85rem;
+  margin-top: 10px;
+}
+
+.remove-blob-btn:hover {
+  background: linear-gradient(45deg, #ff3838, #ff2f2f);
+}
+
+.control-group label input[type="checkbox"] {
+  margin-right: 8px;
+  transform: scale(1.2);
+}
+
+.help-text {
+  font-size: 0.8rem;
+  margin: 5px 0 0 0;
+  opacity: 0.8;
+  font-style: italic;
+}

@@ -13,7 +13,8 @@
       "backgroundColor": "#ffffff"
     },
     "ios": {
-      "supportsTablet": true
+      "supportsTablet": true,
+      "bundleIdentifier": "com.frens.app"
     },
     "android": {
       "adaptiveIcon": {
@@ -37,14 +38,40 @@
       "preferRelatedApplications": false,
       "icons": [
         {
+          "src": "./assets/icon-72.png",
+          "sizes": "72x72",
+          "type": "image/png",
+          "purpose": "any maskable"
+        },
+        {
+          "src": "./assets/icon-144.png",
+          "sizes": "144x144",
+          "type": "image/png",
+          "purpose": "any maskable"
+        },
+        {
+          "src": "./assets/icon-152.png",
+          "sizes": "152x152",
+          "type": "image/png",
+          "purpose": "any maskable"
+        },
+        {
+          "src": "./assets/icon-180.png",
+          "sizes": "180x180",
+          "type": "image/png",
+          "purpose": "any maskable"
+        },
+        {
           "src": "./assets/icon-192.png",
           "sizes": "192x192",
-          "type": "image/png"
+          "type": "image/png",
+          "purpose": "any maskable"
         },
         {
           "src": "./assets/icon-512.png",
           "sizes": "512x512",
-          "type": "image/png"
+          "type": "image/png",
+          "purpose": "any maskable"
         }
       ]
     },
