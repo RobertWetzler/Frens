@@ -3,6 +3,34 @@
 import React from 'react'
 import { Modal, View, Text, ScrollView, Pressable, StyleSheet, Platform } from 'react-native'
 
+// Conditionally import WebView only for non-web platforms
+let WebView: any = null
+if (Platform.OS !== 'web') {
+    WebView = require('react-native-webview').WebView
+}
+
+// Web-specific iframe component
+const WebIframe = ({ src, style, title }: { src: string; style: any; title: string }) => {
+    if (Platform.OS === 'web') {
+        return React.createElement('iframe', {
+            src,
+            style: {
+                width: '100%',
+                height: '100%',
+                minHeight: '400px',
+                border: 'none',
+                backgroundColor: '#fff',
+                overflow: 'auto',
+                ...style
+            },
+            title,
+            scrolling: 'yes',
+            frameBorder: '0'
+        })
+    }
+    return null
+}
+
 interface TermsOfServiceProps {
     isVisible: boolean
     onClose: () => void
@@ -15,6 +43,11 @@ export const TermsOfService = ({ isVisible, onClose }: TermsOfServiceProps) => {
         console.log('Modal attempting to show, isVisible:', isVisible)
     }
 
+    // Get the HTML file path
+    const htmlSource = Platform.OS === 'web' 
+        ? { uri: '/terms-of-service.html' }
+        : require('../assets/terms-of-service.html')
+
     if (Platform.OS === 'web') {
         return (
             <Modal
@@ -26,14 +59,15 @@ export const TermsOfService = ({ isVisible, onClose }: TermsOfServiceProps) => {
             >
                 <View style={styles.modalContainer}>
                     <View style={styles.modalContent}>
-                        <Text style={styles.title}>Terms of Service</Text>
+                        {/* <Text style={styles.title}>Terms of Service</Text> */}
                         
-                        <ScrollView style={styles.scrollView}>
-                            <Text style={styles.termsText}>
-                                {/* Replace this with your actual Terms of Service */}
-                                [Your Terms of Service content will go here]
-                            </Text>
-                        </ScrollView>
+                        <View style={styles.webViewContainer}>
+                            <WebIframe
+                                src="/terms-of-service.html"
+                                style={styles.webView}
+                                title="Terms of Service"
+                            />
+                        </View>
 
                         <Pressable style={styles.closeButton} onPress={onClose}>
                             <Text style={styles.closeButtonText}>Close</Text>
@@ -55,12 +89,17 @@ export const TermsOfService = ({ isVisible, onClose }: TermsOfServiceProps) => {
                     </Pressable>
                 </View>
                 
-                <ScrollView style={styles.scrollView}>
-                    <Text style={styles.termsText}>
-                        {/* Replace this with your actual Terms of Service */}
-                        [Your Terms of Service content will go here]
-                    </Text>
-                </ScrollView>
+                <View style={styles.webViewContainer}>
+                    {WebView && (
+                        <WebView
+                            source={htmlSource}
+                            style={styles.webView}
+                            startInLoadingState={true}
+                            scalesPageToFit={true}
+                            javaScriptEnabled={false}
+                        />
+                    )}
+                </View>
             </View>
         )
     }
@@ -93,10 +132,12 @@ const styles = StyleSheet.create({
     },
     modalContent: {
         width: '90%',
-        maxHeight: '80%',
+        height: '85%',
         backgroundColor: '#fff',
         borderRadius: 10,
         padding: 20,
+        display: 'flex',
+        flexDirection: 'column',
     },
     title: {
         fontSize: 20,
@@ -112,6 +153,19 @@ const styles = StyleSheet.create({
         fontSize: 14,
         lineHeight: 20,
         color: '#333',
+    },
+    termsContainer: {
+        padding: 10,
+    },
+    webViewContainer: {
+        flex: 1,
+        marginBottom: 15,
+        height: '100%',
+    },
+    webView: {
+        flex: 1,
+        backgroundColor: '#fff',
+        minHeight: 400,
     },
     buttonContainer: {
         flexDirection: 'row',
@@ -133,7 +187,6 @@ const styles = StyleSheet.create({
         fontWeight: '600',
     },
     closeButton: {
-        flex: 1,
         height: 44,
         backgroundColor: '#fff',
         justifyContent: 'center',
@@ -141,7 +194,9 @@ const styles = StyleSheet.create({
         borderRadius: 5,
         borderWidth: 1,
         borderColor: '#ddd',
-        marginRight: 5,
+        paddingHorizontal: 20,
+        alignSelf: 'center',
+        minWidth: 100,
     },
     closeButtonText: {
         color: '#666',

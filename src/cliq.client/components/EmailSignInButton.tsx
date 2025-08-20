@@ -298,12 +298,12 @@ export const EmailSignInButton = ({ returnTo, navigation, onPress, onCancelPress
                                                 Terms of Service
                                             </Text>
                                         </Pressable>
-                                        {' '}and{' '}
-                                        <Pressable onPress={() => {/* Open Privacy Policy */ }}>
-                                            <Text style={styles.tosLink}>
+                                        {/* {' '}and{' '} */}
+                                        {/* <Pressable onPress={() => {/* Open Privacy Policy */ }
+                                            {/* <Text style={styles.tosLink}>
                                                 Privacy Policy
-                                            </Text>
-                                        </Pressable>
+                                            </Text> */}
+                                        {/* </Pressable> */}
                                     </Text>
                                 </View>
                                 {submitError && <Text style={styles.errorText}>{submitError.message}</Text>}
