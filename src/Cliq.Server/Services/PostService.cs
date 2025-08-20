@@ -28,7 +28,7 @@ public class PostService : IPostService
     private readonly ICircleService _circleService;
     private readonly IMapper _mapper;
     private readonly ILogger<PostService> _logger;
-    private readonly IEventNotificationService? _eventNotificationService;
+    private readonly IEventNotificationService _eventNotificationService;
 
     public PostService(
         CliqDbContext dbContext,
@@ -37,7 +37,7 @@ public class PostService : IPostService
         ICircleService circleService,
         IMapper mapper,
         ILogger<PostService> logger,
-        IEventNotificationService? eventNotificationService = null)
+        IEventNotificationService eventNotificationService)
     {
         _dbContext = dbContext;
         _commentService = commentService;
@@ -417,10 +417,10 @@ public class PostService : IPostService
             await _dbContext.CirclePosts.AddRangeAsync(circlePosts);
             await SaveChangesAsync();
 
-            // Send notifications to circle members asynchronously
+            // Send notifications to circle members
             try
             {
-                _eventNotificationService?.SendNewPostNotificationAsync(post.Id, userId, text, circleIds, user.Name);
+                await _eventNotificationService.SendNewPostNotificationAsync(post.Id, userId, text, circleIds, user.Name);
             }
             catch (Exception ex)
             {

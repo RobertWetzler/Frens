@@ -42,14 +42,12 @@ public class WebPushNotificationService : IPushNotificationService
 
     private async Task HandlePushMessageDeliveryExceptionAsync(Exception exception, PushSubscription subscription)
     {
-        PushServiceClientException pushServiceClientException = exception as PushServiceClientException;
+        _logger.LogError(exception, "Failed to send push notification to {Endpoint}", subscription.Endpoint);
 
-        if (pushServiceClientException is null)
+        if (exception is PushServiceClientException pushServiceClientException)
         {
-            _logger?.LogError(exception, "Failed requesting push message delivery to {0}.", subscription.Endpoint);
-        }
-        else
-        {
+            _logger?.LogError(pushServiceClientException, "Failed requesting push message delivery to {0}. Status code: {1}, Body: {2}, Headers: {3}",
+                subscription.Endpoint, pushServiceClientException.StatusCode, pushServiceClientException.Body, pushServiceClientException.Headers);
             if ((pushServiceClientException.StatusCode == HttpStatusCode.NotFound) || (pushServiceClientException.StatusCode == HttpStatusCode.Gone))
             {
                 using var scope = _serviceScopeFactory.CreateScope();
