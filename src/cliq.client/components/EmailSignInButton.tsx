@@ -408,6 +408,8 @@ const styles = StyleSheet.create({
         borderRadius: 5,
         paddingHorizontal: 10,
         marginBottom: 10,
+    // Prevent iOS Safari from zooming on focus
+    fontSize: 16,
     },
     submitButton: {
         width: '100%',
