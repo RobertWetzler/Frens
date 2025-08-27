@@ -1,0 +1,16 @@
+{
+    "runtime": "Net80",
+    "documentGenerator": {
+        "fromDocument": {
+            "url": "http://localhost:5188/swagger/v1/swagger.json"
+        }
+    },
+    "codeGenerators": {
+        "openApiToTypeScriptClient": {
+            "template": "Fetch",
+            "typeStyle": "Class",
+            "useAbortSignal": true,
+            "output": "../cliq.client/services/generated/generatedClient.ts"
+        }
+    }
+}

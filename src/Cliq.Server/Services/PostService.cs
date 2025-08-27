@@ -103,7 +103,6 @@ public class PostService : IPostService
             
             // Map RSVP details
             eventDto.Rsvps = eventPost.Rsvps
-                .Where(r => r.Status != RsvpStatus.NoResponse)
                 .Select(r => _mapper.Map<EventRsvpDto>(r))
                 .ToList();
             

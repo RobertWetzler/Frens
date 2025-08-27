@@ -1,0 +1,14 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "NSwag: Generate TypeScript Client",
+      "type": "shell",
+      "command": "dotnet \"/Users/robertwetzler/.nuget/packages/nswag.msbuild/14.2.0/tools/Net80/dotnet-nswag.dll\" run nswag.json",
+      "options": {
+        "cwd": "${workspaceFolder}/src/Cliq.Server"
+      },
+      "problemMatcher": []
+    }
+  ]
+}

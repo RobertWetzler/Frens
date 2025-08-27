@@ -8,32 +8,29 @@
 /* eslint-disable */
 // ReSharper disable InconsistentNaming
 
-export class Client {
+export class AccountClient {
     private http: { fetch(url: RequestInfo, init?: RequestInit): Promise<Response> };
     private baseUrl: string;
     protected jsonParseReviver: ((key: string, value: any) => any) | undefined = undefined;
 
     constructor(baseUrl?: string, http?: { fetch(url: RequestInfo, init?: RequestInit): Promise<Response> }) {
         this.http = http ? http : window as any;
-        this.baseUrl = baseUrl ?? "";
+        this.baseUrl = baseUrl ?? "http://localhost:5188";
     }
 
-    /**
-     * @param body (optional) 
-     * @return OK
-     */
-    register(body: RegisterModel | undefined): Promise<SignInResponseDto> {
+    register(model: RegisterModel, signal?: AbortSignal): Promise<SignInResponseDto> {
         let url_ = this.baseUrl + "/api/Account/register";
         url_ = url_.replace(/[?&]$/, "");
 
-        const content_ = JSON.stringify(body);
+        const content_ = JSON.stringify(model);
 
         let options_: RequestInit = {
             body: content_,
             method: "POST",
+            signal,
             headers: {
                 "Content-Type": "application/json",
-                "Accept": "text/plain"
+                "Accept": "application/json"
             }
         };
 
@@ -60,22 +57,19 @@ export class Client {
         return Promise.resolve<SignInResponseDto>(null as any);
     }
 
-    /**
-     * @param body (optional) 
-     * @return OK
-     */
-    login(body: LoginModel | undefined): Promise<SignInResponseDto> {
+    login(model: LoginModel, signal?: AbortSignal): Promise<SignInResponseDto> {
         let url_ = this.baseUrl + "/api/Account/login";
         url_ = url_.replace(/[?&]$/, "");
 
-        const content_ = JSON.stringify(body);
+        const content_ = JSON.stringify(model);
 
         let options_: RequestInit = {
             body: content_,
             method: "POST",
+            signal,
             headers: {
                 "Content-Type": "application/json",
-                "Accept": "text/plain"
+                "Accept": "application/json"
             }
         };
 
@@ -102,16 +96,15 @@ export class Client {
         return Promise.resolve<SignInResponseDto>(null as any);
     }
 
-    /**
-     * @return OK
-     */
-    logout(): Promise<void> {
+    logout(signal?: AbortSignal): Promise<FileResponse> {
         let url_ = this.baseUrl + "/api/Account/logout";
         url_ = url_.replace(/[?&]$/, "");
 
         let options_: RequestInit = {
             method: "POST",
+            signal,
             headers: {
+                "Accept": "application/octet-stream"
             }
         };
 
@@ -120,41 +113,57 @@ export class Client {
         });
     }
 
-    protected processLogout(response: Response): Promise<void> {
+    protected processLogout(response: Response): Promise<FileResponse> {
         const status = response.status;
         let _headers: any = {}; if (response.headers && response.headers.forEach) { response.headers.forEach((v: any, k: any) => _headers[k] = v); };
-        if (status === 200) {
-            return response.text().then((_responseText) => {
-            return;
-            });
+        if (status === 200 || status === 206) {
+            const contentDisposition = response.headers ? response.headers.get("content-disposition") : undefined;
+            let fileNameMatch = contentDisposition ? /filename\*=(?:(\\?['"])(.*?)\1|(?:[^\s]+'.*?')?([^;\n]*))/g.exec(contentDisposition) : undefined;
+            let fileName = fileNameMatch && fileNameMatch.length > 1 ? fileNameMatch[3] || fileNameMatch[2] : undefined;
+            if (fileName) {
+                fileName = decodeURIComponent(fileName);
+            } else {
+                fileNameMatch = contentDisposition ? /filename="?([^"]*?)"?(;|$)/g.exec(contentDisposition) : undefined;
+                fileName = fileNameMatch && fileNameMatch.length > 1 ? fileNameMatch[1] : undefined;
+            }
+            return response.blob().then(blob => { return { fileName: fileName, data: blob, status: status, headers: _headers }; });
         } else if (status !== 200 && status !== 204) {
             return response.text().then((_responseText) => {
             return throwException("An unexpected server error occurred.", status, _responseText, _headers);
             });
         }
-        return Promise.resolve<void>(null as any);
+        return Promise.resolve<FileResponse>(null as any);
+    }
+}
+
+export class CircleClient {
+    private http: { fetch(url: RequestInfo, init?: RequestInit): Promise<Response> };
+    private baseUrl: string;
+    protected jsonParseReviver: ((key: string, value: any) => any) | undefined = undefined;
+
+    constructor(baseUrl?: string, http?: { fetch(url: RequestInfo, init?: RequestInit): Promise<Response> }) {
+        this.http = http ? http : window as any;
+        this.baseUrl = baseUrl ?? "http://localhost:5188";
     }
 
-    /**
-     * @return OK
-     */
-    circleAll(): Promise<CirclePublicDto[]> {
+    getUserMemberCircle(signal?: AbortSignal): Promise<CirclePublicDto[]> {
         let url_ = this.baseUrl + "/api/Circle";
         url_ = url_.replace(/[?&]$/, "");
 
         let options_: RequestInit = {
             method: "GET",
+            signal,
             headers: {
-                "Accept": "text/plain"
+                "Accept": "application/json"
             }
         };
 
         return this.http.fetch(url_, options_).then((_response: Response) => {
-            return this.processCircleAll(_response);
+            return this.processGetUserMemberCircle(_response);
         });
     }
 
-    protected processCircleAll(response: Response): Promise<CirclePublicDto[]> {
+    protected processGetUserMemberCircle(response: Response): Promise<CirclePublicDto[]> {
         const status = response.status;
         let _headers: any = {}; if (response.headers && response.headers.forEach) { response.headers.forEach((v: any, k: any) => _headers[k] = v); };
         if (status === 200) {
@@ -179,31 +188,28 @@ export class Client {
         return Promise.resolve<CirclePublicDto[]>(null as any);
     }
 
-    /**
-     * @param body (optional) 
-     * @return OK
-     */
-    circlePOST(body: CircleCreationDto | undefined): Promise<CirclePublicDto> {
+    createCircle(circleDto: CircleCreationDto, signal?: AbortSignal): Promise<CirclePublicDto> {
         let url_ = this.baseUrl + "/api/Circle";
         url_ = url_.replace(/[?&]$/, "");
 
-        const content_ = JSON.stringify(body);
+        const content_ = JSON.stringify(circleDto);
 
         let options_: RequestInit = {
             body: content_,
             method: "POST",
+            signal,
             headers: {
                 "Content-Type": "application/json",
-                "Accept": "text/plain"
+                "Accept": "application/json"
             }
         };
 
         return this.http.fetch(url_, options_).then((_response: Response) => {
-            return this.processCirclePOST(_response);
+            return this.processCreateCircle(_response);
         });
     }
 
-    protected processCirclePOST(response: Response): Promise<CirclePublicDto> {
+    protected processCreateCircle(response: Response): Promise<CirclePublicDto> {
         const status = response.status;
         let _headers: any = {}; if (response.headers && response.headers.forEach) { response.headers.forEach((v: any, k: any) => _headers[k] = v); };
         if (status === 200) {
@@ -221,26 +227,24 @@ export class Client {
         return Promise.resolve<CirclePublicDto>(null as any);
     }
 
-    /**
-     * @return OK
-     */
-    own(): Promise<CirclePublicDto[]> {
+    getUserOwnedCircle(signal?: AbortSignal): Promise<CirclePublicDto[]> {
         let url_ = this.baseUrl + "/api/Circle/own";
         url_ = url_.replace(/[?&]$/, "");
 
         let options_: RequestInit = {
             method: "GET",
+            signal,
             headers: {
-                "Accept": "text/plain"
+                "Accept": "application/json"
             }
         };
 
         return this.http.fetch(url_, options_).then((_response: Response) => {
-            return this.processOwn(_response);
+            return this.processGetUserOwnedCircle(_response);
         });
     }
 
-    protected processOwn(response: Response): Promise<CirclePublicDto[]> {
+    protected processGetUserOwnedCircle(response: Response): Promise<CirclePublicDto[]> {
         const status = response.status;
         let _headers: any = {}; if (response.headers && response.headers.forEach) { response.headers.forEach((v: any, k: any) => _headers[k] = v); };
         if (status === 200) {
@@ -265,26 +269,24 @@ export class Client {
         return Promise.resolve<CirclePublicDto[]>(null as any);
     }
 
-    /**
-     * @return OK
-     */
-    withMembers(): Promise<CircleWithMembersDto[]> {
+    getUserCirclesWithMembers(signal?: AbortSignal): Promise<CircleWithMembersDto[]> {
         let url_ = this.baseUrl + "/api/Circle/with-members";
         url_ = url_.replace(/[?&]$/, "");
 
         let options_: RequestInit = {
             method: "GET",
+            signal,
             headers: {
-                "Accept": "text/plain"
+                "Accept": "application/json"
             }
         };
 
         return this.http.fetch(url_, options_).then((_response: Response) => {
-            return this.processWithMembers(_response);
+            return this.processGetUserCirclesWithMembers(_response);
         });
     }
 
-    protected processWithMembers(response: Response): Promise<CircleWithMembersDto[]> {
+    protected processGetUserCirclesWithMembers(response: Response): Promise<CircleWithMembersDto[]> {
         const status = response.status;
         let _headers: any = {}; if (response.headers && response.headers.forEach) { response.headers.forEach((v: any, k: any) => _headers[k] = v); };
         if (status === 200) {
@@ -309,10 +311,7 @@ export class Client {
         return Promise.resolve<CircleWithMembersDto[]>(null as any);
     }
 
-    /**
-     * @return OK
-     */
-    circleGET(circleId: string): Promise<CirclePublicDto> {
+    getCircle(circleId: string, signal?: AbortSignal): Promise<CirclePublicDto> {
         let url_ = this.baseUrl + "/api/Circle/{circleId}";
         if (circleId === undefined || circleId === null)
             throw new Error("The parameter 'circleId' must be defined.");
@@ -321,17 +320,18 @@ export class Client {
 
         let options_: RequestInit = {
             method: "GET",
+            signal,
             headers: {
-                "Accept": "text/plain"
+                "Accept": "application/json"
             }
         };
 
         return this.http.fetch(url_, options_).then((_response: Response) => {
-            return this.processCircleGET(_response);
+            return this.processGetCircle(_response);
         });
     }
 
-    protected processCircleGET(response: Response): Promise<CirclePublicDto> {
+    protected processGetCircle(response: Response): Promise<CirclePublicDto> {
         const status = response.status;
         let _headers: any = {}; if (response.headers && response.headers.forEach) { response.headers.forEach((v: any, k: any) => _headers[k] = v); };
         if (status === 200) {
@@ -349,10 +349,7 @@ export class Client {
         return Promise.resolve<CirclePublicDto>(null as any);
     }
 
-    /**
-     * @return OK
-     */
-    circleDELETE(circleId: string): Promise<void> {
+    deleteCircle(circleId: string, signal?: AbortSignal): Promise<FileResponse> {
         let url_ = this.baseUrl + "/api/Circle/{circleId}";
         if (circleId === undefined || circleId === null)
             throw new Error("The parameter 'circleId' must be defined.");
@@ -361,113 +358,137 @@ export class Client {
 
         let options_: RequestInit = {
             method: "DELETE",
+            signal,
             headers: {
+                "Accept": "application/octet-stream"
             }
         };
 
         return this.http.fetch(url_, options_).then((_response: Response) => {
-            return this.processCircleDELETE(_response);
+            return this.processDeleteCircle(_response);
         });
     }
 
-    protected processCircleDELETE(response: Response): Promise<void> {
+    protected processDeleteCircle(response: Response): Promise<FileResponse> {
         const status = response.status;
         let _headers: any = {}; if (response.headers && response.headers.forEach) { response.headers.forEach((v: any, k: any) => _headers[k] = v); };
-        if (status === 200) {
-            return response.text().then((_responseText) => {
-            return;
-            });
+        if (status === 200 || status === 206) {
+            const contentDisposition = response.headers ? response.headers.get("content-disposition") : undefined;
+            let fileNameMatch = contentDisposition ? /filename\*=(?:(\\?['"])(.*?)\1|(?:[^\s]+'.*?')?([^;\n]*))/g.exec(contentDisposition) : undefined;
+            let fileName = fileNameMatch && fileNameMatch.length > 1 ? fileNameMatch[3] || fileNameMatch[2] : undefined;
+            if (fileName) {
+                fileName = decodeURIComponent(fileName);
+            } else {
+                fileNameMatch = contentDisposition ? /filename="?([^"]*?)"?(;|$)/g.exec(contentDisposition) : undefined;
+                fileName = fileNameMatch && fileNameMatch.length > 1 ? fileNameMatch[1] : undefined;
+            }
+            return response.blob().then(blob => { return { fileName: fileName, data: blob, status: status, headers: _headers }; });
         } else if (status !== 200 && status !== 204) {
             return response.text().then((_responseText) => {
             return throwException("An unexpected server error occurred.", status, _responseText, _headers);
             });
         }
-        return Promise.resolve<void>(null as any);
+        return Promise.resolve<FileResponse>(null as any);
     }
 
-    /**
-     * @param body (optional) 
-     * @return OK
-     */
-    usersPOST(body: UpdateUsersInCircleRequest | undefined): Promise<void> {
+    addUsersToCircle(request: UpdateUsersInCircleRequest, signal?: AbortSignal): Promise<FileResponse> {
         let url_ = this.baseUrl + "/api/Circle/users";
         url_ = url_.replace(/[?&]$/, "");
 
-        const content_ = JSON.stringify(body);
+        const content_ = JSON.stringify(request);
 
         let options_: RequestInit = {
             body: content_,
             method: "POST",
+            signal,
             headers: {
                 "Content-Type": "application/json",
+                "Accept": "application/octet-stream"
             }
         };
 
         return this.http.fetch(url_, options_).then((_response: Response) => {
-            return this.processUsersPOST(_response);
+            return this.processAddUsersToCircle(_response);
         });
     }
 
-    protected processUsersPOST(response: Response): Promise<void> {
+    protected processAddUsersToCircle(response: Response): Promise<FileResponse> {
         const status = response.status;
         let _headers: any = {}; if (response.headers && response.headers.forEach) { response.headers.forEach((v: any, k: any) => _headers[k] = v); };
-        if (status === 200) {
-            return response.text().then((_responseText) => {
-            return;
-            });
+        if (status === 200 || status === 206) {
+            const contentDisposition = response.headers ? response.headers.get("content-disposition") : undefined;
+            let fileNameMatch = contentDisposition ? /filename\*=(?:(\\?['"])(.*?)\1|(?:[^\s]+'.*?')?([^;\n]*))/g.exec(contentDisposition) : undefined;
+            let fileName = fileNameMatch && fileNameMatch.length > 1 ? fileNameMatch[3] || fileNameMatch[2] : undefined;
+            if (fileName) {
+                fileName = decodeURIComponent(fileName);
+            } else {
+                fileNameMatch = contentDisposition ? /filename="?([^"]*?)"?(;|$)/g.exec(contentDisposition) : undefined;
+                fileName = fileNameMatch && fileNameMatch.length > 1 ? fileNameMatch[1] : undefined;
+            }
+            return response.blob().then(blob => { return { fileName: fileName, data: blob, status: status, headers: _headers }; });
         } else if (status !== 200 && status !== 204) {
             return response.text().then((_responseText) => {
             return throwException("An unexpected server error occurred.", status, _responseText, _headers);
             });
         }
-        return Promise.resolve<void>(null as any);
+        return Promise.resolve<FileResponse>(null as any);
     }
 
-    /**
-     * @param body (optional) 
-     * @return OK
-     */
-    usersDELETE(body: UpdateUsersInCircleRequest | undefined): Promise<void> {
+    removeUsersFromCircle(request: UpdateUsersInCircleRequest, signal?: AbortSignal): Promise<FileResponse> {
         let url_ = this.baseUrl + "/api/Circle/users";
         url_ = url_.replace(/[?&]$/, "");
 
-        const content_ = JSON.stringify(body);
+        const content_ = JSON.stringify(request);
 
         let options_: RequestInit = {
             body: content_,
             method: "DELETE",
+            signal,
             headers: {
                 "Content-Type": "application/json",
+                "Accept": "application/octet-stream"
             }
         };
 
         return this.http.fetch(url_, options_).then((_response: Response) => {
-            return this.processUsersDELETE(_response);
+            return this.processRemoveUsersFromCircle(_response);
         });
     }
 
-    protected processUsersDELETE(response: Response): Promise<void> {
+    protected processRemoveUsersFromCircle(response: Response): Promise<FileResponse> {
         const status = response.status;
         let _headers: any = {}; if (response.headers && response.headers.forEach) { response.headers.forEach((v: any, k: any) => _headers[k] = v); };
-        if (status === 200) {
-            return response.text().then((_responseText) => {
-            return;
-            });
+        if (status === 200 || status === 206) {
+            const contentDisposition = response.headers ? response.headers.get("content-disposition") : undefined;
+            let fileNameMatch = contentDisposition ? /filename\*=(?:(\\?['"])(.*?)\1|(?:[^\s]+'.*?')?([^;\n]*))/g.exec(contentDisposition) : undefined;
+            let fileName = fileNameMatch && fileNameMatch.length > 1 ? fileNameMatch[3] || fileNameMatch[2] : undefined;
+            if (fileName) {
+                fileName = decodeURIComponent(fileName);
+            } else {
+                fileNameMatch = contentDisposition ? /filename="?([^"]*?)"?(;|$)/g.exec(contentDisposition) : undefined;
+                fileName = fileNameMatch && fileNameMatch.length > 1 ? fileNameMatch[1] : undefined;
+            }
+            return response.blob().then(blob => { return { fileName: fileName, data: blob, status: status, headers: _headers }; });
         } else if (status !== 200 && status !== 204) {
             return response.text().then((_responseText) => {
             return throwException("An unexpected server error occurred.", status, _responseText, _headers);
             });
         }
-        return Promise.resolve<void>(null as any);
+        return Promise.resolve<FileResponse>(null as any);
+    }
+}
+
+export class CommentClient {
+    private http: { fetch(url: RequestInfo, init?: RequestInit): Promise<Response> };
+    private baseUrl: string;
+    protected jsonParseReviver: ((key: string, value: any) => any) | undefined = undefined;
+
+    constructor(baseUrl?: string, http?: { fetch(url: RequestInfo, init?: RequestInit): Promise<Response> }) {
+        this.http = http ? http : window as any;
+        this.baseUrl = baseUrl ?? "http://localhost:5188";
     }
 
-    /**
-     * @param text (optional) 
-     * @param postId (optional) 
-     * @param parentCommentid (optional) 
-     * @return OK
-     */
-    comment(text: string | undefined, postId: string | undefined, parentCommentid: string | undefined): Promise<CommentDto> {
+    postComment(text: string | undefined, postId: string | undefined, parentCommentid: string | null | undefined, signal?: AbortSignal): Promise<CommentDto> {
         let url_ = this.baseUrl + "/api/Comment?";
         if (text === null)
             throw new Error("The parameter 'text' cannot be null.");
@@ -477,25 +498,24 @@ export class Client {
             throw new Error("The parameter 'postId' cannot be null.");
         else if (postId !== undefined)
             url_ += "postId=" + encodeURIComponent("" + postId) + "&";
-        if (parentCommentid === null)
-            throw new Error("The parameter 'parentCommentid' cannot be null.");
-        else if (parentCommentid !== undefined)
+        if (parentCommentid !== undefined && parentCommentid !== null)
             url_ += "parentCommentid=" + encodeURIComponent("" + parentCommentid) + "&";
         url_ = url_.replace(/[?&]$/, "");
 
         let options_: RequestInit = {
             method: "POST",
+            signal,
             headers: {
-                "Accept": "text/plain"
+                "Accept": "application/json"
             }
         };
 
         return this.http.fetch(url_, options_).then((_response: Response) => {
-            return this.processComment(_response);
+            return this.processPostComment(_response);
         });
     }
 
-    protected processComment(response: Response): Promise<CommentDto> {
+    protected processPostComment(response: Response): Promise<CommentDto> {
         const status = response.status;
         let _headers: any = {}; if (response.headers && response.headers.forEach) { response.headers.forEach((v: any, k: any) => _headers[k] = v); };
         if (status === 200) {
@@ -512,12 +532,19 @@ export class Client {
         }
         return Promise.resolve<CommentDto>(null as any);
     }
+}
 
-    /**
-     * @param includeRsvps (optional) 
-     * @return OK
-     */
-    eventGET(id: string, includeRsvps: boolean | undefined): Promise<EventDto> {
+export class EventClient {
+    private http: { fetch(url: RequestInfo, init?: RequestInit): Promise<Response> };
+    private baseUrl: string;
+    protected jsonParseReviver: ((key: string, value: any) => any) | undefined = undefined;
+
+    constructor(baseUrl?: string, http?: { fetch(url: RequestInfo, init?: RequestInit): Promise<Response> }) {
+        this.http = http ? http : window as any;
+        this.baseUrl = baseUrl ?? "http://localhost:5188";
+    }
+
+    getEvent(id: string, includeRsvps: boolean | undefined, signal?: AbortSignal): Promise<EventDto> {
         let url_ = this.baseUrl + "/api/Event/{id}?";
         if (id === undefined || id === null)
             throw new Error("The parameter 'id' must be defined.");
@@ -530,17 +557,18 @@ export class Client {
 
         let options_: RequestInit = {
             method: "GET",
+            signal,
             headers: {
-                "Accept": "text/plain"
+                "Accept": "application/json"
             }
         };
 
         return this.http.fetch(url_, options_).then((_response: Response) => {
-            return this.processEventGET(_response);
+            return this.processGetEvent(_response);
         });
     }
 
-    protected processEventGET(response: Response): Promise<EventDto> {
+    protected processGetEvent(response: Response): Promise<EventDto> {
         const status = response.status;
         let _headers: any = {}; if (response.headers && response.headers.forEach) { response.headers.forEach((v: any, k: any) => _headers[k] = v); };
         if (status === 200) {
@@ -558,34 +586,31 @@ export class Client {
         return Promise.resolve<EventDto>(null as any);
     }
 
-    /**
-     * @param body (optional) 
-     * @return OK
-     */
-    eventPUT(id: string, body: UpdateEventDto | undefined): Promise<EventDto> {
+    updateEvent(id: string, updateEventDto: UpdateEventDto, signal?: AbortSignal): Promise<EventDto> {
         let url_ = this.baseUrl + "/api/Event/{id}";
         if (id === undefined || id === null)
             throw new Error("The parameter 'id' must be defined.");
         url_ = url_.replace("{id}", encodeURIComponent("" + id));
         url_ = url_.replace(/[?&]$/, "");
 
-        const content_ = JSON.stringify(body);
+        const content_ = JSON.stringify(updateEventDto);
 
         let options_: RequestInit = {
             body: content_,
             method: "PUT",
+            signal,
             headers: {
                 "Content-Type": "application/json",
-                "Accept": "text/plain"
+                "Accept": "application/json"
             }
         };
 
         return this.http.fetch(url_, options_).then((_response: Response) => {
-            return this.processEventPUT(_response);
+            return this.processUpdateEvent(_response);
         });
     }
 
-    protected processEventPUT(response: Response): Promise<EventDto> {
+    protected processUpdateEvent(response: Response): Promise<EventDto> {
         const status = response.status;
         let _headers: any = {}; if (response.headers && response.headers.forEach) { response.headers.forEach((v: any, k: any) => _headers[k] = v); };
         if (status === 200) {
@@ -603,10 +628,7 @@ export class Client {
         return Promise.resolve<EventDto>(null as any);
     }
 
-    /**
-     * @return OK
-     */
-    eventDELETE(id: string): Promise<void> {
+    deleteEvent(id: string, signal?: AbortSignal): Promise<FileResponse> {
         let url_ = this.baseUrl + "/api/Event/{id}";
         if (id === undefined || id === null)
             throw new Error("The parameter 'id' must be defined.");
@@ -615,36 +637,40 @@ export class Client {
 
         let options_: RequestInit = {
             method: "DELETE",
+            signal,
             headers: {
+                "Accept": "application/octet-stream"
             }
         };
 
         return this.http.fetch(url_, options_).then((_response: Response) => {
-            return this.processEventDELETE(_response);
+            return this.processDeleteEvent(_response);
         });
     }
 
-    protected processEventDELETE(response: Response): Promise<void> {
+    protected processDeleteEvent(response: Response): Promise<FileResponse> {
         const status = response.status;
         let _headers: any = {}; if (response.headers && response.headers.forEach) { response.headers.forEach((v: any, k: any) => _headers[k] = v); };
-        if (status === 200) {
-            return response.text().then((_responseText) => {
-            return;
-            });
+        if (status === 200 || status === 206) {
+            const contentDisposition = response.headers ? response.headers.get("content-disposition") : undefined;
+            let fileNameMatch = contentDisposition ? /filename\*=(?:(\\?['"])(.*?)\1|(?:[^\s]+'.*?')?([^;\n]*))/g.exec(contentDisposition) : undefined;
+            let fileName = fileNameMatch && fileNameMatch.length > 1 ? fileNameMatch[3] || fileNameMatch[2] : undefined;
+            if (fileName) {
+                fileName = decodeURIComponent(fileName);
+            } else {
+                fileNameMatch = contentDisposition ? /filename="?([^"]*?)"?(;|$)/g.exec(contentDisposition) : undefined;
+                fileName = fileNameMatch && fileNameMatch.length > 1 ? fileNameMatch[1] : undefined;
+            }
+            return response.blob().then(blob => { return { fileName: fileName, data: blob, status: status, headers: _headers }; });
         } else if (status !== 200 && status !== 204) {
             return response.text().then((_responseText) => {
             return throwException("An unexpected server error occurred.", status, _responseText, _headers);
             });
         }
-        return Promise.resolve<void>(null as any);
+        return Promise.resolve<FileResponse>(null as any);
     }
 
-    /**
-     * @param page (optional) 
-     * @param pageSize (optional) 
-     * @return OK
-     */
-    upcoming(page: number | undefined, pageSize: number | undefined): Promise<EventDto[]> {
+    getUpcomingEvents(page: number | undefined, pageSize: number | undefined, signal?: AbortSignal): Promise<EventDto[]> {
         let url_ = this.baseUrl + "/api/Event/upcoming?";
         if (page === null)
             throw new Error("The parameter 'page' cannot be null.");
@@ -658,17 +684,18 @@ export class Client {
 
         let options_: RequestInit = {
             method: "GET",
+            signal,
             headers: {
-                "Accept": "text/plain"
+                "Accept": "application/json"
             }
         };
 
         return this.http.fetch(url_, options_).then((_response: Response) => {
-            return this.processUpcoming(_response);
+            return this.processGetUpcomingEvents(_response);
         });
     }
 
-    protected processUpcoming(response: Response): Promise<EventDto[]> {
+    protected processGetUpcomingEvents(response: Response): Promise<EventDto[]> {
         const status = response.status;
         let _headers: any = {}; if (response.headers && response.headers.forEach) { response.headers.forEach((v: any, k: any) => _headers[k] = v); };
         if (status === 200) {
@@ -693,12 +720,7 @@ export class Client {
         return Promise.resolve<EventDto[]>(null as any);
     }
 
-    /**
-     * @param page (optional) 
-     * @param pageSize (optional) 
-     * @return OK
-     */
-    myEvents(page: number | undefined, pageSize: number | undefined): Promise<EventDto[]> {
+    getMyEvents(page: number | undefined, pageSize: number | undefined, signal?: AbortSignal): Promise<EventDto[]> {
         let url_ = this.baseUrl + "/api/Event/my-events?";
         if (page === null)
             throw new Error("The parameter 'page' cannot be null.");
@@ -712,17 +734,18 @@ export class Client {
 
         let options_: RequestInit = {
             method: "GET",
+            signal,
             headers: {
-                "Accept": "text/plain"
+                "Accept": "application/json"
             }
         };
 
         return this.http.fetch(url_, options_).then((_response: Response) => {
-            return this.processMyEvents(_response);
+            return this.processGetMyEvents(_response);
         });
     }
 
-    protected processMyEvents(response: Response): Promise<EventDto[]> {
+    protected processGetMyEvents(response: Response): Promise<EventDto[]> {
         const status = response.status;
         let _headers: any = {}; if (response.headers && response.headers.forEach) { response.headers.forEach((v: any, k: any) => _headers[k] = v); };
         if (status === 200) {
@@ -747,31 +770,28 @@ export class Client {
         return Promise.resolve<EventDto[]>(null as any);
     }
 
-    /**
-     * @param body (optional) 
-     * @return OK
-     */
-    eventPOST(body: CreateEventDto | undefined): Promise<EventDto> {
+    createEvent(createEventDto: CreateEventDto, signal?: AbortSignal): Promise<EventDto> {
         let url_ = this.baseUrl + "/api/Event";
         url_ = url_.replace(/[?&]$/, "");
 
-        const content_ = JSON.stringify(body);
+        const content_ = JSON.stringify(createEventDto);
 
         let options_: RequestInit = {
             body: content_,
             method: "POST",
+            signal,
             headers: {
                 "Content-Type": "application/json",
-                "Accept": "text/plain"
+                "Accept": "application/json"
             }
         };
 
         return this.http.fetch(url_, options_).then((_response: Response) => {
-            return this.processEventPOST(_response);
+            return this.processCreateEvent(_response);
         });
     }
 
-    protected processEventPOST(response: Response): Promise<EventDto> {
+    protected processCreateEvent(response: Response): Promise<EventDto> {
         const status = response.status;
         let _headers: any = {}; if (response.headers && response.headers.forEach) { response.headers.forEach((v: any, k: any) => _headers[k] = v); };
         if (status === 200) {
@@ -789,34 +809,31 @@ export class Client {
         return Promise.resolve<EventDto>(null as any);
     }
 
-    /**
-     * @param body (optional) 
-     * @return OK
-     */
-    rsvpPOST(id: string, body: CreateRsvpDto | undefined): Promise<EventRsvpDto> {
+    rsvpToEvent(id: string, rsvpDto: CreateRsvpDto, signal?: AbortSignal): Promise<EventRsvpDto> {
         let url_ = this.baseUrl + "/api/Event/{id}/rsvp";
         if (id === undefined || id === null)
             throw new Error("The parameter 'id' must be defined.");
         url_ = url_.replace("{id}", encodeURIComponent("" + id));
         url_ = url_.replace(/[?&]$/, "");
 
-        const content_ = JSON.stringify(body);
+        const content_ = JSON.stringify(rsvpDto);
 
         let options_: RequestInit = {
             body: content_,
             method: "POST",
+            signal,
             headers: {
                 "Content-Type": "application/json",
-                "Accept": "text/plain"
+                "Accept": "application/json"
             }
         };
 
         return this.http.fetch(url_, options_).then((_response: Response) => {
-            return this.processRsvpPOST(_response);
+            return this.processRsvpToEvent(_response);
         });
     }
 
-    protected processRsvpPOST(response: Response): Promise<EventRsvpDto> {
+    protected processRsvpToEvent(response: Response): Promise<EventRsvpDto> {
         const status = response.status;
         let _headers: any = {}; if (response.headers && response.headers.forEach) { response.headers.forEach((v: any, k: any) => _headers[k] = v); };
         if (status === 200) {
@@ -834,10 +851,7 @@ export class Client {
         return Promise.resolve<EventRsvpDto>(null as any);
     }
 
-    /**
-     * @return OK
-     */
-    rsvpDELETE(id: string): Promise<void> {
+    removeRsvp(id: string, signal?: AbortSignal): Promise<FileResponse> {
         let url_ = this.baseUrl + "/api/Event/{id}/rsvp";
         if (id === undefined || id === null)
             throw new Error("The parameter 'id' must be defined.");
@@ -846,34 +860,40 @@ export class Client {
 
         let options_: RequestInit = {
             method: "DELETE",
+            signal,
             headers: {
+                "Accept": "application/octet-stream"
             }
         };
 
         return this.http.fetch(url_, options_).then((_response: Response) => {
-            return this.processRsvpDELETE(_response);
+            return this.processRemoveRsvp(_response);
         });
     }
 
-    protected processRsvpDELETE(response: Response): Promise<void> {
+    protected processRemoveRsvp(response: Response): Promise<FileResponse> {
         const status = response.status;
         let _headers: any = {}; if (response.headers && response.headers.forEach) { response.headers.forEach((v: any, k: any) => _headers[k] = v); };
-        if (status === 200) {
-            return response.text().then((_responseText) => {
-            return;
-            });
+        if (status === 200 || status === 206) {
+            const contentDisposition = response.headers ? response.headers.get("content-disposition") : undefined;
+            let fileNameMatch = contentDisposition ? /filename\*=(?:(\\?['"])(.*?)\1|(?:[^\s]+'.*?')?([^;\n]*))/g.exec(contentDisposition) : undefined;
+            let fileName = fileNameMatch && fileNameMatch.length > 1 ? fileNameMatch[3] || fileNameMatch[2] : undefined;
+            if (fileName) {
+                fileName = decodeURIComponent(fileName);
+            } else {
+                fileNameMatch = contentDisposition ? /filename="?([^"]*?)"?(;|$)/g.exec(contentDisposition) : undefined;
+                fileName = fileNameMatch && fileNameMatch.length > 1 ? fileNameMatch[1] : undefined;
+            }
+            return response.blob().then(blob => { return { fileName: fileName, data: blob, status: status, headers: _headers }; });
         } else if (status !== 200 && status !== 204) {
             return response.text().then((_responseText) => {
             return throwException("An unexpected server error occurred.", status, _responseText, _headers);
             });
         }
-        return Promise.resolve<void>(null as any);
+        return Promise.resolve<FileResponse>(null as any);
     }
 
-    /**
-     * @return OK
-     */
-    rsvps(id: string): Promise<EventRsvpDto[]> {
+    getEventRsvps(id: string, signal?: AbortSignal): Promise<EventRsvpDto[]> {
         let url_ = this.baseUrl + "/api/Event/{id}/rsvps";
         if (id === undefined || id === null)
             throw new Error("The parameter 'id' must be defined.");
@@ -882,17 +902,18 @@ export class Client {
 
         let options_: RequestInit = {
             method: "GET",
+            signal,
             headers: {
-                "Accept": "text/plain"
+                "Accept": "application/json"
             }
         };
 
         return this.http.fetch(url_, options_).then((_response: Response) => {
-            return this.processRsvps(_response);
+            return this.processGetEventRsvps(_response);
         });
     }
 
-    protected processRsvps(response: Response): Promise<EventRsvpDto[]> {
+    protected processGetEventRsvps(response: Response): Promise<EventRsvpDto[]> {
         const status = response.status;
         let _headers: any = {}; if (response.headers && response.headers.forEach) { response.headers.forEach((v: any, k: any) => _headers[k] = v); };
         if (status === 200) {
@@ -917,10 +938,7 @@ export class Client {
         return Promise.resolve<EventRsvpDto[]>(null as any);
     }
 
-    /**
-     * @return OK
-     */
-    ical(id: string): Promise<void> {
+    getEventICalendar(id: string, signal?: AbortSignal): Promise<FileResponse> {
         let url_ = this.baseUrl + "/api/Event/{id}/ical";
         if (id === undefined || id === null)
             throw new Error("The parameter 'id' must be defined.");
@@ -929,34 +947,51 @@ export class Client {
 
         let options_: RequestInit = {
             method: "GET",
+            signal,
             headers: {
+                "Accept": "application/octet-stream"
             }
         };
 
         return this.http.fetch(url_, options_).then((_response: Response) => {
-            return this.processIcal(_response);
+            return this.processGetEventICalendar(_response);
         });
     }
 
-    protected processIcal(response: Response): Promise<void> {
+    protected processGetEventICalendar(response: Response): Promise<FileResponse> {
         const status = response.status;
         let _headers: any = {}; if (response.headers && response.headers.forEach) { response.headers.forEach((v: any, k: any) => _headers[k] = v); };
-        if (status === 200) {
-            return response.text().then((_responseText) => {
-            return;
-            });
+        if (status === 200 || status === 206) {
+            const contentDisposition = response.headers ? response.headers.get("content-disposition") : undefined;
+            let fileNameMatch = contentDisposition ? /filename\*=(?:(\\?['"])(.*?)\1|(?:[^\s]+'.*?')?([^;\n]*))/g.exec(contentDisposition) : undefined;
+            let fileName = fileNameMatch && fileNameMatch.length > 1 ? fileNameMatch[3] || fileNameMatch[2] : undefined;
+            if (fileName) {
+                fileName = decodeURIComponent(fileName);
+            } else {
+                fileNameMatch = contentDisposition ? /filename="?([^"]*?)"?(;|$)/g.exec(contentDisposition) : undefined;
+                fileName = fileNameMatch && fileNameMatch.length > 1 ? fileNameMatch[1] : undefined;
+            }
+            return response.blob().then(blob => { return { fileName: fileName, data: blob, status: status, headers: _headers }; });
         } else if (status !== 200 && status !== 204) {
             return response.text().then((_responseText) => {
             return throwException("An unexpected server error occurred.", status, _responseText, _headers);
             });
         }
-        return Promise.resolve<void>(null as any);
+        return Promise.resolve<FileResponse>(null as any);
+    }
+}
+
+export class FrenshipClient {
+    private http: { fetch(url: RequestInfo, init?: RequestInit): Promise<Response> };
+    private baseUrl: string;
+    protected jsonParseReviver: ((key: string, value: any) => any) | undefined = undefined;
+
+    constructor(baseUrl?: string, http?: { fetch(url: RequestInfo, init?: RequestInit): Promise<Response> }) {
+        this.http = http ? http : window as any;
+        this.baseUrl = baseUrl ?? "http://localhost:5188";
     }
 
-    /**
-     * @return OK
-     */
-    sendRequest(addresseeId: string): Promise<FriendshipDto> {
+    sendFriendRequest(addresseeId: string, signal?: AbortSignal): Promise<FriendshipDto> {
         let url_ = this.baseUrl + "/api/Frenship/send-request/{addresseeId}";
         if (addresseeId === undefined || addresseeId === null)
             throw new Error("The parameter 'addresseeId' must be defined.");
@@ -965,17 +1000,18 @@ export class Client {
 
         let options_: RequestInit = {
             method: "POST",
+            signal,
             headers: {
-                "Accept": "text/plain"
+                "Accept": "application/json"
             }
         };
 
         return this.http.fetch(url_, options_).then((_response: Response) => {
-            return this.processSendRequest(_response);
+            return this.processSendFriendRequest(_response);
         });
     }
 
-    protected processSendRequest(response: Response): Promise<FriendshipDto> {
+    protected processSendFriendRequest(response: Response): Promise<FriendshipDto> {
         const status = response.status;
         let _headers: any = {}; if (response.headers && response.headers.forEach) { response.headers.forEach((v: any, k: any) => _headers[k] = v); };
         if (status === 200) {
@@ -993,10 +1029,7 @@ export class Client {
         return Promise.resolve<FriendshipDto>(null as any);
     }
 
-    /**
-     * @return OK
-     */
-    acceptRequest(friendshipId: string): Promise<FriendshipDto> {
+    acceptFriendRequest(friendshipId: string, signal?: AbortSignal): Promise<FriendshipDto> {
         let url_ = this.baseUrl + "/api/Frenship/accept-request/{friendshipId}";
         if (friendshipId === undefined || friendshipId === null)
             throw new Error("The parameter 'friendshipId' must be defined.");
@@ -1005,17 +1038,18 @@ export class Client {
 
         let options_: RequestInit = {
             method: "POST",
+            signal,
             headers: {
-                "Accept": "text/plain"
+                "Accept": "application/json"
             }
         };
 
         return this.http.fetch(url_, options_).then((_response: Response) => {
-            return this.processAcceptRequest(_response);
+            return this.processAcceptFriendRequest(_response);
         });
     }
 
-    protected processAcceptRequest(response: Response): Promise<FriendshipDto> {
+    protected processAcceptFriendRequest(response: Response): Promise<FriendshipDto> {
         const status = response.status;
         let _headers: any = {}; if (response.headers && response.headers.forEach) { response.headers.forEach((v: any, k: any) => _headers[k] = v); };
         if (status === 200) {
@@ -1033,10 +1067,7 @@ export class Client {
         return Promise.resolve<FriendshipDto>(null as any);
     }
 
-    /**
-     * @return OK
-     */
-    rejectRequest(friendshipId: string): Promise<void> {
+    rejectFriendRequest(friendshipId: string, signal?: AbortSignal): Promise<FileResponse> {
         let url_ = this.baseUrl + "/api/Frenship/reject-request/{friendshipId}";
         if (friendshipId === undefined || friendshipId === null)
             throw new Error("The parameter 'friendshipId' must be defined.");
@@ -1045,34 +1076,40 @@ export class Client {
 
         let options_: RequestInit = {
             method: "POST",
+            signal,
             headers: {
+                "Accept": "application/octet-stream"
             }
         };
 
         return this.http.fetch(url_, options_).then((_response: Response) => {
-            return this.processRejectRequest(_response);
+            return this.processRejectFriendRequest(_response);
         });
     }
 
-    protected processRejectRequest(response: Response): Promise<void> {
+    protected processRejectFriendRequest(response: Response): Promise<FileResponse> {
         const status = response.status;
         let _headers: any = {}; if (response.headers && response.headers.forEach) { response.headers.forEach((v: any, k: any) => _headers[k] = v); };
-        if (status === 200) {
-            return response.text().then((_responseText) => {
-            return;
-            });
+        if (status === 200 || status === 206) {
+            const contentDisposition = response.headers ? response.headers.get("content-disposition") : undefined;
+            let fileNameMatch = contentDisposition ? /filename\*=(?:(\\?['"])(.*?)\1|(?:[^\s]+'.*?')?([^;\n]*))/g.exec(contentDisposition) : undefined;
+            let fileName = fileNameMatch && fileNameMatch.length > 1 ? fileNameMatch[3] || fileNameMatch[2] : undefined;
+            if (fileName) {
+                fileName = decodeURIComponent(fileName);
+            } else {
+                fileNameMatch = contentDisposition ? /filename="?([^"]*?)"?(;|$)/g.exec(contentDisposition) : undefined;
+                fileName = fileNameMatch && fileNameMatch.length > 1 ? fileNameMatch[1] : undefined;
+            }
+            return response.blob().then(blob => { return { fileName: fileName, data: blob, status: status, headers: _headers }; });
         } else if (status !== 200 && status !== 204) {
             return response.text().then((_responseText) => {
             return throwException("An unexpected server error occurred.", status, _responseText, _headers);
             });
         }
-        return Promise.resolve<void>(null as any);
+        return Promise.resolve<FileResponse>(null as any);
     }
 
-    /**
-     * @return OK
-     */
-    cancelRequest(friendshipId: string): Promise<void> {
+    cancelFriendRequest(friendshipId: string, signal?: AbortSignal): Promise<FileResponse> {
         let url_ = this.baseUrl + "/api/Frenship/cancel-request/{friendshipId}";
         if (friendshipId === undefined || friendshipId === null)
             throw new Error("The parameter 'friendshipId' must be defined.");
@@ -1081,34 +1118,40 @@ export class Client {
 
         let options_: RequestInit = {
             method: "DELETE",
+            signal,
             headers: {
+                "Accept": "application/octet-stream"
             }
         };
 
         return this.http.fetch(url_, options_).then((_response: Response) => {
-            return this.processCancelRequest(_response);
+            return this.processCancelFriendRequest(_response);
         });
     }
 
-    protected processCancelRequest(response: Response): Promise<void> {
+    protected processCancelFriendRequest(response: Response): Promise<FileResponse> {
         const status = response.status;
         let _headers: any = {}; if (response.headers && response.headers.forEach) { response.headers.forEach((v: any, k: any) => _headers[k] = v); };
-        if (status === 200) {
-            return response.text().then((_responseText) => {
-            return;
-            });
+        if (status === 200 || status === 206) {
+            const contentDisposition = response.headers ? response.headers.get("content-disposition") : undefined;
+            let fileNameMatch = contentDisposition ? /filename\*=(?:(\\?['"])(.*?)\1|(?:[^\s]+'.*?')?([^;\n]*))/g.exec(contentDisposition) : undefined;
+            let fileName = fileNameMatch && fileNameMatch.length > 1 ? fileNameMatch[3] || fileNameMatch[2] : undefined;
+            if (fileName) {
+                fileName = decodeURIComponent(fileName);
+            } else {
+                fileNameMatch = contentDisposition ? /filename="?([^"]*?)"?(;|$)/g.exec(contentDisposition) : undefined;
+                fileName = fileNameMatch && fileNameMatch.length > 1 ? fileNameMatch[1] : undefined;
+            }
+            return response.blob().then(blob => { return { fileName: fileName, data: blob, status: status, headers: _headers }; });
         } else if (status !== 200 && status !== 204) {
             return response.text().then((_responseText) => {
             return throwException("An unexpected server error occurred.", status, _responseText, _headers);
             });
         }
-        return Promise.resolve<void>(null as any);
+        return Promise.resolve<FileResponse>(null as any);
     }
 
-    /**
-     * @return OK
-     */
-    removeFren(friendId: string): Promise<void> {
+    removeFriend(friendId: string, signal?: AbortSignal): Promise<FileResponse> {
         let url_ = this.baseUrl + "/api/Frenship/remove-fren/{friendId}";
         if (friendId === undefined || friendId === null)
             throw new Error("The parameter 'friendId' must be defined.");
@@ -1117,34 +1160,40 @@ export class Client {
 
         let options_: RequestInit = {
             method: "DELETE",
+            signal,
             headers: {
+                "Accept": "application/octet-stream"
             }
         };
 
         return this.http.fetch(url_, options_).then((_response: Response) => {
-            return this.processRemoveFren(_response);
+            return this.processRemoveFriend(_response);
         });
     }
 
-    protected processRemoveFren(response: Response): Promise<void> {
+    protected processRemoveFriend(response: Response): Promise<FileResponse> {
         const status = response.status;
         let _headers: any = {}; if (response.headers && response.headers.forEach) { response.headers.forEach((v: any, k: any) => _headers[k] = v); };
-        if (status === 200) {
-            return response.text().then((_responseText) => {
-            return;
-            });
+        if (status === 200 || status === 206) {
+            const contentDisposition = response.headers ? response.headers.get("content-disposition") : undefined;
+            let fileNameMatch = contentDisposition ? /filename\*=(?:(\\?['"])(.*?)\1|(?:[^\s]+'.*?')?([^;\n]*))/g.exec(contentDisposition) : undefined;
+            let fileName = fileNameMatch && fileNameMatch.length > 1 ? fileNameMatch[3] || fileNameMatch[2] : undefined;
+            if (fileName) {
+                fileName = decodeURIComponent(fileName);
+            } else {
+                fileNameMatch = contentDisposition ? /filename="?([^"]*?)"?(;|$)/g.exec(contentDisposition) : undefined;
+                fileName = fileNameMatch && fileNameMatch.length > 1 ? fileNameMatch[1] : undefined;
+            }
+            return response.blob().then(blob => { return { fileName: fileName, data: blob, status: status, headers: _headers }; });
         } else if (status !== 200 && status !== 204) {
             return response.text().then((_responseText) => {
             return throwException("An unexpected server error occurred.", status, _responseText, _headers);
             });
         }
-        return Promise.resolve<void>(null as any);
+        return Promise.resolve<FileResponse>(null as any);
     }
 
-    /**
-     * @return OK
-     */
-    blockUser(userToBlockId: string): Promise<void> {
+    blockUser(userToBlockId: string, signal?: AbortSignal): Promise<FileResponse> {
         let url_ = this.baseUrl + "/api/Frenship/block-user/{userToBlockId}";
         if (userToBlockId === undefined || userToBlockId === null)
             throw new Error("The parameter 'userToBlockId' must be defined.");
@@ -1153,7 +1202,9 @@ export class Client {
 
         let options_: RequestInit = {
             method: "POST",
+            signal,
             headers: {
+                "Accept": "application/octet-stream"
             }
         };
 
@@ -1162,41 +1213,46 @@ export class Client {
         });
     }
 
-    protected processBlockUser(response: Response): Promise<void> {
+    protected processBlockUser(response: Response): Promise<FileResponse> {
         const status = response.status;
         let _headers: any = {}; if (response.headers && response.headers.forEach) { response.headers.forEach((v: any, k: any) => _headers[k] = v); };
-        if (status === 200) {
-            return response.text().then((_responseText) => {
-            return;
-            });
+        if (status === 200 || status === 206) {
+            const contentDisposition = response.headers ? response.headers.get("content-disposition") : undefined;
+            let fileNameMatch = contentDisposition ? /filename\*=(?:(\\?['"])(.*?)\1|(?:[^\s]+'.*?')?([^;\n]*))/g.exec(contentDisposition) : undefined;
+            let fileName = fileNameMatch && fileNameMatch.length > 1 ? fileNameMatch[3] || fileNameMatch[2] : undefined;
+            if (fileName) {
+                fileName = decodeURIComponent(fileName);
+            } else {
+                fileNameMatch = contentDisposition ? /filename="?([^"]*?)"?(;|$)/g.exec(contentDisposition) : undefined;
+                fileName = fileNameMatch && fileNameMatch.length > 1 ? fileNameMatch[1] : undefined;
+            }
+            return response.blob().then(blob => { return { fileName: fileName, data: blob, status: status, headers: _headers }; });
         } else if (status !== 200 && status !== 204) {
             return response.text().then((_responseText) => {
             return throwException("An unexpected server error occurred.", status, _responseText, _headers);
             });
         }
-        return Promise.resolve<void>(null as any);
+        return Promise.resolve<FileResponse>(null as any);
     }
 
-    /**
-     * @return OK
-     */
-    frenRequests(): Promise<FriendshipDto[]> {
+    getFriendRequests(signal?: AbortSignal): Promise<FriendshipDto[]> {
         let url_ = this.baseUrl + "/api/Frenship/fren-requests";
         url_ = url_.replace(/[?&]$/, "");
 
         let options_: RequestInit = {
             method: "GET",
+            signal,
             headers: {
-                "Accept": "text/plain"
+                "Accept": "application/json"
             }
         };
 
         return this.http.fetch(url_, options_).then((_response: Response) => {
-            return this.processFrenRequests(_response);
+            return this.processGetFriendRequests(_response);
         });
     }
 
-    protected processFrenRequests(response: Response): Promise<FriendshipDto[]> {
+    protected processGetFriendRequests(response: Response): Promise<FriendshipDto[]> {
         const status = response.status;
         let _headers: any = {}; if (response.headers && response.headers.forEach) { response.headers.forEach((v: any, k: any) => _headers[k] = v); };
         if (status === 200) {
@@ -1221,26 +1277,24 @@ export class Client {
         return Promise.resolve<FriendshipDto[]>(null as any);
     }
 
-    /**
-     * @return OK
-     */
-    frenship(): Promise<UserDto[]> {
+    getFriends(signal?: AbortSignal): Promise<UserDto[]> {
         let url_ = this.baseUrl + "/api/Frenship";
         url_ = url_.replace(/[?&]$/, "");
 
         let options_: RequestInit = {
             method: "GET",
+            signal,
             headers: {
-                "Accept": "text/plain"
+                "Accept": "application/json"
             }
         };
 
         return this.http.fetch(url_, options_).then((_response: Response) => {
-            return this.processFrenship(_response);
+            return this.processGetFriends(_response);
         });
     }
 
-    protected processFrenship(response: Response): Promise<UserDto[]> {
+    protected processGetFriends(response: Response): Promise<UserDto[]> {
         const status = response.status;
         let _headers: any = {}; if (response.headers && response.headers.forEach) { response.headers.forEach((v: any, k: any) => _headers[k] = v); };
         if (status === 200) {
@@ -1265,10 +1319,7 @@ export class Client {
         return Promise.resolve<UserDto[]>(null as any);
     }
 
-    /**
-     * @return OK
-     */
-    status(userId: string): Promise<FriendshipStatusDto> {
+    getFriendshipStatus(userId: string, signal?: AbortSignal): Promise<FriendshipStatusDto> {
         let url_ = this.baseUrl + "/api/Frenship/status/{userId}";
         if (userId === undefined || userId === null)
             throw new Error("The parameter 'userId' must be defined.");
@@ -1277,17 +1328,18 @@ export class Client {
 
         let options_: RequestInit = {
             method: "GET",
+            signal,
             headers: {
-                "Accept": "text/plain"
+                "Accept": "application/json"
             }
         };
 
         return this.http.fetch(url_, options_).then((_response: Response) => {
-            return this.processStatus(_response);
+            return this.processGetFriendshipStatus(_response);
         });
     }
 
-    protected processStatus(response: Response): Promise<FriendshipStatusDto> {
+    protected processGetFriendshipStatus(response: Response): Promise<FriendshipStatusDto> {
         const status = response.status;
         let _headers: any = {}; if (response.headers && response.headers.forEach) { response.headers.forEach((v: any, k: any) => _headers[k] = v); };
         if (status === 200) {
@@ -1305,10 +1357,7 @@ export class Client {
         return Promise.resolve<FriendshipStatusDto>(null as any);
     }
 
-    /**
-     * @return OK
-     */
-    check(userId: string): Promise<boolean> {
+    checkIfFriends(userId: string, signal?: AbortSignal): Promise<boolean> {
         let url_ = this.baseUrl + "/api/Frenship/check/{userId}";
         if (userId === undefined || userId === null)
             throw new Error("The parameter 'userId' must be defined.");
@@ -1317,17 +1366,18 @@ export class Client {
 
         let options_: RequestInit = {
             method: "GET",
+            signal,
             headers: {
-                "Accept": "text/plain"
+                "Accept": "application/json"
             }
         };
 
         return this.http.fetch(url_, options_).then((_response: Response) => {
-            return this.processCheck(_response);
+            return this.processCheckIfFriends(_response);
         });
     }
 
-    protected processCheck(response: Response): Promise<boolean> {
+    protected processCheckIfFriends(response: Response): Promise<boolean> {
         const status = response.status;
         let _headers: any = {}; if (response.headers && response.headers.forEach) { response.headers.forEach((v: any, k: any) => _headers[k] = v); };
         if (status === 200) {
@@ -1345,27 +1395,36 @@ export class Client {
         }
         return Promise.resolve<boolean>(null as any);
     }
+}
 
-    /**
-     * @return OK
-     */
-    notification(): Promise<NotificationDto> {
+export class NotificationClient {
+    private http: { fetch(url: RequestInfo, init?: RequestInit): Promise<Response> };
+    private baseUrl: string;
+    protected jsonParseReviver: ((key: string, value: any) => any) | undefined = undefined;
+
+    constructor(baseUrl?: string, http?: { fetch(url: RequestInfo, init?: RequestInit): Promise<Response> }) {
+        this.http = http ? http : window as any;
+        this.baseUrl = baseUrl ?? "http://localhost:5188";
+    }
+
+    getNotifications(signal?: AbortSignal): Promise<NotificationDto> {
         let url_ = this.baseUrl + "/api/Notification";
         url_ = url_.replace(/[?&]$/, "");
 
         let options_: RequestInit = {
             method: "GET",
+            signal,
             headers: {
-                "Accept": "text/plain"
+                "Accept": "application/json"
             }
         };
 
         return this.http.fetch(url_, options_).then((_response: Response) => {
-            return this.processNotification(_response);
+            return this.processGetNotifications(_response);
         });
     }
 
-    protected processNotification(response: Response): Promise<NotificationDto> {
+    protected processGetNotifications(response: Response): Promise<NotificationDto> {
         const status = response.status;
         let _headers: any = {}; if (response.headers && response.headers.forEach) { response.headers.forEach((v: any, k: any) => _headers[k] = v); };
         if (status === 200) {
@@ -1383,87 +1442,115 @@ export class Client {
         return Promise.resolve<NotificationDto>(null as any);
     }
 
-    /**
-     * @param body (optional) 
-     * @return OK
-     */
-    subscriptions(body: PushSubscriptionDto | undefined): Promise<void> {
+    storeSubscription(subscription: PushSubscriptionDto, signal?: AbortSignal): Promise<FileResponse> {
         let url_ = this.baseUrl + "/api/Notification/subscriptions";
         url_ = url_.replace(/[?&]$/, "");
 
-        const content_ = JSON.stringify(body);
+        const content_ = JSON.stringify(subscription);
 
         let options_: RequestInit = {
             body: content_,
             method: "POST",
+            signal,
             headers: {
                 "Content-Type": "application/json",
+                "Accept": "application/octet-stream"
             }
         };
 
         return this.http.fetch(url_, options_).then((_response: Response) => {
-            return this.processSubscriptions(_response);
+            return this.processStoreSubscription(_response);
         });
     }
 
-    protected processSubscriptions(response: Response): Promise<void> {
+    protected processStoreSubscription(response: Response): Promise<FileResponse> {
         const status = response.status;
         let _headers: any = {}; if (response.headers && response.headers.forEach) { response.headers.forEach((v: any, k: any) => _headers[k] = v); };
-        if (status === 200) {
-            return response.text().then((_responseText) => {
-            return;
-            });
+        if (status === 200 || status === 206) {
+            const contentDisposition = response.headers ? response.headers.get("content-disposition") : undefined;
+            let fileNameMatch = contentDisposition ? /filename\*=(?:(\\?['"])(.*?)\1|(?:[^\s]+'.*?')?([^;\n]*))/g.exec(contentDisposition) : undefined;
+            let fileName = fileNameMatch && fileNameMatch.length > 1 ? fileNameMatch[3] || fileNameMatch[2] : undefined;
+            if (fileName) {
+                fileName = decodeURIComponent(fileName);
+            } else {
+                fileNameMatch = contentDisposition ? /filename="?([^"]*?)"?(;|$)/g.exec(contentDisposition) : undefined;
+                fileName = fileNameMatch && fileNameMatch.length > 1 ? fileNameMatch[1] : undefined;
+            }
+            return response.blob().then(blob => { return { fileName: fileName, data: blob, status: status, headers: _headers }; });
         } else if (status !== 200 && status !== 204) {
             return response.text().then((_responseText) => {
             return throwException("An unexpected server error occurred.", status, _responseText, _headers);
             });
         }
-        return Promise.resolve<void>(null as any);
+        return Promise.resolve<FileResponse>(null as any);
+    }
+}
+
+export class NotificationTestClient {
+    private http: { fetch(url: RequestInfo, init?: RequestInit): Promise<Response> };
+    private baseUrl: string;
+    protected jsonParseReviver: ((key: string, value: any) => any) | undefined = undefined;
+
+    constructor(baseUrl?: string, http?: { fetch(url: RequestInfo, init?: RequestInit): Promise<Response> }) {
+        this.http = http ? http : window as any;
+        this.baseUrl = baseUrl ?? "http://localhost:5188";
     }
 
-    /**
-     * @param body (optional) 
-     * @return OK
-     */
-    announcement(body: AppAnnouncementRequest | undefined): Promise<void> {
+    sendAppAnnouncement(request: AppAnnouncementRequest, signal?: AbortSignal): Promise<FileResponse> {
         let url_ = this.baseUrl + "/api/NotificationTest/announcement";
         url_ = url_.replace(/[?&]$/, "");
 
-        const content_ = JSON.stringify(body);
+        const content_ = JSON.stringify(request);
 
         let options_: RequestInit = {
             body: content_,
             method: "POST",
+            signal,
             headers: {
                 "Content-Type": "application/json",
+                "Accept": "application/octet-stream"
             }
         };
 
         return this.http.fetch(url_, options_).then((_response: Response) => {
-            return this.processAnnouncement(_response);
+            return this.processSendAppAnnouncement(_response);
         });
     }
 
-    protected processAnnouncement(response: Response): Promise<void> {
+    protected processSendAppAnnouncement(response: Response): Promise<FileResponse> {
         const status = response.status;
         let _headers: any = {}; if (response.headers && response.headers.forEach) { response.headers.forEach((v: any, k: any) => _headers[k] = v); };
-        if (status === 200) {
-            return response.text().then((_responseText) => {
-            return;
-            });
+        if (status === 200 || status === 206) {
+            const contentDisposition = response.headers ? response.headers.get("content-disposition") : undefined;
+            let fileNameMatch = contentDisposition ? /filename\*=(?:(\\?['"])(.*?)\1|(?:[^\s]+'.*?')?([^;\n]*))/g.exec(contentDisposition) : undefined;
+            let fileName = fileNameMatch && fileNameMatch.length > 1 ? fileNameMatch[3] || fileNameMatch[2] : undefined;
+            if (fileName) {
+                fileName = decodeURIComponent(fileName);
+            } else {
+                fileNameMatch = contentDisposition ? /filename="?([^"]*?)"?(;|$)/g.exec(contentDisposition) : undefined;
+                fileName = fileNameMatch && fileNameMatch.length > 1 ? fileNameMatch[1] : undefined;
+            }
+            return response.blob().then(blob => { return { fileName: fileName, data: blob, status: status, headers: _headers }; });
         } else if (status !== 200 && status !== 204) {
             return response.text().then((_responseText) => {
             return throwException("An unexpected server error occurred.", status, _responseText, _headers);
             });
         }
-        return Promise.resolve<void>(null as any);
+        return Promise.resolve<FileResponse>(null as any);
+    }
+}
+
+export class PostClient {
+    private http: { fetch(url: RequestInfo, init?: RequestInit): Promise<Response> };
+    private baseUrl: string;
+    protected jsonParseReviver: ((key: string, value: any) => any) | undefined = undefined;
+
+    constructor(baseUrl?: string, http?: { fetch(url: RequestInfo, init?: RequestInit): Promise<Response> }) {
+        this.http = http ? http : window as any;
+        this.baseUrl = baseUrl ?? "http://localhost:5188";
     }
 
-    /**
-     * @param includeCommentTree (optional) 
-     * @return OK
-     */
-    postGET(id: string, includeCommentTree: boolean | undefined): Promise<PostDto> {
+    getPost(id: string, includeCommentTree: boolean | undefined, signal?: AbortSignal): Promise<PostDto> {
         let url_ = this.baseUrl + "/api/Post/{id}?";
         if (id === undefined || id === null)
             throw new Error("The parameter 'id' must be defined.");
@@ -1476,17 +1563,18 @@ export class Client {
 
         let options_: RequestInit = {
             method: "GET",
+            signal,
             headers: {
-                "Accept": "text/plain"
+                "Accept": "application/json"
             }
         };
 
         return this.http.fetch(url_, options_).then((_response: Response) => {
-            return this.processPostGET(_response);
+            return this.processGetPost(_response);
         });
     }
 
-    protected processPostGET(response: Response): Promise<PostDto> {
+    protected processGetPost(response: Response): Promise<PostDto> {
         const status = response.status;
         let _headers: any = {}; if (response.headers && response.headers.forEach) { response.headers.forEach((v: any, k: any) => _headers[k] = v); };
         if (status === 200) {
@@ -1504,11 +1592,7 @@ export class Client {
         return Promise.resolve<PostDto>(null as any);
     }
 
-    /**
-     * @param newText (optional) 
-     * @return OK
-     */
-    postPUT(id: string, newText: string | undefined): Promise<void> {
+    updatePost(id: string, newText: string | undefined, signal?: AbortSignal): Promise<FileResponse> {
         let url_ = this.baseUrl + "/api/Post/{id}?";
         if (id === undefined || id === null)
             throw new Error("The parameter 'id' must be defined.");
@@ -1521,34 +1605,40 @@ export class Client {
 
         let options_: RequestInit = {
             method: "PUT",
+            signal,
             headers: {
+                "Accept": "application/octet-stream"
             }
         };
 
         return this.http.fetch(url_, options_).then((_response: Response) => {
-            return this.processPostPUT(_response);
+            return this.processUpdatePost(_response);
         });
     }
 
-    protected processPostPUT(response: Response): Promise<void> {
+    protected processUpdatePost(response: Response): Promise<FileResponse> {
         const status = response.status;
         let _headers: any = {}; if (response.headers && response.headers.forEach) { response.headers.forEach((v: any, k: any) => _headers[k] = v); };
-        if (status === 200) {
-            return response.text().then((_responseText) => {
-            return;
-            });
+        if (status === 200 || status === 206) {
+            const contentDisposition = response.headers ? response.headers.get("content-disposition") : undefined;
+            let fileNameMatch = contentDisposition ? /filename\*=(?:(\\?['"])(.*?)\1|(?:[^\s]+'.*?')?([^;\n]*))/g.exec(contentDisposition) : undefined;
+            let fileName = fileNameMatch && fileNameMatch.length > 1 ? fileNameMatch[3] || fileNameMatch[2] : undefined;
+            if (fileName) {
+                fileName = decodeURIComponent(fileName);
+            } else {
+                fileNameMatch = contentDisposition ? /filename="?([^"]*?)"?(;|$)/g.exec(contentDisposition) : undefined;
+                fileName = fileNameMatch && fileNameMatch.length > 1 ? fileNameMatch[1] : undefined;
+            }
+            return response.blob().then(blob => { return { fileName: fileName, data: blob, status: status, headers: _headers }; });
         } else if (status !== 200 && status !== 204) {
             return response.text().then((_responseText) => {
             return throwException("An unexpected server error occurred.", status, _responseText, _headers);
             });
         }
-        return Promise.resolve<void>(null as any);
+        return Promise.resolve<FileResponse>(null as any);
     }
 
-    /**
-     * @return OK
-     */
-    postDELETE(id: string): Promise<void> {
+    deletePost(id: string, signal?: AbortSignal): Promise<FileResponse> {
         let url_ = this.baseUrl + "/api/Post/{id}";
         if (id === undefined || id === null)
             throw new Error("The parameter 'id' must be defined.");
@@ -1557,50 +1647,57 @@ export class Client {
 
         let options_: RequestInit = {
             method: "DELETE",
+            signal,
             headers: {
+                "Accept": "application/octet-stream"
             }
         };
 
         return this.http.fetch(url_, options_).then((_response: Response) => {
-            return this.processPostDELETE(_response);
+            return this.processDeletePost(_response);
         });
     }
 
-    protected processPostDELETE(response: Response): Promise<void> {
+    protected processDeletePost(response: Response): Promise<FileResponse> {
         const status = response.status;
         let _headers: any = {}; if (response.headers && response.headers.forEach) { response.headers.forEach((v: any, k: any) => _headers[k] = v); };
-        if (status === 200) {
-            return response.text().then((_responseText) => {
-            return;
-            });
+        if (status === 200 || status === 206) {
+            const contentDisposition = response.headers ? response.headers.get("content-disposition") : undefined;
+            let fileNameMatch = contentDisposition ? /filename\*=(?:(\\?['"])(.*?)\1|(?:[^\s]+'.*?')?([^;\n]*))/g.exec(contentDisposition) : undefined;
+            let fileName = fileNameMatch && fileNameMatch.length > 1 ? fileNameMatch[3] || fileNameMatch[2] : undefined;
+            if (fileName) {
+                fileName = decodeURIComponent(fileName);
+            } else {
+                fileNameMatch = contentDisposition ? /filename="?([^"]*?)"?(;|$)/g.exec(contentDisposition) : undefined;
+                fileName = fileNameMatch && fileNameMatch.length > 1 ? fileNameMatch[1] : undefined;
+            }
+            return response.blob().then(blob => { return { fileName: fileName, data: blob, status: status, headers: _headers }; });
         } else if (status !== 200 && status !== 204) {
             return response.text().then((_responseText) => {
             return throwException("An unexpected server error occurred.", status, _responseText, _headers);
             });
         }
-        return Promise.resolve<void>(null as any);
+        return Promise.resolve<FileResponse>(null as any);
     }
 
-    /**
-     * @return OK
-     */
-    feed(): Promise<FeedDto> {
+    getFeed(signal?: AbortSignal): Promise<FeedDto> {
         let url_ = this.baseUrl + "/api/Post/feed";
         url_ = url_.replace(/[?&]$/, "");
 
         let options_: RequestInit = {
             method: "GET",
+            signal,
             headers: {
-                "Accept": "text/plain"
+                "Accept": "application/json"
             }
         };
 
         return this.http.fetch(url_, options_).then((_response: Response) => {
-            return this.processFeed(_response);
+            return this.processGetFeed(_response);
         });
     }
 
-    protected processFeed(response: Response): Promise<FeedDto> {
+    protected processGetFeed(response: Response): Promise<FeedDto> {
         const status = response.status;
         let _headers: any = {}; if (response.headers && response.headers.forEach) { response.headers.forEach((v: any, k: any) => _headers[k] = v); };
         if (status === 200) {
@@ -1618,12 +1715,7 @@ export class Client {
         return Promise.resolve<FeedDto>(null as any);
     }
 
-    /**
-     * @param page (optional) 
-     * @param pageSize (optional) 
-     * @return OK
-     */
-    paged(page: number | undefined, pageSize: number | undefined): Promise<FeedDto> {
+    getFeedWithPaging(page: number | undefined, pageSize: number | undefined, signal?: AbortSignal): Promise<FeedDto> {
         let url_ = this.baseUrl + "/api/Post/feed/paged?";
         if (page === null)
             throw new Error("The parameter 'page' cannot be null.");
@@ -1637,17 +1729,18 @@ export class Client {
 
         let options_: RequestInit = {
             method: "GET",
+            signal,
             headers: {
-                "Accept": "text/plain"
+                "Accept": "application/json"
             }
         };
 
         return this.http.fetch(url_, options_).then((_response: Response) => {
-            return this.processPaged(_response);
+            return this.processGetFeedWithPaging(_response);
         });
     }
 
-    protected processPaged(response: Response): Promise<FeedDto> {
+    protected processGetFeedWithPaging(response: Response): Promise<FeedDto> {
         const status = response.status;
         let _headers: any = {}; if (response.headers && response.headers.forEach) { response.headers.forEach((v: any, k: any) => _headers[k] = v); };
         if (status === 200) {
@@ -1665,13 +1758,7 @@ export class Client {
         return Promise.resolve<FeedDto>(null as any);
     }
 
-    /**
-     * @param page (optional) 
-     * @param pageSize (optional) 
-     * @param circleIds (optional) 
-     * @return OK
-     */
-    filtered(page: number | undefined, pageSize: number | undefined, circleIds: string | undefined): Promise<FeedDto> {
+    getFilteredFeed(page: number | undefined, pageSize: number | undefined, circleIds: string | null | undefined, signal?: AbortSignal): Promise<FeedDto> {
         let url_ = this.baseUrl + "/api/Post/feed/filtered?";
         if (page === null)
             throw new Error("The parameter 'page' cannot be null.");
@@ -1681,25 +1768,24 @@ export class Client {
             throw new Error("The parameter 'pageSize' cannot be null.");
         else if (pageSize !== undefined)
             url_ += "pageSize=" + encodeURIComponent("" + pageSize) + "&";
-        if (circleIds === null)
-            throw new Error("The parameter 'circleIds' cannot be null.");
-        else if (circleIds !== undefined)
+        if (circleIds !== undefined && circleIds !== null)
             url_ += "circleIds=" + encodeURIComponent("" + circleIds) + "&";
         url_ = url_.replace(/[?&]$/, "");
 
         let options_: RequestInit = {
             method: "GET",
+            signal,
             headers: {
-                "Accept": "text/plain"
+                "Accept": "application/json"
             }
         };
 
         return this.http.fetch(url_, options_).then((_response: Response) => {
-            return this.processFiltered(_response);
+            return this.processGetFilteredFeed(_response);
         });
     }
 
-    protected processFiltered(response: Response): Promise<FeedDto> {
+    protected processGetFilteredFeed(response: Response): Promise<FeedDto> {
         const status = response.status;
         let _headers: any = {}; if (response.headers && response.headers.forEach) { response.headers.forEach((v: any, k: any) => _headers[k] = v); };
         if (status === 200) {
@@ -1717,31 +1803,28 @@ export class Client {
         return Promise.resolve<FeedDto>(null as any);
     }
 
-    /**
-     * @param body (optional) 
-     * @return OK
-     */
-    postPOST(body: CreatePostDto | undefined): Promise<PostDto> {
+    createPost(request: CreatePostDto, signal?: AbortSignal): Promise<PostDto> {
         let url_ = this.baseUrl + "/api/Post";
         url_ = url_.replace(/[?&]$/, "");
 
-        const content_ = JSON.stringify(body);
+        const content_ = JSON.stringify(request);
 
         let options_: RequestInit = {
             body: content_,
             method: "POST",
+            signal,
             headers: {
                 "Content-Type": "application/json",
-                "Accept": "text/plain"
+                "Accept": "application/json"
             }
         };
 
         return this.http.fetch(url_, options_).then((_response: Response) => {
-            return this.processPostPOST(_response);
+            return this.processCreatePost(_response);
         });
     }
 
-    protected processPostPOST(response: Response): Promise<PostDto> {
+    protected processCreatePost(response: Response): Promise<PostDto> {
         const status = response.status;
         let _headers: any = {}; if (response.headers && response.headers.forEach) { response.headers.forEach((v: any, k: any) => _headers[k] = v); };
         if (status === 200) {
@@ -1758,32 +1841,38 @@ export class Client {
         }
         return Promise.resolve<PostDto>(null as any);
     }
+}
 
-    /**
-     * @param userId (optional) 
-     * @return OK
-     */
-    profile(userId: string | undefined): Promise<ProfilePageResponseDto> {
+export class ProfileClient {
+    private http: { fetch(url: RequestInfo, init?: RequestInit): Promise<Response> };
+    private baseUrl: string;
+    protected jsonParseReviver: ((key: string, value: any) => any) | undefined = undefined;
+
+    constructor(baseUrl?: string, http?: { fetch(url: RequestInfo, init?: RequestInit): Promise<Response> }) {
+        this.http = http ? http : window as any;
+        this.baseUrl = baseUrl ?? "http://localhost:5188";
+    }
+
+    getProfile(userId: string | null | undefined, signal?: AbortSignal): Promise<ProfilePageResponseDto> {
         let url_ = this.baseUrl + "/api/Profile?";
-        if (userId === null)
-            throw new Error("The parameter 'userId' cannot be null.");
-        else if (userId !== undefined)
+        if (userId !== undefined && userId !== null)
             url_ += "userId=" + encodeURIComponent("" + userId) + "&";
         url_ = url_.replace(/[?&]$/, "");
 
         let options_: RequestInit = {
             method: "GET",
+            signal,
             headers: {
-                "Accept": "text/plain"
+                "Accept": "application/json"
             }
         };
 
         return this.http.fetch(url_, options_).then((_response: Response) => {
-            return this.processProfile(_response);
+            return this.processGetProfile(_response);
         });
     }
 
-    protected processProfile(response: Response): Promise<ProfilePageResponseDto> {
+    protected processGetProfile(response: Response): Promise<ProfilePageResponseDto> {
         const status = response.status;
         let _headers: any = {}; if (response.headers && response.headers.forEach) { response.headers.forEach((v: any, k: any) => _headers[k] = v); };
         if (status === 200) {
@@ -1800,12 +1889,19 @@ export class Client {
         }
         return Promise.resolve<ProfilePageResponseDto>(null as any);
     }
+}
 
-    /**
-     * @param email (optional) 
-     * @return OK
-     */
-    generateTestToken(email: string | undefined): Promise<void> {
+export class TestAuthClient {
+    private http: { fetch(url: RequestInfo, init?: RequestInit): Promise<Response> };
+    private baseUrl: string;
+    protected jsonParseReviver: ((key: string, value: any) => any) | undefined = undefined;
+
+    constructor(baseUrl?: string, http?: { fetch(url: RequestInfo, init?: RequestInit): Promise<Response> }) {
+        this.http = http ? http : window as any;
+        this.baseUrl = baseUrl ?? "http://localhost:5188";
+    }
+
+    generateTestToken(email: string | undefined, signal?: AbortSignal): Promise<FileResponse> {
         let url_ = this.baseUrl + "/api/TestAuth/generate-test-token?";
         if (email === null)
             throw new Error("The parameter 'email' cannot be null.");
@@ -1815,7 +1911,9 @@ export class Client {
 
         let options_: RequestInit = {
             method: "GET",
+            signal,
             headers: {
+                "Accept": "application/octet-stream"
             }
         };
 
@@ -1824,61 +1922,73 @@ export class Client {
         });
     }
 
-    protected processGenerateTestToken(response: Response): Promise<void> {
+    protected processGenerateTestToken(response: Response): Promise<FileResponse> {
         const status = response.status;
         let _headers: any = {}; if (response.headers && response.headers.forEach) { response.headers.forEach((v: any, k: any) => _headers[k] = v); };
-        if (status === 200) {
-            return response.text().then((_responseText) => {
-            return;
-            });
+        if (status === 200 || status === 206) {
+            const contentDisposition = response.headers ? response.headers.get("content-disposition") : undefined;
+            let fileNameMatch = contentDisposition ? /filename\*=(?:(\\?['"])(.*?)\1|(?:[^\s]+'.*?')?([^;\n]*))/g.exec(contentDisposition) : undefined;
+            let fileName = fileNameMatch && fileNameMatch.length > 1 ? fileNameMatch[3] || fileNameMatch[2] : undefined;
+            if (fileName) {
+                fileName = decodeURIComponent(fileName);
+            } else {
+                fileNameMatch = contentDisposition ? /filename="?([^"]*?)"?(;|$)/g.exec(contentDisposition) : undefined;
+                fileName = fileNameMatch && fileNameMatch.length > 1 ? fileNameMatch[1] : undefined;
+            }
+            return response.blob().then(blob => { return { fileName: fileName, data: blob, status: status, headers: _headers }; });
         } else if (status !== 200 && status !== 204) {
             return response.text().then((_responseText) => {
             return throwException("An unexpected server error occurred.", status, _responseText, _headers);
             });
         }
-        return Promise.resolve<void>(null as any);
+        return Promise.resolve<FileResponse>(null as any);
     }
 
-    /**
-     * @return OK
-     */
-    testUsers(): Promise<void> {
+    getTestUsers(signal?: AbortSignal): Promise<FileResponse> {
         let url_ = this.baseUrl + "/api/TestAuth/test-users";
         url_ = url_.replace(/[?&]$/, "");
 
         let options_: RequestInit = {
             method: "GET",
+            signal,
             headers: {
+                "Accept": "application/octet-stream"
             }
         };
 
         return this.http.fetch(url_, options_).then((_response: Response) => {
-            return this.processTestUsers(_response);
+            return this.processGetTestUsers(_response);
         });
     }
 
-    protected processTestUsers(response: Response): Promise<void> {
+    protected processGetTestUsers(response: Response): Promise<FileResponse> {
         const status = response.status;
         let _headers: any = {}; if (response.headers && response.headers.forEach) { response.headers.forEach((v: any, k: any) => _headers[k] = v); };
-        if (status === 200) {
-            return response.text().then((_responseText) => {
-            return;
-            });
+        if (status === 200 || status === 206) {
+            const contentDisposition = response.headers ? response.headers.get("content-disposition") : undefined;
+            let fileNameMatch = contentDisposition ? /filename\*=(?:(\\?['"])(.*?)\1|(?:[^\s]+'.*?')?([^;\n]*))/g.exec(contentDisposition) : undefined;
+            let fileName = fileNameMatch && fileNameMatch.length > 1 ? fileNameMatch[3] || fileNameMatch[2] : undefined;
+            if (fileName) {
+                fileName = decodeURIComponent(fileName);
+            } else {
+                fileNameMatch = contentDisposition ? /filename="?([^"]*?)"?(;|$)/g.exec(contentDisposition) : undefined;
+                fileName = fileNameMatch && fileNameMatch.length > 1 ? fileNameMatch[1] : undefined;
+            }
+            return response.blob().then(blob => { return { fileName: fileName, data: blob, status: status, headers: _headers }; });
         } else if (status !== 200 && status !== 204) {
             return response.text().then((_responseText) => {
             return throwException("An unexpected server error occurred.", status, _responseText, _headers);
             });
         }
-        return Promise.resolve<void>(null as any);
+        return Promise.resolve<FileResponse>(null as any);
     }
 }
 
-export class AppAnnouncementRequest implements IAppAnnouncementRequest {
-    title!: string | undefined;
-    body!: string | undefined;
-    actionUrl?: string | undefined;
+export class SignInResponseDto implements ISignInResponseDto {
+    user?: UserDto;
+    token?: string;
 
-    constructor(data?: IAppAnnouncementRequest) {
+    constructor(data?: ISignInResponseDto) {
         if (data) {
             for (var property in data) {
                 if (data.hasOwnProperty(property))
@@ -1889,40 +1999,36 @@ export class AppAnnouncementRequest implements IAppAnnouncementRequest {
 
     init(_data?: any) {
         if (_data) {
-            this.title = _data["title"];
-            this.body = _data["body"];
-            this.actionUrl = _data["actionUrl"];
+            this.user = _data["user"] ? UserDto.fromJS(_data["user"]) : <any>undefined;
+            this.token = _data["token"];
         }
     }
 
-    static fromJS(data: any): AppAnnouncementRequest {
+    static fromJS(data: any): SignInResponseDto {
         data = typeof data === 'object' ? data : {};
-        let result = new AppAnnouncementRequest();
+        let result = new SignInResponseDto();
         result.init(data);
         return result;
     }
 
     toJSON(data?: any) {
         data = typeof data === 'object' ? data : {};
-        data["title"] = this.title;
-        data["body"] = this.body;
-        data["actionUrl"] = this.actionUrl;
+        data["user"] = this.user ? this.user.toJSON() : <any>undefined;
+        data["token"] = this.token;
         return data;
     }
 }
 
-export interface IAppAnnouncementRequest {
-    title: string | undefined;
-    body: string | undefined;
-    actionUrl?: string | undefined;
+export interface ISignInResponseDto {
+    user?: UserDto;
+    token?: string;
 }
 
-export class CircleCreationDto implements ICircleCreationDto {
-    name!: string | undefined;
-    isShared!: boolean;
-    userIdsToAdd?: string[] | undefined;
+export class UserDto implements IUserDto {
+    id?: string;
+    name?: string;
 
-    constructor(data?: ICircleCreationDto) {
+    constructor(data?: IUserDto) {
         if (data) {
             for (var property in data) {
                 if (data.hasOwnProperty(property))
@@ -1933,45 +2039,122 @@ export class CircleCreationDto implements ICircleCreationDto {
 
     init(_data?: any) {
         if (_data) {
+            this.id = _data["id"];
             this.name = _data["name"];
-            this.isShared = _data["isShared"];
-            if (Array.isArray(_data["userIdsToAdd"])) {
-                this.userIdsToAdd = [] as any;
-                for (let item of _data["userIdsToAdd"])
-                    this.userIdsToAdd!.push(item);
-            }
         }
     }
 
-    static fromJS(data: any): CircleCreationDto {
+    static fromJS(data: any): UserDto {
         data = typeof data === 'object' ? data : {};
-        let result = new CircleCreationDto();
+        let result = new UserDto();
         result.init(data);
         return result;
     }
 
     toJSON(data?: any) {
         data = typeof data === 'object' ? data : {};
+        data["id"] = this.id;
         data["name"] = this.name;
-        data["isShared"] = this.isShared;
-        if (Array.isArray(this.userIdsToAdd)) {
-            data["userIdsToAdd"] = [];
-            for (let item of this.userIdsToAdd)
-                data["userIdsToAdd"].push(item);
-        }
         return data;
     }
 }
 
-export interface ICircleCreationDto {
-    name: string | undefined;
-    isShared: boolean;
-    userIdsToAdd?: string[] | undefined;
+export interface IUserDto {
+    id?: string;
+    name?: string;
+}
+
+export class RegisterModel implements IRegisterModel {
+    email?: string;
+    name?: string;
+    password?: string;
+
+    constructor(data?: IRegisterModel) {
+        if (data) {
+            for (var property in data) {
+                if (data.hasOwnProperty(property))
+                    (<any>this)[property] = (<any>data)[property];
+            }
+        }
+    }
+
+    init(_data?: any) {
+        if (_data) {
+            this.email = _data["email"];
+            this.name = _data["name"];
+            this.password = _data["password"];
+        }
+    }
+
+    static fromJS(data: any): RegisterModel {
+        data = typeof data === 'object' ? data : {};
+        let result = new RegisterModel();
+        result.init(data);
+        return result;
+    }
+
+    toJSON(data?: any) {
+        data = typeof data === 'object' ? data : {};
+        data["email"] = this.email;
+        data["name"] = this.name;
+        data["password"] = this.password;
+        return data;
+    }
+}
+
+export interface IRegisterModel {
+    email?: string;
+    name?: string;
+    password?: string;
+}
+
+export class LoginModel implements ILoginModel {
+    email?: string;
+    password?: string;
+    rememberMe?: boolean;
+
+    constructor(data?: ILoginModel) {
+        if (data) {
+            for (var property in data) {
+                if (data.hasOwnProperty(property))
+                    (<any>this)[property] = (<any>data)[property];
+            }
+        }
+    }
+
+    init(_data?: any) {
+        if (_data) {
+            this.email = _data["email"];
+            this.password = _data["password"];
+            this.rememberMe = _data["rememberMe"];
+        }
+    }
+
+    static fromJS(data: any): LoginModel {
+        data = typeof data === 'object' ? data : {};
+        let result = new LoginModel();
+        result.init(data);
+        return result;
+    }
+
+    toJSON(data?: any) {
+        data = typeof data === 'object' ? data : {};
+        data["email"] = this.email;
+        data["password"] = this.password;
+        data["rememberMe"] = this.rememberMe;
+        return data;
+    }
+}
+
+export interface ILoginModel {
+    email?: string;
+    password?: string;
+    rememberMe?: boolean;
 }
 
 export class CirclePublicDto implements ICirclePublicDto {
     id?: string;
-    name!: string | undefined;
+    name?: string;
     isShared?: boolean;
     isOwner?: boolean;
 
@@ -2012,18 +2195,18 @@ export class CirclePublicDto implements ICirclePublicDto {
 
 export interface ICirclePublicDto {
     id?: string;
-    name: string | undefined;
+    name?: string;
     isShared?: boolean;
     isOwner?: boolean;
 }
 
 export class CircleWithMembersDto implements ICircleWithMembersDto {
     id?: string;
-    name!: string | undefined;
+    name?: string;
     isShared?: boolean;
     isOwner?: boolean;
-    owner?: UserDto;
-    members?: UserDto[] | undefined;
+    owner?: UserDto | undefined;
+    members?: UserDto[];
 
     constructor(data?: ICircleWithMembersDto) {
         if (data) {
@@ -2074,18 +2257,118 @@ export class CircleWithMembersDto implements ICircleWithMembersDto {
 
 export interface ICircleWithMembersDto {
     id?: string;
-    name: string | undefined;
+    name?: string;
     isShared?: boolean;
     isOwner?: boolean;
-    owner?: UserDto;
-    members?: UserDto[] | undefined;
+    owner?: UserDto | undefined;
+    members?: UserDto[];
+}
+
+export class CircleCreationDto implements ICircleCreationDto {
+    name?: string;
+    isShared?: boolean;
+    userIdsToAdd?: string[];
+
+    constructor(data?: ICircleCreationDto) {
+        if (data) {
+            for (var property in data) {
+                if (data.hasOwnProperty(property))
+                    (<any>this)[property] = (<any>data)[property];
+            }
+        }
+    }
+
+    init(_data?: any) {
+        if (_data) {
+            this.name = _data["name"];
+            this.isShared = _data["isShared"];
+            if (Array.isArray(_data["userIdsToAdd"])) {
+                this.userIdsToAdd = [] as any;
+                for (let item of _data["userIdsToAdd"])
+                    this.userIdsToAdd!.push(item);
+            }
+        }
+    }
+
+    static fromJS(data: any): CircleCreationDto {
+        data = typeof data === 'object' ? data : {};
+        let result = new CircleCreationDto();
+        result.init(data);
+        return result;
+    }
+
+    toJSON(data?: any) {
+        data = typeof data === 'object' ? data : {};
+        data["name"] = this.name;
+        data["isShared"] = this.isShared;
+        if (Array.isArray(this.userIdsToAdd)) {
+            data["userIdsToAdd"] = [];
+            for (let item of this.userIdsToAdd)
+                data["userIdsToAdd"].push(item);
+        }
+        return data;
+    }
+}
+
+export interface ICircleCreationDto {
+    name?: string;
+    isShared?: boolean;
+    userIdsToAdd?: string[];
+}
+
+export class UpdateUsersInCircleRequest implements IUpdateUsersInCircleRequest {
+    circleId?: string;
+    userIds?: string[];
+
+    constructor(data?: IUpdateUsersInCircleRequest) {
+        if (data) {
+            for (var property in data) {
+                if (data.hasOwnProperty(property))
+                    (<any>this)[property] = (<any>data)[property];
+            }
+        }
+    }
+
+    init(_data?: any) {
+        if (_data) {
+            this.circleId = _data["circleId"];
+            if (Array.isArray(_data["userIds"])) {
+                this.userIds = [] as any;
+                for (let item of _data["userIds"])
+                    this.userIds!.push(item);
+            }
+        }
+    }
+
+    static fromJS(data: any): UpdateUsersInCircleRequest {
+        data = typeof data === 'object' ? data : {};
+        let result = new UpdateUsersInCircleRequest();
+        result.init(data);
+        return result;
+    }
+
+    toJSON(data?: any) {
+        data = typeof data === 'object' ? data : {};
+        data["circleId"] = this.circleId;
+        if (Array.isArray(this.userIds)) {
+            data["userIds"] = [];
+            for (let item of this.userIds)
+                data["userIds"].push(item);
+        }
+        return data;
+    }
+}
+
+export interface IUpdateUsersInCircleRequest {
+    circleId?: string;
+    userIds?: string[];
 }
 
 export class CommentDto implements ICommentDto {
-    id!: string;
-    date!: Date;
-    text!: string | undefined;
-    user!: UserDto;
+    id?: string;
+    date?: Date;
+    text?: string;
+    user?: UserDto;
     replies?: CommentDto[] | undefined;
 
     constructor(data?: ICommentDto) {
@@ -2095,9 +2378,6 @@ export class CommentDto implements ICommentDto {
                     (<any>this)[property] = (<any>data)[property];
             }
         }
-        if (!data) {
-            this.user = new UserDto();
-        }
     }
 
     init(_data?: any) {
@@ -2105,7 +2385,7 @@ export class CommentDto implements ICommentDto {
             this.id = _data["id"];
             this.date = _data["date"] ? new Date(_data["date"].toString()) : <any>undefined;
             this.text = _data["text"];
-            this.user = _data["user"] ? UserDto.fromJS(_data["user"]) : new UserDto();
+            this.user = _data["user"] ? UserDto.fromJS(_data["user"]) : <any>undefined;
             if (Array.isArray(_data["replies"])) {
                 this.replies = [] as any;
                 for (let item of _data["replies"])
@@ -2137,17 +2417,105 @@ export class CommentDto implements ICommentDto {
 }
 
 export interface ICommentDto {
-    id: string;
-    date: Date;
-    text: string | undefined;
-    user: UserDto;
+    id?: string;
+    date?: Date;
+    text?: string;
+    user?: UserDto;
     replies?: CommentDto[] | undefined;
 }
 
-export class CreateEventDto implements ICreateEventDto {
-    title!: string | undefined;
-    text!: string | undefined;
-    startDateTime!: Date;
+export class PostDto implements IPostDto {
+    id?: string;
+    userId?: string;
+    date?: Date;
+    text?: string;
+    user?: UserDto;
+    comments?: CommentDto[];
+    sharedWithCircles?: CirclePublicDto[];
+    commentCount?: number;
+
+    protected _discriminator: string;
+
+    constructor(data?: IPostDto) {
+        if (data) {
+            for (var property in data) {
+                if (data.hasOwnProperty(property))
+                    (<any>this)[property] = (<any>data)[property];
+            }
+        }
+        this._discriminator = "PostDto";
+    }
+
+    init(_data?: any) {
+        if (_data) {
+            this.id = _data["id"];
+            this.userId = _data["userId"];
+            this.date = _data["date"] ? new Date(_data["date"].toString()) : <any>undefined;
+            this.text = _data["text"];
+            this.user = _data["user"] ? UserDto.fromJS(_data["user"]) : <any>undefined;
+            if (Array.isArray(_data["comments"])) {
+                this.comments = [] as any;
+                for (let item of _data["comments"])
+                    this.comments!.push(CommentDto.fromJS(item));
+            }
+            if (Array.isArray(_data["sharedWithCircles"])) {
+                this.sharedWithCircles = [] as any;
+                for (let item of _data["sharedWithCircles"])
+                    this.sharedWithCircles!.push(CirclePublicDto.fromJS(item));
+            }
+            this.commentCount = _data["commentCount"];
+        }
+    }
+
+    static fromJS(data: any): PostDto {
+        data = typeof data === 'object' ? data : {};
+        if (data["discriminator"] === "Event") {
+            let result = new EventDto();
+            result.init(data);
+            return result;
+        }
+        let result = new PostDto();
+        result.init(data);
+        return result;
+    }
+
+    toJSON(data?: any) {
+        data = typeof data === 'object' ? data : {};
+        data["discriminator"] = this._discriminator;
+        data["id"] = this.id;
+        data["userId"] = this.userId;
+        data["date"] = this.date ? this.date.toISOString() : <any>undefined;
+        data["text"] = this.text;
+        data["user"] = this.user ? this.user.toJSON() : <any>undefined;
+        if (Array.isArray(this.comments)) {
+            data["comments"] = [];
+            for (let item of this.comments)
+                data["comments"].push(item.toJSON());
+        }
+        if (Array.isArray(this.sharedWithCircles)) {
+            data["sharedWithCircles"] = [];
+            for (let item of this.sharedWithCircles)
+                data["sharedWithCircles"].push(item.toJSON());
+        }
+        data["commentCount"] = this.commentCount;
+        return data;
+    }
+}
+
+export interface IPostDto {
+    id?: string;
+    userId?: string;
+    date?: Date;
+    text?: string;
+    user?: UserDto;
+    comments?: CommentDto[];
+    sharedWithCircles?: CirclePublicDto[];
+    commentCount?: number;
+}
+
+export class EventDto extends PostDto implements IEventDto {
+    title?: string;
+    startDateTime?: Date;
     endDateTime?: Date | undefined;
     location?: string | undefined;
     timezone?: string | undefined;
@@ -2155,7 +2523,169 @@ export class CreateEventDto implements ICreateEventDto {
     isAllDay?: boolean;
     isRecurring?: boolean;
     recurrenceRule?: string | undefined;
-    circleIds?: string[] | undefined;
+    goingCount?: number;
+    maybeCount?: number;
+    notGoingCount?: number;
+    currentUserRsvp?: RsvpStatus | undefined;
+    rsvps?: EventRsvpDto[];
+
+    constructor(data?: IEventDto) {
+        super(data);
+        this._discriminator = "Event";
+    }
+
+    init(_data?: any) {
+        super.init(_data);
+        if (_data) {
+            this.title = _data["title"];
+            this.startDateTime = _data["startDateTime"] ? new Date(_data["startDateTime"].toString()) : <any>undefined;
+            this.endDateTime = _data["endDateTime"] ? new Date(_data["endDateTime"].toString()) : <any>undefined;
+            this.location = _data["location"];
+            this.timezone = _data["timezone"];
+            this.maxAttendees = _data["maxAttendees"];
+            this.isAllDay = _data["isAllDay"];
+            this.isRecurring = _data["isRecurring"];
+            this.recurrenceRule = _data["recurrenceRule"];
+            this.goingCount = _data["goingCount"];
+            this.maybeCount = _data["maybeCount"];
+            this.notGoingCount = _data["notGoingCount"];
+            this.currentUserRsvp = _data["currentUserRsvp"];
+            if (Array.isArray(_data["rsvps"])) {
+                this.rsvps = [] as any;
+                for (let item of _data["rsvps"])
+                    this.rsvps!.push(EventRsvpDto.fromJS(item));
+            }
+        }
+    }
+
+    static fromJS(data: any): EventDto {
+        data = typeof data === 'object' ? data : {};
+        let result = new EventDto();
+        result.init(data);
+        return result;
+    }
+
+    toJSON(data?: any) {
+        data = typeof data === 'object' ? data : {};
+        data["title"] = this.title;
+        data["startDateTime"] = this.startDateTime ? this.startDateTime.toISOString() : <any>undefined;
+        data["endDateTime"] = this.endDateTime ? this.endDateTime.toISOString() : <any>undefined;
+        data["location"] = this.location;
+        data["timezone"] = this.timezone;
+        data["maxAttendees"] = this.maxAttendees;
+        data["isAllDay"] = this.isAllDay;
+        data["isRecurring"] = this.isRecurring;
+        data["recurrenceRule"] = this.recurrenceRule;
+        data["goingCount"] = this.goingCount;
+        data["maybeCount"] = this.maybeCount;
+        data["notGoingCount"] = this.notGoingCount;
+        data["currentUserRsvp"] = this.currentUserRsvp;
+        if (Array.isArray(this.rsvps)) {
+            data["rsvps"] = [];
+            for (let item of this.rsvps)
+                data["rsvps"].push(item.toJSON());
+        }
+        super.toJSON(data);
+        return data;
+    }
+}
+
+export interface IEventDto extends IPostDto {
+    title?: string;
+    startDateTime?: Date;
+    endDateTime?: Date | undefined;
+    location?: string | undefined;
+    timezone?: string | undefined;
+    maxAttendees?: number | undefined;
+    isAllDay?: boolean;
+    isRecurring?: boolean;
+    recurrenceRule?: string | undefined;
+    goingCount?: number;
+    maybeCount?: number;
+    notGoingCount?: number;
+    currentUserRsvp?: RsvpStatus | undefined;
+    rsvps?: EventRsvpDto[];
+}
+
+export enum RsvpStatus {
+    NoResponse = "NoResponse",
+    Going = "Going",
+    Maybe = "Maybe",
+    NotGoing = "NotGoing",
+}
+
+export class EventRsvpDto implements IEventRsvpDto {
+    id?: string;
+    eventId?: string;
+    userId?: string;
+    status?: RsvpStatus;
+    responseDate?: Date;
+    notes?: string | undefined;
+    user?: UserDto;
+
+    constructor(data?: IEventRsvpDto) {
+        if (data) {
+            for (var property in data) {
+                if (data.hasOwnProperty(property))
+                    (<any>this)[property] = (<any>data)[property];
+            }
+        }
+    }
+
+    init(_data?: any) {
+        if (_data) {
+            this.id = _data["id"];
+            this.eventId = _data["eventId"];
+            this.userId = _data["userId"];
+            this.status = _data["status"];
+            this.responseDate = _data["responseDate"] ? new Date(_data["responseDate"].toString()) : <any>undefined;
+            this.notes = _data["notes"];
+            this.user = _data["user"] ? UserDto.fromJS(_data["user"]) : <any>undefined;
+        }
+    }
+
+    static fromJS(data: any): EventRsvpDto {
+        data = typeof data === 'object' ? data : {};
+        let result = new EventRsvpDto();
+        result.init(data);
+        return result;
+    }
+
+    toJSON(data?: any) {
+        data = typeof data === 'object' ? data : {};
+        data["id"] = this.id;
+        data["eventId"] = this.eventId;
+        data["userId"] = this.userId;
+        data["status"] = this.status;
+        data["responseDate"] = this.responseDate ? this.responseDate.toISOString() : <any>undefined;
+        data["notes"] = this.notes;
+        data["user"] = this.user ? this.user.toJSON() : <any>undefined;
+        return data;
+    }
+}
+
+export interface IEventRsvpDto {
+    id?: string;
+    eventId?: string;
+    userId?: string;
+    status?: RsvpStatus;
+    responseDate?: Date;
+    notes?: string | undefined;
+    user?: UserDto;
+}
+
+export class CreateEventDto implements ICreateEventDto {
+    title?: string;
+    text?: string;
+    startDateTime?: Date;
+    endDateTime?: Date | undefined;
+    location?: string | undefined;
+    timezone?: string | undefined;
+    maxAttendees?: number | undefined;
+    isAllDay?: boolean;
+    isRecurring?: boolean;
+    recurrenceRule?: string | undefined;
+    circleIds?: string[];
 
     constructor(data?: ICreateEventDto) {
         if (data) {
@@ -2215,9 +2745,9 @@ export class CreateEventDto implements ICreateEventDto {
 }
 
 export interface ICreateEventDto {
-    title: string | undefined;
-    text: string | undefined;
-    startDateTime: Date;
+    title?: string;
+    text?: string;
+    startDateTime?: Date;
     endDateTime?: Date | undefined;
     location?: string | undefined;
     timezone?: string | undefined;
@@ -2225,896 +2755,7 @@ export interface ICreateEventDto {
     isAllDay?: boolean;
     isRecurring?: boolean;
     recurrenceRule?: string | undefined;
-    circleIds?: string[] | undefined;
-}
-
-export class CreatePostDto implements ICreatePostDto {
-    text?: string | undefined;
-    circleIds?: string[] | undefined;
-
-    constructor(data?: ICreatePostDto) {
-        if (data) {
-            for (var property in data) {
-                if (data.hasOwnProperty(property))
-                    (<any>this)[property] = (<any>data)[property];
-            }
-        }
-    }
-
-    init(_data?: any) {
-        if (_data) {
-            this.text = _data["text"];
-            if (Array.isArray(_data["circleIds"])) {
-                this.circleIds = [] as any;
-                for (let item of _data["circleIds"])
-                    this.circleIds!.push(item);
-            }
-        }
-    }
-
-    static fromJS(data: any): CreatePostDto {
-        data = typeof data === 'object' ? data : {};
-        let result = new CreatePostDto();
-        result.init(data);
-        return result;
-    }
-
-    toJSON(data?: any) {
-        data = typeof data === 'object' ? data : {};
-        data["text"] = this.text;
-        if (Array.isArray(this.circleIds)) {
-            data["circleIds"] = [];
-            for (let item of this.circleIds)
-                data["circleIds"].push(item);
-        }
-        return data;
-    }
-}
-
-export interface ICreatePostDto {
-    text?: string | undefined;
-    circleIds?: string[] | undefined;
-}
-
-export class CreateRsvpDto implements ICreateRsvpDto {
-    status!: RsvpStatus;
-    notes?: string | undefined;
-
-    constructor(data?: ICreateRsvpDto) {
-        if (data) {
-            for (var property in data) {
-                if (data.hasOwnProperty(property))
-                    (<any>this)[property] = (<any>data)[property];
-            }
-        }
-    }
-
-    init(_data?: any) {
-        if (_data) {
-            this.status = _data["status"];
-            this.notes = _data["notes"];
-        }
-    }
-
-    static fromJS(data: any): CreateRsvpDto {
-        data = typeof data === 'object' ? data : {};
-        let result = new CreateRsvpDto();
-        result.init(data);
-        return result;
-    }
-
-    toJSON(data?: any) {
-        data = typeof data === 'object' ? data : {};
-        data["status"] = this.status;
-        data["notes"] = this.notes;
-        return data;
-    }
-}
-
-export interface ICreateRsvpDto {
-    status: RsvpStatus;
-    notes?: string | undefined;
-}
-
-export class EventDto implements IEventDto {
-    id!: string;
-    userId!: string;
-    date!: Date;
-    text!: string | undefined;
-    user?: UserDto;
-    comments?: CommentDto[] | undefined;
-    sharedWithCircles?: CirclePublicDto[] | undefined;
-    commentCount?: number;
-    title!: string | undefined;
-    startDateTime!: Date;
-    endDateTime?: Date | undefined;
-    location?: string | undefined;
-    timezone?: string | undefined;
-    maxAttendees?: number | undefined;
-    isAllDay?: boolean;
-    isRecurring?: boolean;
-    recurrenceRule?: string | undefined;
-    goingCount?: number;
-    maybeCount?: number;
-    notGoingCount?: number;
-    currentUserRsvp?: RsvpStatus;
-    rsvps?: EventRsvpDto[] | undefined;
-
-    constructor(data?: IEventDto) {
-        if (data) {
-            for (var property in data) {
-                if (data.hasOwnProperty(property))
-                    (<any>this)[property] = (<any>data)[property];
-            }
-        }
-    }
-
-    init(_data?: any) {
-        if (_data) {
-            this.id = _data["id"];
-            this.userId = _data["userId"];
-            this.date = _data["date"] ? new Date(_data["date"].toString()) : <any>undefined;
-            this.text = _data["text"];
-            this.user = _data["user"] ? UserDto.fromJS(_data["user"]) : <any>undefined;
-            if (Array.isArray(_data["comments"])) {
-                this.comments = [] as any;
-                for (let item of _data["comments"])
-                    this.comments!.push(CommentDto.fromJS(item));
-            }
-            if (Array.isArray(_data["sharedWithCircles"])) {
-                this.sharedWithCircles = [] as any;
-                for (let item of _data["sharedWithCircles"])
-                    this.sharedWithCircles!.push(CirclePublicDto.fromJS(item));
-            }
-            this.commentCount = _data["commentCount"];
-            this.title = _data["title"];
-            this.startDateTime = _data["startDateTime"] ? new Date(_data["startDateTime"].toString()) : <any>undefined;
-            this.endDateTime = _data["endDateTime"] ? new Date(_data["endDateTime"].toString()) : <any>undefined;
-            this.location = _data["location"];
-            this.timezone = _data["timezone"];
-            this.maxAttendees = _data["maxAttendees"];
-            this.isAllDay = _data["isAllDay"];
-            this.isRecurring = _data["isRecurring"];
-            this.recurrenceRule = _data["recurrenceRule"];
-            this.goingCount = _data["goingCount"];
-            this.maybeCount = _data["maybeCount"];
-            this.notGoingCount = _data["notGoingCount"];
-            this.currentUserRsvp = _data["currentUserRsvp"];
-            if (Array.isArray(_data["rsvps"])) {
-                this.rsvps = [] as any;
-                for (let item of _data["rsvps"])
-                    this.rsvps!.push(EventRsvpDto.fromJS(item));
-            }
-        }
-    }
-
-    static fromJS(data: any): EventDto {
-        data = typeof data === 'object' ? data : {};
-        let result = new EventDto();
-        result.init(data);
-        return result;
-    }
-
-    toJSON(data?: any) {
-        data = typeof data === 'object' ? data : {};
-        data["id"] = this.id;
-        data["userId"] = this.userId;
-        data["date"] = this.date ? this.date.toISOString() : <any>undefined;
-        data["text"] = this.text;
-        data["user"] = this.user ? this.user.toJSON() : <any>undefined;
-        if (Array.isArray(this.comments)) {
-            data["comments"] = [];
-            for (let item of this.comments)
-                data["comments"].push(item.toJSON());
-        }
-        if (Array.isArray(this.sharedWithCircles)) {
-            data["sharedWithCircles"] = [];
-            for (let item of this.sharedWithCircles)
-                data["sharedWithCircles"].push(item.toJSON());
-        }
-        data["commentCount"] = this.commentCount;
-        data["title"] = this.title;
-        data["startDateTime"] = this.startDateTime ? this.startDateTime.toISOString() : <any>undefined;
-        data["endDateTime"] = this.endDateTime ? this.endDateTime.toISOString() : <any>undefined;
-        data["location"] = this.location;
-        data["timezone"] = this.timezone;
-        data["maxAttendees"] = this.maxAttendees;
-        data["isAllDay"] = this.isAllDay;
-        data["isRecurring"] = this.isRecurring;
-        data["recurrenceRule"] = this.recurrenceRule;
-        data["goingCount"] = this.goingCount;
-        data["maybeCount"] = this.maybeCount;
-        data["notGoingCount"] = this.notGoingCount;
-        data["currentUserRsvp"] = this.currentUserRsvp;
-        if (Array.isArray(this.rsvps)) {
-            data["rsvps"] = [];
-            for (let item of this.rsvps)
-                data["rsvps"].push(item.toJSON());
-        }
-        return data;
-    }
-}
-
-export interface IEventDto {
-    id: string;
-    userId: string;
-    date: Date;
-    text: string | undefined;
-    user?: UserDto;
-    comments?: CommentDto[] | undefined;
-    sharedWithCircles?: CirclePublicDto[] | undefined;
-    commentCount?: number;
-    title: string | undefined;
-    startDateTime: Date;
-    endDateTime?: Date | undefined;
-    location?: string | undefined;
-    timezone?: string | undefined;
-    maxAttendees?: number | undefined;
-    isAllDay?: boolean;
-    isRecurring?: boolean;
-    recurrenceRule?: string | undefined;
-    goingCount?: number;
-    maybeCount?: number;
-    notGoingCount?: number;
-    currentUserRsvp?: RsvpStatus;
-    rsvps?: EventRsvpDto[] | undefined;
-}
-
-export class EventRsvpDto implements IEventRsvpDto {
-    id!: string;
-    eventId!: string;
-    userId!: string;
-    status!: RsvpStatus;
-    responseDate?: Date;
-    notes?: string | undefined;
-    user?: UserDto;
-
-    constructor(data?: IEventRsvpDto) {
-        if (data) {
-            for (var property in data) {
-                if (data.hasOwnProperty(property))
-                    (<any>this)[property] = (<any>data)[property];
-            }
-        }
-    }
-
-    init(_data?: any) {
-        if (_data) {
-            this.id = _data["id"];
-            this.eventId = _data["eventId"];
-            this.userId = _data["userId"];
-            this.status = _data["status"];
-            this.responseDate = _data["responseDate"] ? new Date(_data["responseDate"].toString()) : <any>undefined;
-            this.notes = _data["notes"];
-            this.user = _data["user"] ? UserDto.fromJS(_data["user"]) : <any>undefined;
-        }
-    }
-
-    static fromJS(data: any): EventRsvpDto {
-        data = typeof data === 'object' ? data : {};
-        let result = new EventRsvpDto();
-        result.init(data);
-        return result;
-    }
-
-    toJSON(data?: any) {
-        data = typeof data === 'object' ? data : {};
-        data["id"] = this.id;
-        data["eventId"] = this.eventId;
-        data["userId"] = this.userId;
-        data["status"] = this.status;
-        data["responseDate"] = this.responseDate ? this.responseDate.toISOString() : <any>undefined;
-        data["notes"] = this.notes;
-        data["user"] = this.user ? this.user.toJSON() : <any>undefined;
-        return data;
-    }
-}
-
-export interface IEventRsvpDto {
-    id: string;
-    eventId: string;
-    userId: string;
-    status: RsvpStatus;
-    responseDate?: Date;
-    notes?: string | undefined;
-    user?: UserDto;
-}
-
-export class FeedDto implements IFeedDto {
-    posts?: PostDto[] | undefined;
-    notificationCount?: number;
-    userCircles?: CirclePublicDto[] | undefined;
-
-    constructor(data?: IFeedDto) {
-        if (data) {
-            for (var property in data) {
-                if (data.hasOwnProperty(property))
-                    (<any>this)[property] = (<any>data)[property];
-            }
-        }
-    }
-
-    init(_data?: any) {
-        if (_data) {
-            if (Array.isArray(_data["posts"])) {
-                this.posts = [] as any;
-                for (let item of _data["posts"])
-                    this.posts!.push(PostDto.fromJS(item));
-            }
-            this.notificationCount = _data["notificationCount"];
-            if (Array.isArray(_data["userCircles"])) {
-                this.userCircles = [] as any;
-                for (let item of _data["userCircles"])
-                    this.userCircles!.push(CirclePublicDto.fromJS(item));
-            }
-        }
-    }
-
-    static fromJS(data: any): FeedDto {
-        data = typeof data === 'object' ? data : {};
-        let result = new FeedDto();
-        result.init(data);
-        return result;
-    }
-
-    toJSON(data?: any) {
-        data = typeof data === 'object' ? data : {};
-        if (Array.isArray(this.posts)) {
-            data["posts"] = [];
-            for (let item of this.posts)
-                data["posts"].push(item.toJSON());
-        }
-        data["notificationCount"] = this.notificationCount;
-        if (Array.isArray(this.userCircles)) {
-            data["userCircles"] = [];
-            for (let item of this.userCircles)
-                data["userCircles"].push(item.toJSON());
-        }
-        return data;
-    }
-}
-
-export interface IFeedDto {
-    posts?: PostDto[] | undefined;
-    notificationCount?: number;
-    userCircles?: CirclePublicDto[] | undefined;
-}
-
-export class FriendRequestDto implements IFriendRequestDto {
-    status?: VisibleStatus;
-    id!: string;
-    requesterId!: string;
-    requester?: UserDto;
-    addresseeId!: string;
-    addressee?: UserDto;
-    createdAt?: Date;
-    acceptedAt?: Date | undefined;
-
-    constructor(data?: IFriendRequestDto) {
-        if (data) {
-            for (var property in data) {
-                if (data.hasOwnProperty(property))
-                    (<any>this)[property] = (<any>data)[property];
-            }
-        }
-    }
-
-    init(_data?: any) {
-        if (_data) {
-            this.status = _data["status"];
-            this.id = _data["id"];
-            this.requesterId = _data["requesterId"];
-            this.requester = _data["requester"] ? UserDto.fromJS(_data["requester"]) : <any>undefined;
-            this.addresseeId = _data["addresseeId"];
-            this.addressee = _data["addressee"] ? UserDto.fromJS(_data["addressee"]) : <any>undefined;
-            this.createdAt = _data["createdAt"] ? new Date(_data["createdAt"].toString()) : <any>undefined;
-            this.acceptedAt = _data["acceptedAt"] ? new Date(_data["acceptedAt"].toString()) : <any>undefined;
-        }
-    }
-
-    static fromJS(data: any): FriendRequestDto {
-        data = typeof data === 'object' ? data : {};
-        let result = new FriendRequestDto();
-        result.init(data);
-        return result;
-    }
-
-    toJSON(data?: any) {
-        data = typeof data === 'object' ? data : {};
-        data["status"] = this.status;
-        data["id"] = this.id;
-        data["requesterId"] = this.requesterId;
-        data["requester"] = this.requester ? this.requester.toJSON() : <any>undefined;
-        data["addresseeId"] = this.addresseeId;
-        data["addressee"] = this.addressee ? this.addressee.toJSON() : <any>undefined;
-        data["createdAt"] = this.createdAt ? this.createdAt.toISOString() : <any>undefined;
-        data["acceptedAt"] = this.acceptedAt ? this.acceptedAt.toISOString() : <any>undefined;
-        return data;
-    }
-}
-
-export interface IFriendRequestDto {
-    status?: VisibleStatus;
-    id: string;
-    requesterId: string;
-    requester?: UserDto;
-    addresseeId: string;
-    addressee?: UserDto;
-    createdAt?: Date;
-    acceptedAt?: Date | undefined;
-}
-
-export class FriendshipDto implements IFriendshipDto {
-    id!: string | undefined;
-    requester!: UserDto;
-    addressee!: UserDto;
-    status?: FriendshipStatus;
-    createdAt?: Date;
-    acceptedAt?: Date | undefined;
-
-    constructor(data?: IFriendshipDto) {
-        if (data) {
-            for (var property in data) {
-                if (data.hasOwnProperty(property))
-                    (<any>this)[property] = (<any>data)[property];
-            }
-        }
-        if (!data) {
-            this.requester = new UserDto();
-            this.addressee = new UserDto();
-        }
-    }
-
-    init(_data?: any) {
-        if (_data) {
-            this.id = _data["id"];
-            this.requester = _data["requester"] ? UserDto.fromJS(_data["requester"]) : new UserDto();
-            this.addressee = _data["addressee"] ? UserDto.fromJS(_data["addressee"]) : new UserDto();
-            this.status = _data["status"];
-            this.createdAt = _data["createdAt"] ? new Date(_data["createdAt"].toString()) : <any>undefined;
-            this.acceptedAt = _data["acceptedAt"] ? new Date(_data["acceptedAt"].toString()) : <any>undefined;
-        }
-    }
-
-    static fromJS(data: any): FriendshipDto {
-        data = typeof data === 'object' ? data : {};
-        let result = new FriendshipDto();
-        result.init(data);
-        return result;
-    }
-
-    toJSON(data?: any) {
-        data = typeof data === 'object' ? data : {};
-        data["id"] = this.id;
-        data["requester"] = this.requester ? this.requester.toJSON() : <any>undefined;
-        data["addressee"] = this.addressee ? this.addressee.toJSON() : <any>undefined;
-        data["status"] = this.status;
-        data["createdAt"] = this.createdAt ? this.createdAt.toISOString() : <any>undefined;
-        data["acceptedAt"] = this.acceptedAt ? this.acceptedAt.toISOString() : <any>undefined;
-        return data;
-    }
-}
-
-export interface IFriendshipDto {
-    id: string | undefined;
-    requester: UserDto;
-    addressee: UserDto;
-    status?: FriendshipStatus;
-    createdAt?: Date;
-    acceptedAt?: Date | undefined;
-}
-
-export enum FriendshipStatus {
-    Pending = "Pending",
-    Accepted = "Accepted",
-    Rejected = "Rejected",
-    Blocked = "Blocked",
-}
-
-export class FriendshipStatusDto implements IFriendshipStatusDto {
-    status?: VisibleStatus;
-    friendshipId?: string | undefined;
-
-    constructor(data?: IFriendshipStatusDto) {
-        if (data) {
-            for (var property in data) {
-                if (data.hasOwnProperty(property))
-                    (<any>this)[property] = (<any>data)[property];
-            }
-        }
-    }
-
-    init(_data?: any) {
-        if (_data) {
-            this.status = _data["status"];
-            this.friendshipId = _data["friendshipId"];
-        }
-    }
-
-    static fromJS(data: any): FriendshipStatusDto {
-        data = typeof data === 'object' ? data : {};
-        let result = new FriendshipStatusDto();
-        result.init(data);
-        return result;
-    }
-
-    toJSON(data?: any) {
-        data = typeof data === 'object' ? data : {};
-        data["status"] = this.status;
-        data["friendshipId"] = this.friendshipId;
-        return data;
-    }
-}
-
-export interface IFriendshipStatusDto {
-    status?: VisibleStatus;
-    friendshipId?: string | undefined;
-}
-
-export class LoginModel implements ILoginModel {
-    email?: string | undefined;
-    password?: string | undefined;
-    rememberMe?: boolean;
-
-    constructor(data?: ILoginModel) {
-        if (data) {
-            for (var property in data) {
-                if (data.hasOwnProperty(property))
-                    (<any>this)[property] = (<any>data)[property];
-            }
-        }
-    }
-
-    init(_data?: any) {
-        if (_data) {
-            this.email = _data["email"];
-            this.password = _data["password"];
-            this.rememberMe = _data["rememberMe"];
-        }
-    }
-
-    static fromJS(data: any): LoginModel {
-        data = typeof data === 'object' ? data : {};
-        let result = new LoginModel();
-        result.init(data);
-        return result;
-    }
-
-    toJSON(data?: any) {
-        data = typeof data === 'object' ? data : {};
-        data["email"] = this.email;
-        data["password"] = this.password;
-        data["rememberMe"] = this.rememberMe;
-        return data;
-    }
-}
-
-export interface ILoginModel {
-    email?: string | undefined;
-    password?: string | undefined;
-    rememberMe?: boolean;
-}
-
-export class NotificationDto implements INotificationDto {
-    friendRequests?: FriendRequestDto[] | undefined;
-
-    constructor(data?: INotificationDto) {
-        if (data) {
-            for (var property in data) {
-                if (data.hasOwnProperty(property))
-                    (<any>this)[property] = (<any>data)[property];
-            }
-        }
-    }
-
-    init(_data?: any) {
-        if (_data) {
-            if (Array.isArray(_data["friendRequests"])) {
-                this.friendRequests = [] as any;
-                for (let item of _data["friendRequests"])
-                    this.friendRequests!.push(FriendRequestDto.fromJS(item));
-            }
-        }
-    }
-
-    static fromJS(data: any): NotificationDto {
-        data = typeof data === 'object' ? data : {};
-        let result = new NotificationDto();
-        result.init(data);
-        return result;
-    }
-
-    toJSON(data?: any) {
-        data = typeof data === 'object' ? data : {};
-        if (Array.isArray(this.friendRequests)) {
-            data["friendRequests"] = [];
-            for (let item of this.friendRequests)
-                data["friendRequests"].push(item.toJSON());
-        }
-        return data;
-    }
-}
-
-export interface INotificationDto {
-    friendRequests?: FriendRequestDto[] | undefined;
-}
-
-export class PostDto implements IPostDto {
-    id!: string;
-    userId!: string;
-    date!: Date;
-    text!: string | undefined;
-    user?: UserDto;
-    comments?: CommentDto[] | undefined;
-    sharedWithCircles?: CirclePublicDto[] | undefined;
-    commentCount?: number;
-
-    constructor(data?: IPostDto) {
-        if (data) {
-            for (var property in data) {
-                if (data.hasOwnProperty(property))
-                    (<any>this)[property] = (<any>data)[property];
-            }
-        }
-    }
-
-    init(_data?: any) {
-        if (_data) {
-            this.id = _data["id"];
-            this.userId = _data["userId"];
-            this.date = _data["date"] ? new Date(_data["date"].toString()) : <any>undefined;
-            this.text = _data["text"];
-            this.user = _data["user"] ? UserDto.fromJS(_data["user"]) : <any>undefined;
-            if (Array.isArray(_data["comments"])) {
-                this.comments = [] as any;
-                for (let item of _data["comments"])
-                    this.comments!.push(CommentDto.fromJS(item));
-            }
-            if (Array.isArray(_data["sharedWithCircles"])) {
-                this.sharedWithCircles = [] as any;
-                for (let item of _data["sharedWithCircles"])
-                    this.sharedWithCircles!.push(CirclePublicDto.fromJS(item));
-            }
-            this.commentCount = _data["commentCount"];
-        }
-    }
-
-    static fromJS(data: any): PostDto {
-        data = typeof data === 'object' ? data : {};
-        let result = new PostDto();
-        result.init(data);
-        return result;
-    }
-
-    toJSON(data?: any) {
-        data = typeof data === 'object' ? data : {};
-        data["id"] = this.id;
-        data["userId"] = this.userId;
-        data["date"] = this.date ? this.date.toISOString() : <any>undefined;
-        data["text"] = this.text;
-        data["user"] = this.user ? this.user.toJSON() : <any>undefined;
-        if (Array.isArray(this.comments)) {
-            data["comments"] = [];
-            for (let item of this.comments)
-                data["comments"].push(item.toJSON());
-        }
-        if (Array.isArray(this.sharedWithCircles)) {
-            data["sharedWithCircles"] = [];
-            for (let item of this.sharedWithCircles)
-                data["sharedWithCircles"].push(item.toJSON());
-        }
-        data["commentCount"] = this.commentCount;
-        return data;
-    }
-}
-
-export interface IPostDto {
-    id: string;
-    userId: string;
-    date: Date;
-    text: string | undefined;
-    user?: UserDto;
-    comments?: CommentDto[] | undefined;
-    sharedWithCircles?: CirclePublicDto[] | undefined;
-    commentCount?: number;
-}
-
-export class ProfilePageResponseDto implements IProfilePageResponseDto {
-    profile?: UserProfileDto;
-    isCurrentUser?: boolean;
-    friendshipStatus?: FriendshipStatusDto;
-    recentPosts?: PostDto[] | undefined;
-    notificationCount?: number;
-
-    constructor(data?: IProfilePageResponseDto) {
-        if (data) {
-            for (var property in data) {
-                if (data.hasOwnProperty(property))
-                    (<any>this)[property] = (<any>data)[property];
-            }
-        }
-    }
-
-    init(_data?: any) {
-        if (_data) {
-            this.profile = _data["profile"] ? UserProfileDto.fromJS(_data["profile"]) : <any>undefined;
-            this.isCurrentUser = _data["isCurrentUser"];
-            this.friendshipStatus = _data["friendshipStatus"] ? FriendshipStatusDto.fromJS(_data["friendshipStatus"]) : <any>undefined;
-            if (Array.isArray(_data["recentPosts"])) {
-                this.recentPosts = [] as any;
-                for (let item of _data["recentPosts"])
-                    this.recentPosts!.push(PostDto.fromJS(item));
-            }
-            this.notificationCount = _data["notificationCount"];
-        }
-    }
-
-    static fromJS(data: any): ProfilePageResponseDto {
-        data = typeof data === 'object' ? data : {};
-        let result = new ProfilePageResponseDto();
-        result.init(data);
-        return result;
-    }
-
-    toJSON(data?: any) {
-        data = typeof data === 'object' ? data : {};
-        data["profile"] = this.profile ? this.profile.toJSON() : <any>undefined;
-        data["isCurrentUser"] = this.isCurrentUser;
-        data["friendshipStatus"] = this.friendshipStatus ? this.friendshipStatus.toJSON() : <any>undefined;
-        if (Array.isArray(this.recentPosts)) {
-            data["recentPosts"] = [];
-            for (let item of this.recentPosts)
-                data["recentPosts"].push(item.toJSON());
-        }
-        data["notificationCount"] = this.notificationCount;
-        return data;
-    }
-}
-
-export interface IProfilePageResponseDto {
-    profile?: UserProfileDto;
-    isCurrentUser?: boolean;
-    friendshipStatus?: FriendshipStatusDto;
-    recentPosts?: PostDto[] | undefined;
-    notificationCount?: number;
-}
-
-export class PushSubscriptionDto implements IPushSubscriptionDto {
-    endpoint?: string | undefined;
-    p256DH?: string | undefined;
-    auth?: string | undefined;
-
-    constructor(data?: IPushSubscriptionDto) {
-        if (data) {
-            for (var property in data) {
-                if (data.hasOwnProperty(property))
-                    (<any>this)[property] = (<any>data)[property];
-            }
-        }
-    }
-
-    init(_data?: any) {
-        if (_data) {
-            this.endpoint = _data["endpoint"];
-            this.p256DH = _data["p256DH"];
-            this.auth = _data["auth"];
-        }
-    }
-
-    static fromJS(data: any): PushSubscriptionDto {
-        data = typeof data === 'object' ? data : {};
-        let result = new PushSubscriptionDto();
-        result.init(data);
-        return result;
-    }
-
-    toJSON(data?: any) {
-        data = typeof data === 'object' ? data : {};
-        data["endpoint"] = this.endpoint;
-        data["p256DH"] = this.p256DH;
-        data["auth"] = this.auth;
-        return data;
-    }
-}
-
-export interface IPushSubscriptionDto {
-    endpoint?: string | undefined;
-    p256DH?: string | undefined;
-    auth?: string | undefined;
-}
-
-export class RegisterModel implements IRegisterModel {
-    email?: string | undefined;
-    name?: string | undefined;
-    password?: string | undefined;
-
-    constructor(data?: IRegisterModel) {
-        if (data) {
-            for (var property in data) {
-                if (data.hasOwnProperty(property))
-                    (<any>this)[property] = (<any>data)[property];
-            }
-        }
-    }
-
-    init(_data?: any) {
-        if (_data) {
-            this.email = _data["email"];
-            this.name = _data["name"];
-            this.password = _data["password"];
-        }
-    }
-
-    static fromJS(data: any): RegisterModel {
-        data = typeof data === 'object' ? data : {};
-        let result = new RegisterModel();
-        result.init(data);
-        return result;
-    }
-
-    toJSON(data?: any) {
-        data = typeof data === 'object' ? data : {};
-        data["email"] = this.email;
-        data["name"] = this.name;
-        data["password"] = this.password;
-        return data;
-    }
-}
-
-export interface IRegisterModel {
-    email?: string | undefined;
-    name?: string | undefined;
-    password?: string | undefined;
-}
-
-export enum RsvpStatus {
-    NoResponse = "NoResponse",
-    Going = "Going",
-    Maybe = "Maybe",
-    NotGoing = "NotGoing",
-}
-
-export class SignInResponseDto implements ISignInResponseDto {
-    user!: UserDto;
-    token!: string | undefined;
-
-    constructor(data?: ISignInResponseDto) {
-        if (data) {
-            for (var property in data) {
-                if (data.hasOwnProperty(property))
-                    (<any>this)[property] = (<any>data)[property];
-            }
-        }
-        if (!data) {
-            this.user = new UserDto();
-        }
-    }
-
-    init(_data?: any) {
-        if (_data) {
-            this.user = _data["user"] ? UserDto.fromJS(_data["user"]) : new UserDto();
-            this.token = _data["token"];
-        }
-    }
-
-    static fromJS(data: any): SignInResponseDto {
-        data = typeof data === 'object' ? data : {};
-        let result = new SignInResponseDto();
-        result.init(data);
-        return result;
-    }
-
-    toJSON(data?: any) {
-        data = typeof data === 'object' ? data : {};
-        data["user"] = this.user ? this.user.toJSON() : <any>undefined;
-        data["token"] = this.token;
-        return data;
-    }
-}
-
-export interface ISignInResponseDto {
-    user: UserDto;
-    token: string | undefined;
+    circleIds?: string[];
 }
 
 export class UpdateEventDto implements IUpdateEventDto {
@@ -3189,11 +2830,11 @@ export interface IUpdateEventDto {
     recurrenceRule?: string | undefined;
 }
 
-export class UpdateUsersInCircleRequest implements IUpdateUsersInCircleRequest {
-    circleId!: string;
-    userIds!: string[] | undefined;
+export class CreateRsvpDto implements ICreateRsvpDto {
+    status?: RsvpStatus;
+    notes?: string | undefined;
 
-    constructor(data?: IUpdateUsersInCircleRequest) {
+    constructor(data?: ICreateRsvpDto) {
         if (data) {
             for (var property in data) {
                 if (data.hasOwnProperty(property))
@@ -3204,44 +2845,40 @@ export class UpdateUsersInCircleRequest implements IUpdateUsersInCircleRequest {
 
     init(_data?: any) {
         if (_data) {
-            this.circleId = _data["circleId"];
-            if (Array.isArray(_data["userIds"])) {
-                this.userIds = [] as any;
-                for (let item of _data["userIds"])
-                    this.userIds!.push(item);
-            }
+            this.status = _data["status"];
+            this.notes = _data["notes"];
         }
     }
 
-    static fromJS(data: any): UpdateUsersInCircleRequest {
+    static fromJS(data: any): CreateRsvpDto {
         data = typeof data === 'object' ? data : {};
-        let result = new UpdateUsersInCircleRequest();
+        let result = new CreateRsvpDto();
         result.init(data);
         return result;
     }
 
     toJSON(data?: any) {
         data = typeof data === 'object' ? data : {};
-        data["circleId"] = this.circleId;
-        if (Array.isArray(this.userIds)) {
-            data["userIds"] = [];
-            for (let item of this.userIds)
-                data["userIds"].push(item);
-        }
+        data["status"] = this.status;
+        data["notes"] = this.notes;
         return data;
     }
 }
 
-export interface IUpdateUsersInCircleRequest {
-    circleId: string;
-    userIds: string[] | undefined;
+export interface ICreateRsvpDto {
+    status?: RsvpStatus;
+    notes?: string | undefined;
 }
 
-export class UserDto implements IUserDto {
-    id!: string;
-    name!: string | undefined;
+export class FriendshipDto implements IFriendshipDto {
+    id?: string;
+    requester?: UserDto;
+    addressee?: UserDto;
+    status?: FriendshipStatus;
+    createdAt?: Date;
+    acceptedAt?: Date | undefined;
 
-    constructor(data?: IUserDto) {
+    constructor(data?: IFriendshipDto) {
         if (data) {
             for (var property in data) {
                 if (data.hasOwnProperty(property))
@@ -3253,13 +2890,17 @@ export class UserDto implements IUserDto {
     init(_data?: any) {
         if (_data) {
             this.id = _data["id"];
-            this.name = _data["name"];
+            this.requester = _data["requester"] ? UserDto.fromJS(_data["requester"]) : <any>undefined;
+            this.addressee = _data["addressee"] ? UserDto.fromJS(_data["addressee"]) : <any>undefined;
+            this.status = _data["status"];
+            this.createdAt = _data["createdAt"] ? new Date(_data["createdAt"].toString()) : <any>undefined;
+            this.acceptedAt = _data["acceptedAt"] ? new Date(_data["acceptedAt"].toString()) : <any>undefined;
         }
     }
 
-    static fromJS(data: any): UserDto {
+    static fromJS(data: any): FriendshipDto {
         data = typeof data === 'object' ? data : {};
-        let result = new UserDto();
+        let result = new FriendshipDto();
         result.init(data);
         return result;
     }
@@ -3267,20 +2908,448 @@ export class UserDto implements IUserDto {
     toJSON(data?: any) {
         data = typeof data === 'object' ? data : {};
         data["id"] = this.id;
-        data["name"] = this.name;
+        data["requester"] = this.requester ? this.requester.toJSON() : <any>undefined;
+        data["addressee"] = this.addressee ? this.addressee.toJSON() : <any>undefined;
+        data["status"] = this.status;
+        data["createdAt"] = this.createdAt ? this.createdAt.toISOString() : <any>undefined;
+        data["acceptedAt"] = this.acceptedAt ? this.acceptedAt.toISOString() : <any>undefined;
         return data;
     }
 }
 
-export interface IUserDto {
-    id: string;
-    name: string | undefined;
+export interface IFriendshipDto {
+    id?: string;
+    requester?: UserDto;
+    addressee?: UserDto;
+    status?: FriendshipStatus;
+    createdAt?: Date;
+    acceptedAt?: Date | undefined;
+}
+
+export enum FriendshipStatus {
+    Pending = "Pending",
+    Accepted = "Accepted",
+    Rejected = "Rejected",
+    Blocked = "Blocked",
+}
+
+export class FriendshipStatusDto implements IFriendshipStatusDto {
+    status?: VisibleStatus;
+    friendshipId?: string | undefined;
+
+    constructor(data?: IFriendshipStatusDto) {
+        if (data) {
+            for (var property in data) {
+                if (data.hasOwnProperty(property))
+                    (<any>this)[property] = (<any>data)[property];
+            }
+        }
+    }
+
+    init(_data?: any) {
+        if (_data) {
+            this.status = _data["status"];
+            this.friendshipId = _data["friendshipId"];
+        }
+    }
+
+    static fromJS(data: any): FriendshipStatusDto {
+        data = typeof data === 'object' ? data : {};
+        let result = new FriendshipStatusDto();
+        result.init(data);
+        return result;
+    }
+
+    toJSON(data?: any) {
+        data = typeof data === 'object' ? data : {};
+        data["status"] = this.status;
+        data["friendshipId"] = this.friendshipId;
+        return data;
+    }
+}
+
+export interface IFriendshipStatusDto {
+    status?: VisibleStatus;
+    friendshipId?: string | undefined;
+}
+
+export enum VisibleStatus {
+    None = "None",
+    Friends = "Friends",
+    PendingSent = "PendingSent",
+    PendingReceived = "PendingReceived",
+    Blocked = "Blocked",
+    BlockedBy = "BlockedBy",
+}
+
+export class NotificationDto implements INotificationDto {
+    friendRequests?: FriendRequestDto[];
+
+    constructor(data?: INotificationDto) {
+        if (data) {
+            for (var property in data) {
+                if (data.hasOwnProperty(property))
+                    (<any>this)[property] = (<any>data)[property];
+            }
+        }
+    }
+
+    init(_data?: any) {
+        if (_data) {
+            if (Array.isArray(_data["friendRequests"])) {
+                this.friendRequests = [] as any;
+                for (let item of _data["friendRequests"])
+                    this.friendRequests!.push(FriendRequestDto.fromJS(item));
+            }
+        }
+    }
+
+    static fromJS(data: any): NotificationDto {
+        data = typeof data === 'object' ? data : {};
+        let result = new NotificationDto();
+        result.init(data);
+        return result;
+    }
+
+    toJSON(data?: any) {
+        data = typeof data === 'object' ? data : {};
+        if (Array.isArray(this.friendRequests)) {
+            data["friendRequests"] = [];
+            for (let item of this.friendRequests)
+                data["friendRequests"].push(item.toJSON());
+        }
+        return data;
+    }
+}
+
+export interface INotificationDto {
+    friendRequests?: FriendRequestDto[];
+}
+
+export class FriendRequestDto implements IFriendRequestDto {
+    status?: VisibleStatus;
+    id?: string;
+    requesterId?: string;
+    requester?: UserDto | undefined;
+    addresseeId?: string;
+    addressee?: UserDto | undefined;
+    createdAt?: Date;
+    acceptedAt?: Date | undefined;
+
+    constructor(data?: IFriendRequestDto) {
+        if (data) {
+            for (var property in data) {
+                if (data.hasOwnProperty(property))
+                    (<any>this)[property] = (<any>data)[property];
+            }
+        }
+    }
+
+    init(_data?: any) {
+        if (_data) {
+            this.status = _data["status"];
+            this.id = _data["id"];
+            this.requesterId = _data["requesterId"];
+            this.requester = _data["requester"] ? UserDto.fromJS(_data["requester"]) : <any>undefined;
+            this.addresseeId = _data["addresseeId"];
+            this.addressee = _data["addressee"] ? UserDto.fromJS(_data["addressee"]) : <any>undefined;
+            this.createdAt = _data["createdAt"] ? new Date(_data["createdAt"].toString()) : <any>undefined;
+            this.acceptedAt = _data["acceptedAt"] ? new Date(_data["acceptedAt"].toString()) : <any>undefined;
+        }
+    }
+
+    static fromJS(data: any): FriendRequestDto {
+        data = typeof data === 'object' ? data : {};
+        let result = new FriendRequestDto();
+        result.init(data);
+        return result;
+    }
+
+    toJSON(data?: any) {
+        data = typeof data === 'object' ? data : {};
+        data["status"] = this.status;
+        data["id"] = this.id;
+        data["requesterId"] = this.requesterId;
+        data["requester"] = this.requester ? this.requester.toJSON() : <any>undefined;
+        data["addresseeId"] = this.addresseeId;
+        data["addressee"] = this.addressee ? this.addressee.toJSON() : <any>undefined;
+        data["createdAt"] = this.createdAt ? this.createdAt.toISOString() : <any>undefined;
+        data["acceptedAt"] = this.acceptedAt ? this.acceptedAt.toISOString() : <any>undefined;
+        return data;
+    }
+}
+
+export interface IFriendRequestDto {
+    status?: VisibleStatus;
+    id?: string;
+    requesterId?: string;
+    requester?: UserDto | undefined;
+    addresseeId?: string;
+    addressee?: UserDto | undefined;
+    createdAt?: Date;
+    acceptedAt?: Date | undefined;
+}
+
+export class PushSubscriptionDto implements IPushSubscriptionDto {
+    endpoint?: string;
+    p256DH?: string;
+    auth?: string;
+
+    constructor(data?: IPushSubscriptionDto) {
+        if (data) {
+            for (var property in data) {
+                if (data.hasOwnProperty(property))
+                    (<any>this)[property] = (<any>data)[property];
+            }
+        }
+    }
+
+    init(_data?: any) {
+        if (_data) {
+            this.endpoint = _data["endpoint"];
+            this.p256DH = _data["p256DH"];
+            this.auth = _data["auth"];
+        }
+    }
+
+    static fromJS(data: any): PushSubscriptionDto {
+        data = typeof data === 'object' ? data : {};
+        let result = new PushSubscriptionDto();
+        result.init(data);
+        return result;
+    }
+
+    toJSON(data?: any) {
+        data = typeof data === 'object' ? data : {};
+        data["endpoint"] = this.endpoint;
+        data["p256DH"] = this.p256DH;
+        data["auth"] = this.auth;
+        return data;
+    }
+}
+
+export interface IPushSubscriptionDto {
+    endpoint?: string;
+    p256DH?: string;
+    auth?: string;
+}
+
+export class AppAnnouncementRequest implements IAppAnnouncementRequest {
+    title?: string;
+    body?: string;
+    actionUrl?: string | undefined;
+
+    constructor(data?: IAppAnnouncementRequest) {
+        if (data) {
+            for (var property in data) {
+                if (data.hasOwnProperty(property))
+                    (<any>this)[property] = (<any>data)[property];
+            }
+        }
+    }
+
+    init(_data?: any) {
+        if (_data) {
+            this.title = _data["title"];
+            this.body = _data["body"];
+            this.actionUrl = _data["actionUrl"];
+        }
+    }
+
+    static fromJS(data: any): AppAnnouncementRequest {
+        data = typeof data === 'object' ? data : {};
+        let result = new AppAnnouncementRequest();
+        result.init(data);
+        return result;
+    }
+
+    toJSON(data?: any) {
+        data = typeof data === 'object' ? data : {};
+        data["title"] = this.title;
+        data["body"] = this.body;
+        data["actionUrl"] = this.actionUrl;
+        return data;
+    }
+}
+
+export interface IAppAnnouncementRequest {
+    title?: string;
+    body?: string;
+    actionUrl?: string | undefined;
+}
+
+export class FeedDto implements IFeedDto {
+    posts?: PostDto[];
+    notificationCount?: number;
+    userCircles?: CirclePublicDto[];
+
+    constructor(data?: IFeedDto) {
+        if (data) {
+            for (var property in data) {
+                if (data.hasOwnProperty(property))
+                    (<any>this)[property] = (<any>data)[property];
+            }
+        }
+    }
+
+    init(_data?: any) {
+        if (_data) {
+            if (Array.isArray(_data["posts"])) {
+                this.posts = [] as any;
+                for (let item of _data["posts"])
+                    this.posts!.push(PostDto.fromJS(item));
+            }
+            this.notificationCount = _data["notificationCount"];
+            if (Array.isArray(_data["userCircles"])) {
+                this.userCircles = [] as any;
+                for (let item of _data["userCircles"])
+                    this.userCircles!.push(CirclePublicDto.fromJS(item));
+            }
+        }
+    }
+
+    static fromJS(data: any): FeedDto {
+        data = typeof data === 'object' ? data : {};
+        let result = new FeedDto();
+        result.init(data);
+        return result;
+    }
+
+    toJSON(data?: any) {
+        data = typeof data === 'object' ? data : {};
+        if (Array.isArray(this.posts)) {
+            data["posts"] = [];
+            for (let item of this.posts)
+                data["posts"].push(item.toJSON());
+        }
+        data["notificationCount"] = this.notificationCount;
+        if (Array.isArray(this.userCircles)) {
+            data["userCircles"] = [];
+            for (let item of this.userCircles)
+                data["userCircles"].push(item.toJSON());
+        }
+        return data;
+    }
+}
+
+export interface IFeedDto {
+    posts?: PostDto[];
+    notificationCount?: number;
+    userCircles?: CirclePublicDto[];
+}
+
+export class CreatePostDto implements ICreatePostDto {
+    text?: string;
+    circleIds?: string[];
+
+    constructor(data?: ICreatePostDto) {
+        if (data) {
+            for (var property in data) {
+                if (data.hasOwnProperty(property))
+                    (<any>this)[property] = (<any>data)[property];
+            }
+        }
+    }
+
+    init(_data?: any) {
+        if (_data) {
+            this.text = _data["text"];
+            if (Array.isArray(_data["circleIds"])) {
+                this.circleIds = [] as any;
+                for (let item of _data["circleIds"])
+                    this.circleIds!.push(item);
+            }
+        }
+    }
+
+    static fromJS(data: any): CreatePostDto {
+        data = typeof data === 'object' ? data : {};
+        let result = new CreatePostDto();
+        result.init(data);
+        return result;
+    }
+
+    toJSON(data?: any) {
+        data = typeof data === 'object' ? data : {};
+        data["text"] = this.text;
+        if (Array.isArray(this.circleIds)) {
+            data["circleIds"] = [];
+            for (let item of this.circleIds)
+                data["circleIds"].push(item);
+        }
+        return data;
+    }
+}
+
+export interface ICreatePostDto {
+    text?: string;
+    circleIds?: string[];
+}
+
+export class ProfilePageResponseDto implements IProfilePageResponseDto {
+    profile?: UserProfileDto;
+    isCurrentUser?: boolean;
+    friendshipStatus?: FriendshipStatusDto | undefined;
+    recentPosts?: PostDto[];
+    notificationCount?: number;
+
+    constructor(data?: IProfilePageResponseDto) {
+        if (data) {
+            for (var property in data) {
+                if (data.hasOwnProperty(property))
+                    (<any>this)[property] = (<any>data)[property];
+            }
+        }
+    }
+
+    init(_data?: any) {
+        if (_data) {
+            this.profile = _data["profile"] ? UserProfileDto.fromJS(_data["profile"]) : <any>undefined;
+            this.isCurrentUser = _data["isCurrentUser"];
+            this.friendshipStatus = _data["friendshipStatus"] ? FriendshipStatusDto.fromJS(_data["friendshipStatus"]) : <any>undefined;
+            if (Array.isArray(_data["recentPosts"])) {
+                this.recentPosts = [] as any;
+                for (let item of _data["recentPosts"])
+                    this.recentPosts!.push(PostDto.fromJS(item));
+            }
+            this.notificationCount = _data["notificationCount"];
+        }
+    }
+
+    static fromJS(data: any): ProfilePageResponseDto {
+        data = typeof data === 'object' ? data : {};
+        let result = new ProfilePageResponseDto();
+        result.init(data);
+        return result;
+    }
+
+    toJSON(data?: any) {
+        data = typeof data === 'object' ? data : {};
+        data["profile"] = this.profile ? this.profile.toJSON() : <any>undefined;
+        data["isCurrentUser"] = this.isCurrentUser;
+        data["friendshipStatus"] = this.friendshipStatus ? this.friendshipStatus.toJSON() : <any>undefined;
+        if (Array.isArray(this.recentPosts)) {
+            data["recentPosts"] = [];
+            for (let item of this.recentPosts)
+                data["recentPosts"].push(item.toJSON());
+        }
+        data["notificationCount"] = this.notificationCount;
+        return data;
+    }
+}
+
+export interface IProfilePageResponseDto {
+    profile?: UserProfileDto;
+    isCurrentUser?: boolean;
+    friendshipStatus?: FriendshipStatusDto | undefined;
+    recentPosts?: PostDto[];
+    notificationCount?: number;
 }
 
 export class UserProfileDto implements IUserProfileDto {
-    id!: string;
-    name!: string | undefined;
-    bio?: string | undefined;
+    id?: string;
+    name?: string;
+    bio?: string;
     createdAt?: Date;
 
     constructor(data?: IUserProfileDto) {
@@ -3319,19 +3388,17 @@ export class UserProfileDto implements IUserProfileDto {
 }
 
 export interface IUserProfileDto {
-    id: string;
-    name: string | undefined;
-    bio?: string | undefined;
+    id?: string;
+    name?: string;
+    bio?: string;
     createdAt?: Date;
 }
 
-export enum VisibleStatus {
-    None = "None",
-    Friends = "Friends",
-    PendingSent = "PendingSent",
-    PendingReceived = "PendingReceived",
-    Blocked = "Blocked",
-    BlockedBy = "BlockedBy",
+export interface FileResponse {
+    data: Blob;
+    status: number;
+    fileName?: string;
+    headers?: { [name: string]: any };
 }
 
 export class ApiException extends Error {

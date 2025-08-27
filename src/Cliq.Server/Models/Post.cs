@@ -1,10 +1,12 @@
 ﻿using System.ComponentModel.DataAnnotations;
-using System.Text.Json.Serialization;
 using System.Runtime.Serialization;
-using Cliq.Server.Utilities;
+using System.Text.Json.Serialization;
 
 namespace Cliq.Server.Models;
 
+// Polymorphism for System.Text.Json & Swashbuckle
+[JsonPolymorphic(TypeDiscriminatorPropertyName = "discriminator")]
+[JsonDerivedType(typeof(Event), typeDiscriminator: "Event")]
 public class Post
 {
     public Post() => Id = Guid.NewGuid();
@@ -19,8 +21,9 @@ public class Post
     public ICollection<CirclePost> SharedWithCircles { get; set; } = new List<CirclePost>();
 }
 
-[JsonConverter(typeof(JsonInheritanceConverter))]
-[KnownType(typeof(EventDto))]
+// Polymorphism for DTOs
+[JsonPolymorphic(TypeDiscriminatorPropertyName = "discriminator")]
+[JsonDerivedType(typeof(EventDto), typeDiscriminator: "Event")]
 public class PostDto
 {
     public required Guid Id { get; set; }
@@ -35,6 +38,6 @@ public class PostDto
 
 public class CreatePostDto
 {
-    public string Text { get; set; }
-    public Guid[] CircleIds { get; set; }
+    public required string Text { get; set; }
+    public Guid[] CircleIds { get; set; } = Array.Empty<Guid>();
 }

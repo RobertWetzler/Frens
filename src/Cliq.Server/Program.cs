@@ -19,6 +19,7 @@ using System.Text.Json.Serialization;
 using System.Linq;
 using Cliq.Server.Services.PushNotifications;
 using Microsoft.OpenApi.Models;
+using Microsoft.AspNetCore.Builder;
 
 DotNetEnv.Env.Load();
 
@@ -102,7 +103,7 @@ builder.Services.AddDbContext<CliqDbContext>(options =>
 builder.Services.AddControllers().AddJsonOptions(o =>
 {
     o.JsonSerializerOptions.Converters.Add(new JsonStringEnumConverter());
-    o.JsonSerializerOptions.TypeInfoResolverChain.Add(new DefaultJsonTypeInfoResolver());
+    // o.JsonSerializerOptions.TypeInfoResolverChain.Add(new DefaultJsonTypeInfoResolver());
 });
 // Require authentication for all controllers by default
 builder.Services.AddMvcCore(options =>
@@ -125,6 +126,7 @@ builder.Services.AddNotificationServices(builder.Configuration);
 builder.Services.AddScoped<IEventNotificationService, EventNotificationService>();
 // Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle
 builder.Services.AddEndpointsApiExplorer();
+/** 
 builder.Services.AddSwaggerGen(option =>
 {
     // The following basically adds a text box in Swagger UI to enter a Bearer token
@@ -163,6 +165,8 @@ builder.Services.AddSwaggerGen(option =>
         }
     });
 });
+*/
+builder.Services.AddOpenApiDocument();
 if (builder.Environment.IsDevelopment())
 {
     builder.Services.AddCors(options =>
@@ -198,6 +202,7 @@ builder.Services.AddScoped<JwtService>();
     .AddEntityFrameworkStores<ApplicationDbContext>(); 
 builder.Services.AddDefaultIdentity<IdentityUser>(options => options.SignIn.RequireConfirmedAccount = true)
     .AddEntityFrameworkStores<ApplicationDbContext>(); */
+
 builder.Services.AddIdentity<User, CliqRole>(options => options.SignIn.RequireConfirmedAccount = false)
     .AddEntityFrameworkStores<CliqDbContext>();
 
@@ -311,12 +316,11 @@ app.UseCors("ExpoApp");
 // Configure the HTTP request pipeline.
 if (app.Environment.IsDevelopment())
 {
-    app.UseSwagger();
-    app.UseSwaggerUI(c =>
+    app.UseOpenApi();
+    app.UseSwaggerUi(c =>
     {
-        c.SwaggerEndpoint("/swagger/v1/swagger.json", "Demo API V1");
-        c.InjectStylesheet("/swagger-custom.css");
-        c.InjectJavascript("/swagger-custom.js");
+        c.CustomJavaScriptPath = "/swagger-custom.js";
+        c.CustomInlineStyles = "/swagger-custom.css";
     });
 }
 
