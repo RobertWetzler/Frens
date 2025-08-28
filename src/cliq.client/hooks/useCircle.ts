@@ -10,7 +10,7 @@ export function useMemberCircles() {
     const loadCircles = useCallback(async () => {
         try {
             setIsLoading(true);
-            const circleList = await ApiClient.call(c => c.circleAll());
+            const circleList = await ApiClient.call(c => c.circle_GetUserMemberCircle());
             setCircles(circleList);
             setError(null);
         } catch (err) {
@@ -40,7 +40,7 @@ export function useCirclesWithMembers() {
         try {
             setIsLoading(true);
             console.log('loadCircles: Starting API call...');
-            const circleList = await ApiClient.call(c => c.withMembers());
+            const circleList = await ApiClient.call(c => c.circle_GetUserCirclesWithMembers());
             console.log('loadCircles: API call successful, received circles:', circleList);
             setCircles(circleList);
             setError(null);
@@ -56,7 +56,7 @@ export function useCirclesWithMembers() {
     const deleteCircle = useCallback(async (circleId: string) => {
         try {
             console.log('deleteCircle called with circleId:', circleId);
-            await ApiClient.call(c => c.circleDELETE(circleId));
+            await ApiClient.call(c => c.circle_DeleteCircle(circleId));
             console.log('API call successful, updating local state');
             // Remove the deleted circle from the local state
             setCircles(prevCircles => prevCircles.filter(circle => circle.id !== circleId));
@@ -72,7 +72,7 @@ export function useCirclesWithMembers() {
         try {
             setIsRemovingUser(true);
             setError(null);
-            await ApiClient.call(c => c.usersDELETE(new UpdateUsersInCircleRequest({
+            await ApiClient.call(c => c.circle_RemoveUsersFromCircle(new UpdateUsersInCircleRequest({
                 circleId: circleId,
                 userIds: userIds
             })));
@@ -82,10 +82,10 @@ export function useCirclesWithMembers() {
             setCircles(prevCircles => 
                 prevCircles.map(circle => {
                     if (circle.id === circleId) {
-                        return {
+                        return new CircleWithMembersDto({
                             ...circle,
                             members: circle.members?.filter(member => !userIds.includes(member.id || '')) || []
-                        };
+                        });
                     }
                     return circle;
                 })
@@ -106,7 +106,7 @@ export function useCirclesWithMembers() {
             setError(null);
             
             console.log('addUsersToCircle: Starting API call...');
-            await ApiClient.call(c => c.usersPOST(new UpdateUsersInCircleRequest({
+            await ApiClient.call(c => c.circle_AddUsersToCircle(new UpdateUsersInCircleRequest({
                 circleId: circleId,
                 userIds: userIds
             })));

@@ -42,7 +42,7 @@ const ProfileScreen: React.FC<ProfileScreenProps> = ({ route, navigation }) => {
     const fetchUserProfile = async () => {
         try {
             // Fetch user profile data
-            const profileData = await ApiClient.call(c => c.profile(userId));
+            const profileData = await ApiClient.call(c => c.profile_GetProfile(userId));
             setUser(profileData.profile);
             if (currentUser?.id !== userId) {
                 setFriendshipStatus(profileData.friendshipStatus);
@@ -72,19 +72,19 @@ const ProfileScreen: React.FC<ProfileScreenProps> = ({ route, navigation }) => {
     const toggleFollow = async () => {
         try {
             if (friendshipStatus.status == VisibleStatus.Friends) {
-                await ApiClient.call(c => c.removeFren(userId));
+                await ApiClient.call(c => c.frenship_RemoveFriend(userId));
                 setFriendshipStatus(new FriendshipStatusDto({
                     ...friendshipStatus,
                     status: VisibleStatus.None
                 }));
             } 
             else if (friendshipStatus.status == VisibleStatus.PendingSent) {
-                await ApiClient.call(c => c.cancelRequest(friendshipStatus.friendshipId));
+                await ApiClient.call(c => c.frenship_CancelFriendRequest(friendshipStatus.friendshipId));
                 setFriendshipStatus(new FriendshipStatusDto({
                     ...friendshipStatus,
                     status: VisibleStatus.None
                 }));            } else {
-                const res = await ApiClient.call(c => c.sendRequest(userId));
+                const res = await ApiClient.call(c => c.frenship_SendFriendRequest(userId));
                 // TODO backend should return a VisibleStatus here
                 const statusMap = {
                     [FriendshipStatus.Accepted]: VisibleStatus.Friends,

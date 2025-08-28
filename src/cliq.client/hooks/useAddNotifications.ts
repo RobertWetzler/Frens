@@ -118,7 +118,7 @@ export const useAddNotifications = (
       const auth = btoa(String.fromCharCode(...new Uint8Array(newSubscription.getKey('auth'))));
       // console.log({ endpoint: newSubscription.endpoint, p256dh, auth });
       await ApiClient.call(c =>
-        c.subscriptions(new PushSubscriptionDto({
+        c.notification_StoreSubscription(new PushSubscriptionDto({
           endpoint: newSubscription.endpoint,
           p256DH: p256dh,
           auth: auth

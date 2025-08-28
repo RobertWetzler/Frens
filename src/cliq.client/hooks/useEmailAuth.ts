@@ -16,7 +16,7 @@ export function useEmailAuth() {
         setError(null)
 
         try {
-            const signInResponse = await ApiClient.call(c => c.login(new LoginModel({email, password})));
+            const signInResponse = await ApiClient.call(c => c.account_Login(new LoginModel({email, password})));
             return  { result: signInResponse }
         } catch (err) {
             setError(err instanceof Error ? err : new Error('An unknown error occurred'))
@@ -34,7 +34,7 @@ export function useEmailAuth() {
         setError(null)
 
         try {
-            const registerResponse = await ApiClient.call(c => c.register(new RegisterModel({name, email, password})));
+            const registerResponse = await ApiClient.call(c => c.account_Register(new RegisterModel({name, email, password})));
             return { result: registerResponse }
         } catch (err) {
             setError(err instanceof Error ? err : new Error('An unknown error occurred'))

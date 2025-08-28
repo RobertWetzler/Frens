@@ -8,7 +8,7 @@
 /* eslint-disable */
 // ReSharper disable InconsistentNaming
 
-export class AccountClient {
+export class Client {
     private http: { fetch(url: RequestInfo, init?: RequestInit): Promise<Response> };
     private baseUrl: string;
     protected jsonParseReviver: ((key: string, value: any) => any) | undefined = undefined;
@@ -18,7 +18,7 @@ export class AccountClient {
         this.baseUrl = baseUrl ?? "http://localhost:5188";
     }
 
-    register(model: RegisterModel, signal?: AbortSignal): Promise<SignInResponseDto> {
+    account_Register(model: RegisterModel, signal?: AbortSignal): Promise<SignInResponseDto> {
         let url_ = this.baseUrl + "/api/Account/register";
         url_ = url_.replace(/[?&]$/, "");
 
@@ -35,11 +35,11 @@ export class AccountClient {
         };
 
         return this.http.fetch(url_, options_).then((_response: Response) => {
-            return this.processRegister(_response);
+            return this.processAccount_Register(_response);
         });
     }
 
-    protected processRegister(response: Response): Promise<SignInResponseDto> {
+    protected processAccount_Register(response: Response): Promise<SignInResponseDto> {
         const status = response.status;
         let _headers: any = {}; if (response.headers && response.headers.forEach) { response.headers.forEach((v: any, k: any) => _headers[k] = v); };
         if (status === 200) {
@@ -57,7 +57,7 @@ export class AccountClient {
         return Promise.resolve<SignInResponseDto>(null as any);
     }
 
-    login(model: LoginModel, signal?: AbortSignal): Promise<SignInResponseDto> {
+    account_Login(model: LoginModel, signal?: AbortSignal): Promise<SignInResponseDto> {
         let url_ = this.baseUrl + "/api/Account/login";
         url_ = url_.replace(/[?&]$/, "");
 
@@ -74,11 +74,11 @@ export class AccountClient {
         };
 
         return this.http.fetch(url_, options_).then((_response: Response) => {
-            return this.processLogin(_response);
+            return this.processAccount_Login(_response);
         });
     }
 
-    protected processLogin(response: Response): Promise<SignInResponseDto> {
+    protected processAccount_Login(response: Response): Promise<SignInResponseDto> {
         const status = response.status;
         let _headers: any = {}; if (response.headers && response.headers.forEach) { response.headers.forEach((v: any, k: any) => _headers[k] = v); };
         if (status === 200) {
@@ -96,7 +96,7 @@ export class AccountClient {
         return Promise.resolve<SignInResponseDto>(null as any);
     }
 
-    logout(signal?: AbortSignal): Promise<FileResponse> {
+    account_Logout(signal?: AbortSignal): Promise<FileResponse> {
         let url_ = this.baseUrl + "/api/Account/logout";
         url_ = url_.replace(/[?&]$/, "");
 
@@ -109,11 +109,11 @@ export class AccountClient {
         };
 
         return this.http.fetch(url_, options_).then((_response: Response) => {
-            return this.processLogout(_response);
+            return this.processAccount_Logout(_response);
         });
     }
 
-    protected processLogout(response: Response): Promise<FileResponse> {
+    protected processAccount_Logout(response: Response): Promise<FileResponse> {
         const status = response.status;
         let _headers: any = {}; if (response.headers && response.headers.forEach) { response.headers.forEach((v: any, k: any) => _headers[k] = v); };
         if (status === 200 || status === 206) {
@@ -134,19 +134,8 @@ export class AccountClient {
         }
         return Promise.resolve<FileResponse>(null as any);
     }
-}
 
-export class CircleClient {
-    private http: { fetch(url: RequestInfo, init?: RequestInit): Promise<Response> };
-    private baseUrl: string;
-    protected jsonParseReviver: ((key: string, value: any) => any) | undefined = undefined;
-
-    constructor(baseUrl?: string, http?: { fetch(url: RequestInfo, init?: RequestInit): Promise<Response> }) {
-        this.http = http ? http : window as any;
-        this.baseUrl = baseUrl ?? "http://localhost:5188";
-    }
-
-    getUserMemberCircle(signal?: AbortSignal): Promise<CirclePublicDto[]> {
+    circle_GetUserMemberCircle(signal?: AbortSignal): Promise<CirclePublicDto[]> {
         let url_ = this.baseUrl + "/api/Circle";
         url_ = url_.replace(/[?&]$/, "");
 
@@ -159,11 +148,11 @@ export class CircleClient {
         };
 
         return this.http.fetch(url_, options_).then((_response: Response) => {
-            return this.processGetUserMemberCircle(_response);
+            return this.processCircle_GetUserMemberCircle(_response);
         });
     }
 
-    protected processGetUserMemberCircle(response: Response): Promise<CirclePublicDto[]> {
+    protected processCircle_GetUserMemberCircle(response: Response): Promise<CirclePublicDto[]> {
         const status = response.status;
         let _headers: any = {}; if (response.headers && response.headers.forEach) { response.headers.forEach((v: any, k: any) => _headers[k] = v); };
         if (status === 200) {
@@ -188,7 +177,7 @@ export class CircleClient {
         return Promise.resolve<CirclePublicDto[]>(null as any);
     }
 
-    createCircle(circleDto: CircleCreationDto, signal?: AbortSignal): Promise<CirclePublicDto> {
+    circle_CreateCircle(circleDto: CircleCreationDto, signal?: AbortSignal): Promise<CirclePublicDto> {
         let url_ = this.baseUrl + "/api/Circle";
         url_ = url_.replace(/[?&]$/, "");
 
@@ -205,11 +194,11 @@ export class CircleClient {
         };
 
         return this.http.fetch(url_, options_).then((_response: Response) => {
-            return this.processCreateCircle(_response);
+            return this.processCircle_CreateCircle(_response);
         });
     }
 
-    protected processCreateCircle(response: Response): Promise<CirclePublicDto> {
+    protected processCircle_CreateCircle(response: Response): Promise<CirclePublicDto> {
         const status = response.status;
         let _headers: any = {}; if (response.headers && response.headers.forEach) { response.headers.forEach((v: any, k: any) => _headers[k] = v); };
         if (status === 200) {
@@ -227,7 +216,7 @@ export class CircleClient {
         return Promise.resolve<CirclePublicDto>(null as any);
     }
 
-    getUserOwnedCircle(signal?: AbortSignal): Promise<CirclePublicDto[]> {
+    circle_GetUserOwnedCircle(signal?: AbortSignal): Promise<CirclePublicDto[]> {
         let url_ = this.baseUrl + "/api/Circle/own";
         url_ = url_.replace(/[?&]$/, "");
 
@@ -240,11 +229,11 @@ export class CircleClient {
         };
 
         return this.http.fetch(url_, options_).then((_response: Response) => {
-            return this.processGetUserOwnedCircle(_response);
+            return this.processCircle_GetUserOwnedCircle(_response);
         });
     }
 
-    protected processGetUserOwnedCircle(response: Response): Promise<CirclePublicDto[]> {
+    protected processCircle_GetUserOwnedCircle(response: Response): Promise<CirclePublicDto[]> {
         const status = response.status;
         let _headers: any = {}; if (response.headers && response.headers.forEach) { response.headers.forEach((v: any, k: any) => _headers[k] = v); };
         if (status === 200) {
@@ -269,7 +258,7 @@ export class CircleClient {
         return Promise.resolve<CirclePublicDto[]>(null as any);
     }
 
-    getUserCirclesWithMembers(signal?: AbortSignal): Promise<CircleWithMembersDto[]> {
+    circle_GetUserCirclesWithMembers(signal?: AbortSignal): Promise<CircleWithMembersDto[]> {
         let url_ = this.baseUrl + "/api/Circle/with-members";
         url_ = url_.replace(/[?&]$/, "");
 
@@ -282,11 +271,11 @@ export class CircleClient {
         };
 
         return this.http.fetch(url_, options_).then((_response: Response) => {
-            return this.processGetUserCirclesWithMembers(_response);
+            return this.processCircle_GetUserCirclesWithMembers(_response);
         });
     }
 
-    protected processGetUserCirclesWithMembers(response: Response): Promise<CircleWithMembersDto[]> {
+    protected processCircle_GetUserCirclesWithMembers(response: Response): Promise<CircleWithMembersDto[]> {
         const status = response.status;
         let _headers: any = {}; if (response.headers && response.headers.forEach) { response.headers.forEach((v: any, k: any) => _headers[k] = v); };
         if (status === 200) {
@@ -311,7 +300,7 @@ export class CircleClient {
         return Promise.resolve<CircleWithMembersDto[]>(null as any);
     }
 
-    getCircle(circleId: string, signal?: AbortSignal): Promise<CirclePublicDto> {
+    circle_GetCircle(circleId: string, signal?: AbortSignal): Promise<CirclePublicDto> {
         let url_ = this.baseUrl + "/api/Circle/{circleId}";
         if (circleId === undefined || circleId === null)
             throw new Error("The parameter 'circleId' must be defined.");
@@ -327,11 +316,11 @@ export class CircleClient {
         };
 
         return this.http.fetch(url_, options_).then((_response: Response) => {
-            return this.processGetCircle(_response);
+            return this.processCircle_GetCircle(_response);
         });
     }
 
-    protected processGetCircle(response: Response): Promise<CirclePublicDto> {
+    protected processCircle_GetCircle(response: Response): Promise<CirclePublicDto> {
         const status = response.status;
         let _headers: any = {}; if (response.headers && response.headers.forEach) { response.headers.forEach((v: any, k: any) => _headers[k] = v); };
         if (status === 200) {
@@ -349,7 +338,7 @@ export class CircleClient {
         return Promise.resolve<CirclePublicDto>(null as any);
     }
 
-    deleteCircle(circleId: string, signal?: AbortSignal): Promise<FileResponse> {
+    circle_DeleteCircle(circleId: string, signal?: AbortSignal): Promise<FileResponse> {
         let url_ = this.baseUrl + "/api/Circle/{circleId}";
         if (circleId === undefined || circleId === null)
             throw new Error("The parameter 'circleId' must be defined.");
@@ -365,11 +354,11 @@ export class CircleClient {
         };
 
         return this.http.fetch(url_, options_).then((_response: Response) => {
-            return this.processDeleteCircle(_response);
+            return this.processCircle_DeleteCircle(_response);
         });
     }
 
-    protected processDeleteCircle(response: Response): Promise<FileResponse> {
+    protected processCircle_DeleteCircle(response: Response): Promise<FileResponse> {
         const status = response.status;
         let _headers: any = {}; if (response.headers && response.headers.forEach) { response.headers.forEach((v: any, k: any) => _headers[k] = v); };
         if (status === 200 || status === 206) {
@@ -391,7 +380,7 @@ export class CircleClient {
         return Promise.resolve<FileResponse>(null as any);
     }
 
-    addUsersToCircle(request: UpdateUsersInCircleRequest, signal?: AbortSignal): Promise<FileResponse> {
+    circle_AddUsersToCircle(request: UpdateUsersInCircleRequest, signal?: AbortSignal): Promise<FileResponse> {
         let url_ = this.baseUrl + "/api/Circle/users";
         url_ = url_.replace(/[?&]$/, "");
 
@@ -408,11 +397,11 @@ export class CircleClient {
         };
 
         return this.http.fetch(url_, options_).then((_response: Response) => {
-            return this.processAddUsersToCircle(_response);
+            return this.processCircle_AddUsersToCircle(_response);
         });
     }
 
-    protected processAddUsersToCircle(response: Response): Promise<FileResponse> {
+    protected processCircle_AddUsersToCircle(response: Response): Promise<FileResponse> {
         const status = response.status;
         let _headers: any = {}; if (response.headers && response.headers.forEach) { response.headers.forEach((v: any, k: any) => _headers[k] = v); };
         if (status === 200 || status === 206) {
@@ -434,7 +423,7 @@ export class CircleClient {
         return Promise.resolve<FileResponse>(null as any);
     }
 
-    removeUsersFromCircle(request: UpdateUsersInCircleRequest, signal?: AbortSignal): Promise<FileResponse> {
+    circle_RemoveUsersFromCircle(request: UpdateUsersInCircleRequest, signal?: AbortSignal): Promise<FileResponse> {
         let url_ = this.baseUrl + "/api/Circle/users";
         url_ = url_.replace(/[?&]$/, "");
 
@@ -451,11 +440,11 @@ export class CircleClient {
         };
 
         return this.http.fetch(url_, options_).then((_response: Response) => {
-            return this.processRemoveUsersFromCircle(_response);
+            return this.processCircle_RemoveUsersFromCircle(_response);
         });
     }
 
-    protected processRemoveUsersFromCircle(response: Response): Promise<FileResponse> {
+    protected processCircle_RemoveUsersFromCircle(response: Response): Promise<FileResponse> {
         const status = response.status;
         let _headers: any = {}; if (response.headers && response.headers.forEach) { response.headers.forEach((v: any, k: any) => _headers[k] = v); };
         if (status === 200 || status === 206) {
@@ -476,19 +465,8 @@ export class CircleClient {
         }
         return Promise.resolve<FileResponse>(null as any);
     }
-}
 
-export class CommentClient {
-    private http: { fetch(url: RequestInfo, init?: RequestInit): Promise<Response> };
-    private baseUrl: string;
-    protected jsonParseReviver: ((key: string, value: any) => any) | undefined = undefined;
-
-    constructor(baseUrl?: string, http?: { fetch(url: RequestInfo, init?: RequestInit): Promise<Response> }) {
-        this.http = http ? http : window as any;
-        this.baseUrl = baseUrl ?? "http://localhost:5188";
-    }
-
-    postComment(text: string | undefined, postId: string | undefined, parentCommentid: string | null | undefined, signal?: AbortSignal): Promise<CommentDto> {
+    comment_PostComment(text: string | undefined, postId: string | undefined, parentCommentid: string | null | undefined, signal?: AbortSignal): Promise<CommentDto> {
         let url_ = this.baseUrl + "/api/Comment?";
         if (text === null)
             throw new Error("The parameter 'text' cannot be null.");
@@ -511,11 +489,11 @@ export class CommentClient {
         };
 
         return this.http.fetch(url_, options_).then((_response: Response) => {
-            return this.processPostComment(_response);
+            return this.processComment_PostComment(_response);
         });
     }
 
-    protected processPostComment(response: Response): Promise<CommentDto> {
+    protected processComment_PostComment(response: Response): Promise<CommentDto> {
         const status = response.status;
         let _headers: any = {}; if (response.headers && response.headers.forEach) { response.headers.forEach((v: any, k: any) => _headers[k] = v); };
         if (status === 200) {
@@ -532,19 +510,8 @@ export class CommentClient {
         }
         return Promise.resolve<CommentDto>(null as any);
     }
-}
 
-export class EventClient {
-    private http: { fetch(url: RequestInfo, init?: RequestInit): Promise<Response> };
-    private baseUrl: string;
-    protected jsonParseReviver: ((key: string, value: any) => any) | undefined = undefined;
-
-    constructor(baseUrl?: string, http?: { fetch(url: RequestInfo, init?: RequestInit): Promise<Response> }) {
-        this.http = http ? http : window as any;
-        this.baseUrl = baseUrl ?? "http://localhost:5188";
-    }
-
-    getEvent(id: string, includeRsvps: boolean | undefined, signal?: AbortSignal): Promise<EventDto> {
+    event_GetEvent(id: string, includeRsvps: boolean | undefined, signal?: AbortSignal): Promise<EventDto> {
         let url_ = this.baseUrl + "/api/Event/{id}?";
         if (id === undefined || id === null)
             throw new Error("The parameter 'id' must be defined.");
@@ -564,11 +531,11 @@ export class EventClient {
         };
 
         return this.http.fetch(url_, options_).then((_response: Response) => {
-            return this.processGetEvent(_response);
+            return this.processEvent_GetEvent(_response);
         });
     }
 
-    protected processGetEvent(response: Response): Promise<EventDto> {
+    protected processEvent_GetEvent(response: Response): Promise<EventDto> {
         const status = response.status;
         let _headers: any = {}; if (response.headers && response.headers.forEach) { response.headers.forEach((v: any, k: any) => _headers[k] = v); };
         if (status === 200) {
@@ -586,7 +553,7 @@ export class EventClient {
         return Promise.resolve<EventDto>(null as any);
     }
 
-    updateEvent(id: string, updateEventDto: UpdateEventDto, signal?: AbortSignal): Promise<EventDto> {
+    event_UpdateEvent(id: string, updateEventDto: UpdateEventDto, signal?: AbortSignal): Promise<EventDto> {
         let url_ = this.baseUrl + "/api/Event/{id}";
         if (id === undefined || id === null)
             throw new Error("The parameter 'id' must be defined.");
@@ -606,11 +573,11 @@ export class EventClient {
         };
 
         return this.http.fetch(url_, options_).then((_response: Response) => {
-            return this.processUpdateEvent(_response);
+            return this.processEvent_UpdateEvent(_response);
         });
     }
 
-    protected processUpdateEvent(response: Response): Promise<EventDto> {
+    protected processEvent_UpdateEvent(response: Response): Promise<EventDto> {
         const status = response.status;
         let _headers: any = {}; if (response.headers && response.headers.forEach) { response.headers.forEach((v: any, k: any) => _headers[k] = v); };
         if (status === 200) {
@@ -628,7 +595,7 @@ export class EventClient {
         return Promise.resolve<EventDto>(null as any);
     }
 
-    deleteEvent(id: string, signal?: AbortSignal): Promise<FileResponse> {
+    event_DeleteEvent(id: string, signal?: AbortSignal): Promise<FileResponse> {
         let url_ = this.baseUrl + "/api/Event/{id}";
         if (id === undefined || id === null)
             throw new Error("The parameter 'id' must be defined.");
@@ -644,11 +611,11 @@ export class EventClient {
         };
 
         return this.http.fetch(url_, options_).then((_response: Response) => {
-            return this.processDeleteEvent(_response);
+            return this.processEvent_DeleteEvent(_response);
         });
     }
 
-    protected processDeleteEvent(response: Response): Promise<FileResponse> {
+    protected processEvent_DeleteEvent(response: Response): Promise<FileResponse> {
         const status = response.status;
         let _headers: any = {}; if (response.headers && response.headers.forEach) { response.headers.forEach((v: any, k: any) => _headers[k] = v); };
         if (status === 200 || status === 206) {
@@ -670,7 +637,7 @@ export class EventClient {
         return Promise.resolve<FileResponse>(null as any);
     }
 
-    getUpcomingEvents(page: number | undefined, pageSize: number | undefined, signal?: AbortSignal): Promise<EventDto[]> {
+    event_GetUpcomingEvents(page: number | undefined, pageSize: number | undefined, signal?: AbortSignal): Promise<EventDto[]> {
         let url_ = this.baseUrl + "/api/Event/upcoming?";
         if (page === null)
             throw new Error("The parameter 'page' cannot be null.");
@@ -691,11 +658,11 @@ export class EventClient {
         };
 
         return this.http.fetch(url_, options_).then((_response: Response) => {
-            return this.processGetUpcomingEvents(_response);
+            return this.processEvent_GetUpcomingEvents(_response);
         });
     }
 
-    protected processGetUpcomingEvents(response: Response): Promise<EventDto[]> {
+    protected processEvent_GetUpcomingEvents(response: Response): Promise<EventDto[]> {
         const status = response.status;
         let _headers: any = {}; if (response.headers && response.headers.forEach) { response.headers.forEach((v: any, k: any) => _headers[k] = v); };
         if (status === 200) {
@@ -720,7 +687,7 @@ export class EventClient {
         return Promise.resolve<EventDto[]>(null as any);
     }
 
-    getMyEvents(page: number | undefined, pageSize: number | undefined, signal?: AbortSignal): Promise<EventDto[]> {
+    event_GetMyEvents(page: number | undefined, pageSize: number | undefined, signal?: AbortSignal): Promise<EventDto[]> {
         let url_ = this.baseUrl + "/api/Event/my-events?";
         if (page === null)
             throw new Error("The parameter 'page' cannot be null.");
@@ -741,11 +708,11 @@ export class EventClient {
         };
 
         return this.http.fetch(url_, options_).then((_response: Response) => {
-            return this.processGetMyEvents(_response);
+            return this.processEvent_GetMyEvents(_response);
         });
     }
 
-    protected processGetMyEvents(response: Response): Promise<EventDto[]> {
+    protected processEvent_GetMyEvents(response: Response): Promise<EventDto[]> {
         const status = response.status;
         let _headers: any = {}; if (response.headers && response.headers.forEach) { response.headers.forEach((v: any, k: any) => _headers[k] = v); };
         if (status === 200) {
@@ -770,7 +737,7 @@ export class EventClient {
         return Promise.resolve<EventDto[]>(null as any);
     }
 
-    createEvent(createEventDto: CreateEventDto, signal?: AbortSignal): Promise<EventDto> {
+    event_CreateEvent(createEventDto: CreateEventDto, signal?: AbortSignal): Promise<EventDto> {
         let url_ = this.baseUrl + "/api/Event";
         url_ = url_.replace(/[?&]$/, "");
 
@@ -787,11 +754,11 @@ export class EventClient {
         };
 
         return this.http.fetch(url_, options_).then((_response: Response) => {
-            return this.processCreateEvent(_response);
+            return this.processEvent_CreateEvent(_response);
         });
     }
 
-    protected processCreateEvent(response: Response): Promise<EventDto> {
+    protected processEvent_CreateEvent(response: Response): Promise<EventDto> {
         const status = response.status;
         let _headers: any = {}; if (response.headers && response.headers.forEach) { response.headers.forEach((v: any, k: any) => _headers[k] = v); };
         if (status === 200) {
@@ -809,7 +776,7 @@ export class EventClient {
         return Promise.resolve<EventDto>(null as any);
     }
 
-    rsvpToEvent(id: string, rsvpDto: CreateRsvpDto, signal?: AbortSignal): Promise<EventRsvpDto> {
+    event_RsvpToEvent(id: string, rsvpDto: CreateRsvpDto, signal?: AbortSignal): Promise<EventRsvpDto> {
         let url_ = this.baseUrl + "/api/Event/{id}/rsvp";
         if (id === undefined || id === null)
             throw new Error("The parameter 'id' must be defined.");
@@ -829,11 +796,11 @@ export class EventClient {
         };
 
         return this.http.fetch(url_, options_).then((_response: Response) => {
-            return this.processRsvpToEvent(_response);
+            return this.processEvent_RsvpToEvent(_response);
         });
     }
 
-    protected processRsvpToEvent(response: Response): Promise<EventRsvpDto> {
+    protected processEvent_RsvpToEvent(response: Response): Promise<EventRsvpDto> {
         const status = response.status;
         let _headers: any = {}; if (response.headers && response.headers.forEach) { response.headers.forEach((v: any, k: any) => _headers[k] = v); };
         if (status === 200) {
@@ -851,7 +818,7 @@ export class EventClient {
         return Promise.resolve<EventRsvpDto>(null as any);
     }
 
-    removeRsvp(id: string, signal?: AbortSignal): Promise<FileResponse> {
+    event_RemoveRsvp(id: string, signal?: AbortSignal): Promise<FileResponse> {
         let url_ = this.baseUrl + "/api/Event/{id}/rsvp";
         if (id === undefined || id === null)
             throw new Error("The parameter 'id' must be defined.");
@@ -867,11 +834,11 @@ export class EventClient {
         };
 
         return this.http.fetch(url_, options_).then((_response: Response) => {
-            return this.processRemoveRsvp(_response);
+            return this.processEvent_RemoveRsvp(_response);
         });
     }
 
-    protected processRemoveRsvp(response: Response): Promise<FileResponse> {
+    protected processEvent_RemoveRsvp(response: Response): Promise<FileResponse> {
         const status = response.status;
         let _headers: any = {}; if (response.headers && response.headers.forEach) { response.headers.forEach((v: any, k: any) => _headers[k] = v); };
         if (status === 200 || status === 206) {
@@ -893,7 +860,7 @@ export class EventClient {
         return Promise.resolve<FileResponse>(null as any);
     }
 
-    getEventRsvps(id: string, signal?: AbortSignal): Promise<EventRsvpDto[]> {
+    event_GetEventRsvps(id: string, signal?: AbortSignal): Promise<EventRsvpDto[]> {
         let url_ = this.baseUrl + "/api/Event/{id}/rsvps";
         if (id === undefined || id === null)
             throw new Error("The parameter 'id' must be defined.");
@@ -909,11 +876,11 @@ export class EventClient {
         };
 
         return this.http.fetch(url_, options_).then((_response: Response) => {
-            return this.processGetEventRsvps(_response);
+            return this.processEvent_GetEventRsvps(_response);
         });
     }
 
-    protected processGetEventRsvps(response: Response): Promise<EventRsvpDto[]> {
+    protected processEvent_GetEventRsvps(response: Response): Promise<EventRsvpDto[]> {
         const status = response.status;
         let _headers: any = {}; if (response.headers && response.headers.forEach) { response.headers.forEach((v: any, k: any) => _headers[k] = v); };
         if (status === 200) {
@@ -938,7 +905,7 @@ export class EventClient {
         return Promise.resolve<EventRsvpDto[]>(null as any);
     }
 
-    getEventICalendar(id: string, signal?: AbortSignal): Promise<FileResponse> {
+    event_GetEventICalendar(id: string, signal?: AbortSignal): Promise<FileResponse> {
         let url_ = this.baseUrl + "/api/Event/{id}/ical";
         if (id === undefined || id === null)
             throw new Error("The parameter 'id' must be defined.");
@@ -954,11 +921,11 @@ export class EventClient {
         };
 
         return this.http.fetch(url_, options_).then((_response: Response) => {
-            return this.processGetEventICalendar(_response);
+            return this.processEvent_GetEventICalendar(_response);
         });
     }
 
-    protected processGetEventICalendar(response: Response): Promise<FileResponse> {
+    protected processEvent_GetEventICalendar(response: Response): Promise<FileResponse> {
         const status = response.status;
         let _headers: any = {}; if (response.headers && response.headers.forEach) { response.headers.forEach((v: any, k: any) => _headers[k] = v); };
         if (status === 200 || status === 206) {
@@ -979,19 +946,8 @@ export class EventClient {
         }
         return Promise.resolve<FileResponse>(null as any);
     }
-}
 
-export class FrenshipClient {
-    private http: { fetch(url: RequestInfo, init?: RequestInit): Promise<Response> };
-    private baseUrl: string;
-    protected jsonParseReviver: ((key: string, value: any) => any) | undefined = undefined;
-
-    constructor(baseUrl?: string, http?: { fetch(url: RequestInfo, init?: RequestInit): Promise<Response> }) {
-        this.http = http ? http : window as any;
-        this.baseUrl = baseUrl ?? "http://localhost:5188";
-    }
-
-    sendFriendRequest(addresseeId: string, signal?: AbortSignal): Promise<FriendshipDto> {
+    frenship_SendFriendRequest(addresseeId: string, signal?: AbortSignal): Promise<FriendshipDto> {
         let url_ = this.baseUrl + "/api/Frenship/send-request/{addresseeId}";
         if (addresseeId === undefined || addresseeId === null)
             throw new Error("The parameter 'addresseeId' must be defined.");
@@ -1007,11 +963,11 @@ export class FrenshipClient {
         };
 
         return this.http.fetch(url_, options_).then((_response: Response) => {
-            return this.processSendFriendRequest(_response);
+            return this.processFrenship_SendFriendRequest(_response);
         });
     }
 
-    protected processSendFriendRequest(response: Response): Promise<FriendshipDto> {
+    protected processFrenship_SendFriendRequest(response: Response): Promise<FriendshipDto> {
         const status = response.status;
         let _headers: any = {}; if (response.headers && response.headers.forEach) { response.headers.forEach((v: any, k: any) => _headers[k] = v); };
         if (status === 200) {
@@ -1029,7 +985,7 @@ export class FrenshipClient {
         return Promise.resolve<FriendshipDto>(null as any);
     }
 
-    acceptFriendRequest(friendshipId: string, signal?: AbortSignal): Promise<FriendshipDto> {
+    frenship_AcceptFriendRequest(friendshipId: string, signal?: AbortSignal): Promise<FriendshipDto> {
         let url_ = this.baseUrl + "/api/Frenship/accept-request/{friendshipId}";
         if (friendshipId === undefined || friendshipId === null)
             throw new Error("The parameter 'friendshipId' must be defined.");
@@ -1045,11 +1001,11 @@ export class FrenshipClient {
         };
 
         return this.http.fetch(url_, options_).then((_response: Response) => {
-            return this.processAcceptFriendRequest(_response);
+            return this.processFrenship_AcceptFriendRequest(_response);
         });
     }
 
-    protected processAcceptFriendRequest(response: Response): Promise<FriendshipDto> {
+    protected processFrenship_AcceptFriendRequest(response: Response): Promise<FriendshipDto> {
         const status = response.status;
         let _headers: any = {}; if (response.headers && response.headers.forEach) { response.headers.forEach((v: any, k: any) => _headers[k] = v); };
         if (status === 200) {
@@ -1067,7 +1023,7 @@ export class FrenshipClient {
         return Promise.resolve<FriendshipDto>(null as any);
     }
 
-    rejectFriendRequest(friendshipId: string, signal?: AbortSignal): Promise<FileResponse> {
+    frenship_RejectFriendRequest(friendshipId: string, signal?: AbortSignal): Promise<FileResponse> {
         let url_ = this.baseUrl + "/api/Frenship/reject-request/{friendshipId}";
         if (friendshipId === undefined || friendshipId === null)
             throw new Error("The parameter 'friendshipId' must be defined.");
@@ -1083,11 +1039,11 @@ export class FrenshipClient {
         };
 
         return this.http.fetch(url_, options_).then((_response: Response) => {
-            return this.processRejectFriendRequest(_response);
+            return this.processFrenship_RejectFriendRequest(_response);
         });
     }
 
-    protected processRejectFriendRequest(response: Response): Promise<FileResponse> {
+    protected processFrenship_RejectFriendRequest(response: Response): Promise<FileResponse> {
         const status = response.status;
         let _headers: any = {}; if (response.headers && response.headers.forEach) { response.headers.forEach((v: any, k: any) => _headers[k] = v); };
         if (status === 200 || status === 206) {
@@ -1109,7 +1065,7 @@ export class FrenshipClient {
         return Promise.resolve<FileResponse>(null as any);
     }
 
-    cancelFriendRequest(friendshipId: string, signal?: AbortSignal): Promise<FileResponse> {
+    frenship_CancelFriendRequest(friendshipId: string, signal?: AbortSignal): Promise<FileResponse> {
         let url_ = this.baseUrl + "/api/Frenship/cancel-request/{friendshipId}";
         if (friendshipId === undefined || friendshipId === null)
             throw new Error("The parameter 'friendshipId' must be defined.");
@@ -1125,11 +1081,11 @@ export class FrenshipClient {
         };
 
         return this.http.fetch(url_, options_).then((_response: Response) => {
-            return this.processCancelFriendRequest(_response);
+            return this.processFrenship_CancelFriendRequest(_response);
         });
     }
 
-    protected processCancelFriendRequest(response: Response): Promise<FileResponse> {
+    protected processFrenship_CancelFriendRequest(response: Response): Promise<FileResponse> {
         const status = response.status;
         let _headers: any = {}; if (response.headers && response.headers.forEach) { response.headers.forEach((v: any, k: any) => _headers[k] = v); };
         if (status === 200 || status === 206) {
@@ -1151,7 +1107,7 @@ export class FrenshipClient {
         return Promise.resolve<FileResponse>(null as any);
     }
 
-    removeFriend(friendId: string, signal?: AbortSignal): Promise<FileResponse> {
+    frenship_RemoveFriend(friendId: string, signal?: AbortSignal): Promise<FileResponse> {
         let url_ = this.baseUrl + "/api/Frenship/remove-fren/{friendId}";
         if (friendId === undefined || friendId === null)
             throw new Error("The parameter 'friendId' must be defined.");
@@ -1167,11 +1123,11 @@ export class FrenshipClient {
         };
 
         return this.http.fetch(url_, options_).then((_response: Response) => {
-            return this.processRemoveFriend(_response);
+            return this.processFrenship_RemoveFriend(_response);
         });
     }
 
-    protected processRemoveFriend(response: Response): Promise<FileResponse> {
+    protected processFrenship_RemoveFriend(response: Response): Promise<FileResponse> {
         const status = response.status;
         let _headers: any = {}; if (response.headers && response.headers.forEach) { response.headers.forEach((v: any, k: any) => _headers[k] = v); };
         if (status === 200 || status === 206) {
@@ -1193,7 +1149,7 @@ export class FrenshipClient {
         return Promise.resolve<FileResponse>(null as any);
     }
 
-    blockUser(userToBlockId: string, signal?: AbortSignal): Promise<FileResponse> {
+    frenship_BlockUser(userToBlockId: string, signal?: AbortSignal): Promise<FileResponse> {
         let url_ = this.baseUrl + "/api/Frenship/block-user/{userToBlockId}";
         if (userToBlockId === undefined || userToBlockId === null)
             throw new Error("The parameter 'userToBlockId' must be defined.");
@@ -1209,11 +1165,11 @@ export class FrenshipClient {
         };
 
         return this.http.fetch(url_, options_).then((_response: Response) => {
-            return this.processBlockUser(_response);
+            return this.processFrenship_BlockUser(_response);
         });
     }
 
-    protected processBlockUser(response: Response): Promise<FileResponse> {
+    protected processFrenship_BlockUser(response: Response): Promise<FileResponse> {
         const status = response.status;
         let _headers: any = {}; if (response.headers && response.headers.forEach) { response.headers.forEach((v: any, k: any) => _headers[k] = v); };
         if (status === 200 || status === 206) {
@@ -1235,7 +1191,7 @@ export class FrenshipClient {
         return Promise.resolve<FileResponse>(null as any);
     }
 
-    getFriendRequests(signal?: AbortSignal): Promise<FriendshipDto[]> {
+    frenship_GetFriendRequests(signal?: AbortSignal): Promise<FriendshipDto[]> {
         let url_ = this.baseUrl + "/api/Frenship/fren-requests";
         url_ = url_.replace(/[?&]$/, "");
 
@@ -1248,11 +1204,11 @@ export class FrenshipClient {
         };
 
         return this.http.fetch(url_, options_).then((_response: Response) => {
-            return this.processGetFriendRequests(_response);
+            return this.processFrenship_GetFriendRequests(_response);
         });
     }
 
-    protected processGetFriendRequests(response: Response): Promise<FriendshipDto[]> {
+    protected processFrenship_GetFriendRequests(response: Response): Promise<FriendshipDto[]> {
         const status = response.status;
         let _headers: any = {}; if (response.headers && response.headers.forEach) { response.headers.forEach((v: any, k: any) => _headers[k] = v); };
         if (status === 200) {
@@ -1277,7 +1233,7 @@ export class FrenshipClient {
         return Promise.resolve<FriendshipDto[]>(null as any);
     }
 
-    getFriends(signal?: AbortSignal): Promise<UserDto[]> {
+    frenship_GetFriends(signal?: AbortSignal): Promise<UserDto[]> {
         let url_ = this.baseUrl + "/api/Frenship";
         url_ = url_.replace(/[?&]$/, "");
 
@@ -1290,11 +1246,11 @@ export class FrenshipClient {
         };
 
         return this.http.fetch(url_, options_).then((_response: Response) => {
-            return this.processGetFriends(_response);
+            return this.processFrenship_GetFriends(_response);
         });
     }
 
-    protected processGetFriends(response: Response): Promise<UserDto[]> {
+    protected processFrenship_GetFriends(response: Response): Promise<UserDto[]> {
         const status = response.status;
         let _headers: any = {}; if (response.headers && response.headers.forEach) { response.headers.forEach((v: any, k: any) => _headers[k] = v); };
         if (status === 200) {
@@ -1319,7 +1275,7 @@ export class FrenshipClient {
         return Promise.resolve<UserDto[]>(null as any);
     }
 
-    getFriendshipStatus(userId: string, signal?: AbortSignal): Promise<FriendshipStatusDto> {
+    frenship_GetFriendshipStatus(userId: string, signal?: AbortSignal): Promise<FriendshipStatusDto> {
         let url_ = this.baseUrl + "/api/Frenship/status/{userId}";
         if (userId === undefined || userId === null)
             throw new Error("The parameter 'userId' must be defined.");
@@ -1335,11 +1291,11 @@ export class FrenshipClient {
         };
 
         return this.http.fetch(url_, options_).then((_response: Response) => {
-            return this.processGetFriendshipStatus(_response);
+            return this.processFrenship_GetFriendshipStatus(_response);
         });
     }
 
-    protected processGetFriendshipStatus(response: Response): Promise<FriendshipStatusDto> {
+    protected processFrenship_GetFriendshipStatus(response: Response): Promise<FriendshipStatusDto> {
         const status = response.status;
         let _headers: any = {}; if (response.headers && response.headers.forEach) { response.headers.forEach((v: any, k: any) => _headers[k] = v); };
         if (status === 200) {
@@ -1357,7 +1313,7 @@ export class FrenshipClient {
         return Promise.resolve<FriendshipStatusDto>(null as any);
     }
 
-    checkIfFriends(userId: string, signal?: AbortSignal): Promise<boolean> {
+    frenship_CheckIfFriends(userId: string, signal?: AbortSignal): Promise<boolean> {
         let url_ = this.baseUrl + "/api/Frenship/check/{userId}";
         if (userId === undefined || userId === null)
             throw new Error("The parameter 'userId' must be defined.");
@@ -1373,11 +1329,11 @@ export class FrenshipClient {
         };
 
         return this.http.fetch(url_, options_).then((_response: Response) => {
-            return this.processCheckIfFriends(_response);
+            return this.processFrenship_CheckIfFriends(_response);
         });
     }
 
-    protected processCheckIfFriends(response: Response): Promise<boolean> {
+    protected processFrenship_CheckIfFriends(response: Response): Promise<boolean> {
         const status = response.status;
         let _headers: any = {}; if (response.headers && response.headers.forEach) { response.headers.forEach((v: any, k: any) => _headers[k] = v); };
         if (status === 200) {
@@ -1395,19 +1351,8 @@ export class FrenshipClient {
         }
         return Promise.resolve<boolean>(null as any);
     }
-}
 
-export class NotificationClient {
-    private http: { fetch(url: RequestInfo, init?: RequestInit): Promise<Response> };
-    private baseUrl: string;
-    protected jsonParseReviver: ((key: string, value: any) => any) | undefined = undefined;
-
-    constructor(baseUrl?: string, http?: { fetch(url: RequestInfo, init?: RequestInit): Promise<Response> }) {
-        this.http = http ? http : window as any;
-        this.baseUrl = baseUrl ?? "http://localhost:5188";
-    }
-
-    getNotifications(signal?: AbortSignal): Promise<NotificationDto> {
+    notification_GetNotifications(signal?: AbortSignal): Promise<NotificationDto> {
         let url_ = this.baseUrl + "/api/Notification";
         url_ = url_.replace(/[?&]$/, "");
 
@@ -1420,11 +1365,11 @@ export class NotificationClient {
         };
 
         return this.http.fetch(url_, options_).then((_response: Response) => {
-            return this.processGetNotifications(_response);
+            return this.processNotification_GetNotifications(_response);
         });
     }
 
-    protected processGetNotifications(response: Response): Promise<NotificationDto> {
+    protected processNotification_GetNotifications(response: Response): Promise<NotificationDto> {
         const status = response.status;
         let _headers: any = {}; if (response.headers && response.headers.forEach) { response.headers.forEach((v: any, k: any) => _headers[k] = v); };
         if (status === 200) {
@@ -1442,7 +1387,7 @@ export class NotificationClient {
         return Promise.resolve<NotificationDto>(null as any);
     }
 
-    storeSubscription(subscription: PushSubscriptionDto, signal?: AbortSignal): Promise<FileResponse> {
+    notification_StoreSubscription(subscription: PushSubscriptionDto, signal?: AbortSignal): Promise<FileResponse> {
         let url_ = this.baseUrl + "/api/Notification/subscriptions";
         url_ = url_.replace(/[?&]$/, "");
 
@@ -1459,11 +1404,11 @@ export class NotificationClient {
         };
 
         return this.http.fetch(url_, options_).then((_response: Response) => {
-            return this.processStoreSubscription(_response);
+            return this.processNotification_StoreSubscription(_response);
         });
     }
 
-    protected processStoreSubscription(response: Response): Promise<FileResponse> {
+    protected processNotification_StoreSubscription(response: Response): Promise<FileResponse> {
         const status = response.status;
         let _headers: any = {}; if (response.headers && response.headers.forEach) { response.headers.forEach((v: any, k: any) => _headers[k] = v); };
         if (status === 200 || status === 206) {
@@ -1484,19 +1429,8 @@ export class NotificationClient {
         }
         return Promise.resolve<FileResponse>(null as any);
     }
-}
 
-export class NotificationTestClient {
-    private http: { fetch(url: RequestInfo, init?: RequestInit): Promise<Response> };
-    private baseUrl: string;
-    protected jsonParseReviver: ((key: string, value: any) => any) | undefined = undefined;
-
-    constructor(baseUrl?: string, http?: { fetch(url: RequestInfo, init?: RequestInit): Promise<Response> }) {
-        this.http = http ? http : window as any;
-        this.baseUrl = baseUrl ?? "http://localhost:5188";
-    }
-
-    sendAppAnnouncement(request: AppAnnouncementRequest, signal?: AbortSignal): Promise<FileResponse> {
+    notificationTest_SendAppAnnouncement(request: AppAnnouncementRequest, signal?: AbortSignal): Promise<FileResponse> {
         let url_ = this.baseUrl + "/api/NotificationTest/announcement";
         url_ = url_.replace(/[?&]$/, "");
 
@@ -1513,11 +1447,11 @@ export class NotificationTestClient {
         };
 
         return this.http.fetch(url_, options_).then((_response: Response) => {
-            return this.processSendAppAnnouncement(_response);
+            return this.processNotificationTest_SendAppAnnouncement(_response);
         });
     }
 
-    protected processSendAppAnnouncement(response: Response): Promise<FileResponse> {
+    protected processNotificationTest_SendAppAnnouncement(response: Response): Promise<FileResponse> {
         const status = response.status;
         let _headers: any = {}; if (response.headers && response.headers.forEach) { response.headers.forEach((v: any, k: any) => _headers[k] = v); };
         if (status === 200 || status === 206) {
@@ -1538,19 +1472,8 @@ export class NotificationTestClient {
         }
         return Promise.resolve<FileResponse>(null as any);
     }
-}
 
-export class PostClient {
-    private http: { fetch(url: RequestInfo, init?: RequestInit): Promise<Response> };
-    private baseUrl: string;
-    protected jsonParseReviver: ((key: string, value: any) => any) | undefined = undefined;
-
-    constructor(baseUrl?: string, http?: { fetch(url: RequestInfo, init?: RequestInit): Promise<Response> }) {
-        this.http = http ? http : window as any;
-        this.baseUrl = baseUrl ?? "http://localhost:5188";
-    }
-
-    getPost(id: string, includeCommentTree: boolean | undefined, signal?: AbortSignal): Promise<PostDto> {
+    post_GetPost(id: string, includeCommentTree: boolean | undefined, signal?: AbortSignal): Promise<PostDto> {
         let url_ = this.baseUrl + "/api/Post/{id}?";
         if (id === undefined || id === null)
             throw new Error("The parameter 'id' must be defined.");
@@ -1570,11 +1493,11 @@ export class PostClient {
         };
 
         return this.http.fetch(url_, options_).then((_response: Response) => {
-            return this.processGetPost(_response);
+            return this.processPost_GetPost(_response);
         });
     }
 
-    protected processGetPost(response: Response): Promise<PostDto> {
+    protected processPost_GetPost(response: Response): Promise<PostDto> {
         const status = response.status;
         let _headers: any = {}; if (response.headers && response.headers.forEach) { response.headers.forEach((v: any, k: any) => _headers[k] = v); };
         if (status === 200) {
@@ -1592,7 +1515,7 @@ export class PostClient {
         return Promise.resolve<PostDto>(null as any);
     }
 
-    updatePost(id: string, newText: string | undefined, signal?: AbortSignal): Promise<FileResponse> {
+    post_UpdatePost(id: string, newText: string | undefined, signal?: AbortSignal): Promise<FileResponse> {
         let url_ = this.baseUrl + "/api/Post/{id}?";
         if (id === undefined || id === null)
             throw new Error("The parameter 'id' must be defined.");
@@ -1612,11 +1535,11 @@ export class PostClient {
         };
 
         return this.http.fetch(url_, options_).then((_response: Response) => {
-            return this.processUpdatePost(_response);
+            return this.processPost_UpdatePost(_response);
         });
     }
 
-    protected processUpdatePost(response: Response): Promise<FileResponse> {
+    protected processPost_UpdatePost(response: Response): Promise<FileResponse> {
         const status = response.status;
         let _headers: any = {}; if (response.headers && response.headers.forEach) { response.headers.forEach((v: any, k: any) => _headers[k] = v); };
         if (status === 200 || status === 206) {
@@ -1638,7 +1561,7 @@ export class PostClient {
         return Promise.resolve<FileResponse>(null as any);
     }
 
-    deletePost(id: string, signal?: AbortSignal): Promise<FileResponse> {
+    post_DeletePost(id: string, signal?: AbortSignal): Promise<FileResponse> {
         let url_ = this.baseUrl + "/api/Post/{id}";
         if (id === undefined || id === null)
             throw new Error("The parameter 'id' must be defined.");
@@ -1654,11 +1577,11 @@ export class PostClient {
         };
 
         return this.http.fetch(url_, options_).then((_response: Response) => {
-            return this.processDeletePost(_response);
+            return this.processPost_DeletePost(_response);
         });
     }
 
-    protected processDeletePost(response: Response): Promise<FileResponse> {
+    protected processPost_DeletePost(response: Response): Promise<FileResponse> {
         const status = response.status;
         let _headers: any = {}; if (response.headers && response.headers.forEach) { response.headers.forEach((v: any, k: any) => _headers[k] = v); };
         if (status === 200 || status === 206) {
@@ -1680,7 +1603,7 @@ export class PostClient {
         return Promise.resolve<FileResponse>(null as any);
     }
 
-    getFeed(signal?: AbortSignal): Promise<FeedDto> {
+    post_GetFeed(signal?: AbortSignal): Promise<FeedDto> {
         let url_ = this.baseUrl + "/api/Post/feed";
         url_ = url_.replace(/[?&]$/, "");
 
@@ -1693,11 +1616,11 @@ export class PostClient {
         };
 
         return this.http.fetch(url_, options_).then((_response: Response) => {
-            return this.processGetFeed(_response);
+            return this.processPost_GetFeed(_response);
         });
     }
 
-    protected processGetFeed(response: Response): Promise<FeedDto> {
+    protected processPost_GetFeed(response: Response): Promise<FeedDto> {
         const status = response.status;
         let _headers: any = {}; if (response.headers && response.headers.forEach) { response.headers.forEach((v: any, k: any) => _headers[k] = v); };
         if (status === 200) {
@@ -1715,7 +1638,7 @@ export class PostClient {
         return Promise.resolve<FeedDto>(null as any);
     }
 
-    getFeedWithPaging(page: number | undefined, pageSize: number | undefined, signal?: AbortSignal): Promise<FeedDto> {
+    post_GetFeedWithPaging(page: number | undefined, pageSize: number | undefined, signal?: AbortSignal): Promise<FeedDto> {
         let url_ = this.baseUrl + "/api/Post/feed/paged?";
         if (page === null)
             throw new Error("The parameter 'page' cannot be null.");
@@ -1736,11 +1659,11 @@ export class PostClient {
         };
 
         return this.http.fetch(url_, options_).then((_response: Response) => {
-            return this.processGetFeedWithPaging(_response);
+            return this.processPost_GetFeedWithPaging(_response);
         });
     }
 
-    protected processGetFeedWithPaging(response: Response): Promise<FeedDto> {
+    protected processPost_GetFeedWithPaging(response: Response): Promise<FeedDto> {
         const status = response.status;
         let _headers: any = {}; if (response.headers && response.headers.forEach) { response.headers.forEach((v: any, k: any) => _headers[k] = v); };
         if (status === 200) {
@@ -1758,7 +1681,7 @@ export class PostClient {
         return Promise.resolve<FeedDto>(null as any);
     }
 
-    getFilteredFeed(page: number | undefined, pageSize: number | undefined, circleIds: string | null | undefined, signal?: AbortSignal): Promise<FeedDto> {
+    post_GetFilteredFeed(page: number | undefined, pageSize: number | undefined, circleIds: string | null | undefined, signal?: AbortSignal): Promise<FeedDto> {
         let url_ = this.baseUrl + "/api/Post/feed/filtered?";
         if (page === null)
             throw new Error("The parameter 'page' cannot be null.");
@@ -1781,11 +1704,11 @@ export class PostClient {
         };
 
         return this.http.fetch(url_, options_).then((_response: Response) => {
-            return this.processGetFilteredFeed(_response);
+            return this.processPost_GetFilteredFeed(_response);
         });
     }
 
-    protected processGetFilteredFeed(response: Response): Promise<FeedDto> {
+    protected processPost_GetFilteredFeed(response: Response): Promise<FeedDto> {
         const status = response.status;
         let _headers: any = {}; if (response.headers && response.headers.forEach) { response.headers.forEach((v: any, k: any) => _headers[k] = v); };
         if (status === 200) {
@@ -1803,7 +1726,7 @@ export class PostClient {
         return Promise.resolve<FeedDto>(null as any);
     }
 
-    createPost(request: CreatePostDto, signal?: AbortSignal): Promise<PostDto> {
+    post_CreatePost(request: CreatePostDto, signal?: AbortSignal): Promise<PostDto> {
         let url_ = this.baseUrl + "/api/Post";
         url_ = url_.replace(/[?&]$/, "");
 
@@ -1820,11 +1743,11 @@ export class PostClient {
         };
 
         return this.http.fetch(url_, options_).then((_response: Response) => {
-            return this.processCreatePost(_response);
+            return this.processPost_CreatePost(_response);
         });
     }
 
-    protected processCreatePost(response: Response): Promise<PostDto> {
+    protected processPost_CreatePost(response: Response): Promise<PostDto> {
         const status = response.status;
         let _headers: any = {}; if (response.headers && response.headers.forEach) { response.headers.forEach((v: any, k: any) => _headers[k] = v); };
         if (status === 200) {
@@ -1841,19 +1764,8 @@ export class PostClient {
         }
         return Promise.resolve<PostDto>(null as any);
     }
-}
 
-export class ProfileClient {
-    private http: { fetch(url: RequestInfo, init?: RequestInit): Promise<Response> };
-    private baseUrl: string;
-    protected jsonParseReviver: ((key: string, value: any) => any) | undefined = undefined;
-
-    constructor(baseUrl?: string, http?: { fetch(url: RequestInfo, init?: RequestInit): Promise<Response> }) {
-        this.http = http ? http : window as any;
-        this.baseUrl = baseUrl ?? "http://localhost:5188";
-    }
-
-    getProfile(userId: string | null | undefined, signal?: AbortSignal): Promise<ProfilePageResponseDto> {
+    profile_GetProfile(userId: string | null | undefined, signal?: AbortSignal): Promise<ProfilePageResponseDto> {
         let url_ = this.baseUrl + "/api/Profile?";
         if (userId !== undefined && userId !== null)
             url_ += "userId=" + encodeURIComponent("" + userId) + "&";
@@ -1868,11 +1780,11 @@ export class ProfileClient {
         };
 
         return this.http.fetch(url_, options_).then((_response: Response) => {
-            return this.processGetProfile(_response);
+            return this.processProfile_GetProfile(_response);
         });
     }
 
-    protected processGetProfile(response: Response): Promise<ProfilePageResponseDto> {
+    protected processProfile_GetProfile(response: Response): Promise<ProfilePageResponseDto> {
         const status = response.status;
         let _headers: any = {}; if (response.headers && response.headers.forEach) { response.headers.forEach((v: any, k: any) => _headers[k] = v); };
         if (status === 200) {
@@ -1889,19 +1801,8 @@ export class ProfileClient {
         }
         return Promise.resolve<ProfilePageResponseDto>(null as any);
     }
-}
 
-export class TestAuthClient {
-    private http: { fetch(url: RequestInfo, init?: RequestInit): Promise<Response> };
-    private baseUrl: string;
-    protected jsonParseReviver: ((key: string, value: any) => any) | undefined = undefined;
-
-    constructor(baseUrl?: string, http?: { fetch(url: RequestInfo, init?: RequestInit): Promise<Response> }) {
-        this.http = http ? http : window as any;
-        this.baseUrl = baseUrl ?? "http://localhost:5188";
-    }
-
-    generateTestToken(email: string | undefined, signal?: AbortSignal): Promise<FileResponse> {
+    testAuth_GenerateTestToken(email: string | undefined, signal?: AbortSignal): Promise<FileResponse> {
         let url_ = this.baseUrl + "/api/TestAuth/generate-test-token?";
         if (email === null)
             throw new Error("The parameter 'email' cannot be null.");
@@ -1918,11 +1819,11 @@ export class TestAuthClient {
         };
 
         return this.http.fetch(url_, options_).then((_response: Response) => {
-            return this.processGenerateTestToken(_response);
+            return this.processTestAuth_GenerateTestToken(_response);
         });
     }
 
-    protected processGenerateTestToken(response: Response): Promise<FileResponse> {
+    protected processTestAuth_GenerateTestToken(response: Response): Promise<FileResponse> {
         const status = response.status;
         let _headers: any = {}; if (response.headers && response.headers.forEach) { response.headers.forEach((v: any, k: any) => _headers[k] = v); };
         if (status === 200 || status === 206) {
@@ -1944,7 +1845,7 @@ export class TestAuthClient {
         return Promise.resolve<FileResponse>(null as any);
     }
 
-    getTestUsers(signal?: AbortSignal): Promise<FileResponse> {
+    testAuth_GetTestUsers(signal?: AbortSignal): Promise<FileResponse> {
         let url_ = this.baseUrl + "/api/TestAuth/test-users";
         url_ = url_.replace(/[?&]$/, "");
 
@@ -1957,11 +1858,11 @@ export class TestAuthClient {
         };
 
         return this.http.fetch(url_, options_).then((_response: Response) => {
-            return this.processGetTestUsers(_response);
+            return this.processTestAuth_GetTestUsers(_response);
         });
     }
 
-    protected processGetTestUsers(response: Response): Promise<FileResponse> {
+    protected processTestAuth_GetTestUsers(response: Response): Promise<FileResponse> {
         const status = response.status;
         let _headers: any = {}; if (response.headers && response.headers.forEach) { response.headers.forEach((v: any, k: any) => _headers[k] = v); };
         if (status === 200 || status === 206) {

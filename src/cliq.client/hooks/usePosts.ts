@@ -12,7 +12,7 @@ export function useFeed() {
         try {
             setIsLoading(true);
             // TODO add pagination
-            const feedResponse = await ApiClient.call(c => c.feed());
+            const feedResponse = await ApiClient.call(c => c.post_GetFeed());
             setPosts(feedResponse.posts);
             setNotificationCount(feedResponse.notificationCount)
             setError(null);
@@ -41,7 +41,7 @@ export function usePost(postId: string, includeComments: true) {
     const loadPost = async () => {
         try {
             setIsLoading(true);
-            const post = await ApiClient.call(c => c.postGET(postId, includeComments));
+            const post = await ApiClient.call(c => c.post_GetPost(postId, includeComments));
             console.log("Loaded post with result: " + post);
             setPost(post);
             setError(null);
@@ -85,10 +85,10 @@ export function useFilteredFeed() {
             if (circleIds && circleIds.length > 0) {
                 // Filter by specific circles
                 const circleIdsParam = circleIds.join(',');
-                feedResponse = await ApiClient.call(c => c.filtered(1, 20, circleIdsParam));
+                feedResponse = await ApiClient.call(c => c.post_GetFilteredFeed(1, 20, circleIdsParam));
             } else {
                 // Get all posts
-                feedResponse = await ApiClient.call(c => c.feed());
+                feedResponse = await ApiClient.call(c => c.post_GetFeed());
             }
             
             if (isFilterUpdate) {

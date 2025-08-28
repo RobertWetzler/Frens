@@ -260,7 +260,7 @@ const CommentSection: React.FC<{
 
         try {
             // Call the API to create the comment
-            const response = await ApiClient.call(c => c.comment(
+            const response = await ApiClient.call(c => c.comment_PostComment(
                 text,
                 postId,
                 parentCommentId

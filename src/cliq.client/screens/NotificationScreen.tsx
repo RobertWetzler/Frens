@@ -31,7 +31,7 @@ const NotificationsScreen: React.FC<NotificationsScreenProps> = ({ navigation })
 
   const handleAcceptRequest = async (friendshipId: string) => {
     try {
-      await ApiClient.call(c => c.acceptRequest(friendshipId));
+      await ApiClient.call(c => c.frenship_AcceptFriendRequest(friendshipId));
       // Reload notifications to update the list
       loadNotifications();
     } catch (err) {
@@ -41,7 +41,7 @@ const NotificationsScreen: React.FC<NotificationsScreenProps> = ({ navigation })
 
   const handleDenyRequest = async (friendshipId: string) => {
     try {
-      await ApiClient.call(c => c.rejectRequest(friendshipId));
+      await ApiClient.call(c => c.frenship_RejectFriendRequest(friendshipId));
       // Reload notifications to update the list
       loadNotifications();
     } catch (err) {

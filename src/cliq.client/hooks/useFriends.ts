@@ -10,7 +10,7 @@ export function useFriends() {
     const loadFriends = async () => {
             try {
               setIsLoading(true);
-              const response = await ApiClient.call(c => c.frenship());
+              const response = await ApiClient.call(c => c.frenship_GetFriends());
               // TODO: Use this to verify scrollability on mobile
               response.sort((u1, u2) => u1.name.localeCompare(u2.name));
               setFriends(response);

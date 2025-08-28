@@ -72,7 +72,7 @@ const CreatePostScreen = ({ navigation, route }) => {
     
     try {
       const response = await ApiClient.call(c => 
-        c.postPOST(new CreatePostDto({
+        c.post_CreatePost(new CreatePostDto({
           text: postContent,
           circleIds: selectedCircleIds
         }))
