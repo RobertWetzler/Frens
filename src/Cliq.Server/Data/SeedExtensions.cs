@@ -141,7 +141,11 @@ public static class SeedExtensions
         await CreatePostAsync(db, howard, "Letting family know: I'll be out mountaineering Sunday.", DateTime.UtcNow.AddHours(-5), new[] { familyCircle });
         await CreatePostAsync(db, howard, "Letting family know: I'll be out mountaineering Sunday.", DateTime.UtcNow.AddHours(-5), new[] { familyCircle });
         await CreatePostAsync(db, howard, "Letting family know: I'll be out mountaineering Sunday.", DateTime.UtcNow.AddHours(-5), new[] { familyCircle });
-        
+
+        // Create events
+        await CreateEventAsync(db, devon, "Climbing at Red Rock", "Climbing Trip", DateTime.UtcNow.AddDays(3).AddHours(9), DateTime.UtcNow.AddDays(3).AddHours(17), DateTime.UtcNow.AddHours(-1), new[] { climbingCircle });
+        await CreateEventAsync(db, sierra, "Hiking at Mount Si", "Hiking Trip", DateTime.UtcNow.AddDays(5).AddHours(8), DateTime.UtcNow.AddDays(5).AddHours(14), DateTime.UtcNow.AddHours(-3), new[] { hikingCircle, sierraFriends });
+        var picnicEvent = await CreateEventAsync(db, howard, "Family Picnic", "Picnic at the Park", DateTime.UtcNow.AddDays(7).AddHours(11), DateTime.UtcNow.AddDays(7).AddHours(15), DateTime.UtcNow.AddHours(-4), new[] { familyCircle });
         // Add comments
         await AddCommentTreeAsync(db, post1,
         [
@@ -157,7 +161,13 @@ public static class SeedExtensions
             ),
             new C(spencer, "This will be so hype!!!!!")
         ]);
-        
+        // add commments to some events
+        await AddCommentTreeAsync(db, picnicEvent,
+        [
+            new C(carolyn, "Can't wait! Should I bring anything?",
+                new C(robert, "Just bring yourself!")),
+            new C(robert, "Looking forward to it!")
+        ]);
     }
 
     private static User GetUser(List<User> users, string email)
@@ -229,6 +239,37 @@ public static class SeedExtensions
 
         return post;
     }
+
+    private static async Task<Event> CreateEventAsync(CliqDbContext db, User author, string text, string title, DateTime startDateTime, DateTime endDateTime, DateTime sharedDate, Circle[] circles)
+    {
+        var @event = new Event
+        {
+            Id = Guid.NewGuid(),
+            UserId = author.Id,
+            Text = text,
+            Title = title,
+            StartDateTime = startDateTime,
+            EndDateTime = endDateTime,
+            Date = DateTime.UtcNow,
+            Timezone = "PST"
+        };
+
+        await db.Posts.AddAsync(@event);
+        await db.SaveChangesAsync();
+
+        var circlePosts = circles.Select(circle => new CirclePost
+        {
+            CircleId = circle.Id,
+            PostId = @event.Id,
+            SharedAt = @event.Date
+        }).ToList();
+
+        await db.CirclePosts.AddRangeAsync(circlePosts);
+        await db.SaveChangesAsync();
+
+        return @event;
+    }
+
 
     private record C(User U, string T, params C[] Replies);
 
