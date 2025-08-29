@@ -32,9 +32,26 @@ builder.WebHost.ConfigureKestrel(serverOptions =>
     {
         // Development: Listen on both HTTP and HTTPS (Allows testing PWA installability)
         serverOptions.ListenAnyIP(5188); // HTTP
+
+        // Try to load self-signed cert from appsettings.Development.json (PEM + KEY)
+        var certPath = builder.Configuration["Kestrel:Endpoints:Https:Certificate:Path"];
+        var keyPath = builder.Configuration["Kestrel:Endpoints:Https:Certificate:KeyPath"];
+
         serverOptions.ListenAnyIP(7188, listenOptions =>
         {
-            listenOptions.UseHttps(); // HTTPS
+            if (!string.IsNullOrEmpty(certPath) && !string.IsNullOrEmpty(keyPath))
+            {
+                var fullCertPath = Path.Combine(builder.Environment.ContentRootPath, certPath);
+                var fullKeyPath = Path.Combine(builder.Environment.ContentRootPath, keyPath);
+                Console.WriteLine($"Using development HTTPS certificate: cert={fullCertPath}, key={fullKeyPath}");
+                listenOptions.UseHttps(fullCertPath, fullKeyPath);
+            }
+            else
+            {
+                // Fallback to default dev cert (dotnet dev-certs)
+                Console.WriteLine("Development HTTPS certificate settings not found; falling back to default dev certificate.");
+                listenOptions.UseHttps();
+            }
         });
     }
     else
@@ -253,7 +270,7 @@ if (string.IsNullOrEmpty(jwtSettings["Secret"]))
 }
 else
 {
-    key = Encoding.ASCII.GetBytes(jwtSettings["Secret"]);
+    key = Encoding.ASCII.GetBytes(jwtSettings["Secret"]!);
 }
 builder.Services.AddAuthentication(options =>
 {

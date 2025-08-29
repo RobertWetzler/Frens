@@ -13,6 +13,8 @@ import NotificationSubscribeButton from 'components/NotificationSubscribeButton'
 import PWAInstallBanner from 'components/PWAInstallBanner';
 import CircleFilter from 'components/CircleFilter';
 import { useShaderBackground } from 'contexts/ShaderBackgroundContext';
+import { EventDto } from 'services/generated/generatedClient';
+import Event from 'components/Event';
 
 
 const HomeScreen = ({ navigation }) => {
@@ -172,9 +174,23 @@ const HomeScreen = ({ navigation }) => {
                         animationDelay = index * 150;
                     }
                     
+                    // Identify Event posts robustly: instance check and discriminator fallback
+                    const isEvent = item instanceof EventDto || (item && (item as any).discriminator === 'Event' || (item as any)._discriminator === 'Event');
+
+                    if (isEvent) {
+                        return (
+                            <Event
+                                event={item as EventDto}
+                                navigation={navigation}
+                                shouldAnimate={shouldAnimate}
+                                animationDelay={animationDelay}
+                            />
+                        );
+                    }
+
                     return (
-                        <Post 
-                            post={item} 
+                        <Post
+                            post={item}
                             navigation={navigation}
                             shouldAnimate={shouldAnimate}
                             animationDelay={animationDelay}
