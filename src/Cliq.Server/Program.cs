@@ -20,6 +20,7 @@ using System.Linq;
 using Cliq.Server.Services.PushNotifications;
 using Microsoft.OpenApi.Models;
 using Microsoft.AspNetCore.Builder;
+using System.Security.Cryptography.X509Certificates;
 
 DotNetEnv.Env.Load();
 
@@ -33,18 +34,25 @@ builder.WebHost.ConfigureKestrel(serverOptions =>
         // Development: Listen on both HTTP and HTTPS (Allows testing PWA installability)
         serverOptions.ListenAnyIP(5188); // HTTP
 
-        // Try to load self-signed cert from appsettings.Development.json (PEM + KEY)
-        var certPath = builder.Configuration["Kestrel:Endpoints:Https:Certificate:Path"];
-        var keyPath = builder.Configuration["Kestrel:Endpoints:Https:Certificate:KeyPath"];
+    // Try to load self-signed cert from appsettings.Development.json (PEM + KEY)
+    var certPath = builder.Configuration["DevHttps:PemPath"];
+    var keyPath = builder.Configuration["DevHttps:KeyPath"];
 
-        serverOptions.ListenAnyIP(7188, listenOptions =>
+    serverOptions.ListenAnyIP(7188, listenOptions =>
         {
             if (!string.IsNullOrEmpty(certPath) && !string.IsNullOrEmpty(keyPath))
             {
                 var fullCertPath = Path.Combine(builder.Environment.ContentRootPath, certPath);
                 var fullKeyPath = Path.Combine(builder.Environment.ContentRootPath, keyPath);
                 Console.WriteLine($"Using development HTTPS certificate: cert={fullCertPath}, key={fullKeyPath}");
-                listenOptions.UseHttps(fullCertPath, fullKeyPath);
+        // Ensure the cert has an associated private key
+        var loaded = X509Certificate2.CreateFromPemFile(fullCertPath, fullKeyPath);
+        // Convert to PFX so the private key is attached for Kestrel
+        var pfxBytes = loaded.Export(X509ContentType.Pkcs12);
+#pragma warning disable SYSLIB0057 // Obsolete warning for constructor; acceptable for dev only
+        var withKey = new X509Certificate2(pfxBytes, (string?)null, X509KeyStorageFlags.Exportable);
+#pragma warning restore SYSLIB0057
+        listenOptions.UseHttps(withKey);
             }
             else
             {
@@ -320,13 +328,7 @@ var app = builder.Build();
 app.UseDefaultFiles();
 app.UseStaticFiles();
 
-// Serve custom Swagger assets from Assets folder
-app.UseStaticFiles(new StaticFileOptions
-{
-    FileProvider = new Microsoft.Extensions.FileProviders.PhysicalFileProvider(
-        Path.Combine(Directory.GetCurrentDirectory(), "Assets", "swagger")),
-    RequestPath = ""
-});
+
 
 // TODO Figure out correct CORS for mobile app
 app.UseCors("ExpoApp");
@@ -338,6 +340,13 @@ if (app.Environment.IsDevelopment())
     {
         c.CustomJavaScriptPath = "/swagger-custom.js";
         c.CustomInlineStyles = "/swagger-custom.css";
+    });
+    // Serve custom Swagger assets from Assets folder
+    app.UseStaticFiles(new StaticFileOptions
+    {
+        FileProvider = new Microsoft.Extensions.FileProviders.PhysicalFileProvider(
+            Path.Combine(Directory.GetCurrentDirectory(), "Assets", "swagger")),
+        RequestPath = ""
     });
 }
 

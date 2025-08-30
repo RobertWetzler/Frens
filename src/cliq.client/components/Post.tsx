@@ -9,9 +9,14 @@ interface PostProps {
   isNavigable?: boolean;
   animationDelay?: number;
   shouldAnimate?: boolean;
+  // Optional render slots for specialized cards (e.g., Event)
+  renderPreContent?: React.ReactNode | (() => React.ReactNode);
+  renderFooterContent?: React.ReactNode | (() => React.ReactNode);
+  // Allow callers to hide the default comment button when they need a custom footer layout
+  showDefaultCommentButton?: boolean;
 }
 
-const Post: React.FC<PostProps> = ({ post, navigation, isNavigable = true, animationDelay = 0, shouldAnimate = false }) => {
+const Post: React.FC<PostProps> = ({ post, navigation, isNavigable = true, animationDelay = 0, shouldAnimate = false, renderPreContent, renderFooterContent, showDefaultCommentButton = true }) => {
   const translateY = useRef(new Animated.Value(shouldAnimate ? 100 : 0)).current;
   const opacity = useRef(new Animated.Value(shouldAnimate ? 0 : 1)).current;
   const scale = useRef(new Animated.Value(shouldAnimate ? 0.8 : 1)).current;
@@ -103,8 +108,12 @@ const Post: React.FC<PostProps> = ({ post, navigation, isNavigable = true, anima
         </View>
         <Text style={styles.date}>{formatDate(post.date)}</Text>
       </View>
-      <Text style={styles.content}>{post.text}</Text>
-      {isNavigable && (
+      {/* Slot for specialized pre-content (e.g., Event title) */}
+      {renderPreContent ? (typeof renderPreContent === 'function' ? renderPreContent() : renderPreContent) : null}
+          <Text style={styles.content}>{post.text}</Text>
+      {/* Slot for specialized footer content (e.g., Event details) */}
+      {renderFooterContent ? (typeof renderFooterContent === 'function' ? renderFooterContent() : renderFooterContent) : null}
+      {isNavigable && showDefaultCommentButton && (
         <TouchableOpacity
           style={styles.commentButton}
           onPress={() => navigation?.navigate('Comments', { postId: post.id })}

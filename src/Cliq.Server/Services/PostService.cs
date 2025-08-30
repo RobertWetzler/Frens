@@ -509,7 +509,7 @@ public class PostService : IPostService
         var user = await this._dbContext.Users.FirstOrDefaultAsync(u => u.Id == userId);
         if (user == null)
         {
-            throw new Microsoft.AspNetCore.Http.BadHttpRequestException($"Cannot create post for invalid user {userId}");
+            throw new BadHttpRequestException($"Cannot create post for invalid user {userId}");
         }
 
         await CircleService.ValidateAuthorizationToPostAsync(_dbContext, circleIds, userId);

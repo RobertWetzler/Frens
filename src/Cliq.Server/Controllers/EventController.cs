@@ -78,7 +78,7 @@ public class EventController : ControllerBase
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error creating event for user {UserId}", userId);
-            if (ex is BadHttpRequestException)
+        if (ex is BadHttpRequestException)
             {
                 return BadRequest(ex.Message);
             }

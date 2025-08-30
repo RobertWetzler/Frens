@@ -8,6 +8,7 @@ public enum NotificationType
     FriendRequest,
     FriendRequestAccepted,
     NewPost,
+    NewEvent,
     NewComment,
     CommentReply,
     AppAnnouncement,
@@ -138,6 +139,46 @@ public class NewPostNotificationData : NotificationData
             PostId,
             AuthorId,
             PostText
+        }.ToJson();
+        set { }
+    }
+}
+
+public class NewEventNotificationData : NotificationData
+{
+    public Guid EventId { get; set; }
+    public Guid AuthorId { get; set; }
+    public required string AuthorName { get; set; }
+    public required string EventTitle { get; set; }
+
+    public NewEventNotificationData()
+    {
+        Type = NotificationType.NewEvent;
+    }
+
+    public override string Title
+    {
+        get => $"{AuthorName} shared an event";
+        set { }
+    }
+
+    public override string Message
+    {
+        get
+        {
+            return EventTitle.Length > 50 ? EventTitle[..50] + "..." : EventTitle;
+        }
+        set { }
+    }
+
+    public override string Metadata
+    {
+        get => new
+        {
+            Type = Type.ToString(),
+            EventId,
+            AuthorId,
+            EventTitle
         }.ToJson();
         set { }
     }

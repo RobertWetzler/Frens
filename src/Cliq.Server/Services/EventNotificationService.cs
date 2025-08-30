@@ -13,6 +13,7 @@ public interface IEventNotificationService
     Task SendFriendRequestNotificationAsync(Guid requesterId, Guid addresseeId, Guid friendshipId, string requesterName);
     Task SendFriendRequestAcceptedNotificationAsync(Guid accepterId, Guid requesterId, string requesterName);
     Task SendNewPostNotificationAsync(Guid postId, Guid authorId, string postText, IEnumerable<Guid> circleIds, string authorName);
+    Task SendNewEventNotificationAsync(Guid eventId, Guid authorId, string title, IEnumerable<Guid> circleIds, string authorName);
     Task SendNewCommentNotificationAsync(Guid commentId, Guid postId, Guid postAuthorId, Guid commenterId, string commentText, string commenterName);
     Task SendCommentReplyNotificationAsync(Guid replyId, Guid postId, Guid parentCommentId, Guid parentCommentAuthorId, Guid replierId, string replyText, string commenterName);
     Task SendAppAnnouncementAsync(string title, string body, string? actionUrl = null);
@@ -71,6 +72,31 @@ public class EventNotificationService : IEventNotificationService
                 AuthorId = authorId,
                 AuthorName = authorName,
                 PostText = postText
+            };
+
+            await _notificationQueue.AddBulkAsync(recipientUserIds, notificationData);
+        }
+    }
+
+    public async Task SendNewEventNotificationAsync(Guid eventId, Guid authorId, string title, IEnumerable<Guid> circleIds, string authorName)
+    {
+        var circleIdsList = circleIds.ToList();
+
+        // Get all circle members excluding the author
+        var recipientUserIds = await _dbContext.CircleMemberships
+            .Where(cm => circleIdsList.Contains(cm.CircleId) && cm.UserId != authorId)
+            .Select(cm => cm.UserId)
+            .Distinct()
+            .ToListAsync();
+
+        if (recipientUserIds.Any())
+        {
+            var notificationData = new NewEventNotificationData
+            {
+                EventId = eventId,
+                AuthorId = authorId,
+                AuthorName = authorName,
+                EventTitle = title
             };
 
             await _notificationQueue.AddBulkAsync(recipientUserIds, notificationData);

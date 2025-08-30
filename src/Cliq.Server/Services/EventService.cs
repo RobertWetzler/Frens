@@ -23,15 +23,18 @@ public class EventService : IEventService
 {
     private readonly CliqDbContext _dbContext;
     private readonly IMapper _mapper;
+    private readonly IEventNotificationService _eventNotificationService;
     private readonly ILogger<EventService> _logger;
 
     public EventService(
         CliqDbContext dbContext,
         IMapper mapper,
+        IEventNotificationService eventNotificationService,
         ILogger<EventService> logger)
     {
         _dbContext = dbContext;
         _mapper = mapper;
+        _eventNotificationService = eventNotificationService;
         _logger = logger;
     }
 
@@ -119,6 +122,11 @@ public class EventService : IEventService
 
     public async Task<EventDto> CreateEventAsync(Guid userId, CreateEventDto createEventDto)
     {
+        var user = await this._dbContext.Users.FirstOrDefaultAsync(u => u.Id == userId);
+        if (user == null)
+        {
+            throw new BadHttpRequestException($"Cannot create post for invalid user {userId}");
+        } 
         await CircleService.ValidateAuthorizationToPostAsync(_dbContext, createEventDto.CircleIds, userId);
         var eventEntity = new Event
         {
@@ -150,7 +158,16 @@ public class EventService : IEventService
         }
 
         await _dbContext.SaveChangesAsync();
-
+        // Send notifications to circle members
+        try
+        {
+            await _eventNotificationService.SendNewEventNotificationAsync(eventEntity.Id, userId, eventEntity.Title, createEventDto.CircleIds, user.Name);
+        }
+        catch (Exception ex)
+        {
+            // Log error but don't fail the post creation
+            _logger.LogWarning(ex, "Failed to send post notifications for post {PostId}", eventEntity.Id);
+        }
         // Reload the event with necessary includes for proper mapping
         var savedEvent = await _dbContext.Posts
             .OfType<Event>()
