@@ -1,9 +1,11 @@
+import 'react-native-gesture-handler';
 import React, { useEffect, useState, useRef } from 'react';
 import { LinkingOptions, NavigationContainer } from '@react-navigation/native';
 import { createStackNavigator } from '@react-navigation/stack';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { Ionicons } from '@expo/vector-icons';
 import { TouchableOpacity, View, StyleSheet, Animated, Platform } from 'react-native';
+import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import * as Linking from 'expo-linking';
 
 // Screens
@@ -149,6 +151,7 @@ const BottomTabs = ({ navigation }) => {
         name="Post"
         component={CreatePostScreen}
       />
+      <Tab.Screen name="Calendar" component={CalendarScreen} />
       <Tab.Screen name="Me" component={ProfileScreen} />
     </Tab.Navigator>
   );
@@ -391,16 +394,18 @@ const styles = StyleSheet.create({
 
 export default function App() {
   return (
-    <AuthProvider>
-      <ShaderBackgroundProvider>
-        {/* Wrapper View creates proper sibling relationship between shader background and MainApp,
-            allowing z-index layering to work correctly with React Navigation's DOM structure.
-            Needed for preventing MainApp UI from blocking background. */}
-        <View style={{ flex: 1 }}>
-          <GlobalShaderBackground />
-          <MainApp />
-        </View>
-      </ShaderBackgroundProvider>
-    </AuthProvider>
+    <GestureHandlerRootView style={{ flex: 1 }}>
+      <AuthProvider>
+        <ShaderBackgroundProvider>
+          {/* Wrapper View creates proper sibling relationship between shader background and MainApp,
+              allowing z-index layering to work correctly with React Navigation's DOM structure.
+              Needed for preventing MainApp UI from blocking background. */}
+          <View style={{ flex: 1 }}>
+            <GlobalShaderBackground />
+            <MainApp />
+          </View>
+        </ShaderBackgroundProvider>
+      </AuthProvider>
+    </GestureHandlerRootView>
   );
 }

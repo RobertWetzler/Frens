@@ -224,7 +224,7 @@ if (builder.Environment.IsDevelopment())
         options.AddPolicy("ExpoApp",
             builder => builder
                 // TODO: Update to prod domain, only use localhost CORS in dev-env
-                .WithOrigins("http://localhost:8081", "exp://localhost:19006")
+                .WithOrigins("http://localhost:8081", "exp://localhost:19006", "https://192.168.0.109:7189")
                 .AllowAnyMethod()
                 .AllowAnyHeader()
         );
