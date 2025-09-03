@@ -18,6 +18,7 @@ public class CliqDbContext : IdentityDbContext<User, CliqRole, Guid>
     public DbSet<Notification> Notifications { get; set; }
     public DbSet<NotificationDelivery> NotificationDeliveries { get; set; }
     public DbSet<EventRsvp> EventRsvps { get; set; }
+    public DbSet<CalendarSubscription> CalendarSubscription { get; set; }
 
     public CliqDbContext(
             DbContextOptions<CliqDbContext> options,
@@ -171,7 +172,7 @@ public class CliqDbContext : IdentityDbContext<User, CliqRole, Guid>
 
             entity.Property(n => n.Title)
                     .HasColumnName("title")
-                    .IsRequired();  
+                    .IsRequired();
 
             entity.Property(n => n.Message)
                   .HasColumnName("message")
@@ -302,6 +303,19 @@ public class CliqDbContext : IdentityDbContext<User, CliqRole, Guid>
             // Unique constraint: one RSVP per user per event
             entity.HasIndex(r => new { r.EventId, r.UserId })
                   .IsUnique();
+        });
+
+        modelBuilder.Entity<CalendarSubscription>(entity =>
+        {
+            entity.HasKey(c => c.Id);
+            entity.Property(c => c.UserId).IsRequired();
+            entity.Property(c => c.CreatedAt).HasDefaultValueSql("NOW()");
+
+            entity.HasIndex(c => c.UserId).IsUnique();
+            entity.HasOne<User>()
+                  .WithMany()
+                  .HasForeignKey(c => c.UserId)
+                  .OnDelete(DeleteBehavior.Cascade);
         });
     }
 }

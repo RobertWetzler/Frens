@@ -3,6 +3,7 @@ using Cliq.Server.Services;
 using Cliq.Utilities;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using System.Reflection.PortableExecutable;
 using System.Security.Claims;
 
 namespace Cliq.Server.Controllers;
@@ -173,33 +174,46 @@ public class EventController : ControllerBase
         return Ok(rsvps);
     }
 
-    [HttpGet("{id}/ical")]
-    public async Task<ActionResult> GetEventICalendar(Guid id)
+    [HttpPost("ical/subscribe")]
+    public async Task<ActionResult<string>> SubscribeToICalendar()
     {
         if (!AuthUtils.TryGetUserIdFromToken(HttpContext, out var userId))
         {
             return Unauthorized();
         }
 
-        // Check if user has access to the event
-        var eventDto = await _eventService.GetEventByIdAsync(userId, id, false);
-        if (eventDto == null)
-        {
-            return NotFound();
-        }
+        // Generate unique subscription link
+        var subscriptionId = await _eventService.CreateICalSubscriptionAsync(userId);
+        var url = $"https://cliq.server-fly.dev/api/ical/{subscriptionId}";
+        return Ok(url);
+    }
 
+    [HttpGet("ical/{subscriptionId}")]
+    [AllowAnonymous]
+    public async Task<ActionResult> GetICalendar(Guid subscriptionId)
+    {
+
+        string icalContent;
         try
         {
-            var icalContent = await _eventService.GenerateICalAsync(id);
+            icalContent = await _eventService.GenerateICalForSubscriptionAsync(subscriptionId);
+        }
+        catch (ArgumentException)
+        {
+            _logger.LogWarning($"Invalid calendar subscriptionId queried: {subscriptionId}");
+            return NotFound();
+        }
+        try
+        {
             return File(
                 System.Text.Encoding.UTF8.GetBytes(icalContent),
                 "text/calendar",
-                $"event-{id}.ics"
+                $"frens.ics"
             );
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error generating iCal for event {EventId}", id);
+            _logger.LogError(ex, "Error generating iCal for subscription {subscriptionId}", subscriptionId);
             return StatusCode(500, "An error occurred while generating the calendar file");
         }
     }

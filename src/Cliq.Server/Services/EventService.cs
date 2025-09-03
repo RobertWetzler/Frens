@@ -9,6 +9,7 @@ public interface IEventService
 {
     Task<EventDto?> GetEventByIdAsync(Guid requestorId, Guid id, bool includeRsvps = true);
     Task<List<EventDto>> GetEventsForUserAsync(Guid userId, int page = 1, int pageSize = 20);
+    Task<List<EventDto>> GetAllEventsForUserAsync(Guid userId);
     Task<List<EventDto>> GetUpcomingEventsAsync(Guid userId, int page = 1, int pageSize = 20);
     Task<EventDto> CreateEventAsync(Guid userId, CreateEventDto createEventDto);
     Task<EventDto?> UpdateEventAsync(Guid eventId, Guid updatedByUserId, UpdateEventDto updateEventDto);
@@ -17,6 +18,9 @@ public interface IEventService
     Task<bool> RemoveRsvpAsync(Guid eventId, Guid userId);
     Task<List<EventRsvpDto>> GetEventRsvpsAsync(Guid eventId);
     Task<string> GenerateICalAsync(Guid eventId);
+    Task<string> GenerateICalAsync(List<EventDto> events);
+    Task<Guid> CreateICalSubscriptionAsync(Guid userId);
+    Task<string> GenerateICalForSubscriptionAsync(Guid subscriptionId);
 }
 
 public class EventService : IEventService
@@ -102,6 +106,20 @@ public class EventService : IEventService
         return _mapper.Map<List<EventDto>>(events);
     }
 
+    public async Task<List<EventDto>> GetAllEventsForUserAsync(Guid userId)
+    {
+        var events = await _dbContext.Posts
+            .OfType<Event>()
+            .Where(e => e.SharedWithCircles.Any(cp =>
+                _dbContext.CircleMemberships.Any(cm => cm.CircleId == cp.CircleId && cm.UserId == userId))
+                || e.UserId == userId)
+            .Include(e => e.User)
+            .OrderByDescending(e => e.StartDateTime)
+            .ToListAsync();
+
+        return _mapper.Map<List<EventDto>>(events);
+    }
+
     public async Task<List<EventDto>> GetUpcomingEventsAsync(Guid userId, int page = 1, int pageSize = 20)
     {
         var now = DateTime.UtcNow;
@@ -126,7 +144,7 @@ public class EventService : IEventService
         if (user == null)
         {
             throw new BadHttpRequestException($"Cannot create post for invalid user {userId}");
-        } 
+        }
         await CircleService.ValidateAuthorizationToPostAsync(_dbContext, createEventDto.CircleIds, userId);
         var eventEntity = new Event
         {
@@ -323,31 +341,115 @@ public class EventService : IEventService
         ical.AppendLine($"UID:{eventEntity.Id}");
         ical.AppendLine($"DTSTAMP:{DateTime.UtcNow:yyyyMMddTHHmmssZ}");
         ical.AppendLine($"DTSTART:{eventEntity.StartDateTime:yyyyMMddTHHmmssZ}");
-        
+
         if (eventEntity.EndDateTime.HasValue)
         {
             ical.AppendLine($"DTEND:{eventEntity.EndDateTime.Value:yyyyMMddTHHmmssZ}");
         }
-        
+
         ical.AppendLine($"SUMMARY:{eventEntity.Title}");
         ical.AppendLine($"DESCRIPTION:{eventEntity.Text?.Replace("\n", "\\n")}");
-        
+
         if (!string.IsNullOrEmpty(eventEntity.Location))
         {
             ical.AppendLine($"LOCATION:{eventEntity.Location}");
         }
-        
+
         if (!string.IsNullOrEmpty(eventEntity.RecurrenceRule))
         {
             ical.AppendLine($"RRULE:{eventEntity.RecurrenceRule}");
         }
-        
+
         ical.AppendLine($"ORGANIZER:CN={eventEntity.User.Name}");
         ical.AppendLine("END:VEVENT");
         ical.AppendLine("END:VCALENDAR");
 
         return ical.ToString();
     }
+
+    public async Task<string> GenerateICalAsync(List<EventDto> events)
+    {
+        var ical = new System.Text.StringBuilder();
+        ical.AppendLine("BEGIN:VCALENDAR");
+        ical.AppendLine("VERSION:2.0");
+        ical.AppendLine("PRODID:-//Cliq//Events//EN");
+
+        foreach (var eventEntity in events)
+        {
+            ical.AppendLine("BEGIN:VEVENT");
+            ical.AppendLine($"UID:{eventEntity.Id}");
+            ical.AppendLine($"DTSTAMP:{DateTime.UtcNow:yyyyMMddTHHmmssZ}");
+            ical.AppendLine($"DTSTART:{eventEntity.StartDateTime:yyyyMMddTHHmmssZ}");
+
+            if (eventEntity.EndDateTime.HasValue)
+            {
+                ical.AppendLine($"DTEND:{eventEntity.EndDateTime.Value:yyyyMMddTHHmmssZ}");
+            }
+
+            ical.AppendLine($"SUMMARY:{eventEntity.Title}");
+            ical.AppendLine($"DESCRIPTION:{eventEntity.Text?.Replace("\n", "\\n")}");
+
+            if (!string.IsNullOrEmpty(eventEntity.Location))
+            {
+                ical.AppendLine($"LOCATION:{eventEntity.Location}");
+            }
+
+            if (!string.IsNullOrEmpty(eventEntity.RecurrenceRule))
+            {
+                ical.AppendLine($"RRULE:{eventEntity.RecurrenceRule}");
+            }
+
+            // Assuming we have access to the User's name in EventDto
+            ical.AppendLine($"ORGANIZER:CN={eventEntity.User?.Name ?? "Unknown"}");
+            ical.AppendLine("END:VEVENT");
+        }
+
+        ical.AppendLine("END:VCALENDAR");
+
+        return ical.ToString();
+    }
+
+
+    public async Task<Guid> CreateICalSubscriptionAsync(Guid userId)
+    {
+        // Removing any existing subscriptions
+        var currentSubscriptions = _dbContext.CalendarSubscription
+                                    .Where(c => c.UserId == userId)
+                                    .ToArray();
+
+        _dbContext.RemoveRange(currentSubscriptions);
+
+        // Create a new subscription
+        var newSubscription = new CalendarSubscription
+        {
+            Id = Guid.NewGuid(),
+            UserId = userId,
+            CreatedAt = DateTime.UtcNow
+        };
+
+        _dbContext.CalendarSubscription.Add(newSubscription);
+        await _dbContext.SaveChangesAsync();
+
+        return newSubscription.Id;
+    }
+
+    public async Task<string> GenerateICalForSubscriptionAsync(Guid subscriptionId)
+    {
+        var userId = _dbContext.CalendarSubscription
+            .Where(c => c.Id == subscriptionId)
+            .Select(c => c.UserId)
+            .FirstOrDefault();
+
+        if (userId == Guid.Empty)
+        {
+            throw new ArgumentException("Invalid subscription ID");
+        }
+
+        var events = await GetAllEventsForUserAsync(userId);
+        
+        return await GenerateICalAsync(events);
+    }
+
 }
 
 public static class EventServiceExtensions
