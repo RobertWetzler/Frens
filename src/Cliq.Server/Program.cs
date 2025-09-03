@@ -21,6 +21,8 @@ using Cliq.Server.Services.PushNotifications;
 using Microsoft.OpenApi.Models;
 using Microsoft.AspNetCore.Builder;
 using System.Security.Cryptography.X509Certificates;
+using NSwag;
+using NSwag.Generation.Processors.Security;
 
 DotNetEnv.Env.Load();
 
@@ -191,7 +193,25 @@ builder.Services.AddSwaggerGen(option =>
     });
 });
 */
-builder.Services.AddOpenApiDocument();
+builder.Services.AddOpenApiDocument(options =>
+{
+    options.Title = "Cliq API";
+    // Define a Bearer security scheme so Swagger UI can attach the JWT to requests
+    options.AddSecurity("Bearer", new NSwag.OpenApiSecurityScheme
+    {
+        Type = NSwag.OpenApiSecuritySchemeType.Http,
+        Scheme = "bearer",
+        BearerFormat = "JWT",
+        Name = "Authorization",
+        In = NSwag.OpenApiSecurityApiKeyLocation.Header,
+        Description = builder.Environment.IsDevelopment()
+            ? "Enter your JWT token. You can use the 'auto-login' button to fetch one."
+            : "Enter your JWT token."
+    });
+
+    // Apply the Bearer requirement to operations discovered as requiring authorization
+    options.OperationProcessors.Add(new AspNetCoreOperationSecurityScopeProcessor("Bearer"));
+});
 if (builder.Environment.IsDevelopment())
 {
     builder.Services.AddCors(options =>
@@ -364,6 +384,8 @@ using (var scope = app.Services.CreateScope())
 // TODO: RE-INTRODUCE! After getting https working in dev-env for API server
 //app.UseHttpsRedirection();
 
+// Ensure authentication runs before authorization so JWTs are evaluated
+app.UseAuthentication();
 app.UseAuthorization();
 
 app.MapControllers();
