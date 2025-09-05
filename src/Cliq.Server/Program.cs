@@ -216,18 +216,12 @@ if (builder.Environment.IsDevelopment())
 {
     builder.Services.AddCors(options =>
     {
-        options.AddPolicy("AllowViteClient",
-            builder => builder
-                .SetIsOriginAllowed(_ => true) // Be careful with this in production
+        // Single permissive policy for development only
+        options.AddPolicy("DevAll",
+            policy => policy
+                .SetIsOriginAllowed(_ => true)
                 .AllowAnyHeader()
                 .AllowAnyMethod());
-        options.AddPolicy("ExpoApp",
-            builder => builder
-                // TODO: Update to prod domain, only use localhost CORS in dev-env
-                .WithOrigins("http://localhost:8081", "exp://localhost:19006", "https://192.168.0.109:7189")
-                .AllowAnyMethod()
-                .AllowAnyHeader()
-        );
     });
 }
 else
@@ -351,7 +345,15 @@ app.UseStaticFiles();
 
 
 // TODO Figure out correct CORS for mobile app
-app.UseCors("ExpoApp");
+if (app.Environment.IsDevelopment())
+{
+    app.UseCors("DevAll");
+}
+else
+{
+    // Production policy placeholder (previously ExpoApp). Adjust when adding real prod origins.
+    app.UseCors("ExpoApp");
+}
 // Configure the HTTP request pipeline.
 if (app.Environment.IsDevelopment())
 {

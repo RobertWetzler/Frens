@@ -42,7 +42,7 @@
 	https://github.com/RicoSuter/NSwag/issues/2444#issuecomment-604284806
 	
 	<Target Name="NSwag" AfterTargets="Build">
-		<Exec EnvironmentVariables="ASPNETCORE_ENVIRONMENT=Development" Command="$(NSwagExe) aspnetcore2openapi /assembly:$(TargetDir)Cliq.Server.dll /output:swagger.json" />
+		<Exec EnvironmentVariables="ASPNET./bCORE_ENVIRONMENT=Development" Command="$(NSwagExe) aspnetcore2openapi /assembly:$(TargetDir)Cliq.Server.dll /output:swagger.json" />
 		<Exec Command="$(NSwagExe) openapi2tsclient /input:swagger.json /output:Scripts/MyController.ts" />
 	</Target>
 	-->

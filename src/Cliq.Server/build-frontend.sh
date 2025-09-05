@@ -10,7 +10,10 @@ echo "Building Cliq client and server..."
 # Build client (Expo web export)
 echo "Building client..."
 cd ../cliq.client
-npm install
+# Use --legacy-peer-deps to bypass peer dependency conflict (React 19 vs packages
+# that still declare a peer range up to React 18, e.g. @reduxjs/toolkit@2.4.0).
+# Expo SDK 53 expects React 19, so we keep React 19 and relax peer resolution.
+npm install --legacy-peer-deps
 npx expo export -p web
 
 # Copy exported client to server wwwroot

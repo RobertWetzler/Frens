@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, Animated } from 'react-native';
+import { View, Text, TouchableOpacity, StyleSheet, Animated, Platform } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import PWAInstallModal from './PWAInstallModal';
@@ -16,48 +16,47 @@ const PWAInstallBanner: React.FC<PWAInstallBannerProps> = ({ onDismiss, onVisibi
   const [showModal, setShowModal] = useState(false);
   const [platform, setPlatform] = useState<'ios' | 'android' | 'desktop' | 'other'>('other');
 
-  // Check if banner was previously dismissed
+  // Check if banner was previously dismissed (web only)
   useEffect(() => {
-    if (typeof window !== 'undefined') {
-      const wasDismissed = localStorage.getItem('pwa-banner-dismissed') === 'true';
+    if (Platform.OS !== 'web') return; // Don't run in native apps
+    if (typeof window === 'undefined') return;
+    try {
+      const wasDismissed = typeof localStorage !== 'undefined' && localStorage.getItem('pwa-banner-dismissed') === 'true';
       setIsDismissed(wasDismissed);
-      
-      // Detect platform
-      const userAgent = navigator.userAgent;
-      if (/iPad|iPhone|iPod/.test(userAgent) && !(window as any).MSStream) {
-        setPlatform('ios');
-      } else if (/Android/.test(userAgent) && /Chrome/.test(userAgent)) {
-        setPlatform('android');
-      } else if (/Chrome/.test(userAgent) && !/Mobile/.test(userAgent)) {
-        setPlatform('desktop');
-      } else {
-        setPlatform('other');
-      }
+    } catch { /* ignore storage issues */ }
+
+    // Detect platform (for instructional text inside modal)
+    const userAgent = navigator.userAgent || '';
+    if (/iPad|iPhone|iPod/.test(userAgent) && !(window as any).MSStream) {
+      setPlatform('ios');
+    } else if (/Android/.test(userAgent) && /Chrome/.test(userAgent)) {
+      setPlatform('android');
+    } else if (/Chrome/.test(userAgent) && !/Mobile/.test(userAgent)) {
+      setPlatform('desktop');
+    } else {
+      setPlatform('other');
     }
   }, []);
 
   // Check for PWA installation status
   useEffect(() => {
+    if (Platform.OS !== 'web') return; // PWA concept irrelevant in native
     if (typeof window === 'undefined') return;
-
     const checkPWAInstalled = () => {
-      // Check for standalone mode (covers most PWA installations)
-      const isStandalone = window.matchMedia('(display-mode: standalone)').matches;
-      
-      // Check for iOS Safari standalone mode
-      const isIOSStandalone = (window.navigator as any).standalone === true;
-      
-      setIsPWAInstalled(isStandalone || isIOSStandalone);
+      try {
+        const isStandalone = window.matchMedia?.('(display-mode: standalone)')?.matches || false;
+        const isIOSStandalone = (window.navigator as any)?.standalone === true;
+        setIsPWAInstalled(isStandalone || isIOSStandalone);
+      } catch { /* ignore */ }
     };
-
     checkPWAInstalled();
-
-    // Listen for display mode changes
-    const mediaQuery = window.matchMedia('(display-mode: standalone)');
-    mediaQuery.addEventListener('change', checkPWAInstalled);
-
+    let mediaQuery: MediaQueryList | undefined;
+    try {
+      mediaQuery = window.matchMedia('(display-mode: standalone)');
+      mediaQuery.addEventListener('change', checkPWAInstalled);
+    } catch { /* ignore */ }
     return () => {
-      mediaQuery.removeEventListener('change', checkPWAInstalled);
+      try { mediaQuery?.removeEventListener('change', checkPWAInstalled); } catch { /* ignore */ }
     };
   }, []);
 
@@ -80,12 +79,9 @@ const PWAInstallBanner: React.FC<PWAInstallBannerProps> = ({ onDismiss, onVisibi
 
   const handleDismiss = () => {
     console.log('PWA banner dismiss button pressed');
-    
-    // Remember dismissal in localStorage
-    if (typeof window !== 'undefined') {
-      localStorage.setItem('pwa-banner-dismissed', 'true');
+    if (Platform.OS === 'web' && typeof localStorage !== 'undefined') {
+      try { localStorage.setItem('pwa-banner-dismissed', 'true'); } catch { /* ignore */ }
     }
-    
     Animated.timing(slideAnim, {
       toValue: -100,
       duration: 200,
@@ -101,6 +97,8 @@ const PWAInstallBanner: React.FC<PWAInstallBannerProps> = ({ onDismiss, onVisibi
   };
 
   // Don't render if PWA is installed or banner is dismissed
+  // Never render on native platforms (only meaningful for web PWAs)
+  if (Platform.OS !== 'web') return null;
   if (isPWAInstalled || isDismissed) {
     return null;
   }
