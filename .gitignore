@@ -5,3 +5,6 @@ packages
 wwwroot
 /src/Cliq/Cliq.Server/.env
 .DS_Store
+
+# Native iOS project (ignored)
+src/cliq.client/ios/
