@@ -18,7 +18,7 @@ import Event from 'components/Event';
 
 
 const HomeScreen = ({ navigation }) => {
-    const { posts, circles, notificationCount, isLoading, isFiltering, isPostTransition, error, loadFeed, selectedCircleIds, updateFilter, clearFilter } = useFilteredFeed();
+    const { posts, circles, notificationCount, isLoading, isFiltering, isPostTransition, isRefreshing, error, loadFeed, selectedCircleIds, updateFilter, clearFilter } = useFilteredFeed();
     const authContext = useAuth();
     const { isExpanded, animateToExpanded } = useShaderBackground();
     const scrollY = useRef(new Animated.Value(0)).current;
@@ -247,11 +247,8 @@ const HomeScreen = ({ navigation }) => {
                 scrollEventThrottle={16}
                 scrollEnabled={!isFilterExpanded} // Disable scrolling when filter dropdown is expanded
                 // Add these props for better UX
-                refreshing={isLoading}
-                onRefresh={() => {
-                    // Implement pull-to-refresh functionality
-                    loadFeed();
-                }}
+                refreshing={isRefreshing}
+                onRefresh={loadFeed}
                 ListEmptyComponent={() => {
                     // Don't show empty state while loading, filtering, transitioning, or animating
                     if (isLoading || isFiltering || isPostTransition || shouldAnimateAfterFilter || isFirstLoad) {

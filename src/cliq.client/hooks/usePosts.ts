@@ -67,20 +67,27 @@ export function useFilteredFeed() {
     const [circles, setCircles] = useState<CirclePublicDto[]>([]);
     const [isLoading, setIsLoading] = useState(true);
     const [isFiltering, setIsFiltering] = useState(false);
+    const [isRefreshing, setIsRefreshing] = useState(false);
     const [isInitialLoad, setIsInitialLoad] = useState(true);
     const [isPostTransition, setIsPostTransition] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const [selectedCircleIds, setSelectedCircleIds] = useState<string[]>([]);
 
-    const loadFeed = useCallback(async (circleIds?: string[], isFilterUpdate = false) => {
+    const loadFeedInternal = useCallback(async (
+        circleIds?: string[],
+        options?: { isFilterUpdate?: boolean; isManualRefresh?: boolean }
+    ) => {
+        const { isFilterUpdate = false, isManualRefresh = false } = options ?? {};
         try {
             if (isFilterUpdate) {
                 setIsFiltering(true);
                 setIsPostTransition(true);
+            } else if (isManualRefresh) {
+                setIsRefreshing(true);
             } else {
                 setIsLoading(true);
             }
-            
+
             let feedResponse: FeedDto;
             if (circleIds && circleIds.length > 0) {
                 // Filter by specific circles
@@ -102,7 +109,7 @@ export function useFilteredFeed() {
             } else {
                 setPosts(feedResponse.posts || []);
             }
-            
+
             setNotificationCount(feedResponse.notificationCount || 0);
             setCircles(feedResponse.userCircles || []);
             setError(null);
@@ -119,34 +126,44 @@ export function useFilteredFeed() {
             setCircles([]);
             setIsPostTransition(false);
         } finally {
-            setIsLoading(false);
-            setIsFiltering(false);
+            if (isFilterUpdate) {
+                setIsFiltering(false);
+            } else if (isManualRefresh) {
+                setIsRefreshing(false);
+            } else {
+                setIsLoading(false);
+            }
         }
     }, [isInitialLoad]);
 
     const updateFilter = useCallback((circleIds: string[]) => {
         setSelectedCircleIds(circleIds);
-        loadFeed(circleIds, true); // Skip loading state for smooth filtering
-    }, [loadFeed]);
+        loadFeedInternal(circleIds, { isFilterUpdate: true }); // Skip loading state for smooth filtering
+    }, [loadFeedInternal]);
 
     const clearFilter = useCallback(() => {
         setSelectedCircleIds([]);
-        loadFeed([], true); // Skip loading state for smooth filtering
-    }, [loadFeed]);
+        loadFeedInternal([], { isFilterUpdate: true }); // Skip loading state for smooth filtering
+    }, [loadFeedInternal]);
 
     useEffect(() => {
-        loadFeed(selectedCircleIds); // Initial load should show loading state
+        loadFeedInternal(selectedCircleIds); // Initial load should show loading state
     }, []);
 
-    return { 
-        posts, 
+    const refreshFeed = useCallback(() => {
+        return loadFeedInternal(selectedCircleIds, { isManualRefresh: true });
+    }, [loadFeedInternal, selectedCircleIds]);
+
+    return {
+        posts,
         circles,
-        notificationCount, 
+        notificationCount,
         isLoading: isLoading && isInitialLoad, // Only show loading on initial load
         isFiltering,
         isPostTransition, // New state for post transition animations
-        error, 
-        loadFeed: () => loadFeed(selectedCircleIds, true), // Manual refresh should skip loading state
+        isRefreshing,
+        error,
+        loadFeed: refreshFeed,
         selectedCircleIds,
         updateFilter,
         clearFilter
