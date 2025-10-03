@@ -243,7 +243,9 @@ builder.Services.AddDefaultIdentity<IdentityUser>(options => options.SignIn.Requ
     .AddEntityFrameworkStores<ApplicationDbContext>(); */
 
 builder.Services.AddIdentity<User, CliqRole>(options => options.SignIn.RequireConfirmedAccount = false)
-    .AddEntityFrameworkStores<CliqDbContext>();
+    .AddEntityFrameworkStores<CliqDbContext>()
+    // Needed for password reset, email confirmation, 2FA, etc.
+    .AddDefaultTokenProviders();
 
 builder.Services.Configure<IdentityOptions>(options =>
 {
@@ -381,6 +383,12 @@ using (var scope = app.Services.CreateScope())
     {
         await SeedExtensions.SeedDevelopmentDataAsync(app.Services);
     }
+}
+
+// Delegate to CLI helper (returns true if a CLI command was executed and app should exit)
+if (await CliTools.TryHandleCliAsync(args, app.Services))
+{
+    return;
 }
 
 // TODO: RE-INTRODUCE! After getting https working in dev-env for API server
