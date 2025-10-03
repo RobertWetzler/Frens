@@ -1,5 +1,6 @@
 import 'react-native-gesture-handler';
 import React, { useEffect, useState, useRef } from 'react';
+import * as Font from 'expo-font';
 import { LinkingOptions, NavigationContainer } from '@react-navigation/native';
 import { createStackNavigator } from '@react-navigation/stack';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
@@ -18,6 +19,7 @@ import ProfileScreen from './screens/ProfileScreen';
 import SignInScreen from './screens/SignInScreen';
 import CreatePostScreen from './screens/CreatePostScreen';
 import { ActivityIndicator, SafeAreaView } from 'react-native';
+import { ThemeProvider, useTheme } from './theme/ThemeContext';
 import { AuthProvider, useAuth } from 'contexts/AuthContext';
 import CreateCircleScreen from 'screens/CreateCircleScreen';
 import AddUsersToCircleScreen from 'screens/AddUsersToCircleScreen';
@@ -75,14 +77,18 @@ const linking: LinkingOptions<RootStackParamList> = {
 };
 
 const CreateButton = ({ onPress }) => {
+  const { theme } = useTheme();
   return (
     <TouchableOpacity
       style={styles.createButtonContainer}
       onPress={onPress}
       activeOpacity={0.8}
     >
-      <View style={styles.createButton}>
-        <Ionicons name="add" size={30} color="#FFF" />
+      <View style={[
+        styles.createButton,
+        { backgroundColor: theme.colors.primary, shadowColor: theme.colors.shadow }
+      ]}>
+        <Ionicons name="add" size={30} color={theme.colors.primaryContrast} />
       </View>
     </TouchableOpacity>
   );
@@ -90,6 +96,7 @@ const CreateButton = ({ onPress }) => {
 
 const BottomTabs = ({ navigation }) => {
   const animatedValue = useRef(new Animated.Value(0)).current;
+  const { theme } = useTheme();
   
   const openCreatePost = () => {
     Animated.timing(animatedValue, {
@@ -125,15 +132,15 @@ const BottomTabs = ({ navigation }) => {
 
           return <Ionicons name={iconName} size={size} color={color} />;
         },
-        tabBarActiveTintColor: '#1DA1F2',
-        tabBarInactiveTintColor: 'gray',
+        tabBarActiveTintColor: theme.colors.primary,
+        tabBarInactiveTintColor: theme.colors.textMuted,
         tabBarStyle: {
-          backgroundColor: 'rgba(255, 255, 255, 0.8)',
+          backgroundColor: theme.isDark ? 'rgba(30,30,30,0.85)' : 'rgba(255,255,255,0.8)',
           borderTopWidth: 0,
           elevation: 0,
           position: 'absolute',
           left: 0,
-          right: 0,
+            right: 0,
           bottom: 0,
           height: 60,
           // Add safe area for iOS PWA
@@ -158,27 +165,35 @@ const BottomTabs = ({ navigation }) => {
 };
 
 const MainApp = () => {
+  // Access theme
+  const { theme } = useTheme();
   const { isAuthenticated, isAuthLoading } = useAuth();
   const [initialURL, setInitialURL] = useState<string | null>(null);
   const [isReady, setIsReady] = useState(false);
+  const [fontsLoaded, setFontsLoaded] = useState(false);
 
   // Register service worker
   useServiceWorker();
 
   useEffect(() => {
-    const getInitialURL = async () => {
+    const bootstrap = async () => {
       try {
         const url = await Linking.getInitialURL();
-        console.log('Initial URL:', url);
         setInitialURL(url);
+        // Attempt to load spooky font; if missing, ignore error.
+        try {
+          await Font.loadAsync({
+            SpookyHalloween: require('./assets/fonts/spooky-font.ttf'),
+          });
+          setFontsLoaded(true);
+        } catch (err) {
+          console.warn('Spooky font not loaded (expected if file missing):', err?.message || err);
+        }
       } finally {
         setIsReady(true);
       }
     };
-
-    if (!isReady) {
-      getInitialURL();
-    }
+    if (!isReady) bootstrap();
   }, [isReady]);
 
   // PWA Install prompt handler
@@ -245,7 +260,7 @@ const MainApp = () => {
           default: 0
         })
       }}>
-        <ActivityIndicator size={36} color="#1DA1F2" />
+  <ActivityIndicator size={36} color={theme.colors.primary} />
       </SafeAreaView>
     );
   }
@@ -259,14 +274,14 @@ const MainApp = () => {
       <NavigationContainer 
         linking={linking}
         theme={{
-          dark: false,
+          dark: theme.isDark,
           colors: {
-            primary: '#1DA1F2',
-            background: 'transparent', // Make navigation background transparent
-            card: 'transparent', // Make card backgrounds transparent
-            text: '#000000',
-            border: '#E1E8ED',
-            notification: '#FF3B30',
+            primary: theme.colors.primary,
+            background: theme.colors.background,
+            card: theme.colors.background,
+            text: theme.colors.textPrimary,
+            border: theme.colors.separator,
+            notification: theme.colors.notification,
           },
         }}
       >
@@ -369,23 +384,19 @@ const styles = StyleSheet.create({
   mainAppContainer: {
     flex: 1,
     backgroundColor: 'transparent',
-    zIndex: 10, // Higher z-index to ensure it's above shader background
+    zIndex: 10,
   },
   createButtonContainer: {
     bottom: 15,
   },
   createButton: {
-    backgroundColor: '#1DA1F2',
+    // Dynamic styles will be composed inline when used to pull from theme
     width: 60,
     height: 60,
     borderRadius: 30,
     justifyContent: 'center',
     alignItems: 'center',
-    shadowColor: '#000',
-    shadowOffset: {
-      width: 0,
-      height: 2,
-    },
+    shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.25,
     shadowRadius: 3.84,
     elevation: 5,
@@ -395,17 +406,25 @@ const styles = StyleSheet.create({
 export default function App() {
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
-      <AuthProvider>
-        <ShaderBackgroundProvider>
-          {/* Wrapper View creates proper sibling relationship between shader background and MainApp,
-              allowing z-index layering to work correctly with React Navigation's DOM structure.
-              Needed for preventing MainApp UI from blocking background. */}
-          <View style={{ flex: 1 }}>
-            <GlobalShaderBackground />
-            <MainApp />
-          </View>
-        </ShaderBackgroundProvider>
-      </AuthProvider>
+      <ThemeProvider>
+        <AuthProvider>
+          <ShaderBackgroundProvider>
+            {/* Wrapper View creates proper sibling relationship between shader background and MainApp,
+                allowing z-index layering to work correctly with React Navigation's DOM structure.
+                Needed for preventing MainApp UI from blocking background. */}
+            <View style={{ flex: 1 }}>
+              <GlobalShaderBackground />
+              <ThemedMainAppWrapper />
+            </View>
+          </ShaderBackgroundProvider>
+        </AuthProvider>
+      </ThemeProvider>
     </GestureHandlerRootView>
   );
 }
+
+// Wrapper to inject dynamic themed FAB (floating action button) style example if needed later
+const ThemedMainAppWrapper: React.FC = () => {
+  const { theme } = useTheme();
+  return <MainApp />;
+};

@@ -5,7 +5,7 @@
 		<Nullable>enable</Nullable>
 		<ImplicitUsings>enable</ImplicitUsings>
 		<SpaRoot>..\cliq.client</SpaRoot>
-		<SpaProxyLaunchCommand>npx expo start</SpaProxyLaunchCommand>
+		<SpaProxyLaunchCommand>npm run start-with-ip-gen</SpaProxyLaunchCommand>
 		<SpaProxyServerUrl>http://localhost:8081</SpaProxyServerUrl>
 		<BuildFrontendEnabled>true</BuildFrontendEnabled>
 	</PropertyGroup>

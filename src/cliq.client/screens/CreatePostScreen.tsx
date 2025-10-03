@@ -4,7 +4,6 @@ import {
   View,
   Text,
   TextInput,
-  StyleSheet,
   TouchableOpacity,
   KeyboardAvoidingView,
   Platform,
@@ -20,9 +19,13 @@ import ShaderBackground from 'components/ShaderBackground';
 import { CreatePostDto, CreateEventDto } from 'services/generated/generatedClient';
 import { useFocusEffect } from '@react-navigation/native';
 import Header from 'components/Header';
+import { useTheme } from '../theme/ThemeContext';
+import { makeStyles } from '../theme/makeStyles';
 
 
 const CreatePostScreen = ({ navigation, route }) => {
+  const { theme } = useTheme();
+  const styles = useStyles();
   const [postContent, setPostContent] = useState('');
   const [selectedCircleIds, setSelectedCircleIds] = useState([]);
   const [asEvent, setAsEvent] = useState(false);
@@ -80,7 +83,7 @@ const CreatePostScreen = ({ navigation, route }) => {
   if (isLoading) {
     return (
       <SafeAreaView style={styles.container}>
-        <ActivityIndicator size={36} color="#0000ff" />
+        <ActivityIndicator size={36} color={theme.colors.primary} />
       </SafeAreaView>
     );
   }
@@ -202,15 +205,21 @@ const CreatePostScreen = ({ navigation, route }) => {
           placeholder={asEvent ? "What's this event about? (optional details)" : "What's happening?"}
           multiline
           value={postContent}
-          onChangeText={setPostContent}
+            onChangeText={setPostContent}
           autoFocus
           maxLength={280}
+          placeholderTextColor={theme.colors.inputPlaceholder}
         />
 
         {/* Event toggle */}
         <View style={styles.toggleRow}>
           <Text style={styles.toggleLabel}>Create as Event</Text>
-          <Switch value={asEvent} onValueChange={setAsEvent} />
+          <Switch
+            value={asEvent}
+            onValueChange={setAsEvent}
+            trackColor={{ false: theme.colors.separator, true: theme.colors.primary }}
+            thumbColor={Platform.OS === 'android' ? theme.colors.card : undefined}
+          />
         </View>
 
         {asEvent && (
@@ -221,6 +230,7 @@ const CreatePostScreen = ({ navigation, route }) => {
               placeholder="Event title"
               value={eventTitle}
               onChangeText={setEventTitle}
+              placeholderTextColor={theme.colors.inputPlaceholder}
             />
 
             <Text style={[styles.formLabel, { marginTop: 10 }]}>Start</Text>
@@ -238,7 +248,7 @@ const CreatePostScreen = ({ navigation, route }) => {
                       outline: 'none',
                       fontSize: 16,
                       fontFamily: 'system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif',
-                      color: '#111',
+                      color: theme.colors.textPrimary,
                       padding: 0,
                       margin: 0,
                       lineHeight: 'normal',
@@ -268,7 +278,7 @@ const CreatePostScreen = ({ navigation, route }) => {
                       outline: 'none',
                       fontSize: 16,
                       fontFamily: 'system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif',
-                      color: '#111',
+                      color: theme.colors.textPrimary,
                       padding: 0,
                       margin: 0,
                       lineHeight: 'normal',
@@ -326,7 +336,7 @@ const CreatePostScreen = ({ navigation, route }) => {
                       outline: 'none',
                       fontSize: 16,
                       fontFamily: 'system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif',
-                      color: '#111',
+                      color: theme.colors.textPrimary,
                       padding: 0,
                       margin: 0,
                       lineHeight: 'normal',
@@ -356,7 +366,7 @@ const CreatePostScreen = ({ navigation, route }) => {
                       outline: 'none',
                       fontSize: 16,
                       fontFamily: 'system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif',
-                      color: '#111',
+                      color: theme.colors.textPrimary,
                       padding: 0,
                       margin: 0,
                       lineHeight: 'normal',
@@ -427,14 +437,14 @@ const CreatePostScreen = ({ navigation, route }) => {
                   <Ionicons 
                     name="people" 
                     size={20} 
-                    color={selectedCircleIds.includes(item.id) ? "#fff" : "#1DA1F2"} 
+                    color={selectedCircleIds.includes(item.id) ? theme.colors.primaryContrast : theme.colors.primary} 
                   />
                 )}
                 {!item.isShared && item.isOwner && (
                   <Ionicons 
                     name="person" 
                     size={20} 
-                    color={selectedCircleIds.includes(item.id) ? "#fff" : "#1DA1F2"} 
+                    color={selectedCircleIds.includes(item.id) ? theme.colors.primaryContrast : theme.colors.primary} 
                   />
                 )}
               </View>
@@ -445,7 +455,7 @@ const CreatePostScreen = ({ navigation, route }) => {
                 {item.name}
               </Text>
               {selectedCircleIds.includes(item.id) && (
-                <Ionicons name="checkmark-circle" size={22} color="#fff" style={styles.checkIcon} />
+                <Ionicons name="checkmark-circle" size={22} color={theme.colors.primaryContrast} style={styles.checkIcon} />
               )}
             </TouchableOpacity>
           )}
@@ -457,11 +467,7 @@ const CreatePostScreen = ({ navigation, route }) => {
               activeOpacity={0.7}
             >
               <View style={styles.circleIconContainer}>
-                <Ionicons 
-                  name="add" 
-                  size={20} 
-                  color="#1DA1F2" 
-                />
+                <Ionicons name="add" size={20} color={theme.colors.primary} />
               </View>
               <Text style={styles.createCircleText}>
                 Create New Circle
@@ -473,133 +479,46 @@ const CreatePostScreen = ({ navigation, route }) => {
     </SafeAreaView>
   );
 };
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#fff',
-  },
-  errorText: {
-    color: 'red',
-    textAlign: 'center',
-    marginTop: 20,
-  },
-  keyboardAvoid: {
-    flex: 1,
-  },
-  circleSection: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingHorizontal: 15,
-    paddingVertical: 10,
-  },
-  circleHeaderTitle: {
-    fontSize: 16,
-    fontWeight: '600',
-  },
-  circleWarning: {
-    fontSize: 12,
-    color: '#f5f8fa',
-    fontStyle: 'italic',
-  },
-  toggleRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: 15,
-  },
-  toggleLabel: { fontSize: 16, fontWeight: '500' },
-  eventForm: {
-    paddingHorizontal: 15,
-    paddingTop: 8,
-  },
-  formLabel: {
-    fontSize: 14,
-    color: '#444',
-    marginBottom: 6,
-  },
+// makeStyles at bottom
+const useStyles = makeStyles((theme) => ({
+  container: { flex: 1, backgroundColor: theme.colors.backgroundAlt },
+  errorText: { color: theme.colors.danger, textAlign: 'center', marginTop: 20 },
+  keyboardAvoid: { flex: 1 },
+  circleSection: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 15, paddingVertical: 10 },
+  circleHeaderTitle: { fontSize: 16, fontWeight: '600', color: theme.colors.textPrimary },
+  circleWarning: { fontSize: 12, color: theme.colors.textMuted, fontStyle: 'italic' },
+  toggleRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 15 },
+  toggleLabel: { fontSize: 16, fontWeight: '500', color: theme.colors.textPrimary },
+  eventForm: { paddingHorizontal: 15, paddingTop: 8 },
+  formLabel: { fontSize: 14, color: theme.colors.textSecondary, marginBottom: 6 },
   inputField: {
-    backgroundColor: '#f5f8fa',
-    borderRadius: 10,
-    paddingVertical: 10,
-    paddingHorizontal: 12,
-    fontSize: 16,
+    backgroundColor: theme.colors.card, borderRadius: 10, paddingVertical: 10, paddingHorizontal: 12, fontSize: 16,
+    borderWidth: 1, borderColor: theme.colors.inputBorder, color: theme.colors.textPrimary,
   },
-  inputButton: {
-    justifyContent: 'center',
-  },
+  inputButton: { justifyContent: 'center' },
   row: { flexDirection: 'row', gap: 10 },
   rowItem: { flex: 1 },
-  formError: { color: 'red', marginTop: 8 },
-  circleList: {
-    paddingHorizontal: 15,
-    paddingBottom: 20,
-  },
+  formError: { color: theme.colors.danger, marginTop: 8 },
+  circleList: { paddingHorizontal: 15, paddingBottom: 20 },
   circleItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingVertical: 12,
-    paddingHorizontal: 15,
-    borderRadius: 12,
-    marginVertical: 4,
-    backgroundColor: '#f5f8fa',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.1,
-    shadowRadius: 1,
-    elevation: 1,
+    flexDirection: 'row', alignItems: 'center', paddingVertical: 12, paddingHorizontal: 15, borderRadius: 12, marginVertical: 4,
+    backgroundColor: theme.colors.card, shadowColor: theme.colors.shadow, shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.1, shadowRadius: 1, elevation: 1,
   },
-  selectedCircleItem: {
-    backgroundColor: '#1DA1F2',
-  },
-  circleIconContainer: {
-    width: 30,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  circleName: {
-    fontSize: 16,
-    marginLeft: 8,
-    flex: 1,
-  },
-  selectedCircleText: {
-    color: '#fff',
-    fontWeight: '500',
-  },
-  checkIcon: {
-    marginLeft: 5,
-  },
+  selectedCircleItem: { backgroundColor: theme.colors.primary },
+  circleIconContainer: { width: 30, alignItems: 'center', justifyContent: 'center' },
+  circleName: { fontSize: 16, marginLeft: 8, flex: 1, color: theme.colors.textPrimary },
+  selectedCircleText: { color: theme.colors.primaryContrast, fontWeight: '500' },
+  checkIcon: { marginLeft: 5 },
   input: {
-    padding: 20,
-    fontSize: 18,
-    textAlignVertical: 'top',
-    minHeight: 120,
-    borderColor: "white"
+    padding: 20, fontSize: 18, textAlignVertical: 'top', minHeight: 120, backgroundColor: theme.colors.card, color: theme.colors.textPrimary,
+    borderWidth: 1, borderColor: theme.colors.inputBorder, borderRadius: 12,
   },
   createCircleButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingVertical: 12,
-    paddingHorizontal: 15,
-    borderRadius: 12,
-    marginVertical: 4,
-    backgroundColor: '#fff',
-    borderWidth: 1,
-    borderColor: '#1DA1F2',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.1,
-    shadowRadius: 1,
-    elevation: 1,
+    flexDirection: 'row', alignItems: 'center', paddingVertical: 12, paddingHorizontal: 15, borderRadius: 12, marginVertical: 4,
+    backgroundColor: theme.colors.card, borderWidth: 1, borderColor: theme.colors.primary,
+    shadowColor: theme.colors.shadow, shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.1, shadowRadius: 1, elevation: 1,
   },
-  createCircleText: {
-    fontSize: 16,
-    marginLeft: 8,
-    flex: 1,
-    color: '#1DA1F2',
-    fontWeight: '500',
-  },
-});
+  createCircleText: { fontSize: 16, marginLeft: 8, flex: 1, color: theme.colors.primary, fontWeight: '500' },
+}));
 
 export default CreatePostScreen;

@@ -2,7 +2,6 @@ import React, { useState, useEffect } from 'react';
 import {
     View,
     Text,
-    StyleSheet,
     FlatList,
     TouchableOpacity,
     ActivityIndicator,
@@ -18,6 +17,44 @@ import { useAuth } from 'contexts/AuthContext';
 import { handleShareProfile } from 'utils/share';
 import NotificationBell from 'components/NotificationBell';
 import Header from 'components/Header';
+import { useTheme } from '../theme/ThemeContext';
+import { makeStyles } from '../theme/makeStyles';
+
+// makeStyles at bottom
+const useStyles = makeStyles((theme) => ({
+    container: { flex: 1, backgroundColor: theme.colors.backgroundAlt },
+    loadingContainer: { flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: theme.colors.backgroundAlt },
+    errorContainer: { flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: theme.colors.backgroundAlt, padding: 20 },
+    errorText: { fontSize: 16, color: theme.colors.danger, textAlign: 'center', marginBottom: 20 },
+    retryButton: { paddingVertical: 10, paddingHorizontal: 20, backgroundColor: theme.colors.primary, borderRadius: 20 },
+    retryButtonText: { color: theme.colors.primaryContrast, fontWeight: 'bold' },
+    headerActions: { flexDirection: 'row', alignItems: 'center' },
+    iconButton: { padding: 8, marginRight: 4 },
+    profileHeader: { padding: 20, alignItems: 'center', borderBottomWidth: 1, borderBottomColor: theme.colors.separator },
+    avatarContainer: { marginBottom: 16 },
+    userName: { fontSize: 24, fontWeight: 'bold', marginBottom: 8, color: theme.colors.textPrimary },
+    userBio: { fontSize: 16, color: theme.colors.textSecondary, textAlign: 'center', marginBottom: 16, paddingHorizontal: 20 },
+    statsContainer: { flexDirection: 'row', width: '100%', justifyContent: 'space-around', marginBottom: 24 },
+    statItem: { alignItems: 'center' },
+    statNumber: { fontSize: 18, fontWeight: 'bold', color: theme.colors.textPrimary },
+    statLabel: { fontSize: 14, color: theme.colors.textMuted },
+    followButton: { backgroundColor: theme.colors.primary, paddingVertical: 10, paddingHorizontal: 24, borderRadius: 20, marginBottom: 20 },
+    followButtonText: { color: theme.colors.primaryContrast, fontWeight: 'bold', fontSize: 16 },
+    friendsButton: { backgroundColor: theme.colors.card, borderWidth: 1, borderColor: theme.colors.primary },
+    friendsButtonText: { color: theme.colors.primary },
+    pendingButton: { backgroundColor: theme.colors.card, borderWidth: 2, borderColor: theme.colors.primary, borderStyle: 'dashed' },
+    pendingButtonText: { color: theme.colors.primary },
+    blockedButton: { backgroundColor: theme.colors.textPrimary, borderWidth: 1, borderColor: theme.colors.card },
+    blockedButtonText: { color: theme.colors.primaryContrast },
+    acceptRequestButton: { backgroundColor: theme.colors.accent, borderWidth: 0 },
+    acceptRequestButtonText: { color: theme.colors.primaryContrast, fontWeight: 'bold' },
+    followingButton: { backgroundColor: 'transparent', borderWidth: 1, borderColor: theme.colors.primary },
+    followingButtonText: { color: theme.colors.primary },
+    sectionDivider: { height: 1, backgroundColor: theme.colors.separator, width: '100%', marginBottom: 16 },
+    sectionTitle: { fontSize: 18, fontWeight: 'bold', alignSelf: 'flex-start', marginBottom: 12, color: theme.colors.textPrimary },
+    emptyPostsContainer: { padding: 40, alignItems: 'center' },
+    emptyPostsText: { marginTop: 16, fontSize: 16, color: theme.colors.textMuted, textAlign: 'center' },
+}));
 
 interface ProfileScreenProps {
     route?: { params?: { userId?: string } };
@@ -26,6 +63,8 @@ interface ProfileScreenProps {
 
 const ProfileScreen: React.FC<ProfileScreenProps> = ({ route, navigation }) => {
     const { user: currentUser } = useAuth();
+    const { theme } = useTheme();
+    const styles = useStyles();
     // Get userId from route params or use current user's ID if not provided
     const userId = route?.params?.userId || currentUser?.id;
     // TODO understand why currentUser.id is undefined
@@ -107,7 +146,7 @@ const ProfileScreen: React.FC<ProfileScreenProps> = ({ route, navigation }) => {
     if (isLoading) {
         return (
             <View style={styles.loadingContainer}>
-                <ActivityIndicator size="large" color="#1DA1F2" />
+                <ActivityIndicator size="large" color={theme.colors.primary} />
             </View>
         );
     }
@@ -133,14 +172,14 @@ const ProfileScreen: React.FC<ProfileScreenProps> = ({ route, navigation }) => {
                 rightActions={
                     <View style={styles.headerActions}>
                         <TouchableOpacity 
-                            style={styles.shareButton} 
+                            style={styles.iconButton} 
                             onPress={() => handleShareProfile(userId)}
                         >
-                            <Ionicons name="share-outline" size={24} color="#1DA1F2" />
+                            <Ionicons name="share-outline" size={24} color={theme.colors.primary} />
                         </TouchableOpacity>
                         {isOwnProfile && (
-                            <TouchableOpacity style={styles.editButton} onPress={() => navigation.navigate('EditProfile')}>
-                                <Ionicons name="settings-outline" size={24} color="#1DA1F2" />
+                            <TouchableOpacity style={styles.iconButton} onPress={() => navigation.navigate('EditProfile')}>
+                                <Ionicons name="settings-outline" size={24} color={theme.colors.primary} />
                             </TouchableOpacity>
                         )}
                         <NotificationBell onPress={() => navigation.navigate('Notifications')} notificationCount={notificationCount} />
@@ -155,10 +194,8 @@ const ProfileScreen: React.FC<ProfileScreenProps> = ({ route, navigation }) => {
                             <Avatar
                                 rounded
                                 size="xlarge"
-                                overlayContainerStyle={{ backgroundColor: '#73cbff' }}
+                                overlayContainerStyle={{ backgroundColor: theme.colors.primary }}
                                 title={user?.name?.charAt(0).toUpperCase() || '?'}
-                            // Uncomment when user images are available
-                            // source={{ uri: user?.imageUrl }}
                             />
                         </View>
 
@@ -212,12 +249,12 @@ const ProfileScreen: React.FC<ProfileScreenProps> = ({ route, navigation }) => {
                     <RefreshControl
                         refreshing={isRefreshing}
                         onRefresh={handleRefresh}
-                        colors={["#1DA1F2"]}
+                        colors={[theme.colors.primary]}
                     />
                 }
                 ListEmptyComponent={
                     <View style={styles.emptyPostsContainer}>
-                        <Ionicons name="document-text-outline" size={48} color="#ccc" />
+                        <Ionicons name="document-text-outline" size={48} color={theme.colors.separator} />
                         <Text style={styles.emptyPostsText}>
                             {isOwnProfile
                                 ? "You haven't posted anything yet"
@@ -229,169 +266,5 @@ const ProfileScreen: React.FC<ProfileScreenProps> = ({ route, navigation }) => {
         </SafeAreaView>
     );
 };
-
-const styles = StyleSheet.create({
-    container: {
-        flex: 1,
-        backgroundColor: 'white',
-    },
-    loadingContainer: {
-        flex: 1,
-        justifyContent: 'center',
-        alignItems: 'center',
-        backgroundColor: 'white',
-    },
-    errorContainer: {
-        flex: 1,
-        justifyContent: 'center',
-        alignItems: 'center',
-        backgroundColor: 'white',
-        padding: 20,
-    },
-    errorText: {
-        fontSize: 16,
-        color: 'red',
-        textAlign: 'center',
-        marginBottom: 20,
-    },
-    retryButton: {
-        paddingVertical: 10,
-        paddingHorizontal: 20,
-        backgroundColor: '#1DA1F2',
-        borderRadius: 20,
-    },
-    retryButtonText: {
-        color: 'white',
-        fontWeight: 'bold',
-    },
-    headerActions: {
-        flexDirection: 'row',
-        alignItems: 'center',
-    },
-    shareButton: {
-        padding: 8,
-        marginRight: 8,
-    },
-    editButton: {
-        padding: 8,
-    },
-    profileHeader: {
-        padding: 20,
-        alignItems: 'center',
-        borderBottomWidth: 1,
-        borderBottomColor: '#e1e4e8',
-    },
-    avatarContainer: {
-        marginBottom: 16,
-    },
-    userName: {
-        fontSize: 24,
-        fontWeight: 'bold',
-        marginBottom: 8,
-    },
-    userBio: {
-        fontSize: 16,
-        color: '#4a4a4a',
-        textAlign: 'center',
-        marginBottom: 16,
-        paddingHorizontal: 20,
-    },
-    statsContainer: {
-        flexDirection: 'row',
-        width: '100%',
-        justifyContent: 'space-around',
-        marginBottom: 24,
-    },
-    statItem: {
-        alignItems: 'center',
-    },
-    statNumber: {
-        fontSize: 18,
-        fontWeight: 'bold',
-    },
-    statLabel: {
-        fontSize: 14,
-        color: '#8e8e8e',
-    },
-    followButton: {
-        backgroundColor: '#1DA1F2',
-        paddingVertical: 10,
-        paddingHorizontal: 24,
-        borderRadius: 20,
-        marginBottom: 20,
-    },
-    followButtonText: {
-        color: 'white',
-        fontWeight: 'bold',
-        fontSize: 16,
-    },
-    // Friends status
-    friendsButton: {
-        backgroundColor: 'white',
-        borderWidth: 1,
-        borderColor: '#1DA1F2',
-    },
-    friendsButtonText: {
-        color: '#1DA1F2',
-    },
-    // Pending status
-    pendingButton: {
-        backgroundColor: 'white',
-        borderWidth: 2,
-        borderColor: '#1DA1F2',
-        borderStyle: 'dashed',
-    },
-    pendingButtonText: {
-        color: '#1DA1F2',
-    },
-    // Blocked status
-    blockedButton: {
-        backgroundColor: 'black',
-        borderWidth: 1,
-        borderColor: 'white',
-    },
-    blockedButtonText: {
-        color: 'white',
-    },
-    // Accept Request status
-    acceptRequestButton: {
-        backgroundColor: '#A142F5', // Apple's green color - positive action
-        borderWidth: 0,
-    },
-    acceptRequestButtonText: {
-        color: 'white',
-        fontWeight: 'bold',
-    },
-    followingButton: {
-        backgroundColor: 'transparent',
-        borderWidth: 1,
-        borderColor: '#1DA1F2',
-    },
-    followingButtonText: {
-        color: '#1DA1F2',
-    },
-    sectionDivider: {
-        height: 1,
-        backgroundColor: '#e1e4e8',
-        width: '100%',
-        marginBottom: 16,
-    },
-    sectionTitle: {
-        fontSize: 18,
-        fontWeight: 'bold',
-        alignSelf: 'flex-start',
-        marginBottom: 12,
-    },
-    emptyPostsContainer: {
-        padding: 40,
-        alignItems: 'center',
-    },
-    emptyPostsText: {
-        marginTop: 16,
-        fontSize: 16,
-        color: '#8e8e8e',
-        textAlign: 'center',
-    },
-});
-
+// (styles removed; replaced by useStyles above)
 export default ProfileScreen;

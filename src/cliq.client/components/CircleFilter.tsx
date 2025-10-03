@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useRef, useEffect } from 'react';
 import {
   View,
   Text,
@@ -11,6 +11,8 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { CirclePublicDto } from '../services/generated/generatedClient';
+import { useTheme } from '../theme/ThemeContext';
+import { makeStyles } from '../theme/makeStyles';
 
 interface CircleFilterProps {
   circles: CirclePublicDto[];
@@ -95,6 +97,9 @@ const CircleFilter: React.FC<CircleFilterProps> = ({
     }
   };
 
+  const { theme } = useTheme();
+  const styles = useStyles();
+
   return (
     <Animated.View 
       style={[
@@ -115,18 +120,9 @@ const CircleFilter: React.FC<CircleFilterProps> = ({
         activeOpacity={0.8}
       >
         <View style={styles.filterButtonContent}>
-          <Ionicons 
-            name="funnel-outline" 
-            size={18} 
-            color="#6699FF" 
-            style={styles.filterIcon}
-          />
+          <Ionicons name="funnel-outline" size={18} color={theme.colors.accent} style={styles.filterIcon} />
           <Text style={styles.filterText}>{getDisplayText()}</Text>
-          <Ionicons 
-            name={isExpanded ? "chevron-up" : "chevron-down"} 
-            size={16} 
-            color="#6699FF" 
-          />
+          <Ionicons name={isExpanded ? 'chevron-up' : 'chevron-down'} size={16} color={theme.colors.accent} />
         </View>
         {selectedCircleIds.length > 0 && (
           <View style={styles.filterBadge}>
@@ -156,7 +152,7 @@ const CircleFilter: React.FC<CircleFilterProps> = ({
                     onPress={onClearAll}
                     activeOpacity={0.7}
                   >
-                    <Ionicons name="close-circle" size={16} color="#666" />
+                    <Ionicons name="close-circle" size={16} color={theme.colors.textMuted} />
                     <Text style={styles.clearAllText}>Clear All</Text>
                   </TouchableOpacity>
                 )}
@@ -188,7 +184,7 @@ const CircleFilter: React.FC<CircleFilterProps> = ({
                             //  && (<Ionicons name="crown" size={14} color={isSelected ? '#fff' : '#666'} />)
                             }
                             {isSelected && (
-                              <Ionicons name="checkmark" size={16} color="#fff" style={styles.checkmark} />
+                              <Ionicons name="checkmark" size={16} color={theme.colors.primaryContrast} style={styles.checkmark} />
                             )}
                           </View>
                         </View>
@@ -205,26 +201,23 @@ const CircleFilter: React.FC<CircleFilterProps> = ({
   );
 };
 
-const styles = StyleSheet.create({
+const useStyles = makeStyles(theme => ({
   container: {
     zIndex: 1000,
     elevation: 1000,
   },
   filterButton: {
-    backgroundColor: 'white',
+    backgroundColor: theme.colors.card,
     borderRadius: 20,
     paddingHorizontal: 16,
     paddingVertical: 10,
-    shadowColor: '#000',
-    shadowOffset: {
-      width: 0,
-      height: 2,
-    },
+    shadowColor: theme.colors.shadow,
+    shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
     shadowRadius: 4,
     elevation: 3,
     position: 'relative',
-    alignSelf: 'flex-start', // Make it only as wide as needed
+    alignSelf: 'flex-start',
   },
   filterButtonContent: {
     flexDirection: 'row',
@@ -237,13 +230,13 @@ const styles = StyleSheet.create({
     flex: 1,
     fontSize: 14,
     fontWeight: '600',
-    color: '#333',
+    color: theme.colors.textSecondary,
   },
   filterBadge: {
     position: 'absolute',
     top: -6,
     right: -6,
-    backgroundColor: '#6699FF',
+    backgroundColor: theme.colors.accent,
     borderRadius: 10,
     minWidth: 20,
     height: 20,
@@ -251,29 +244,26 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   filterBadgeText: {
-    color: 'white',
+    color: theme.colors.primaryContrast,
     fontSize: 12,
     fontWeight: 'bold',
   },
   modalOverlay: {
     flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.1)',
+    backgroundColor: theme.colors.overlay,
     justifyContent: 'flex-start',
-    paddingTop: 120, // Moved down from 100 to 140
+    paddingTop: 120,
   },
   modalDropdown: {
     marginHorizontal: 16,
-    backgroundColor: 'white',
+    backgroundColor: theme.colors.card,
     borderRadius: 12,
-    shadowColor: '#000',
-    shadowOffset: {
-      width: 0,
-      height: 4,
-    },
+    shadowColor: theme.colors.shadow,
+    shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.15,
     shadowRadius: 8,
     elevation: 1000,
-    maxHeight: 400, // Set a reasonable max height
+    maxHeight: 400,
   },
   dropdownContent: {
     paddingHorizontal: 8,
@@ -284,17 +274,17 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     padding: 12,
     marginBottom: 4,
-    backgroundColor: '#F7F9FA',
+    backgroundColor: theme.colors.backgroundAlt,
     borderRadius: 8,
   },
   clearAllText: {
     marginLeft: 8,
     fontSize: 14,
-    color: '#666',
+    color: theme.colors.textMuted,
     fontWeight: '500',
   },
   circleList: {
-    maxHeight: 300, // Increased to work better in modal
+    maxHeight: 300,
   },
   circleItem: {
     paddingHorizontal: 12,
@@ -304,7 +294,7 @@ const styles = StyleSheet.create({
     backgroundColor: 'transparent',
   },
   selectedCircleItem: {
-    backgroundColor: '#6699FF',
+    backgroundColor: theme.colors.accent,
   },
   circleItemContent: {
     flexDirection: 'row',
@@ -313,12 +303,12 @@ const styles = StyleSheet.create({
   },
   circleText: {
     fontSize: 14,
-    color: '#333',
+    color: theme.colors.textSecondary,
     fontWeight: '500',
     flex: 1,
   },
   selectedCircleText: {
-    color: 'white',
+    color: theme.colors.primaryContrast,
   },
   circleInfo: {
     flexDirection: 'row',
@@ -327,6 +317,6 @@ const styles = StyleSheet.create({
   checkmark: {
     marginLeft: 4,
   },
-});
+}));
 
 export default CircleFilter;

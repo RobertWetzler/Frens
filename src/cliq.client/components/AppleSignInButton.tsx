@@ -1,9 +1,12 @@
-import { Platform, View, Pressable, Text, StyleSheet } from 'react-native'
+import { Platform, Pressable, Text } from 'react-native'
 import * as AppleAuthentication from 'expo-apple-authentication'
 import { useAppleAuth } from '../hooks/useAppleAuth'
+import { useTheme } from '../theme/ThemeContext'
+import { makeStyles } from '../theme/makeStyles'
 
 export const AppleSignInButton = () => {
     const { signInWithApple, loading } = useAppleAuth()
+    const styles = useStyles();
 
     const handleSignIn = async () => {
         try {
@@ -33,8 +36,8 @@ export const AppleSignInButton = () => {
   }
 
     return (
-        <Pressable
-            style={styles.webButton}
+                <Pressable
+                        style={styles.webButton}
             onPress={handleSignIn}
             disabled={loading}
         >
@@ -44,8 +47,8 @@ export const AppleSignInButton = () => {
         </Pressable>
     )
 }
-
-const styles = StyleSheet.create({
+// makeStyles at bottom
+const useStyles = makeStyles((theme) => ({
     button: {
         width: '100%',
         height: 44,
@@ -53,14 +56,14 @@ const styles = StyleSheet.create({
     webButton: {
         width: '100%',
         height: 44,
-        backgroundColor: '#000',
+        backgroundColor: theme.colors.textPrimary, // using textPrimary as dark surface (could add brandAppleBlack token later)
         justifyContent: 'center',
         alignItems: 'center',
         borderRadius: 5,
     },
     webButtonText: {
-        color: '#fff',
+        color: theme.colors.card,
         fontSize: 16,
         fontWeight: '600',
     },
-})
+}));

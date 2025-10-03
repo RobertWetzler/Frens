@@ -7,9 +7,11 @@ import { ApiClient } from 'services/apiClient';
 import Post from './Post';
 import Svg, { Path } from 'react-native-svg';
 import Avatar from 'components/Avatar';
+import { useTheme } from '../theme/ThemeContext';
+import { makeStyles } from '../theme/makeStyles';
 
 
-const ThreadLine: React.FC<{
+interface ThreadLineProps {
   color: string;
   isLastInBranch: boolean;
   hasReplies: boolean;
@@ -17,7 +19,10 @@ const ThreadLine: React.FC<{
   collapsed: boolean;
   isReplying: boolean;
   lastChildHeight?: number;
-}> = ({ color, isLastInBranch, hasReplies, depth, collapsed, isReplying, lastChildHeight = 0}) => {
+  styles: ReturnType<typeof useCommentStyles>;
+}
+
+const ThreadLine: React.FC<ThreadLineProps> = ({ color, isLastInBranch, hasReplies, depth, collapsed, isReplying, lastChildHeight = 0, styles }) => {
   const replyBoxHeight = 176.12
   const height = collapsed ? 0 
                 : (74 + (isReplying ? replyBoxHeight : 0));
@@ -71,21 +76,25 @@ const ThreadLine: React.FC<{
 
 // ...existing code...
 
-const CommentTree: React.FC<{
-    comment: CommentDto;
-    depth: number;
-    onAddReply: (text, parentCommentId: string | undefined) => Promise<CommentDto>
-    isSubmitting: boolean;
-    submitError: string | null;
-    isLastInBranch?: boolean;
-    onHeightMeasure?: (height: number) => void; // To report own height to parent
-    navigation?: any; // Add this line
-}> = ({ comment, depth, onAddReply, isSubmitting, submitError, isLastInBranch = false, onHeightMeasure, navigation }) => {
+interface CommentTreeProps {
+  comment: CommentDto;
+  depth: number;
+  onAddReply: (text, parentCommentId: string | undefined) => Promise<CommentDto>
+  isSubmitting: boolean;
+  submitError: string | null;
+  isLastInBranch?: boolean;
+  onHeightMeasure?: (height: number) => void;
+  navigation?: any;
+  styles: ReturnType<typeof useCommentStyles>;
+}
+
+const CommentTree: React.FC<CommentTreeProps> = ({ comment, depth, onAddReply, isSubmitting, submitError, isLastInBranch = false, onHeightMeasure, navigation, styles }) => {
     const [collapsed, setCollapsed] = useState(false);
     const [replyText, setReplyText] = useState('');
     const [isReplying, setIsReplying] = useState(false);
     const [lastChildHeight, setLastChildHeight] = useState(0);
-
+  // Using theme-aware styles from parent invocation; hook can be called here too without redeclare conflicts
+  const { theme } = useTheme();
     // Function to capture height from the last child
     const handleLastChildHeight = (height: number) => {
       setLastChildHeight(height);
@@ -113,7 +122,7 @@ const CommentTree: React.FC<{
 
     // Use for debugging thread lines
     //const lineColor = depth === 0 ? '#1DA1F2' : ['#FF4500', '#9370DB', '#4CBB17', '#FF8C00', '#1E90FF'][depth % 5];
-    const lineColor = '#97d6fc'
+  const lineColor = theme.colors.primary;
     const hasReplies = comment.replies && comment.replies.length > 0;
   
     return (
@@ -134,6 +143,7 @@ const CommentTree: React.FC<{
               collapsed={collapsed}
               isReplying={isReplying}
               lastChildHeight={lastChildHeight} // Pass the last child's height
+              styles={styles}
               />
           </TouchableOpacity>
           
@@ -157,10 +167,10 @@ const CommentTree: React.FC<{
                 <Text style={styles.commentText}>{comment.text}</Text>
                 <View style={styles.actionButtons}>
                   <TouchableOpacity style={styles.actionButton}>
-                    <Ionicons name="heart-outline" size={18} color="#606060" />
+                    <Ionicons name="heart-outline" size={18} color={theme.colors.textMuted} />
                   </TouchableOpacity>
                   <TouchableOpacity style={styles.actionButton} onPress={() => setIsReplying(!isReplying)}>
-                    <Ionicons name="chatbox-outline" size={16} color="#606060" />
+                    <Ionicons name="chatbox-outline" size={16} color={theme.colors.textMuted} />
                     <Text style={styles.actionButtonText}>Reply</Text>
                   </TouchableOpacity>
                 </View>
@@ -210,6 +220,7 @@ const CommentTree: React.FC<{
                         isLastInBranch={index === comment.replies.length - 1}
                         onHeightMeasure={index === comment.replies.length - 1 ? handleLastChildHeight : undefined}
                         navigation={navigation}
+                        styles={styles}
                       />
                     ))}
                   </View>
@@ -233,6 +244,8 @@ const CommentSection: React.FC<{
       const [submitError, setSubmitError] = useState<string | null>(null);
       const [newCommentText, setNewCommentText] = useState('');
       const [isAddingComment, setIsAddingComment] = useState(false);
+  const { theme } = useTheme();
+  const styles = useCommentStyles();
 
     // Update comments when post data is loaded
     useEffect(() => {
@@ -306,27 +319,27 @@ const CommentSection: React.FC<{
     // Handle loading state
     if (isLoading) {
         return (
-            <SafeAreaView style={styles.container}>
-                <ActivityIndicator size={36} color="#0000ff" />
-            </SafeAreaView>
+      <SafeAreaView style={styles.container}>
+        <ActivityIndicator size={36} color={theme.colors.primary} />
+      </SafeAreaView>
         );
     }
 
     // Handle error state
     if (error) {
         return (
-            <SafeAreaView style={styles.container}>
-                <Text style={styles.errorText}>{error}</Text>
-            </SafeAreaView>
+      <SafeAreaView style={styles.container}>
+        <Text style={styles.errorText}>{error}</Text>
+      </SafeAreaView>
         );
     }
 
     // Handle case where post is undefined
     if (!post) {
         return (
-            <SafeAreaView style={styles.container}>
-                <Text style={styles.errorText}>Post not found</Text>
-            </SafeAreaView>
+      <SafeAreaView style={styles.container}>
+        <Text style={styles.errorText}>Post not found</Text>
+      </SafeAreaView>
         );
     }
 
@@ -337,7 +350,7 @@ const CommentSection: React.FC<{
                     style={styles.backButton}
                     onPress={() => navigation.goBack()}
                 >
-                    <Ionicons name="arrow-back" size={24} color="#1DA1F2" />
+                    <Ionicons name="arrow-back" size={24} color={theme.colors.primary} />
                 </TouchableOpacity>
                 <Text style={styles.headerTitle}>Comments</Text>
             </View>
@@ -397,7 +410,7 @@ const CommentSection: React.FC<{
                 ) : (
                     <View style={styles.commentsContainer}>
                         {comments.map((comment, index) => (
-                            <CommentTree
+              <CommentTree
                                 key={comment.id}
                                 comment={comment}
                                 depth={0}
@@ -405,7 +418,8 @@ const CommentSection: React.FC<{
                                 isSubmitting={isSubmitting}
                                 submitError={submitError}
                                 isLastInBranch={index === comments.length - 1}
-                                navigation={navigation} // Add this line
+                navigation={navigation}
+                styles={styles}
                                 // Only measure the last child's height
                             />
                         ))}
@@ -416,17 +430,17 @@ const CommentSection: React.FC<{
     );
 };
   
-  const styles = StyleSheet.create({
+  const useCommentStyles = makeStyles(theme => ({
     // Header stuff
     header: {
       flexDirection: 'row',
       alignItems: 'center',
       padding: 16,
-      backgroundColor: 'white',
+      backgroundColor: theme.colors.card,
       borderBottomWidth: 1,
-      borderBottomColor: '#e1e4e8',
+      borderBottomColor: theme.colors.separator,
       elevation: 2,
-      shadowColor: '#000',
+      shadowColor: theme.colors.shadow,
       shadowOpacity: 0.1,
       shadowOffset: { width: 0, height: 2 },
       shadowRadius: 4,
@@ -438,32 +452,33 @@ const CommentSection: React.FC<{
       fontSize: 18,
       fontWeight: 'bold',
       marginLeft: 16,
+      color: theme.colors.textPrimary
     },
     container: {
       flex: 1,
-      backgroundColor: 'white',
+      backgroundColor: theme.colors.card,
     },
     scrollView: {
       flex: 1,
-      backgroundColor: 'white',
+      backgroundColor: theme.colors.card,
     },
     postContainer: {
-      backgroundColor: 'white',
+  backgroundColor: theme.colors.card,
       borderBottomWidth: 1,
-      borderBottomColor: '#e1e4e8',
+      borderBottomColor: theme.colors.separator,
     },
     commentsContainer: {
-      backgroundColor: 'white',
+  backgroundColor: theme.colors.card,
       paddingHorizontal: 12,
       paddingBottom: 20,
     },
     noCommentsContainer: {
       padding: 20,
       alignItems: 'center',
-      backgroundColor: 'white',
+      backgroundColor: theme.colors.card,
     },
     noCommentsText: {
-      color: '#606060',
+      color: theme.colors.textMuted,
       fontSize: 16,
     },
     commentContainer: {
@@ -541,7 +556,7 @@ const CommentSection: React.FC<{
     // Add this to your StyleSheet:
     avatarContainer: {
       padding: 2, // Creates spacing around the avatar
-      backgroundColor: 'white', // Same as background color
+  backgroundColor: theme.colors.card, // Match card surface
       borderRadius: 60, // Fully rounded to match the avatar
       marginRight: 7,
       // Optional shadow for more definition
@@ -553,14 +568,14 @@ const CommentSection: React.FC<{
     commentAuthor: {
       fontWeight: '600',
       fontSize: 14,
-      color: '#333',
+      color: theme.colors.textSecondary,
       marginBottom: 4,
     },
     commentText: {
       fontSize: 15,
       lineHeight: 22,
       left: 9,
-      color: '#000000',
+      color: theme.colors.textPrimary,
       marginBottom: 8,
     },
     actionButtons: {
@@ -578,7 +593,7 @@ const CommentSection: React.FC<{
     actionButtonText: {
       marginLeft: 4,
       fontSize: 13,
-      color: '#606060',
+      color: theme.colors.textMuted,
       fontWeight: '500',
     },
     errorText: {
@@ -592,19 +607,19 @@ const CommentSection: React.FC<{
     replyContainer: {
       marginTop: 8,
       marginBottom: 16,
-      backgroundColor: '#f8f9fa',
+      backgroundColor: theme.colors.backgroundAlt,
       padding: 12,
       borderRadius: 8,
       borderWidth: 1,
-      borderColor: '#e1e4e8',
+      borderColor: theme.colors.separator,
     },
     replyInput: {
       borderWidth: 1,
-      borderColor: '#e1e4e8',
+      borderColor: theme.colors.separator,
       borderRadius: 8,
       padding: 12,
       minHeight: 80,
-      backgroundColor: 'white',
+      backgroundColor: theme.colors.card,
       fontSize: 15,
     },
     replyButtons: {
@@ -618,47 +633,47 @@ const CommentSection: React.FC<{
       borderRadius: 8,
     },
     cancelButtonText: {
-      color: '#555',
+      color: theme.colors.textMuted,
       fontWeight: '500',
     },
     replyButton: {
       marginLeft: 12,
       paddingVertical: 10,
       paddingHorizontal: 16,
-      backgroundColor: '#1DA1F2',
+      backgroundColor: theme.colors.primary,
       borderRadius: 8,
     },
     replyButtonText: {
-      color: 'white',
+      color: theme.colors.primaryContrast,
       fontWeight: '600',
     },
     addCommentContainer: {
       padding: 12,
-      backgroundColor: 'white',
+      backgroundColor: theme.colors.card,
       borderBottomWidth: 1,
-      borderBottomColor: '#e1e4e8',
+      borderBottomColor: theme.colors.separator,
     },
     addCommentInputButton: {
       borderWidth: 1,
-      borderColor: '#e1e4e8',
+      borderColor: theme.colors.separator,
       borderRadius: 8,
       padding: 14,
-      backgroundColor: '#f9f9f9',
+      backgroundColor: theme.colors.backgroundAlt,
     },
     addCommentPlaceholder: {
-      color: '#8e8e8e',
+      color: theme.colors.textMuted,
       fontSize: 15,
     },
     addCommentInputActive: {
       borderWidth: 1,
-      borderColor: '#1DA1F2',
+      borderColor: theme.colors.primary,
       borderRadius: 8,
       padding: 12,
-      backgroundColor: 'white',
+      backgroundColor: theme.colors.card,
       minHeight: 100,
       fontSize: 15,
       textAlignVertical: 'top',
     },
-  });
+  }));
   
   export default CommentSection;

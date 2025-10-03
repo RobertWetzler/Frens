@@ -1,6 +1,7 @@
-import React, { useRef, useImperativeHandle, forwardRef, useEffect, useState } from 'react';
+import React, { useRef, useImperativeHandle, forwardRef, useEffect } from 'react';
 import { GLView } from 'expo-gl';
-import { Dimensions, StyleSheet, Platform, View } from 'react-native'
+import { Dimensions, StyleSheet, Platform } from 'react-native'
+import { useTheme } from '../theme/ThemeContext';
 
 // Basic vertex shader - passes texture coordinates to fragment shader
 const vertexShader = `
@@ -19,6 +20,10 @@ precision highp float;
 uniform float time;
 uniform vec2 resolution;
 uniform float metaballRadius;  // Changed from const to uniform
+uniform vec3 uBlob1;
+uniform vec3 uBlob2;
+uniform vec3 uBlob3;
+uniform vec3 uBgColor; // Theme background color
 varying vec2 vUv;
 
 // Adjustable parameters
@@ -114,9 +119,9 @@ void main() {
     positions[2] = vec2(sin(t * 0.9) * (MOVEMENT_RANGE - 0.2), cos(t * 0.6) * (MOVEMENT_RANGE + 0.1));
 
     vec3 baseColors[3];
-    baseColors[0] = vec3(0.4, 0.6, 1.0);    // Lighter blue
-    baseColors[1] = vec3(0.6, 0.8, 1.0);    // Very light blue
-    baseColors[2] = vec3(0.55, 0.45, 0.95);  // Lighter royal purple
+    baseColors[0] = uBlob1;
+    baseColors[1] = uBlob2;
+    baseColors[2] = uBlob3;
 
     Metaball balls[3];
     float totalField = 0.0;
@@ -140,7 +145,7 @@ void main() {
     }
 
     float alpha = smoothstep(FIELD_THRESHOLD, 1.0, totalField);
-    vec3 finalColor = mix(vec3(1.0), totalColor, alpha);
+    vec3 finalColor = mix(uBgColor, totalColor, alpha);
     
     gl_FragColor = vec4(finalColor, 1.0);
 }
@@ -152,6 +157,7 @@ export interface ShaderBackgroundRef {
 
 const ShaderBackground = forwardRef<ShaderBackgroundRef>((props, ref) => {
     console.log('ShaderBackground: Component rendering, Platform.OS:', Platform.OS);
+    const { theme } = useTheme();
     
     let gl = null;
     let program = null;
@@ -161,6 +167,10 @@ const ShaderBackground = forwardRef<ShaderBackgroundRef>((props, ref) => {
     let resolutionLocation = null;
     let metaballRadiusLocation = null;
     let startTime = null;
+    let blob1Location = null;
+    let blob2Location = null;
+    let blob3Location = null;
+    let bgColorLocation = null;
     
     // Animation state
     const animationRef = useRef({
@@ -253,7 +263,11 @@ const ShaderBackground = forwardRef<ShaderBackgroundRef>((props, ref) => {
         texCoordLocation = gl.getAttribLocation(program, 'texCoord');
         timeLocation = gl.getUniformLocation(program, 'time');
         resolutionLocation = gl.getUniformLocation(program, 'resolution');
-        metaballRadiusLocation = gl.getUniformLocation(program, 'metaballRadius');
+    metaballRadiusLocation = gl.getUniformLocation(program, 'metaballRadius');
+    blob1Location = gl.getUniformLocation(program, 'uBlob1');
+    blob2Location = gl.getUniformLocation(program, 'uBlob2');
+    blob3Location = gl.getUniformLocation(program, 'uBlob3');
+    bgColorLocation = gl.getUniformLocation(program, 'uBgColor');
 
         // Create buffers
         const positions = new Float32Array([
@@ -292,10 +306,34 @@ const ShaderBackground = forwardRef<ShaderBackgroundRef>((props, ref) => {
 
             gl.useProgram(program);
 
-            // Set uniforms
+                        // Set uniforms
             gl.uniform1f(timeLocation, time);
             gl.uniform2f(resolutionLocation, width, height);
-            gl.uniform1f(metaballRadiusLocation, animationRef.current.currentRadius);
+                        gl.uniform1f(metaballRadiusLocation, animationRef.current.currentRadius);
+                        // Parse hex (#RGB, #RRGGBB, #RRGGBBAA) into normalized RGB, ignoring alpha
+                        const hexToRGB = (hex) => {
+                            if (!hex) return [1,1,1];
+                            let h = hex.trim().replace('#','');
+                            if (h.length === 3) { // expand short form
+                                h = h.split('').map(c => c + c).join('');
+                            }
+                            if (h.length === 8) { // strip alpha
+                                h = h.substring(0,6);
+                            }
+                            if (h.length !== 6) return [1,1,1];
+                            const r = parseInt(h.slice(0,2),16);
+                            const g = parseInt(h.slice(2,4),16);
+                            const b = parseInt(h.slice(4,6),16);
+                            return [r/255, g/255, b/255];
+                        };
+                        const [r1,g1,b1] = hexToRGB(theme.colors.blob1);
+                        const [r2,g2,b2] = hexToRGB(theme.colors.blob2);
+                        const [r3,g3,b3] = hexToRGB(theme.colors.blob3);
+                        const [br,bg,bb] = hexToRGB(theme.colors.backgroundAlt || '#000000');
+                        gl.uniform3f(blob1Location, r1,g1,b1);
+                        gl.uniform3f(blob2Location, r2,g2,b2);
+                        gl.uniform3f(blob3Location, r3,g3,b3);
+                        gl.uniform3f(bgColorLocation, br,bg,bb);
 
             // Set attributes
             gl.bindBuffer(gl.ARRAY_BUFFER, positionBuffer);
@@ -326,10 +364,10 @@ const ShaderBackground = forwardRef<ShaderBackgroundRef>((props, ref) => {
 
 const styles = StyleSheet.create({
     container: {
-        ...StyleSheet.absoluteFillObject, // This makes it fill the screen
+        ...StyleSheet.absoluteFillObject,
         backgroundColor: 'transparent',
-        pointerEvents: 'none', // Ensure no touch interference
-    },
+        pointerEvents: 'none',
+    }
 });
 
 export default ShaderBackground;

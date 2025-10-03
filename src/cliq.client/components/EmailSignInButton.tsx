@@ -1,8 +1,10 @@
 import { useState, useRef, useEffect } from 'react'
-import { View, Pressable, Text, StyleSheet, TextInput, Modal, Animated } from 'react-native'
+import { View, Pressable, Text, StyleSheet, TextInput, Modal } from 'react-native'
 import { EmailAuthResponse, useEmailAuth } from '../hooks/useEmailAuth'
 import { DateInput } from './DateInput'
 import { TermsOfService } from './TermsOfService'
+import { useTheme } from '../theme/ThemeContext'
+import { makeStyles } from '../theme/makeStyles'
 import { useAuth } from 'contexts/AuthContext'
 import { ISignInResponseDto } from 'services/generated/generatedClient'
 import * as Linking from 'expo-linking';
@@ -15,6 +17,8 @@ interface EmailSignInButtonProps {
 }
 
 export const EmailSignInButton = ({ returnTo, navigation, onPress, onCancelPress }: EmailSignInButtonProps) => {
+    const { theme } = useTheme();
+    const styles = useStyles();
     const { login } = useAuth();
 
     const { signInWithEmail, signUpWithEmail, loading } = useEmailAuth()
@@ -225,7 +229,7 @@ export const EmailSignInButton = ({ returnTo, navigation, onPress, onCancelPress
                         {isSignUp && (<TextInput
                             style={styles.input}
                             placeholder="Name"
-                            placeholderTextColor="#666"
+                            placeholderTextColor={theme.colors.inputPlaceholder}
                             value={username}
                             onChangeText={setName}
                             autoCapitalize="none"
@@ -236,7 +240,7 @@ export const EmailSignInButton = ({ returnTo, navigation, onPress, onCancelPress
                         <TextInput
                             style={styles.input}
                             placeholder="Email"
-                            placeholderTextColor="#666"
+                            placeholderTextColor={theme.colors.inputPlaceholder}
                             value={email}
                             onChangeText={setEmail}
                             autoCapitalize="none"
@@ -252,7 +256,7 @@ export const EmailSignInButton = ({ returnTo, navigation, onPress, onCancelPress
                             ref={passwordInputRef}
                             style={styles.input}
                             placeholder="Password"
-                            placeholderTextColor="#666"
+                            placeholderTextColor={theme.colors.inputPlaceholder}
                             value={password}
                             onChangeText={(text) => {
                                 setPassword(text)
@@ -360,19 +364,19 @@ export const EmailSignInButton = ({ returnTo, navigation, onPress, onCancelPress
 }
 
 // ...existing styles remain the same...
-const styles = StyleSheet.create({
+// makeStyles at bottom
+const useStyles = makeStyles((theme) => ({
     button: {
         width: '100%',
         paddingHorizontal: 40,
         height: 50,
-        backgroundColor: 'black',
+        backgroundColor: theme.colors.textPrimary, // using textPrimary as neutral dark button
         justifyContent: 'center',
         alignItems: 'center',
         borderRadius: 5,
-        //marginHorizontal: 20,
     },
     buttonText: {
-        color: '#fff',
+        color: theme.colors.card,
         fontSize: 16,
         fontWeight: '600',
     },
@@ -380,48 +384,46 @@ const styles = StyleSheet.create({
         flex: 1,
         justifyContent: 'center',
         alignItems: 'center',
-       // backgroundColor: 'rgba(0, 0, 0, 0.4)',
-    },
-    overlay: {
-        ...StyleSheet.absoluteFillObject,
-        backgroundColor: 'rgba(0, 0, 0, 0.5)',
-        zIndex: 1,
     },
     modalContent: {
         width: '80%',
-        maxWidth: 400, // Add this to limit the width on desktop
-        backgroundColor: '#fff',
+        maxWidth: 400,
+        backgroundColor: theme.colors.card,
         borderRadius: 10,
         padding: 20,
         alignItems: 'center',
+        borderWidth: 1,
+        borderColor: theme.colors.separator,
     },
     modalTitle: {
         fontSize: 20,
         fontWeight: 'bold',
         marginBottom: 20,
+        color: theme.colors.textPrimary,
     },
     input: {
         width: '100%',
         height: 44,
         borderWidth: 1,
-        borderColor: '#ddd',
+        borderColor: theme.colors.inputBorder,
         borderRadius: 5,
         paddingHorizontal: 10,
         marginBottom: 10,
-    // Prevent iOS Safari from zooming on focus
-    fontSize: 16,
+        fontSize: 16,
+        color: theme.colors.textPrimary,
+        backgroundColor: theme.colors.card,
     },
     submitButton: {
         width: '100%',
         height: 44,
-        backgroundColor: '#4A90E2',
+        backgroundColor: theme.colors.primary,
         justifyContent: 'center',
         alignItems: 'center',
         borderRadius: 5,
         marginTop: 10,
     },
     submitButtonText: {
-        color: '#fff',
+        color: theme.colors.primaryContrast,
         fontSize: 16,
         fontWeight: '600',
     },
@@ -429,14 +431,14 @@ const styles = StyleSheet.create({
         marginTop: 15,
     },
     switchButtonText: {
-        color: '#4A90E2',
+        color: theme.colors.primary,
         fontSize: 14,
     },
     closeButton: {
         marginTop: 15,
     },
     closeButtonText: {
-        color: '#666',
+        color: theme.colors.textSecondary,
         fontSize: 14,
     },
     tosContainer: {
@@ -448,7 +450,7 @@ const styles = StyleSheet.create({
         width: 20,
         height: 20,
         borderWidth: 1,
-        borderColor: '#ddd',
+        borderColor: theme.colors.inputBorder,
         borderRadius: 3,
         marginRight: 10,
         justifyContent: 'center',
@@ -457,63 +459,14 @@ const styles = StyleSheet.create({
     tosText: {
         flex: 1,
         fontSize: 14,
-        color: '#666',
+        color: theme.colors.textSecondary,
     },
     tosLink: {
-        color: '#4A90E2',
+        color: theme.colors.primary,
         textDecorationLine: 'underline',
     },
-    title: {
-        fontSize: 20,
-        fontWeight: 'bold',
-        marginBottom: 15,
-        textAlign: 'center',
-    },
-    scrollView: {
-        maxHeight: '70%',
-        marginBottom: 15,
-    },
-    termsText: {
-        fontSize: 14,
-        lineHeight: 20,
-        color: '#333',
-    },
-    buttonContainer: {
-        flexDirection: 'row',
-        justifyContent: 'space-between',
-        marginTop: 10,
-    },
-    acceptButton: {
-        flex: 1,
-        height: 44,
-        backgroundColor: '#4A90E2',
-        justifyContent: 'center',
-        alignItems: 'center',
-        borderRadius: 5,
-        marginLeft: 5,
-    },
-    acceptButtonText: {
-        color: '#fff',
-        fontSize: 16,
-        fontWeight: '600',
-    },
-    declineButton: {
-        flex: 1,
-        height: 44,
-        backgroundColor: '#fff',
-        justifyContent: 'center',
-        alignItems: 'center',
-        borderRadius: 5,
-        borderWidth: 1,
-        borderColor: '#ddd',
-        marginRight: 5,
-    },
-    declineButtonText: {
-        color: '#666',
-        fontSize: 16,
-    },
     errorText: {
-        color: 'red',
+        color: theme.colors.danger,
         fontSize: 12,
         marginTop: 5,
     },
@@ -522,4 +475,4 @@ const styles = StyleSheet.create({
         marginTop: 5,
         marginBottom: 5,
     }
-})
+}));

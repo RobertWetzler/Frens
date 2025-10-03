@@ -17,8 +17,12 @@ import { Ionicons } from '@expo/vector-icons';
 import { ApiClient } from 'services/apiClient';
 import ShaderBackground from 'components/ShaderBackground';
 import { CircleCreationDto } from 'services/generated/generatedClient';
+import { useTheme } from '../theme/ThemeContext';
+import { makeStyles } from '../theme/makeStyles';
 
 const CreateCircleScreen = ({ navigation }) => {
+  const { theme } = useTheme();
+  const styles = useStyles();
   const [circleName, setCircleName] = useState('');
   const [isShared, setIsShared] = useState(false);
   const [selectedFriendIds, setSelectedFriendIds] = useState([]);
@@ -90,7 +94,7 @@ const CreateCircleScreen = ({ navigation }) => {
   if (isLoading) {
     return (
       <SafeAreaView style={styles.container}>
-        <ActivityIndicator size={36} color="#1DA1F2" />
+        <ActivityIndicator size={36} color={theme.colors.primary} />
       </SafeAreaView>
     );
   }
@@ -100,7 +104,7 @@ const CreateCircleScreen = ({ navigation }) => {
     return (
       <SafeAreaView style={styles.container}>
         <ShaderBackground />
-        <Text style={styles.errorText}>{error}</Text>
+  <Text style={styles.errorText}>{error}</Text>
         <TouchableOpacity style={styles.retryButton} onPress={loadFriends}>
           <Text style={styles.retryButtonText}>Retry</Text>
         </TouchableOpacity>
@@ -116,7 +120,7 @@ const CreateCircleScreen = ({ navigation }) => {
       >
         <View style={styles.header}>
           <TouchableOpacity onPress={() => navigation.goBack({refresh: true})}>
-            <Ionicons name="arrow-back" size={24} color="#1DA1F2" />
+            <Ionicons name="arrow-back" size={24} color={theme.colors.primary} />
           </TouchableOpacity>
           <Text style={styles.headerTitle}>Create New Circle</Text>
           <TouchableOpacity
@@ -125,7 +129,7 @@ const CreateCircleScreen = ({ navigation }) => {
             disabled={!isFormValid() || isSubmitting}
           >
             {isSubmitting ? (
-              <ActivityIndicator size="small" color="#fff" />
+              <ActivityIndicator size="small" color={theme.colors.primaryContrast} />
             ) : (
               <Text style={styles.createButtonText}>Create</Text>
             )}
@@ -148,9 +152,9 @@ const CreateCircleScreen = ({ navigation }) => {
             <Switch
               value={isShared}
               onValueChange={setIsShared}
-              trackColor={{ false: '#767577', true: '#81b0ff' }}
-              thumbColor={isShared ? '#1DA1F2' : '#f4f3f4'}
-              ios_backgroundColor="#3e3e3e"
+              trackColor={{ false: theme.colors.separator, true: theme.colors.primary }}
+              thumbColor={isShared ? theme.colors.primary : theme.colors.card }
+              ios_backgroundColor={theme.colors.separator}
             />
           </View>
 
@@ -170,10 +174,10 @@ const CreateCircleScreen = ({ navigation }) => {
                   activeOpacity={0.7}
                 >
                   <View style={styles.friendIconContainer}>
-                    <Ionicons 
-                      name="person" 
-                      size={20} 
-                      color={selectedFriendIds.includes(item.id) ? "#fff" : "#1DA1F2"} 
+                    <Ionicons
+                      name="person"
+                      size={20}
+                      color={selectedFriendIds.includes(item.id) ? theme.colors.primaryContrast : theme.colors.primary}
                     />
                   </View>
                   <Text style={[
@@ -183,7 +187,7 @@ const CreateCircleScreen = ({ navigation }) => {
                     {item.name || item.username}
                   </Text>
                   {selectedFriendIds.includes(item.id) && (
-                    <Ionicons name="checkmark-circle" size={22} color="#fff" style={styles.checkIcon} />
+                    <Ionicons name="checkmark-circle" size={22} color={theme.colors.primaryContrast} style={styles.checkIcon} />
                   )}
                 </TouchableOpacity>
               )}
@@ -196,130 +200,42 @@ const CreateCircleScreen = ({ navigation }) => {
   );
 };
 
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#fff',
-  },
-  keyboardAvoid: {
-    flex: 1,
-  },
+// makeStyles at bottom
+const useStyles = makeStyles((theme) => ({
+  container: { flex: 1, backgroundColor: theme.colors.card },
+  keyboardAvoid: { flex: 1 },
   header: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingHorizontal: 15,
-    paddingVertical: 10,
-    borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: '#ccc',
+    flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 15, paddingVertical: 10,
+    borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: theme.colors.separator, backgroundColor: theme.colors.card,
   },
-  headerTitle: {
-    fontSize: 18,
-    fontWeight: '600',
-  },
-  formContainer: {
-    padding: 20,
-  },
-  inputLabel: {
-    fontSize: 16,
-    fontWeight: '500',
-    marginBottom: 8,
-  },
+  headerTitle: { fontSize: 18, fontWeight: '600', color: theme.colors.textPrimary },
+  formContainer: { padding: 20 },
+  inputLabel: { fontSize: 16, fontWeight: '500', marginBottom: 8, color: theme.colors.textPrimary },
   input: {
-    borderWidth: 1,
-    borderColor: '#ddd',
-    borderRadius: 8,
-    padding: 12,
-    fontSize: 16,
-    marginBottom: 20,
+    borderWidth: 1, borderColor: theme.colors.inputBorder, borderRadius: 8, padding: 12, fontSize: 16, marginBottom: 20,
+    color: theme.colors.textPrimary, backgroundColor: theme.colors.card,
   },
-  switchContainer: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 20,
-  },
-  switchLabel: {
-    fontSize: 16,
-    fontWeight: '500',
-  },
-  friendsSection: {
-    marginTop: 10,
-  },
-  friendsSectionTitle: {
-    fontSize: 16,
-    fontWeight: '500',
-    marginBottom: 8,
-  },
-  friendsList: {
-    paddingBottom: 20,
-  },
+  switchContainer: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 },
+  switchLabel: { fontSize: 16, fontWeight: '500', color: theme.colors.textPrimary },
+  friendsSection: { marginTop: 10 },
+  friendsSectionTitle: { fontSize: 16, fontWeight: '500', marginBottom: 8, color: theme.colors.textPrimary },
+  friendsList: { paddingBottom: 20 },
   friendItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingVertical: 12,
-    paddingHorizontal: 15,
-    borderRadius: 12,
-    marginVertical: 4,
-    backgroundColor: '#f5f8fa',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.1,
-    shadowRadius: 1,
-    elevation: 1,
+    flexDirection: 'row', alignItems: 'center', paddingVertical: 12, paddingHorizontal: 15, borderRadius: 12,
+    marginVertical: 4, backgroundColor: theme.colors.backgroundAlt, shadowColor: theme.colors.shadow, shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.1, shadowRadius: 1, elevation: 1,
   },
-  selectedFriendItem: {
-    backgroundColor: '#1DA1F2',
-  },
-  friendIconContainer: {
-    width: 30,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  friendName: {
-    fontSize: 16,
-    marginLeft: 8,
-    flex: 1,
-  },
-  selectedFriendText: {
-    color: '#fff',
-    fontWeight: '500',
-  },
-  checkIcon: {
-    marginLeft: 5,
-  },
-  createButton: {
-    backgroundColor: '#1DA1F2',
-    paddingVertical: 6,
-    paddingHorizontal: 15,
-    borderRadius: 20,
-    minWidth: 70,
-    alignItems: 'center',
-  },
-  createButtonDisabled: {
-    backgroundColor: '#8EC5F4',
-  },
-  createButtonText: {
-    color: '#fff',
-    fontWeight: '600',
-  },
-  errorText: {
-    color: 'red',
-    textAlign: 'center',
-    marginTop: 20,
-    marginBottom: 10,
-  },
-  retryButton: {
-    backgroundColor: '#1DA1F2',
-    paddingVertical: 10,
-    paddingHorizontal: 20,
-    borderRadius: 20,
-    alignSelf: 'center',
-  },
-  retryButtonText: {
-    color: '#fff',
-    fontWeight: '600',
-  },
-});
+  selectedFriendItem: { backgroundColor: theme.colors.primary },
+  friendIconContainer: { width: 30, alignItems: 'center', justifyContent: 'center' },
+  friendName: { fontSize: 16, marginLeft: 8, flex: 1, color: theme.colors.textPrimary },
+  selectedFriendText: { color: theme.colors.primaryContrast, fontWeight: '500' },
+  checkIcon: { marginLeft: 5 },
+  createButton: { backgroundColor: theme.colors.primary, paddingVertical: 6, paddingHorizontal: 15, borderRadius: 20, minWidth: 70, alignItems: 'center' },
+  createButtonDisabled: { backgroundColor: theme.colors.textMuted },
+  createButtonText: { color: theme.colors.primaryContrast, fontWeight: '600' },
+  errorText: { color: theme.colors.danger, textAlign: 'center', marginTop: 20, marginBottom: 10 },
+  retryButton: { backgroundColor: theme.colors.primary, paddingVertical: 10, paddingHorizontal: 20, borderRadius: 20, alignSelf: 'center' },
+  retryButtonText: { color: theme.colors.primaryContrast, fontWeight: '600' },
+}));
 
 export default CreateCircleScreen;

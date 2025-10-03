@@ -1,7 +1,9 @@
 import React, { useEffect, useRef } from 'react';
-import { View, Text, StyleSheet, StatusBar, Platform, Button, Animated } from 'react-native';
+import { View, Text, StatusBar, Platform, Animated } from 'react-native';
 import { useShaderBackground } from '../contexts/ShaderBackgroundContext';
 import { EmailSignInButton } from 'components/EmailSignInButton';
+import { useTheme } from '../theme/ThemeContext';
+import { makeStyles } from '../theme/makeStyles';
 
 interface SignInScreenProps {
   route?: { params?: { returnTo?: string } };
@@ -14,6 +16,8 @@ export default function SignInScreen({ route, navigation }: SignInScreenProps) {
     const fadeAnim = useRef(new Animated.Value(1)).current; // Initial opacity is 1 (visible)
     const scaleAnim = useRef(new Animated.Value(1)).current; // Initial scale is 1 (normal size)
     const blurAnim = useRef(new Animated.Value(0)).current; // Initial blur is 0 (no blur)
+    const { theme, name: themeName } = useTheme();
+    const styles = useStyles();
 
     const handleExpandBlobs = () => {
         animateToExpanded(); // Use context method
@@ -67,71 +71,68 @@ export default function SignInScreen({ route, navigation }: SignInScreenProps) {
         ]).start();
     };
 
+    // Removed CSS link injection; font now loaded via expo-font in App.tsx
+
     useEffect(() => {
-        // Update the DOM directly to chagne the top bar to be white, for aesthetic consistency
-        // TODO: Change default to white and only make purple on homeScreen
-        // This is only necessary for web, as React Native handles status bar on mobile
         if (Platform.OS === 'web') {
-            // Update theme color for this screen
             const metaThemeColor = document.querySelector('meta[name="theme-color"]');
             if (metaThemeColor) {
-                metaThemeColor.setAttribute('content', '#FFFFFF');
+                metaThemeColor.setAttribute('content', theme.colors.card);
             }
         }
-        
         return () => {
             if (Platform.OS === 'web') {
-                // Reset to default when leaving screen
                 const metaThemeColor = document.querySelector('meta[name="theme-color"]');
                 if (metaThemeColor) {
-                    metaThemeColor.setAttribute('content', '#8C66FF'); // or your default color
+                    metaThemeColor.setAttribute('content', theme.colors.primary);
                 }
             }
         };
-    }, []);
+    }, [theme]);
 
     return (
         <View style={styles.container}>
-            <StatusBar backgroundColor="#FFFFFF" />
+            <StatusBar backgroundColor={theme.colors.card} />
             <View style={styles.contentContainer}>
-                <Animated.View style={[
-                    styles.animatedContent, 
-                    { 
-                        opacity: fadeAnim,
-                        transform: [{ scale: scaleAnim }],
-                        // Add blur effect for web platforms
-                        ...(Platform.OS === 'web' ? {
-                            filter: blurAnim.interpolate({
-                                inputRange: [0, 10],
-                                outputRange: ['blur(0px)', 'blur(10px)'],
-                                extrapolate: 'clamp',
-                            }),
-                        } : {
-                            // For mobile, we can simulate motion blur with reduced opacity during scaling
-                            opacity: Animated.multiply(
-                                fadeAnim,
-                                blurAnim.interpolate({
-                                    inputRange: [0, 10],
-                                    outputRange: [1, 0.7],
-                                    extrapolate: 'clamp',
-                                })
-                            ),
-                        }),
-                    }
-                ]}>
-                    <Text style={styles.appName}>Frens</Text>
+                <Animated.View
+                    style={[
+                        styles.animatedContent,
+                        {
+                            opacity: fadeAnim,
+                            transform: [{ scale: scaleAnim }],
+                            ...(Platform.OS === 'web'
+                                ? {
+                                      filter: blurAnim.interpolate({
+                                          inputRange: [0, 10],
+                                          outputRange: ['blur(0px)', 'blur(10px)'],
+                                          extrapolate: 'clamp',
+                                      }),
+                                  }
+                                : {
+                                      opacity: Animated.multiply(
+                                          fadeAnim,
+                                          blurAnim.interpolate({
+                                              inputRange: [0, 10],
+                                              outputRange: [1, 0.7],
+                                              extrapolate: 'clamp',
+                                          })
+                                      ),
+                                  }),
+                        },
+                    ]}
+                >
+                    <Text style={[styles.appName, themeName === 'halloween' && { fontFamily: 'SpookyHalloween', fontWeight: '400' }]}>Frens</Text>
                     <Text style={styles.subtitle}>Connect with your community</Text>
                     <View style={styles.signInContainer}>
                         <Text style={styles.signInText}>Sign in to continue</Text>
-                        {/* <Button title="Expand Blobs" onPress={handleExpandBlobs} />
-                        <Button title="Shrink Blobs" onPress={handleShrinkBlobs} /> */}
                         <View style={styles.buttonWrapper}>
-                            <EmailSignInButton returnTo={returnTo} navigation={navigation} 
-                            onPress={handleExpandBlobs}
-                            onCancelPress={handleShrinkBlobs}
+                            <EmailSignInButton
+                                returnTo={returnTo}
+                                navigation={navigation}
+                                onPress={handleExpandBlobs}
+                                onCancelPress={handleShrinkBlobs}
                             />
                         </View>
-
                     </View>
                 </Animated.View>
             </View>
@@ -139,38 +140,37 @@ export default function SignInScreen({ route, navigation }: SignInScreenProps) {
     );
 }
 
-const styles = StyleSheet.create({
+const useStyles = makeStyles(theme => ({
     container: {
         flex: 1,
-        backgroundColor: 'transparent', // Keep transparent to show shader background
+        backgroundColor: 'transparent',
         padding: 20,
-        zIndex: 1, // Ensure content is above shader background
+        zIndex: 1,
     },
     contentContainer: {
         flex: 1,
         justifyContent: 'center',
         alignItems: 'center',
-        overflow: 'hidden', // Prevent content from spilling outside container
-        zIndex: 2, // Higher than container
-        backgroundColor: 'transparent', // Ensure transparency
+        overflow: 'hidden',
+        zIndex: 2,
+        backgroundColor: 'transparent',
     },
     animatedContent: {
         alignItems: 'center',
         width: '100%',
-        // Ensure the content can scale without being clipped
         transformOrigin: 'center',
-        zIndex: 3, // Highest z-index for content
-        backgroundColor: 'transparent', // Ensure transparency
+        zIndex: 3,
+        backgroundColor: 'transparent',
     },
     appName: {
         fontSize: 48,
         fontWeight: '700',
         marginBottom: 8,
         letterSpacing: 1,
-        // Adding a subtle text shadow for depth
-        textShadowColor: 'rgba(0, 0, 0, 0.1)',
+        textShadowColor: theme.colors.shadow,
         textShadowOffset: { width: 0, height: 1 },
         textShadowRadius: 4,
+        color: theme.colors.textPrimary,
     },
     buttonWrapper: {
         width: '100%',
@@ -179,23 +179,18 @@ const styles = StyleSheet.create({
     },
     subtitle: {
         fontSize: 18,
-        color: '#000',
+        color: theme.colors.textPrimary,
         marginBottom: 48,
     },
     signInContainer: {
         width: '100%',
         alignItems: 'center',
-        // Adding subtle container shadow similar to your other component
-        //shadowColor: '#000',
-        //shadowOffset: { width: 0, height: 2 },
-        //shadowOpacity: 0.1,
-        //shadowRadius: 4,
         elevation: 3,
-        zIndex: 14, // Make sure content is above shader background
+        zIndex: 14,
     },
     signInText: {
         fontSize: 16,
-        color: '#000',
+        color: theme.colors.textPrimary,
         marginBottom: 16,
     },
-});
+}));

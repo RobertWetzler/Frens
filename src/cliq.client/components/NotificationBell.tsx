@@ -1,6 +1,8 @@
 import React from 'react';
 import { TouchableOpacity, View, Text, StyleSheet } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { useTheme } from '../theme/ThemeContext';
+import { makeStyles } from '../theme/makeStyles';
 
 interface NotificationBellProps {
   onPress: () => void;
@@ -11,16 +13,18 @@ interface NotificationBellProps {
 const NotificationBell: React.FC<NotificationBellProps> = ({ 
   onPress, 
   notificationCount = 3, // Mock number for now
-  iconColor = '#1DA1F2'
+  iconColor,
 }) => {
+  const { theme } = useTheme();
+  const styles = useStyles();
+
   const handlePress = () => {
-    console.log('Notification bell pressed');
     onPress();
   };
 
   return (
     <TouchableOpacity style={styles.container} onPress={handlePress}>
-      <Ionicons name="notifications-outline" size={24} color={iconColor} />
+      <Ionicons name="notifications-outline" size={24} color={iconColor || theme.colors.primary} />
       {notificationCount > 0 && (
         <View style={styles.badge}>
           <Text style={styles.badgeText}>
@@ -32,7 +36,7 @@ const NotificationBell: React.FC<NotificationBellProps> = ({
   );
 };
 
-const styles = StyleSheet.create({
+const useStyles = makeStyles((theme) => ({
   container: {
     padding: 8,
     position: 'relative',
@@ -41,7 +45,7 @@ const styles = StyleSheet.create({
     position: 'absolute',
     top: 2,
     right: 2,
-    backgroundColor: '#479aff',
+    backgroundColor: theme.colors.primary,
     borderRadius: 10,
     minWidth: 20,
     height: 20,
@@ -49,13 +53,12 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingHorizontal: 4,
     borderWidth: 1,
-    borderColor: 'white',
+    borderColor: theme.colors.card,
   },
   badgeText: {
-    color: 'white',
+    color: theme.colors.primaryContrast,
     fontSize: 12,
     fontWeight: 'bold',
   },
-});
-
+}));
 export default NotificationBell;

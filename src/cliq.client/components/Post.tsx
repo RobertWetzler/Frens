@@ -2,6 +2,8 @@ import React, { useEffect, useRef } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, Animated } from 'react-native';
 import { PostDto as PostType} from 'services/generated/generatedClient'
 import { Ionicons } from '@expo/vector-icons';
+import { useTheme } from '../theme/ThemeContext';
+import { makeStyles } from '../theme/makeStyles';
 
 interface PostProps {
   post: PostType,
@@ -88,6 +90,9 @@ const Post: React.FC<PostProps> = ({ post, navigation, isNavigable = true, anima
     return date.toLocaleString('en-US', options);
   };
 
+  const { theme } = useTheme();
+  const styles = useStyles();
+
   return (
     <Animated.View 
       style={[
@@ -118,7 +123,7 @@ const Post: React.FC<PostProps> = ({ post, navigation, isNavigable = true, anima
           style={styles.commentButton}
           onPress={() => navigation?.navigate('Comments', { postId: post.id })}
         >
-          <Ionicons name="chatbox-outline" size={20} color="#1DA1F2" />
+          <Ionicons name="chatbox-outline" size={20} color={theme.colors.primary} />
           <Text style={styles.actionButtonText}>{post.commentCount} comments</Text>
         </TouchableOpacity>
       )}
@@ -126,26 +131,22 @@ const Post: React.FC<PostProps> = ({ post, navigation, isNavigable = true, anima
   );
 };
 
-const styles = StyleSheet.create({
+const useStyles = makeStyles(theme => ({
   container: {
-    backgroundColor: 'white',
+    backgroundColor: theme.colors.card,
     padding: 15,
     paddingHorizontal: 10,
     marginHorizontal: 12,
     marginVertical: 6,
     borderRadius: 12,
     borderBottomWidth: 1,
-    borderBottomColor: '#e1e8ed',  // Twitter-like separator color
-    shadowColor: '#000',
-    shadowOffset: {
-      width: 0,
-      height: 2,
-    },
+    borderBottomColor: theme.colors.separator,
+    shadowColor: theme.colors.shadow,
+    shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
     shadowRadius: 8,
     elevation: 4,
   },
-  
   header: {
     flexDirection: 'row',
     justifyContent: 'space-between',
@@ -159,20 +160,22 @@ const styles = StyleSheet.create({
   author: {
     fontWeight: 'bold',
     fontSize: 16,
+    color: theme.colors.textPrimary,
   },
   sharedWith: {
     fontSize: 16,
-    color: '#666',
+    color: theme.colors.textMuted,
     fontWeight: 'normal',
   },
   date: {
-    color: '#666',
+    color: theme.colors.textMuted,
     fontSize: 14,
     marginLeft: 8,
   },
   content: {
     fontSize: 16,
     marginBottom: 10,
+    color: theme.colors.textPrimary,
   },
   commentButton: {
     flexDirection: 'row',
@@ -182,8 +185,8 @@ const styles = StyleSheet.create({
   },
   actionButtonText: {
     marginLeft: 4,
-    color: '#1DA1F2',
+    color: theme.colors.primary,
   },
-});
+}));
 
 export default Post;

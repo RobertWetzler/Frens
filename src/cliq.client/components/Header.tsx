@@ -1,6 +1,8 @@
 import React from 'react';
 import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { useTheme } from '../theme/ThemeContext';
+import { makeStyles } from '../theme/makeStyles';
 
 interface HeaderProps {
   title: string;
@@ -25,11 +27,13 @@ const Header: React.FC<HeaderProps> = ({
   backButtonIcon = 'arrow-back',
   titleAlign = 'center'
 }) => {
+  const { theme } = useTheme();
+  const styles = useStyles();
   return (
     <View style={styles.header}>
       {showBackButton && onBackPress ? (
         <TouchableOpacity style={styles.backButton} onPress={onBackPress}>
-          <Ionicons name={backButtonIcon} size={24} color="#1DA1F2" />
+          <Ionicons name={backButtonIcon} size={24} color={theme.colors.primary} />
         </TouchableOpacity>
       ) : titleAlign === 'center' ? (
         <View style={styles.backButton} />
@@ -60,7 +64,7 @@ const Header: React.FC<HeaderProps> = ({
   );
 };
 
-const styles = StyleSheet.create({
+const useStyles = makeStyles((theme) => ({
   header: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -68,7 +72,8 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingVertical: 12,
     borderBottomWidth: 1,
-    borderBottomColor: '#e1e4e8',
+    borderBottomColor: theme.colors.separator,
+    backgroundColor: theme.colors.card,
   },
   backButton: {
     padding: 8,
@@ -78,6 +83,7 @@ const styles = StyleSheet.create({
     fontSize: 18,
     fontWeight: 'bold',
     flex: 1,
+    color: theme.colors.textPrimary,
   },
   headerTitleLeftNoButton: {
     marginLeft: 16,
@@ -89,19 +95,20 @@ const styles = StyleSheet.create({
     justifyContent: 'flex-end',
   },
   actionButton: {
-    backgroundColor: '#1DA1F2',
+    backgroundColor: theme.colors.primary,
     paddingVertical: 8,
     paddingHorizontal: 16,
     borderRadius: 20,
   },
   actionButtonDisabled: {
-    backgroundColor: '#B8B8B8',
+    backgroundColor: theme.colors.textMuted,
+    opacity: 0.5,
   },
   actionButtonText: {
-    color: 'white',
+    color: theme.colors.primaryContrast,
     fontWeight: 'bold',
     fontSize: 14,
   },
-});
+}));
 
 export default Header;

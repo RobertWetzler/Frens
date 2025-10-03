@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { Text, View, FlatList, StyleSheet, SafeAreaView, ActivityIndicator, TouchableOpacity, Share, Animated } from 'react-native';
+import { Text, View, FlatList, SafeAreaView, ActivityIndicator, TouchableOpacity, Animated } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -15,6 +15,8 @@ import CircleFilter from 'components/CircleFilter';
 import { useShaderBackground } from 'contexts/ShaderBackgroundContext';
 import { EventDto } from 'services/generated/generatedClient';
 import Event from 'components/Event';
+import { useTheme } from '../theme/ThemeContext';
+import { makeStyles } from '../theme/makeStyles';
 
 
 const HomeScreen = ({ navigation }) => {
@@ -25,6 +27,8 @@ const HomeScreen = ({ navigation }) => {
     const [isPWABannerVisible, setIsPWABannerVisible] = useState(true);
     const [isFirstLoad, setIsFirstLoad] = useState(true);
     const [isFilterExpanded, setIsFilterExpanded] = useState(false);
+    const { theme } = useTheme();
+    const styles = useStyles();
 
     // Calculate how many posts should be animated (visible on initial screen load)
     const VISIBLE_POSTS_COUNT = 7;
@@ -111,7 +115,7 @@ const HomeScreen = ({ navigation }) => {
     if (isLoading) {
         return (
             <SafeAreaView style={[styles.container, isExpanded && styles.expandedContainer]}>
-                <ActivityIndicator size={36} color="#0000ff" />
+                <ActivityIndicator size={36} color={theme.colors.primary} />
             </SafeAreaView>
         );
     }
@@ -142,16 +146,16 @@ const HomeScreen = ({ navigation }) => {
                 ]}
             >
                 <LinearGradient
-                    colors={['#6699FF', '#9966FF', '#8C66FF']}
+                    colors={(theme.gradients?.accent || ['#4F46E5', '#7C3AED']) as [string, string]}
                     start={{ x: 0, y: 1 }}
                     end={{ x: 0, y: 0 }}
                     style={styles.headerGradient}
                 >
                     <View style={styles.header}>
-                        <Text style={styles.headerTitle}>Frens</Text>
+                        <Text style={[styles.headerTitle, theme.name === 'halloween' && { fontFamily: 'SpookyHalloween', fontWeight: '400' }]}>Frens</Text>
                         <NotificationBell
                             onPress={() => navigation.navigate('Notifications')}
-                            iconColor="white"
+                            iconColor={theme.colors.textPrimary}
                             notificationCount={notificationCount}
                         />
                     </View>
@@ -216,7 +220,7 @@ const HomeScreen = ({ navigation }) => {
                                 {/* Subtle filtering indicator */}
                                 {isFiltering && (
                                     <View style={styles.filteringIndicator}>
-                                        <ActivityIndicator size="small" color="#666" />
+                                        <ActivityIndicator size="small" color={theme.colors.textMuted} />
                                         <Text style={styles.filteringText}>Updating feed...</Text>
                                     </View>
                                 )}
@@ -260,7 +264,7 @@ const HomeScreen = ({ navigation }) => {
                     
                     return (
                         <View style={styles.emptyContainer}>
-                            <Ionicons name="people-outline" size={64} color="#e1e4e8" />
+                            <Ionicons name="people-outline" size={64} color={theme.colors.separator} />
                             <Text style={styles.emptyText}>No posts found</Text>
                             <Text style={styles.emptySubtext}>
                                 Connect with friends to see their posts in your feed
@@ -274,7 +278,7 @@ const HomeScreen = ({ navigation }) => {
                             style={[styles.shareButton, posts && posts.length > 0 && { marginTop: 20 }]}
                             onPress={() => handleShareProfile(authContext.user.id)}
                         >
-                            <Ionicons name="share-outline" size={20} color="white" style={styles.shareIcon} />
+                            <Ionicons name="share-outline" size={20} color={theme.colors.primaryContrast} style={styles.shareIcon} />
                             <Text style={styles.shareButtonText}>Share profile to add frens</Text>
                         </TouchableOpacity>
                     </View>
@@ -283,123 +287,32 @@ const HomeScreen = ({ navigation }) => {
         </SafeAreaView>
     );
 };
-
-const styles = StyleSheet.create({
-    container: {
-        flex: 1,
-        backgroundColor: 'white',
-    },
-    expandedContainer: {
-        backgroundColor: 'transparent',
-    },
-    headerContainer: {
-        position: 'absolute',
-        top: 0,
-        left: 0,
-        right: 0,
-        zIndex: 1000, // High z-index to stay above shader background
-    },
+// makeStyles at bottom
+const useStyles = makeStyles((theme) => ({
+    container: { flex: 1, backgroundColor: theme.colors.backgroundAlt },
+    expandedContainer: { backgroundColor: 'transparent' },
+    headerContainer: { position: 'absolute', top: 0, left: 0, right: 0, zIndex: 1000 },
     headerGradient: {
-        paddingHorizontal: 16,
-        paddingVertical: 12,
-        borderBottomWidth: 1,
-        borderBottomColor: 'rgba(255, 255, 255, 0.2)',
-        shadowColor: '#8C66FF',
-        shadowOffset: {
-            width: 0,
-            height: 4,
-        },
-        shadowOpacity: 0.3,
-        shadowRadius: 8,
-        elevation: 8,
+        paddingHorizontal: 16, paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: 'rgba(255,255,255,0.2)',
+        shadowColor: theme.colors.shadow, shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.3, shadowRadius: 8, elevation: 8,
     },
-    header: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        justifyContent: 'space-between',
-    },
-    headerTitle: {
-        fontSize: 25,
-        fontWeight: 'bold',
-        color: 'white',
-        textShadowColor: 'rgba(0, 0, 0, 0.3)',
-        textShadowOffset: { width: 0, height: 1 },
-        textShadowRadius: 2,
-    },
-    filterContainer: {
-        marginHorizontal: 16,
-        marginVertical: 2,
-    },
-    filteringIndicator: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        justifyContent: 'center',
-        paddingVertical: 8,
-        marginTop: 8,
-    },
-    filteringText: {
-        marginLeft: 8,
-        fontSize: 14,
-        color: '#666',
-        fontStyle: 'italic',
-    },
-    listContent: {
-        // Base padding will be set dynamically in the component
-    },
-    errorText: {
-        color: 'red',
-        textAlign: 'center',
-        marginTop: 20,
-    },
-    emptyContainer: {
-        flex: 1,
-        justifyContent: 'center',
-        alignItems: 'center',
-        marginTop: 50,
-    },
-    emptyText: {
-        fontSize: 24,
-        fontWeight: 'bold',
-        color: '#333',
-        marginTop: 20,
-        marginBottom: 8,
-    },
-    emptySubtext: {
-        fontSize: 16,
-        color: '#8e8e8e',
-        textAlign: 'center',
-        marginBottom: 32,
-        lineHeight: 22,
-    },
+    header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+    headerTitle: { fontSize: 35, fontWeight: 'bold', color: theme.colors.textPrimary, textShadowColor: 'rgba(0,0,0,0.3)', textShadowOffset: { width: 0, height: 1 }, textShadowRadius: 2 },
+    filterContainer: { marginHorizontal: 16, marginVertical: 2 },
+    filteringIndicator: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', paddingVertical: 8, marginTop: 8 },
+    filteringText: { marginLeft: 8, fontSize: 14, color: theme.colors.textMuted, fontStyle: 'italic' },
+    listContent: {},
+    errorText: { color: theme.colors.danger, textAlign: 'center', marginTop: 20 },
+    emptyContainer: { flex: 1, justifyContent: 'center', alignItems: 'center', marginTop: 50 },
+    emptyText: { fontSize: 24, fontWeight: 'bold', color: theme.colors.textPrimary, marginTop: 20, marginBottom: 8 },
+    emptySubtext: { fontSize: 16, color: theme.colors.textMuted, textAlign: 'center', marginBottom: 32, lineHeight: 22 },
     shareButton: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        backgroundColor: '#1DA1F2',
-        paddingVertical: 14,
-        paddingHorizontal: 24,
-        borderRadius: 25,
-        shadowColor: '#1DA1F2',
-        shadowOffset: {
-            width: 0,
-            height: 4,
-        },
-        shadowOpacity: 0.3,
-        shadowRadius: 8,
-        elevation: 6,
+        flexDirection: 'row', alignItems: 'center', backgroundColor: theme.colors.primary, paddingVertical: 14, paddingHorizontal: 24,
+        borderRadius: 25, shadowColor: theme.colors.primary, shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.3, shadowRadius: 8, elevation: 6,
     },
-    shareIcon: {
-        marginRight: 8,
-    },
-    shareButtonText: {
-        color: 'white',
-        fontSize: 16,
-        fontWeight: '600',
-    },
-    footerContainer: {
-        alignItems: 'center',
-        paddingVertical: 0,
-        paddingHorizontal: 16,
-    },
-});
+    shareIcon: { marginRight: 8 },
+    shareButtonText: { color: theme.colors.primaryContrast, fontSize: 16, fontWeight: '600' },
+    footerContainer: { alignItems: 'center', paddingVertical: 0, paddingHorizontal: 16 },
+}));
 
 export default HomeScreen;

@@ -1,7 +1,9 @@
 // components/TermsOfService.tsx
 // TODO: Use stack navigation for this to display on iOS
 import React from 'react'
-import { Modal, View, Text, ScrollView, Pressable, StyleSheet, Platform } from 'react-native'
+import { Modal, View, Text, Pressable, Platform } from 'react-native'
+import { useTheme } from '../theme/ThemeContext'
+import { makeStyles } from '../theme/makeStyles'
 
 // Conditionally import WebView only for non-web platforms
 let WebView: any = null
@@ -38,6 +40,7 @@ interface TermsOfServiceProps {
 }
 
 export const TermsOfService = ({ isVisible, onClose }: TermsOfServiceProps) => {
+    const styles = useStyles();
     // For debugging
     const handleModalShow = () => {
         console.log('Modal attempting to show, isVisible:', isVisible)
@@ -88,7 +91,6 @@ export const TermsOfService = ({ isVisible, onClose }: TermsOfServiceProps) => {
                         <Text style={styles.closeButtonText}>Close</Text>
                     </Pressable>
                 </View>
-                
                 <View style={styles.webViewContainer}>
                     {WebView && (
                         <WebView
@@ -106,14 +108,15 @@ export const TermsOfService = ({ isVisible, onClose }: TermsOfServiceProps) => {
 
     return null
 }
-const styles = StyleSheet.create({
+// keep makeStyles at bottom per project convention
+const useStyles = makeStyles((theme) => ({
     fullScreenContainer: {
         position: 'absolute',
         top: 0,
         left: 0,
         right: 0,
         bottom: 0,
-        backgroundColor: '#fff',
+        backgroundColor: theme.colors.card,
         zIndex: 1000,
     },
     header: {
@@ -122,18 +125,18 @@ const styles = StyleSheet.create({
         alignItems: 'center',
         padding: 20,
         borderBottomWidth: 1,
-        borderBottomColor: '#ddd',
+        borderBottomColor: theme.colors.separator,
     },
     modalContainer: {
         flex: 1,
         justifyContent: 'center',
         alignItems: 'center',
-        backgroundColor: 'rgba(0, 0, 0, 0.5)',
+        backgroundColor: theme.colors.overlay,
     },
     modalContent: {
         width: '90%',
         height: '85%',
-        backgroundColor: '#fff',
+        backgroundColor: theme.colors.card,
         borderRadius: 10,
         padding: 20,
         display: 'flex',
@@ -144,6 +147,7 @@ const styles = StyleSheet.create({
         fontWeight: 'bold',
         marginBottom: 15,
         textAlign: 'center',
+        color: theme.colors.textPrimary,
     },
     scrollView: {
         maxHeight: '70%',
@@ -152,7 +156,7 @@ const styles = StyleSheet.create({
     termsText: {
         fontSize: 14,
         lineHeight: 20,
-        color: '#333',
+        color: theme.colors.textPrimary,
     },
     termsContainer: {
         padding: 10,
@@ -164,7 +168,7 @@ const styles = StyleSheet.create({
     },
     webView: {
         flex: 1,
-        backgroundColor: '#fff',
+        backgroundColor: theme.colors.card,
         minHeight: 400,
     },
     buttonContainer: {
@@ -175,31 +179,33 @@ const styles = StyleSheet.create({
     acceptButton: {
         flex: 1,
         height: 44,
-        backgroundColor: '#4A90E2',
+        backgroundColor: theme.colors.primary,
         justifyContent: 'center',
         alignItems: 'center',
         borderRadius: 5,
         marginLeft: 5,
     },
     acceptButtonText: {
-        color: '#fff',
+        color: theme.colors.primaryContrast,
         fontSize: 16,
         fontWeight: '600',
     },
     closeButton: {
         height: 44,
-        backgroundColor: '#fff',
+        backgroundColor: theme.colors.card,
         justifyContent: 'center',
         alignItems: 'center',
         borderRadius: 5,
         borderWidth: 1,
-        borderColor: '#ddd',
+        borderColor: theme.colors.separator,
         paddingHorizontal: 20,
         alignSelf: 'center',
         minWidth: 100,
     },
     closeButtonText: {
-        color: '#666',
+        color: theme.colors.textSecondary,
         fontSize: 16,
     },
-})
+}));
+
+// no wrapper needed; component directly uses styles

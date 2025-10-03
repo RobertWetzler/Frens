@@ -1,7 +1,9 @@
 import React from 'react';
-import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
+import { View, Text, StyleSheet } from 'react-native';
 import Post from './Post';
-import { EventDto, RsvpStatus } from 'services/generated/generatedClient';
+import { EventDto } from 'services/generated/generatedClient';
+import { useTheme } from '../theme/ThemeContext';
+import { makeStyles } from '../theme/makeStyles';
 
 interface EventProps {
   event: EventDto;
@@ -43,6 +45,9 @@ const Event: React.FC<EventProps> = ({ event, navigation, isNavigable = true, an
   const start = event.startDateTime ? new Date(event.startDateTime) : undefined;
   const month = start ? start.toLocaleString('en-US', { month: 'short' }).toUpperCase() : '';
   const day = start ? String(start.getDate()) : '';
+
+  const { theme } = useTheme();
+  const styles = useStyles();
 
   const pre = (
     <View style={styles.row}>
@@ -119,18 +124,18 @@ const Event: React.FC<EventProps> = ({ event, navigation, isNavigable = true, an
   );
 };
 
-const styles = StyleSheet.create({
+const useStyles = makeStyles((theme) => ({
   row: { flexDirection: 'row', gap: 12, alignItems: 'center', marginBottom: 8 },
   dateBadge: {
     width: 48,
     borderRadius: 8,
     overflow: 'hidden',
     borderWidth: 1,
-    borderColor: '#e1e8ed',
+    borderColor: theme.colors.separator,
   },
   dateMonth: {
-    backgroundColor: '#2F80ED',
-    color: 'white',
+    backgroundColor: theme.colors.primary,
+    color: theme.colors.primaryContrast,
     textAlign: 'center',
     fontSize: 12,
     fontWeight: '800',
@@ -141,15 +146,15 @@ const styles = StyleSheet.create({
     fontSize: 18,
     fontWeight: '800',
     paddingVertical: 2,
-    color: '#111',
-    backgroundColor: 'white',
+    color: theme.colors.textPrimary,
+    backgroundColor: theme.colors.card,
   },
   headerCol: { flex: 1 },
-  title: { fontSize: 16, fontWeight: '700', color: '#111', marginBottom: 2 },
-  whenLine: { fontSize: 14, color: '#111', marginBottom: 2 },
+  title: { fontSize: 16, fontWeight: '700', color: theme.colors.textPrimary, marginBottom: 2 },
+  whenLine: { fontSize: 14, color: theme.colors.textPrimary, marginBottom: 2 },
   metaRow: { flexDirection: 'row', alignItems: 'center', gap: 6 },
   metaEmoji: { fontSize: 13 },
-  metaText: { fontSize: 13, color: '#444' },
+  metaText: { fontSize: 13, color: theme.colors.textSecondary },
   footerWrap: { marginTop: 2 },
   rsvpButtonsRow: { flexDirection: 'row', gap: 8, marginTop: 6 },
   rsvpButton: {
@@ -157,15 +162,15 @@ const styles = StyleSheet.create({
     paddingVertical: 10,
     borderRadius: 10,
     borderWidth: 1,
-    borderColor: '#cde3fb',
-    backgroundColor: 'white',
+    borderColor: theme.colors.separator,
+    backgroundColor: theme.colors.card,
     alignItems: 'center',
   },
-  rsvpPrimary: { backgroundColor: '#1DA1F2', borderColor: '#1DA1F2' },
-  rsvpButtonText: { color: '#1DA1F2', fontWeight: '700' },
-  rsvpPrimaryText: { color: 'white' },
+  rsvpPrimary: { backgroundColor: theme.colors.primary, borderColor: theme.colors.primary },
+  rsvpButtonText: { color: theme.colors.primary, fontWeight: '700' },
+  rsvpPrimaryText: { color: theme.colors.primaryContrast },
   footerCountsRow: { flexDirection: 'row', gap: 16, marginTop: 8 },
-  countLink: { color: '#1DA1F2', fontSize: 14 },
-});
+  countLink: { color: theme.colors.primary, fontSize: 14 },
+}));
 
 export default Event;

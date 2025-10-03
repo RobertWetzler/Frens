@@ -1,57 +1,101 @@
 import { StyleSheet, View, Pressable, Text } from 'react-native';
 import FontAwesome from "@expo/vector-icons/FontAwesome";
+import { useTheme } from '../theme/ThemeContext';
+import { makeStyles } from '../theme/makeStyles';
 
-export default function Button({ label, theme }: {label: string, theme: string}) {
-    if (theme === "primary") {
-        return (
-            <View style={[styles.buttonContainer, { borderWidth: 4, borderColor: "#ffd33d", borderRadius: 18 }]}>
-                <Pressable
-                    style={[styles.button, { backgroundColor: "#fff" }]}
-                    onPress={() => alert('You pressed a primary button.')}
-                >
-                    <FontAwesome
-                        name="picture-o"
-                        size={18}
-                        color="#25292e"
-                        style={styles.buttonIcon}
-                    />
-                    <Text style={[styles.buttonLabel, { color: "#25292e" }]}>{label}</Text>
-                </Pressable>
-            </View>
-        );
+interface ThemedButtonProps {
+    label: string;
+    variant?: 'primary' | 'outline' | 'ghost';
+    onPress?: () => void;
+    iconName?: string;
+    disabled?: boolean;
+}
+
+export default function Button({ label, variant = 'primary', onPress, iconName = 'picture-o', disabled }: ThemedButtonProps) {
+    const { theme } = useTheme();
+    const styles = useStyles();
+
+        const containerStyles: any[] = [styles.buttonBase];
+        const labelStyles: any[] = [styles.buttonLabel];
+
+    if (variant === 'primary') {
+        containerStyles.push(styles.primary);
+        labelStyles.push(styles.labelPrimary);
+    } else if (variant === 'outline') {
+        containerStyles.push(styles.outline);
+        labelStyles.push(styles.labelOutline);
+    } else if (variant === 'ghost') {
+        containerStyles.push(styles.ghost);
+        labelStyles.push(styles.labelGhost);
+    }
+
+    if (disabled) {
+        containerStyles.push(styles.disabled);
     }
 
     return (
         <View style={styles.buttonContainer}>
-            <Pressable style={styles.button} onPress={() => alert('You pressed a button.')}>
-                <Text style={styles.buttonLabel}>{label}</Text>
+            <Pressable style={containerStyles} onPress={onPress} disabled={disabled}>
+                {iconName && (
+                    <FontAwesome
+                        name={iconName as any}
+                        size={18}
+                        color={variant === 'primary' ? theme.colors.primaryContrast : theme.colors.primary}
+                        style={styles.buttonIcon}
+                    />
+                )}
+                <Text style={labelStyles}>{label}</Text>
             </Pressable>
         </View>
     );
 }
 
-const styles = StyleSheet.create({
+const useStyles = makeStyles((theme) => ({
     buttonContainer: {
         width: 320,
-        height: 68,
+        height: 56,
         marginHorizontal: 20,
         alignItems: 'center',
         justifyContent: 'center',
         padding: 3,
     },
-    button: {
-        borderRadius: 10,
+    buttonBase: {
+        borderRadius: 12,
         width: '100%',
         height: '100%',
         alignItems: 'center',
         justifyContent: 'center',
         flexDirection: 'row',
+        paddingHorizontal: 16,
+    },
+    primary: {
+        backgroundColor: theme.colors.primary,
+    },
+    outline: {
+        backgroundColor: 'transparent',
+        borderWidth: 1,
+        borderColor: theme.colors.primary,
+    },
+    ghost: {
+        backgroundColor: 'transparent',
     },
     buttonIcon: {
         paddingRight: 8,
     },
-    buttonLabel: {
-        color: '#fff',
-        fontSize: 16,
+    labelPrimary: {
+        color: theme.colors.primaryContrast,
     },
-});
+    labelOutline: {
+        color: theme.colors.primary,
+    },
+    labelGhost: {
+        color: theme.colors.textPrimary,
+    },
+    buttonLabel: {
+        fontSize: 16,
+        fontWeight: '600',
+    },
+    disabled: {
+        opacity: 0.5,
+    }
+}));
