@@ -175,6 +175,7 @@ builder.Services.AddSingleton<IAmazonS3>(sp =>
     return new AmazonS3Client(keyId, appKey, s3Config);
 });
 builder.Services.AddScoped<IObjectStorageService, BackblazeB2S3StorageService>();
+builder.Services.AddSingleton<IImageProcessingService, ImageProcessingService>();
 // Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle
 builder.Services.AddEndpointsApiExplorer();
 /** 

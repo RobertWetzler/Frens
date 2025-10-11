@@ -169,9 +169,14 @@ public class PostController : ControllerBase
             var allowed = new [] { "image/png", "image/jpeg", "image/heic", "image/webp" };
             long totalBytes = 0;
             var storage = HttpContext.RequestServices.GetService<IObjectStorageService>();
+            var imageProcessor = HttpContext.RequestServices.GetService<IImageProcessingService>();
             if (storage == null)
             {
                 return StatusCode(StatusCodes.Status500InternalServerError, "Storage service not available");
+            }
+            if (imageProcessor == null)
+            {
+                return StatusCode(StatusCodes.Status500InternalServerError, "Image processing service not available");
             }
             foreach (var img in request.Images)
             {
@@ -184,13 +189,16 @@ public class PostController : ControllerBase
                 {
                     return BadRequest($"Single image too large (>25MB): {img.FileName}");
                 }
-                totalBytes += img.Length;
+                // Process & compress
+                await using var originalStream = img.OpenReadStream();
+                var (processedStream, outputContentType) = await imageProcessor.ProcessAsync(originalStream, img.ContentType, maxWidth: 1920, maxHeight: 1920, preferredMaxBytes: 1_000_000);
+                // Update aggregate bytes using resulting size, not input size
+                totalBytes += processedStream.Length;
                 if (totalBytes > 50_000_000) // overall cap ~50MB
                 {
                     return BadRequest("Total images payload too large (>50MB)");
                 }
-                await using var stream = img.OpenReadStream();
-                var key = await storage.UploadPostImageAsync(new Guid(idClaim.Value), stream, img.ContentType);
+                var key = await storage.UploadPostImageAsync(new Guid(idClaim.Value), processedStream, outputContentType);
                 imageKeys.Add(key);
             }
         }
