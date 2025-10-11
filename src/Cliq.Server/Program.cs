@@ -23,6 +23,8 @@ using Microsoft.AspNetCore.Builder;
 using System.Security.Cryptography.X509Certificates;
 using NSwag;
 using NSwag.Generation.Processors.Security;
+using Amazon.S3;
+using Amazon;
 
 DotNetEnv.Env.Load();
 
@@ -151,6 +153,28 @@ builder.Services.AddFriendshipServices();
 builder.Services.AddEventServices();
 builder.Services.AddNotificationServices(builder.Configuration);
 builder.Services.AddScoped<IEventNotificationService, EventNotificationService>();
+// Backblaze S3-compatible storage registration (private bucket)
+builder.Services.AddSingleton<IAmazonS3>(sp =>
+{
+    var cfg = builder.Configuration;
+    var logger = sp.GetRequiredService<ILoggerFactory>().CreateLogger("S3Init");
+    var keyId = cfg["Backblaze:KeyId"] ?? Environment.GetEnvironmentVariable("BACKBLAZE_KEY_ID");
+    var appKey = cfg["Backblaze:ApplicationKey"] ?? Environment.GetEnvironmentVariable("BACKBLAZE_APP_KEY");
+    var serviceUrl = cfg["Backblaze:ServiceUrl"] ?? Environment.GetEnvironmentVariable("BACKBLAZE_SERVICE_URL");
+    if (string.IsNullOrEmpty(keyId) || string.IsNullOrEmpty(appKey) || string.IsNullOrEmpty(serviceUrl))
+    {
+        throw new InvalidOperationException("Backblaze S3 credentials not configured");
+    }
+    var s3Config = new AmazonS3Config
+    {
+        ServiceURL = serviceUrl.TrimEnd('/'),
+        ForcePathStyle = true,
+        UseHttp = serviceUrl.StartsWith("http://", StringComparison.OrdinalIgnoreCase)
+    };
+    logger.LogInformation("Initializing S3 client for endpoint {Endpoint} (KeyId length {KeyLen})", s3Config.ServiceURL, keyId.Length);
+    return new AmazonS3Client(keyId, appKey, s3Config);
+});
+builder.Services.AddScoped<IObjectStorageService, BackblazeB2S3StorageService>();
 // Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle
 builder.Services.AddEndpointsApiExplorer();
 /** 
@@ -211,6 +235,10 @@ builder.Services.AddOpenApiDocument(options =>
 
     // Apply the Bearer requirement to operations discovered as requiring authorization
     options.OperationProcessors.Add(new AspNetCoreOperationSecurityScopeProcessor("Bearer"));
+    // Because we enforce auth via a global MVC filter (not individual [Authorize] attributes),
+    // NSwag doesn't automatically mark operations as secured. This custom processor adds the
+    // Bearer security requirement to all operations except those with [AllowAnonymous].
+    options.OperationProcessors.Add(new Cliq.Server.Utilities.Swagger.GlobalAuthOperationProcessor());
 });
 if (builder.Environment.IsDevelopment())
 {

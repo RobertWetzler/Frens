@@ -2,6 +2,9 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
 using Microsoft.AspNetCore.Identity;
+using System.Text.Json;
+using Microsoft.EntityFrameworkCore.ChangeTracking;
+using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 namespace Cliq.Server.Data;
 
@@ -132,6 +135,25 @@ public class CliqDbContext : IdentityDbContext<User, CliqRole, Guid>
 
         modelBuilder.Entity<Post>()
             .HasIndex(p => p.UserId);     // For querying all posts by a user
+
+        // Store ordered list of image object keys as jsonb (serialized list) without requiring Npgsql dynamic JSON
+        var imagesConverter = new ValueConverter<List<string>, string>(
+            v => JsonSerializer.Serialize(v ?? new List<string>(), new JsonSerializerOptions()),
+            v => string.IsNullOrWhiteSpace(v) ? new List<string>() : (JsonSerializer.Deserialize<List<string>>(v, new JsonSerializerOptions()) ?? new List<string>()));
+
+        var imagesComparer = new ValueComparer<List<string>>(
+            (l1, l2) => (l1 ?? new List<string>()).SequenceEqual(l2 ?? new List<string>()),
+            l => (l ?? new List<string>()).Aggregate(0, (a, v) => HashCode.Combine(a, v.GetHashCode())),
+            l => (l ?? new List<string>()).ToList());
+
+        modelBuilder.Entity<Post>()
+            .Property(p => p.ImageObjectKeys)
+            .HasConversion(imagesConverter)
+            .Metadata.SetValueComparer(imagesComparer);
+        modelBuilder.Entity<Post>()
+            .Property(p => p.ImageObjectKeys)
+            .HasColumnName("image_object_keys")
+            .HasColumnType("jsonb");
 
         modelBuilder.Entity<Circle>()
             .HasIndex(c => c.OwnerId);    // For admin tools

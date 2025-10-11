@@ -15,9 +15,9 @@ public class MappingProfile : Profile
                     Id = cp.CircleId,
                     Name = cp.Circle != null ? cp.Circle.Name : string.Empty,
                     IsShared = cp.Circle != null ? cp.Circle.IsShared : false,
-                    // Shows if author of post is user of the circle.
-                    //IsOwner = cp.Circle.OwnerId == src.UserId
-                })));        
+                })))
+            .ForMember(dest => dest.HasImage, opt => opt.MapFrom(src => src.ImageObjectKeys.Any()))
+            .ForMember(dest => dest.ImageCount, opt => opt.MapFrom(src => src.ImageObjectKeys.Count));        
         CreateMap<User, UserDto>();
         CreateMap<User, UserProfileDto>();
         CreateMap<Friendship, FriendshipDto>();

@@ -11,12 +11,14 @@ import {
   FlatList,
   ActivityIndicator,
   Switch,
+  Image,
 } from 'react-native';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { Ionicons } from '@expo/vector-icons';
 import { useMemberCircles } from 'hooks/useCircle';
 import ShaderBackground from 'components/ShaderBackground';
-import { CreatePostDto, CreateEventDto } from 'services/generated/generatedClient';
+import { CreateEventDto } from 'services/generated/generatedClient';
+import * as ImagePicker from 'expo-image-picker';
 import { useFocusEffect } from '@react-navigation/native';
 import Header from 'components/Header';
 import { useTheme } from '../theme/ThemeContext';
@@ -29,6 +31,7 @@ const CreatePostScreen = ({ navigation, route }) => {
   const [postContent, setPostContent] = useState('');
   const [selectedCircleIds, setSelectedCircleIds] = useState([]);
   const [asEvent, setAsEvent] = useState(false);
+  const [images, setImages] = useState<Array<{ uri: string; fileName: string; type: string; webFile?: File }>>([]);
   const [eventTitle, setEventTitle] = useState('');
   const [startDate, setStartDate] = useState(''); // YYYY-MM-DD
   const [startTime, setStartTime] = useState(''); // HH:mm (24h)
@@ -64,7 +67,7 @@ const CreatePostScreen = ({ navigation, route }) => {
   };
 
   const isPostValid = () => {
-    return postContent.trim() && selectedCircleIds.length > 0;
+    return (postContent.trim() || images.length > 0) && selectedCircleIds.length > 0;
   };
 
   const isEventValid = useMemo(() => {
@@ -163,14 +166,17 @@ const CreatePostScreen = ({ navigation, route }) => {
     // Normal post
     if (!isPostValid()) return;
     try {
+      // Transform images into FileParameter[] expected by generated client
+      const fileParams = images.map(img => ({
+        data: Platform.OS === 'web' ? (img.webFile as any) : { uri: img.uri, name: img.fileName, type: img.type },
+        fileName: img.fileName,
+      }));
       const response = await ApiClient.call(c =>
-        c.post_CreatePost(new CreatePostDto({
-          text: postContent.trim(),
-          circleIds: selectedCircleIds,
-        }))
+        c.post_CreatePost(postContent.trim() || null, selectedCircleIds, fileParams)
       );
       setPostContent('');
       setSelectedCircleIds([]);
+      setImages([]);
       console.log('Response:', response);
       navigation.goBack();
     } catch (error) {
@@ -221,6 +227,84 @@ const CreatePostScreen = ({ navigation, route }) => {
             thumbColor={Platform.OS === 'android' ? theme.colors.card : undefined}
           />
         </View>
+
+        {/* Image attachments */}
+        {!asEvent && (
+          <View style={styles.imageBar}>
+            {Platform.OS === 'web' ? (
+              <>
+                <input
+                  multiple
+                  accept="image/*"
+                  style={{ display: 'none' }}
+                  id="post-image-input"
+                  type="file"
+                  onChange={(e) => {
+                    const files = Array.from(e.target.files || []);
+                    const mapped = files.map(f => ({ uri: URL.createObjectURL(f), fileName: f.name, type: f.type || 'image/jpeg', webFile: f }));
+                    setImages(prev => [...prev, ...mapped]);
+                    e.target.value = '';
+                  }}
+                />
+                <TouchableOpacity
+                  style={styles.imageButton}
+                  onPress={() => (document.getElementById('post-image-input') as HTMLInputElement)?.click()}
+                  activeOpacity={0.7}
+                >
+                  <Ionicons name="image-outline" size={22} color={theme.colors.primary} />
+                  <Text style={styles.imageButtonText}>{images.length > 0 ? `${images.length} photo${images.length > 1 ? 's' : ''} attached` : 'Add Photos'}</Text>
+                </TouchableOpacity>
+              </>
+            ) : (
+              <TouchableOpacity
+                style={styles.imageButton}
+                onPress={async () => {
+                  try {
+                    const perm = await ImagePicker.requestMediaLibraryPermissionsAsync();
+                    if (perm.status !== 'granted') return;
+                    const result = await ImagePicker.launchImageLibraryAsync({ allowsMultipleSelection: true, mediaTypes: ImagePicker.MediaTypeOptions.Images, quality: 0.9 });
+                    if (result.canceled) return;
+                    const assets = result.assets || [];
+                    const mapped = assets.map(a => ({ uri: a.uri, fileName: a.fileName || `photo-${Date.now()}.jpg`, type: a.mimeType || 'image/jpeg' }));
+                    setImages(prev => [...prev, ...mapped]);
+                  } catch (e) { console.warn('Image pick error', e); }
+                }}
+                activeOpacity={0.7}
+              >
+                <Ionicons name="image-outline" size={22} color={theme.colors.primary} />
+                <Text style={styles.imageButtonText}>{images.length > 0 ? `${images.length} photo${images.length > 1 ? 's' : ''} attached` : 'Add Photos'}</Text>
+              </TouchableOpacity>
+            )}
+          </View>
+        )}
+
+        {images.length > 0 && !asEvent && (
+          <View style={styles.thumbRow}>
+            <FlatList
+              horizontal
+              data={images}
+              keyExtractor={(item) => item.uri}
+              showsHorizontalScrollIndicator={false}
+              renderItem={({ item, index }) => (
+                <View style={styles.thumbWrapper}>
+                  <TouchableOpacity
+                    onPress={() => setImages(prev => prev.filter((_, i) => i !== index))}
+                    style={styles.removeThumb}
+                    activeOpacity={0.8}
+                  >
+                    <Ionicons name="close" size={14} color={theme.colors.primaryContrast} />
+                  </TouchableOpacity>
+                  {/* @ts-ignore: React Native web + native image */}
+                  <Image
+                    source={{ uri: item.uri }}
+                    style={styles.thumbImage}
+                  />
+                </View>
+              )}
+              contentContainerStyle={styles.thumbList}
+            />
+          </View>
+        )}
 
         {asEvent && (
           <View style={styles.eventForm}>
@@ -484,6 +568,14 @@ const useStyles = makeStyles((theme) => ({
   container: { flex: 1, backgroundColor: theme.colors.backgroundAlt },
   errorText: { color: theme.colors.danger, textAlign: 'center', marginTop: 20 },
   keyboardAvoid: { flex: 1 },
+  imageBar: { flexDirection: 'row', paddingHorizontal: 15, paddingTop: 10 },
+  imageButton: { flexDirection: 'row', alignItems: 'center', backgroundColor: theme.colors.card, paddingVertical: 10, paddingHorizontal: 14, borderRadius: 10, borderWidth: 1, borderColor: theme.colors.inputBorder },
+  imageButtonText: { marginLeft: 8, color: theme.colors.primary, fontWeight: '500' },
+  thumbRow: { paddingTop: 8, paddingHorizontal: 15 },
+  thumbList: { gap: 8 },
+  thumbWrapper: { width: 70, height: 70, borderRadius: 10, overflow: 'hidden', marginRight: 8, backgroundColor: theme.colors.card, position: 'relative' },
+  thumbImage: { width: '100%', height: '100%' },
+  removeThumb: { position: 'absolute', top: 4, right: 4, backgroundColor: theme.colors.primary, width: 20, height: 20, borderRadius: 10, alignItems: 'center', justifyContent: 'center' },
   circleSection: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 15, paddingVertical: 10 },
   circleHeaderTitle: { fontSize: 16, fontWeight: '600', color: theme.colors.textPrimary },
   circleWarning: { fontSize: 12, color: theme.colors.textMuted, fontStyle: 'italic' },

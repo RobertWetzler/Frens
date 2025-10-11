@@ -23,14 +23,25 @@ export class ApiClient {
             fetch: async (url: RequestInfo, init?: RequestInit) => {
                 const token = await tokenStorage.getAuthToken();
 
-                // First attempt with current token
+                // Build headers without clobbering multipart boundaries
+                const headers: Record<string, any> = {
+                    ...(init?.headers as any),
+                    'Authorization': token ? `Bearer ${token}` : ''
+                };
+                // Only set JSON content type if body is not FormData and no explicit Content-Type provided
+                const isFormData = (typeof FormData !== 'undefined') && (init?.body instanceof FormData);
+                if (!isFormData) {
+                    if (!Object.keys(headers).some(h => h.toLowerCase() === 'content-type')) {
+                        headers['Content-Type'] = 'application/json';
+                    }
+                } else {
+                    // Ensure we don't leave a stale content-type that would break boundary auto-setting
+                    Object.keys(headers).forEach(k => { if (k.toLowerCase() === 'content-type') delete headers[k]; });
+                }
+
                 const response = await window.fetch(url, {
                     ...init,
-                    headers: {
-                        ...init?.headers,
-                        'Authorization': token ? `Bearer ${token}` : '',
-                        'Content-Type': 'application/json',
-                    }
+                    headers
                 });
 
                 /* TODO: Implement token refresh on backend

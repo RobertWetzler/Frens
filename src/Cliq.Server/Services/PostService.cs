@@ -7,16 +7,18 @@ namespace Cliq.Server.Services;
 
 public interface IPostService
 {
-    Task<PostDto?> GetPostByIdAsync(Guid requestorId, Guid id, bool includeCommentTree = false, int maxDepth = 3);
+    Task<PostDto?> GetPostByIdAsync(Guid requestorId, Guid id, bool includeCommentTree = false, int maxDepth = 3, bool includeImageUrl = false, int imageUrlExpirySeconds = 60);
     Task<FeedDto> GetFeedForUserAsync(Guid userId, int page = 1, int pageSize = 20);
     Task<FeedDto> GetFilteredFeedForUserAsync(Guid userId, Guid[]? circleIds, int page = 1, int pageSize = 20);
     Task<List<PostDto>> GetAllPostsAsync(bool includeCommentCount = false);
     Task<IEnumerable<PostDto>> GetUserPostsAsync(Guid userId, int page = 1, int pageSize = 20);
-    Task<PostDto> CreatePostAsync(Guid userId, Guid[] circleIds, string text);
+    Task<PostDto> CreatePostAsync(Guid userId, Guid[] circleIds, string text, IEnumerable<string>? imageObjectKeys = null);
     Task<PostDto?> UpdatePostAsync(Guid id, Guid updatedByUserId, string newText);
     Task<bool> DeletePostAsync(Guid id, Guid deletedByUserId);
     Task<bool> PostExistsAsync(Guid id);
     Task<int> SaveChangesAsync();
+    Task<string?> GetPostImageUrlAsync(Guid requestorId, Guid postId, int index, int expirySeconds = 60);
+    Task<Dictionary<int,string>> GetPostImageUrlsAsync(Guid requestorId, Guid postId, IEnumerable<int> indices, int expirySeconds = 60);
 }
 
 // Service implementation
@@ -29,6 +31,7 @@ public class PostService : IPostService
     private readonly IMapper _mapper;
     private readonly ILogger<PostService> _logger;
     private readonly IEventNotificationService _eventNotificationService;
+    private readonly IObjectStorageService _storage;
 
     public PostService(
         CliqDbContext dbContext,
@@ -37,7 +40,8 @@ public class PostService : IPostService
         ICircleService circleService,
         IMapper mapper,
         ILogger<PostService> logger,
-        IEventNotificationService eventNotificationService)
+    IEventNotificationService eventNotificationService,
+    IObjectStorageService storage)
     {
         _dbContext = dbContext;
         _commentService = commentService;
@@ -46,9 +50,10 @@ public class PostService : IPostService
         _mapper = mapper;
         _logger = logger;
         _eventNotificationService = eventNotificationService;
+    _storage = storage;
     }
 
-    public async Task<PostDto?> GetPostByIdAsync(Guid requestorId, Guid id, bool includeCommentTree = true, int maxDepth = 3)
+    public async Task<PostDto?> GetPostByIdAsync(Guid requestorId, Guid id, bool includeCommentTree = true, int maxDepth = 3, bool includeImageUrl = false, int imageUrlExpirySeconds = 60)
     {
         // First get the post with minimal data to check existence and ownership
         var post = await _dbContext.Posts
@@ -118,6 +123,19 @@ public class PostService : IPostService
             dto.Comments = (await _commentService.GetAllCommentsForPostAsync(id)).ToList();
         }
 
+        // Optionally attach short-lived image URL
+    if (includeImageUrl && fullPost?.ImageObjectKeys.Any() == true)
+        {
+            try
+            {
+        // Return URL for the first image by default (could be extended to accept index)
+        dto.ImageUrl = await _storage.GetTemporaryReadUrlAsync(fullPost.ImageObjectKeys.First(), imageUrlExpirySeconds);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "Failed generating presigned image URL for post {PostId}", id);
+            }
+        }
         return dto;
     }
 
@@ -174,7 +192,7 @@ public class PostService : IPostService
             // Step 1: Get post IDs for pagination (most efficient way to paginate)
             var postIds = await _dbContext.Posts
                 .Where(p => p.SharedWithCircles.Any(cp =>
-                    cp.Circle.Members.Any(m => m.UserId == userId)))
+                    cp.Circle != null && cp.Circle.Members.Any(m => m.UserId == userId)))
                 .OrderByDescending(p => p.Date)
                 .Skip((page - 1) * pageSize)
                 .Take(pageSize)
@@ -504,7 +522,7 @@ public class PostService : IPostService
         }
     }
 
-    public async Task<PostDto> CreatePostAsync(Guid userId, Guid[] circleIds, string text)
+    public async Task<PostDto> CreatePostAsync(Guid userId, Guid[] circleIds, string text, IEnumerable<string>? imageObjectKeys = null)
     {
         var user = await this._dbContext.Users.FirstOrDefaultAsync(u => u.Id == userId);
         if (user == null)
@@ -521,7 +539,8 @@ public class PostService : IPostService
                 Id = Guid.NewGuid(),
                 UserId = userId,
                 Text = text,
-                Date = DateTime.UtcNow
+                Date = DateTime.UtcNow,
+                ImageObjectKeys = imageObjectKeys?.ToList() ?? new List<string>()
             };
 
             var entry = await _dbContext.Posts.AddAsync(post);
@@ -556,7 +575,10 @@ public class PostService : IPostService
                 .Include(cp => cp.Circle)
                 .LoadAsync();
 
-            return this._mapper.Map<PostDto>(entry.Entity);
+            var dto = this._mapper.Map<PostDto>(entry.Entity);
+            dto.HasImage = post.ImageObjectKeys.Any();
+            dto.ImageCount = post.ImageObjectKeys.Count;
+            return dto;
         }
         catch (Exception ex)
         {
@@ -619,6 +641,47 @@ public class PostService : IPostService
     public async Task<int> SaveChangesAsync()
     {
         return await _dbContext.SaveChangesAsync();
+    }
+
+    public async Task<string?> GetPostImageUrlAsync(Guid requestorId, Guid postId, int index, int expirySeconds = 60)
+    {
+        var post = await _dbContext.Posts.FirstOrDefaultAsync(p => p.Id == postId);
+        if (post == null) return null;
+        // Authorization reuse
+        var auth = await GetPostByIdAsync(requestorId, postId, includeCommentTree:false, includeImageUrl:false);
+        if (auth == null) return null;
+        if (index < 0 || index >= post.ImageObjectKeys.Count) return null;
+        try
+        {
+            return await _storage.GetTemporaryReadUrlAsync(post.ImageObjectKeys[index], expirySeconds);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Failed generating presigned image URL for post {PostId} index {Index}", postId, index);
+            return null;
+        }
+    }
+
+    public async Task<Dictionary<int,string>> GetPostImageUrlsAsync(Guid requestorId, Guid postId, IEnumerable<int> indices, int expirySeconds = 60)
+    {
+        var map = new Dictionary<int,string>();
+        var post = await _dbContext.Posts.FirstOrDefaultAsync(p => p.Id == postId);
+        if (post == null) return map;
+        var auth = await GetPostByIdAsync(requestorId, postId, includeCommentTree:false, includeImageUrl:false);
+        if (auth == null) return map;
+        foreach (var idx in indices.Distinct())
+        {
+            if (idx < 0 || idx >= post.ImageObjectKeys.Count) continue;
+            try
+            {
+                map[idx] = await _storage.GetTemporaryReadUrlAsync(post.ImageObjectKeys[idx], expirySeconds);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "Failed generating presigned image URL for post {PostId} index {Index}", postId, idx);
+            }
+        }
+        return map;
     }
 }
 

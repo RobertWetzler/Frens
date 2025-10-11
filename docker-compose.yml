@@ -22,6 +22,37 @@ services:
       - "5432:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
+  minio:
+    image: quay.io/minio/minio
+    container_name: cliq-minio
+    command: server /data --console-address ":9001"
+    environment:
+      - MINIO_ROOT_USER=cliq_local_key
+      - MINIO_ROOT_PASSWORD=cliq_local_secret_ChangeMe123
+    ports:
+      - "9000:9000" # S3 API
+      - "9001:9001" # Web console
+    volumes:
+      - minio_data:/data
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+  minio-init:
+    image: quay.io/minio/mc
+    container_name: cliq-minio-init
+    depends_on:
+      minio:
+        condition: service_healthy
+    entrypoint: ["/bin/sh","-c"]
+    # Create bucket if it doesn't exist and keep it private
+    command: >
+      "mc alias set local http://minio:9000 cliq_local_key cliq_local_secret_ChangeMe123 && \
+       if ! mc ls local/cliq-private >/dev/null 2>&1; then mc mb local/cliq-private; fi && \
+       mc anonymous set none local/cliq-private && echo 'MinIO bucket cliq-private ready.'"
+    restart: "on-failure"
 
 volumes:
   postgres_data:
+  minio_data:

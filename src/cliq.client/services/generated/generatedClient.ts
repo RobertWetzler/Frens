@@ -905,11 +905,47 @@ export class Client {
         return Promise.resolve<EventRsvpDto[]>(null as any);
     }
 
-    event_GetEventICalendar(id: string, signal?: AbortSignal): Promise<FileResponse> {
-        let url_ = this.baseUrl + "/api/Event/{id}/ical";
-        if (id === undefined || id === null)
-            throw new Error("The parameter 'id' must be defined.");
-        url_ = url_.replace("{id}", encodeURIComponent("" + id));
+    event_SubscribeToICalendar(signal?: AbortSignal): Promise<string> {
+        let url_ = this.baseUrl + "/api/Event/ical/subscribe";
+        url_ = url_.replace(/[?&]$/, "");
+
+        let options_: RequestInit = {
+            method: "POST",
+            signal,
+            headers: {
+                "Accept": "application/json"
+            }
+        };
+
+        return this.http.fetch(url_, options_).then((_response: Response) => {
+            return this.processEvent_SubscribeToICalendar(_response);
+        });
+    }
+
+    protected processEvent_SubscribeToICalendar(response: Response): Promise<string> {
+        const status = response.status;
+        let _headers: any = {}; if (response.headers && response.headers.forEach) { response.headers.forEach((v: any, k: any) => _headers[k] = v); };
+        if (status === 200) {
+            return response.text().then((_responseText) => {
+            let result200: any = null;
+            let resultData200 = _responseText === "" ? null : JSON.parse(_responseText, this.jsonParseReviver);
+                result200 = resultData200 !== undefined ? resultData200 : <any>null;
+    
+            return result200;
+            });
+        } else if (status !== 200 && status !== 204) {
+            return response.text().then((_responseText) => {
+            return throwException("An unexpected server error occurred.", status, _responseText, _headers);
+            });
+        }
+        return Promise.resolve<string>(null as any);
+    }
+
+    event_GetICalendar(subscriptionId: string, signal?: AbortSignal): Promise<FileResponse> {
+        let url_ = this.baseUrl + "/api/Event/ical/{subscriptionId}";
+        if (subscriptionId === undefined || subscriptionId === null)
+            throw new Error("The parameter 'subscriptionId' must be defined.");
+        url_ = url_.replace("{subscriptionId}", encodeURIComponent("" + subscriptionId));
         url_ = url_.replace(/[?&]$/, "");
 
         let options_: RequestInit = {
@@ -921,11 +957,11 @@ export class Client {
         };
 
         return this.http.fetch(url_, options_).then((_response: Response) => {
-            return this.processEvent_GetEventICalendar(_response);
+            return this.processEvent_GetICalendar(_response);
         });
     }
 
-    protected processEvent_GetEventICalendar(response: Response): Promise<FileResponse> {
+    protected processEvent_GetICalendar(response: Response): Promise<FileResponse> {
         const status = response.status;
         let _headers: any = {}; if (response.headers && response.headers.forEach) { response.headers.forEach((v: any, k: any) => _headers[k] = v); };
         if (status === 200 || status === 206) {
@@ -1473,7 +1509,97 @@ export class Client {
         return Promise.resolve<FileResponse>(null as any);
     }
 
-    post_GetPost(id: string, includeCommentTree: boolean | undefined, signal?: AbortSignal): Promise<PostDto> {
+    post_GetPostImage(id: string, index: number | undefined, expirySeconds: number | undefined, signal?: AbortSignal): Promise<PostImageUrlDto> {
+        let url_ = this.baseUrl + "/api/Post/{id}/image?";
+        if (id === undefined || id === null)
+            throw new Error("The parameter 'id' must be defined.");
+        url_ = url_.replace("{id}", encodeURIComponent("" + id));
+        if (index === null)
+            throw new Error("The parameter 'index' cannot be null.");
+        else if (index !== undefined)
+            url_ += "index=" + encodeURIComponent("" + index) + "&";
+        if (expirySeconds === null)
+            throw new Error("The parameter 'expirySeconds' cannot be null.");
+        else if (expirySeconds !== undefined)
+            url_ += "expirySeconds=" + encodeURIComponent("" + expirySeconds) + "&";
+        url_ = url_.replace(/[?&]$/, "");
+
+        let options_: RequestInit = {
+            method: "GET",
+            signal,
+            headers: {
+                "Accept": "application/json"
+            }
+        };
+
+        return this.http.fetch(url_, options_).then((_response: Response) => {
+            return this.processPost_GetPostImage(_response);
+        });
+    }
+
+    protected processPost_GetPostImage(response: Response): Promise<PostImageUrlDto> {
+        const status = response.status;
+        let _headers: any = {}; if (response.headers && response.headers.forEach) { response.headers.forEach((v: any, k: any) => _headers[k] = v); };
+        if (status === 200) {
+            return response.text().then((_responseText) => {
+            let result200: any = null;
+            let resultData200 = _responseText === "" ? null : JSON.parse(_responseText, this.jsonParseReviver);
+            result200 = PostImageUrlDto.fromJS(resultData200);
+            return result200;
+            });
+        } else if (status !== 200 && status !== 204) {
+            return response.text().then((_responseText) => {
+            return throwException("An unexpected server error occurred.", status, _responseText, _headers);
+            });
+        }
+        return Promise.resolve<PostImageUrlDto>(null as any);
+    }
+
+    post_GetPostImages(id: string, indices: number[] | null | undefined, expirySeconds: number | undefined, signal?: AbortSignal): Promise<PostImagesUrlDto> {
+        let url_ = this.baseUrl + "/api/Post/{id}/images?";
+        if (id === undefined || id === null)
+            throw new Error("The parameter 'id' must be defined.");
+        url_ = url_.replace("{id}", encodeURIComponent("" + id));
+        if (indices !== undefined && indices !== null)
+            indices && indices.forEach(item => { url_ += "indices=" + encodeURIComponent("" + item) + "&"; });
+        if (expirySeconds === null)
+            throw new Error("The parameter 'expirySeconds' cannot be null.");
+        else if (expirySeconds !== undefined)
+            url_ += "expirySeconds=" + encodeURIComponent("" + expirySeconds) + "&";
+        url_ = url_.replace(/[?&]$/, "");
+
+        let options_: RequestInit = {
+            method: "GET",
+            signal,
+            headers: {
+                "Accept": "application/json"
+            }
+        };
+
+        return this.http.fetch(url_, options_).then((_response: Response) => {
+            return this.processPost_GetPostImages(_response);
+        });
+    }
+
+    protected processPost_GetPostImages(response: Response): Promise<PostImagesUrlDto> {
+        const status = response.status;
+        let _headers: any = {}; if (response.headers && response.headers.forEach) { response.headers.forEach((v: any, k: any) => _headers[k] = v); };
+        if (status === 200) {
+            return response.text().then((_responseText) => {
+            let result200: any = null;
+            let resultData200 = _responseText === "" ? null : JSON.parse(_responseText, this.jsonParseReviver);
+            result200 = PostImagesUrlDto.fromJS(resultData200);
+            return result200;
+            });
+        } else if (status !== 200 && status !== 204) {
+            return response.text().then((_responseText) => {
+            return throwException("An unexpected server error occurred.", status, _responseText, _headers);
+            });
+        }
+        return Promise.resolve<PostImagesUrlDto>(null as any);
+    }
+
+    post_GetPost(id: string, includeCommentTree: boolean | undefined, includeImageUrl: boolean | undefined, signal?: AbortSignal): Promise<PostDto> {
         let url_ = this.baseUrl + "/api/Post/{id}?";
         if (id === undefined || id === null)
             throw new Error("The parameter 'id' must be defined.");
@@ -1482,6 +1608,10 @@ export class Client {
             throw new Error("The parameter 'includeCommentTree' cannot be null.");
         else if (includeCommentTree !== undefined)
             url_ += "includeCommentTree=" + encodeURIComponent("" + includeCommentTree) + "&";
+        if (includeImageUrl === null)
+            throw new Error("The parameter 'includeImageUrl' cannot be null.");
+        else if (includeImageUrl !== undefined)
+            url_ += "includeImageUrl=" + encodeURIComponent("" + includeImageUrl) + "&";
         url_ = url_.replace(/[?&]$/, "");
 
         let options_: RequestInit = {
@@ -1726,18 +1856,23 @@ export class Client {
         return Promise.resolve<FeedDto>(null as any);
     }
 
-    post_CreatePost(request: CreatePostDto, signal?: AbortSignal): Promise<PostDto> {
+    post_CreatePost(text: string | null | undefined, circleIds: string[] | null | undefined, images: FileParameter[] | null | undefined, signal?: AbortSignal): Promise<PostDto> {
         let url_ = this.baseUrl + "/api/Post";
         url_ = url_.replace(/[?&]$/, "");
 
-        const content_ = JSON.stringify(request);
+        const content_ = new FormData();
+        if (text !== null && text !== undefined)
+            content_.append("Text", text.toString());
+        if (circleIds !== null && circleIds !== undefined)
+            circleIds.forEach(item_ => content_.append("CircleIds", item_.toString()));
+        if (images !== null && images !== undefined)
+            images.forEach(item_ => content_.append("Images", item_.data, item_.fileName ? item_.fileName : "Images") );
 
         let options_: RequestInit = {
             body: content_,
             method: "POST",
             signal,
             headers: {
-                "Content-Type": "application/json",
                 "Accept": "application/json"
             }
         };
@@ -2334,6 +2469,9 @@ export class PostDto implements IPostDto {
     comments?: CommentDto[];
     sharedWithCircles?: CirclePublicDto[];
     commentCount?: number;
+    hasImage?: boolean;
+    imageCount?: number;
+    imageUrl?: string | undefined;
 
     protected _discriminator: string;
 
@@ -2365,6 +2503,9 @@ export class PostDto implements IPostDto {
                     this.sharedWithCircles!.push(CirclePublicDto.fromJS(item));
             }
             this.commentCount = _data["commentCount"];
+            this.hasImage = _data["hasImage"];
+            this.imageCount = _data["imageCount"];
+            this.imageUrl = _data["imageUrl"];
         }
     }
 
@@ -2399,6 +2540,9 @@ export class PostDto implements IPostDto {
                 data["sharedWithCircles"].push(item.toJSON());
         }
         data["commentCount"] = this.commentCount;
+        data["hasImage"] = this.hasImage;
+        data["imageCount"] = this.imageCount;
+        data["imageUrl"] = this.imageUrl;
         return data;
     }
 }
@@ -2412,6 +2556,9 @@ export interface IPostDto {
     comments?: CommentDto[];
     sharedWithCircles?: CirclePublicDto[];
     commentCount?: number;
+    hasImage?: boolean;
+    imageCount?: number;
+    imageUrl?: string | undefined;
 }
 
 export class EventDto extends PostDto implements IEventDto {
@@ -3079,6 +3226,138 @@ export interface IAppAnnouncementRequest {
     actionUrl?: string | undefined;
 }
 
+export class PostImageUrlDto implements IPostImageUrlDto {
+    url?: string;
+    expiresAt?: Date;
+
+    constructor(data?: IPostImageUrlDto) {
+        if (data) {
+            for (var property in data) {
+                if (data.hasOwnProperty(property))
+                    (<any>this)[property] = (<any>data)[property];
+            }
+        }
+    }
+
+    init(_data?: any) {
+        if (_data) {
+            this.url = _data["url"];
+            this.expiresAt = _data["expiresAt"] ? new Date(_data["expiresAt"].toString()) : <any>undefined;
+        }
+    }
+
+    static fromJS(data: any): PostImageUrlDto {
+        data = typeof data === 'object' ? data : {};
+        let result = new PostImageUrlDto();
+        result.init(data);
+        return result;
+    }
+
+    toJSON(data?: any) {
+        data = typeof data === 'object' ? data : {};
+        data["url"] = this.url;
+        data["expiresAt"] = this.expiresAt ? this.expiresAt.toISOString() : <any>undefined;
+        return data;
+    }
+}
+
+export interface IPostImageUrlDto {
+    url?: string;
+    expiresAt?: Date;
+}
+
+export class PostImagesUrlDto implements IPostImagesUrlDto {
+    postId?: string;
+    images?: PostImageIndexedUrlDto[];
+
+    constructor(data?: IPostImagesUrlDto) {
+        if (data) {
+            for (var property in data) {
+                if (data.hasOwnProperty(property))
+                    (<any>this)[property] = (<any>data)[property];
+            }
+        }
+    }
+
+    init(_data?: any) {
+        if (_data) {
+            this.postId = _data["postId"];
+            if (Array.isArray(_data["images"])) {
+                this.images = [] as any;
+                for (let item of _data["images"])
+                    this.images!.push(PostImageIndexedUrlDto.fromJS(item));
+            }
+        }
+    }
+
+    static fromJS(data: any): PostImagesUrlDto {
+        data = typeof data === 'object' ? data : {};
+        let result = new PostImagesUrlDto();
+        result.init(data);
+        return result;
+    }
+
+    toJSON(data?: any) {
+        data = typeof data === 'object' ? data : {};
+        data["postId"] = this.postId;
+        if (Array.isArray(this.images)) {
+            data["images"] = [];
+            for (let item of this.images)
+                data["images"].push(item.toJSON());
+        }
+        return data;
+    }
+}
+
+export interface IPostImagesUrlDto {
+    postId?: string;
+    images?: PostImageIndexedUrlDto[];
+}
+
+export class PostImageIndexedUrlDto implements IPostImageIndexedUrlDto {
+    index?: number;
+    url?: string;
+    expiresAt?: Date;
+
+    constructor(data?: IPostImageIndexedUrlDto) {
+        if (data) {
+            for (var property in data) {
+                if (data.hasOwnProperty(property))
+                    (<any>this)[property] = (<any>data)[property];
+            }
+        }
+    }
+
+    init(_data?: any) {
+        if (_data) {
+            this.index = _data["index"];
+            this.url = _data["url"];
+            this.expiresAt = _data["expiresAt"] ? new Date(_data["expiresAt"].toString()) : <any>undefined;
+        }
+    }
+
+    static fromJS(data: any): PostImageIndexedUrlDto {
+        data = typeof data === 'object' ? data : {};
+        let result = new PostImageIndexedUrlDto();
+        result.init(data);
+        return result;
+    }
+
+    toJSON(data?: any) {
+        data = typeof data === 'object' ? data : {};
+        data["index"] = this.index;
+        data["url"] = this.url;
+        data["expiresAt"] = this.expiresAt ? this.expiresAt.toISOString() : <any>undefined;
+        return data;
+    }
+}
+
+export interface IPostImageIndexedUrlDto {
+    index?: number;
+    url?: string;
+    expiresAt?: Date;
+}
+
 export class FeedDto implements IFeedDto {
     posts?: PostDto[];
     notificationCount?: number;
@@ -3137,54 +3416,6 @@ export interface IFeedDto {
     posts?: PostDto[];
     notificationCount?: number;
     userCircles?: CirclePublicDto[];
-}
-
-export class CreatePostDto implements ICreatePostDto {
-    text?: string;
-    circleIds?: string[];
-
-    constructor(data?: ICreatePostDto) {
-        if (data) {
-            for (var property in data) {
-                if (data.hasOwnProperty(property))
-                    (<any>this)[property] = (<any>data)[property];
-            }
-        }
-    }
-
-    init(_data?: any) {
-        if (_data) {
-            this.text = _data["text"];
-            if (Array.isArray(_data["circleIds"])) {
-                this.circleIds = [] as any;
-                for (let item of _data["circleIds"])
-                    this.circleIds!.push(item);
-            }
-        }
-    }
-
-    static fromJS(data: any): CreatePostDto {
-        data = typeof data === 'object' ? data : {};
-        let result = new CreatePostDto();
-        result.init(data);
-        return result;
-    }
-
-    toJSON(data?: any) {
-        data = typeof data === 'object' ? data : {};
-        data["text"] = this.text;
-        if (Array.isArray(this.circleIds)) {
-            data["circleIds"] = [];
-            for (let item of this.circleIds)
-                data["circleIds"].push(item);
-        }
-        return data;
-    }
-}
-
-export interface ICreatePostDto {
-    text?: string;
-    circleIds?: string[];
 }
 
 export class ProfilePageResponseDto implements IProfilePageResponseDto {
@@ -3293,6 +3524,11 @@ export interface IUserProfileDto {
     name?: string;
     bio?: string;
     createdAt?: Date;
+}
+
+export interface FileParameter {
+    data: any;
+    fileName: string;
 }
 
 export interface FileResponse {
