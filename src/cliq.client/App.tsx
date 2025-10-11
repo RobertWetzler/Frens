@@ -27,6 +27,7 @@ import NotificationsScreen from 'screens/NotificationScreen';
 import { useServiceWorker } from './hooks/useServiceWorker';
 import { ShaderBackgroundProvider } from 'contexts/ShaderBackgroundContext';
 import GlobalShaderBackground from 'components/GlobalShaderBackground';
+import { enableImageBinaryCacheDebug, getImageBinaryCacheStats } from 'services/imageBinaryCache';
 
 type RootStackParamList = {
   SignIn: undefined | { returnTo?: string };
@@ -174,6 +175,16 @@ const MainApp = () => {
 
   // Register service worker
   useServiceWorker();
+
+  useEffect(() => {
+    enableImageBinaryCacheDebug(true);
+    const interval = setInterval(() => {
+      const stats = getImageBinaryCacheStats();
+      // eslint-disable-next-line no-console
+      console.log('[ImageBinCache][stats]', stats);
+    }, 7000);
+    return () => clearInterval(interval);
+  }, []);
 
   useEffect(() => {
     const bootstrap = async () => {

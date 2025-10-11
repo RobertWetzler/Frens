@@ -43,7 +43,7 @@ const CircleFilter: React.FC<CircleFilterProps> = ({
   useEffect(() => {
     if (shouldAnimate) {
       const animateIn = () => {
-        console.log(`Starting animation for filter`);
+        // console.log(`Starting animation for filter`);
         Animated.parallel([
           Animated.timing(opacity, {
             toValue: 1,
@@ -63,7 +63,7 @@ const CircleFilter: React.FC<CircleFilterProps> = ({
             useNativeDriver: true,
           }),
         ]).start(() => {
-          console.log(`Animation completed for filter`);
+          // console.log(`Animation completed for filter`);
         });
       };
 
