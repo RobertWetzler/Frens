@@ -19,6 +19,7 @@ import { useMemberCircles } from 'hooks/useCircle';
 import ShaderBackground from 'components/ShaderBackground';
 import { CreateEventDto } from 'services/generated/generatedClient';
 import * as ImagePicker from 'expo-image-picker';
+import * as FileSystem from 'expo-file-system'; // added for size lookup
 import { useFocusEffect } from '@react-navigation/native';
 import Header from 'components/Header';
 import { useTheme } from '../theme/ThemeContext';
@@ -31,7 +32,7 @@ const CreatePostScreen = ({ navigation, route }) => {
   const [postContent, setPostContent] = useState('');
   const [selectedCircleIds, setSelectedCircleIds] = useState([]);
   const [asEvent, setAsEvent] = useState(false);
-  const [images, setImages] = useState<Array<{ uri: string; fileName: string; type: string; webFile?: File }>>([]);
+  const [images, setImages] = useState<Array<{ uri: string; fileName: string; type: string; size?: number; webFile?: File }>>([]); // added size
   const [eventTitle, setEventTitle] = useState('');
   const [startDate, setStartDate] = useState(''); // YYYY-MM-DD
   const [startTime, setStartTime] = useState(''); // HH:mm (24h)
@@ -114,6 +115,14 @@ const CreatePostScreen = ({ navigation, route }) => {
 
   const handleSubmit = async () => {
     setFormError(null);
+    const MAX_TOTAL_IMAGES_BYTES = 50 * 1024 * 1024; // 50 MB
+    if (!asEvent && images.length > 0) { // validate total image size for posts
+      const totalBytes = images.reduce((sum, img) => sum + (img.size || 0), 0);
+      if (totalBytes > MAX_TOTAL_IMAGES_BYTES) {
+        setFormError('Images exceed 50 MB total. Please remove some and try again.');
+        return;
+      }
+    }
     if (asEvent) {
       if (!isEventValid) return;
       const start = parseDateTime(startDate, startTime);
@@ -241,7 +250,7 @@ const CreatePostScreen = ({ navigation, route }) => {
                   type="file"
                   onChange={(e) => {
                     const files = Array.from(e.target.files || []);
-                    const mapped = files.map(f => ({ uri: URL.createObjectURL(f), fileName: f.name, type: f.type || 'image/jpeg', webFile: f }));
+                    const mapped = files.map(f => ({ uri: URL.createObjectURL(f), fileName: f.name, type: f.type || 'image/jpeg', webFile: f, size: f.size }));
                     setImages(prev => [...prev, ...mapped]);
                     e.target.value = '';
                   }}
@@ -265,8 +274,17 @@ const CreatePostScreen = ({ navigation, route }) => {
                     const result = await ImagePicker.launchImageLibraryAsync({ allowsMultipleSelection: true, mediaTypes: ImagePicker.MediaTypeOptions.Images, quality: 0.9 });
                     if (result.canceled) return;
                     const assets = result.assets || [];
-                    const mapped = assets.map(a => ({ uri: a.uri, fileName: a.fileName || `photo-${Date.now()}.jpg`, type: a.mimeType || 'image/jpeg' }));
-                    setImages(prev => [...prev, ...mapped]);
+                    const sized = await Promise.all(
+                      assets.map(async (a) => {
+                        let size: number | undefined = undefined;
+                        try {
+                          const info = await FileSystem.getInfoAsync(a.uri);
+                          if (info.exists && typeof info.size === 'number') size = info.size;
+                        } catch {}
+                        return { uri: a.uri, fileName: a.fileName || `photo-${Date.now()}.jpg`, type: a.mimeType || 'image/jpeg', size };
+                      })
+                    );
+                    setImages(prev => [...prev, ...sized]);
                   } catch (e) { console.warn('Image pick error', e); }
                 }}
                 activeOpacity={0.7}
@@ -287,24 +305,27 @@ const CreatePostScreen = ({ navigation, route }) => {
               showsHorizontalScrollIndicator={false}
               renderItem={({ item, index }) => (
                 <View style={styles.thumbWrapper}>
+                  {/* @ts-ignore: React Native web + native image */}
+                  <Image source={{ uri: item.uri }} style={styles.thumbImage} />
+                  {/* X remove button on top */}
                   <TouchableOpacity
                     onPress={() => setImages(prev => prev.filter((_, i) => i !== index))}
                     style={styles.removeThumb}
+                    accessibilityRole="button"
+                    accessibilityLabel="Remove image"
+                    hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
                     activeOpacity={0.8}
                   >
-                    <Ionicons name="close" size={14} color={theme.colors.primaryContrast} />
+                    <Ionicons name="close" size={16} color={theme.colors.primaryContrast} />
                   </TouchableOpacity>
-                  {/* @ts-ignore: React Native web + native image */}
-                  <Image
-                    source={{ uri: item.uri }}
-                    style={styles.thumbImage}
-                  />
                 </View>
               )}
               contentContainerStyle={styles.thumbList}
             />
           </View>
         )}
+
+        {formError ? <Text style={styles.formError}>{formError}</Text> : null}
 
         {asEvent && (
           <View style={styles.eventForm}>
@@ -575,7 +596,7 @@ const useStyles = makeStyles((theme) => ({
   thumbList: { gap: 8 },
   thumbWrapper: { width: 70, height: 70, borderRadius: 10, overflow: 'hidden', marginRight: 8, backgroundColor: theme.colors.card, position: 'relative' },
   thumbImage: { width: '100%', height: '100%' },
-  removeThumb: { position: 'absolute', top: 4, right: 4, backgroundColor: theme.colors.primary, width: 20, height: 20, borderRadius: 10, alignItems: 'center', justifyContent: 'center' },
+  removeThumb: { position: 'absolute', top: 4, right: 4, backgroundColor: theme.colors.primary, width: 24, height: 24, borderRadius: 12, alignItems: 'center', justifyContent: 'center', zIndex: 2 },
   circleSection: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 15, paddingVertical: 10 },
   circleHeaderTitle: { fontSize: 16, fontWeight: '600', color: theme.colors.textPrimary },
   circleWarning: { fontSize: 12, color: theme.colors.textMuted, fontStyle: 'italic' },

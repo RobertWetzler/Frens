@@ -154,7 +154,7 @@ public class PostController : ControllerBase
     }
 
     [HttpPost]
-    [RequestSizeLimit(25_000_000)] // ~25MB limit (adjust as needed)
+    [RequestSizeLimit(50_000_000)] // ~25MB limit (adjust as needed)
     [Consumes("multipart/form-data", "application/json")]
     public async Task<ActionResult<PostDto>> CreatePost([FromForm] CreatePostWithImageRequest request)
     {

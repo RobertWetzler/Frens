@@ -667,6 +667,8 @@ public class PostService : IPostService
         var map = new Dictionary<int,string>();
         var post = await _dbContext.Posts.FirstOrDefaultAsync(p => p.Id == postId);
         if (post == null) return map;
+        // internally performs authorization check
+        // TODO: optimize to avoid double DB fetch
         var auth = await GetPostByIdAsync(requestorId, postId, includeCommentTree:false, includeImageUrl:false);
         if (auth == null) return map;
         foreach (var idx in indices.Distinct())

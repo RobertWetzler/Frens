@@ -122,6 +122,20 @@ export default function SignInScreen({ route, navigation }: SignInScreenProps) {
                     ]}
                 >
                     <Text style={[styles.appName, themeName === 'halloween' && { fontFamily: 'SpookyHalloween', fontWeight: '400' }]}>Frens</Text>
+                    {themeName === 'halloween' && (
+                        <Text style={[
+                            styles.appName,
+                            {
+                                fontFamily: 'SpookyHalloween',
+                                fontWeight: '400',
+                                fontSize: 20,
+                                transform: [{ rotate: '-12deg' }],
+                                marginLeft: 100,
+                                marginTop: -10,
+                                marginBottom: 30,
+                            }
+                        ]}>Spooky Edition</Text>
+                    )}
                     <Text style={styles.subtitle}>Connect with your community</Text>
                     <View style={styles.signInContainer}>
                         <Text style={styles.signInText}>Sign in to continue</Text>

@@ -152,7 +152,10 @@ const HomeScreen = ({ navigation }) => {
                     style={styles.headerGradient}
                 >
                     <View style={styles.header}>
-                        <Text style={[styles.headerTitle, theme.name === 'halloween' && { fontFamily: 'SpookyHalloween', fontWeight: '400' }]}>Frens</Text>
+                        <View style={styles.titleRow}>
+                            <Text style={[styles.headerTitle, theme.name === 'halloween' && { fontFamily: 'SpookyHalloween', fontWeight: '400' }]}>Frens</Text>
+                            <Text style={[styles.headerSubtitle, theme.name === 'halloween' && { fontFamily: 'SpookyHalloween', fontWeight: '400' }]}>Spooky Edition</Text>
+                        </View>
                         <NotificationBell
                             onPress={() => navigation.navigate('Notifications')}
                             iconColor={theme.colors.textPrimary}
@@ -298,6 +301,8 @@ const useStyles = makeStyles((theme) => ({
     },
     header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
     headerTitle: { fontSize: 35, fontWeight: 'bold', color: theme.colors.textPrimary, textShadowColor: 'rgba(0,0,0,0.3)', textShadowOffset: { width: 0, height: 1 }, textShadowRadius: 2 },
+    titleRow: { flexDirection: 'row', alignItems: 'baseline' },
+    headerSubtitle: { fontSize: 20, fontWeight: '600', color: theme.colors.textPrimary, marginLeft: 10, textShadowColor: 'rgba(0,0,0,0.3)', textShadowOffset: { width: 0, height: 1 }, textShadowRadius: 2 },
     filterContainer: { marginHorizontal: 16, marginVertical: 2 },
     filteringIndicator: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', paddingVertical: 8, marginTop: 8 },
     filteringText: { marginLeft: 8, fontSize: 14, color: theme.colors.textMuted, fontStyle: 'italic' },
