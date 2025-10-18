@@ -110,6 +110,7 @@ public class NewPostNotificationData : NotificationData
     public Guid AuthorId { get; set; }
     public required string AuthorName { get; set; }
     public string PostText { get; set; } = string.Empty;
+    public bool HasImage { get; set; } = false;
 
     public NewPostNotificationData()
     {
@@ -126,7 +127,7 @@ public class NewPostNotificationData : NotificationData
     {
         get
         {
-            return PostText.Length > 50 ? PostText[..50] + "..." : PostText;
+            return (HasImage ? "🖼️ " : "") + (PostText.Length > 100 ? PostText[..100] + "..." : PostText);
         }
         set { }
     }
@@ -166,7 +167,7 @@ public class NewEventNotificationData : NotificationData
     {
         get
         {
-            return EventTitle.Length > 50 ? EventTitle[..50] + "..." : EventTitle;
+            return EventTitle.Length > 100 ? EventTitle[..100] + "..." : EventTitle;
         }
         set { }
     }
@@ -208,7 +209,7 @@ public class NewCommentNotificationData : NotificationData
 
     public override string Message
     {
-        get => "commented: " + (CommentText.Length > 50 ? CommentText[..50] + "..." : CommentText);
+        get => "commented: " + (CommentText.Length > 100 ? CommentText[..100] + "..." : CommentText);
         set { }
     }
 
@@ -251,7 +252,7 @@ public class CommentReplyNotificationData : NotificationData
 
     public override string Message
     {
-        get => "replied: " + (ReplyText.Length > 50 ? ReplyText[..50] + "..." : ReplyText);
+        get => "replied: " + (ReplyText.Length > 100 ? ReplyText[..100] + "..." : ReplyText);
         set { }
     }
 

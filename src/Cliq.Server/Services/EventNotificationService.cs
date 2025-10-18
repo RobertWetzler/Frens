@@ -12,7 +12,7 @@ public interface IEventNotificationService
 {
     Task SendFriendRequestNotificationAsync(Guid requesterId, Guid addresseeId, Guid friendshipId, string requesterName);
     Task SendFriendRequestAcceptedNotificationAsync(Guid accepterId, Guid requesterId, string requesterName);
-    Task SendNewPostNotificationAsync(Guid postId, Guid authorId, string postText, IEnumerable<Guid> circleIds, string authorName);
+    Task SendNewPostNotificationAsync(Guid postId, Guid authorId, string postText, IEnumerable<Guid> circleIds, string authorName, bool hasImage);
     Task SendNewEventNotificationAsync(Guid eventId, Guid authorId, string title, IEnumerable<Guid> circleIds, string authorName);
     Task SendNewCommentNotificationAsync(Guid commentId, Guid postId, Guid postAuthorId, Guid commenterId, string commentText, string commenterName);
     Task SendCommentReplyNotificationAsync(Guid replyId, Guid postId, Guid parentCommentId, Guid parentCommentAuthorId, Guid replierId, string replyText, string commenterName);
@@ -53,7 +53,7 @@ public class EventNotificationService : IEventNotificationService
         await _notificationQueue.AddAsync(requesterId, notificationData);
     }
 
-    public async Task SendNewPostNotificationAsync(Guid postId, Guid authorId, string postText, IEnumerable<Guid> circleIds, string authorName)
+    public async Task SendNewPostNotificationAsync(Guid postId, Guid authorId, string postText, IEnumerable<Guid> circleIds, string authorName, bool hasImage)
     {
         var circleIdsList = circleIds.ToList();
 
@@ -71,7 +71,8 @@ public class EventNotificationService : IEventNotificationService
                 PostId = postId,
                 AuthorId = authorId,
                 AuthorName = authorName,
-                PostText = postText
+                PostText = postText,
+                HasImage = hasImage
             };
 
             await _notificationQueue.AddBulkAsync(recipientUserIds, notificationData);

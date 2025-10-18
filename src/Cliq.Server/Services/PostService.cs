@@ -556,7 +556,7 @@ public class PostService : IPostService
             // Send notifications to circle members
             try
             {
-                await _eventNotificationService.SendNewPostNotificationAsync(post.Id, userId, text, circleIds, user.Name);
+                await _eventNotificationService.SendNewPostNotificationAsync(post.Id, userId, text, circleIds, user.Name, imageObjectKeys.Count() > 0);
             }
             catch (Exception ex)
             {
