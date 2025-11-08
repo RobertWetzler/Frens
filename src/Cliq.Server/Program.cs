@@ -1,4 +1,3 @@
-
 using AutoMapper;
 using Cliq.Server.Data;
 using Cliq.Server.Services;
