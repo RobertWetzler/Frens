@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { FeedDto, PostDto, CirclePublicDto } from '../services/generated/generatedClient';
 import { ApiClient } from 'services/apiClient';
+import { feedEvents, FEED_POST_CREATED } from './feedEvents';
 
 // Logical page size for server paging. Matches server default behavior.
 const FEED_PAGE_SIZE = 20;
@@ -97,6 +98,7 @@ export function useFilteredFeed() {
     const [isLoadingMore, setIsLoadingMore] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const [selectedCircleIds, setSelectedCircleIds] = useState<string[]>([]);
+    const selectedCircleIdsRef = useRef<string[]>([]);
     // Paging cursor (1-based) and whether more data is available
     const [page, setPage] = useState(1);
     const [hasMore, setHasMore] = useState(true);
@@ -235,6 +237,33 @@ export function useFilteredFeed() {
     }, [fetchFeed, hasMore, isFiltering, isLoading, isLoadingMore, isPostTransition, isRefreshing, page]);
 
     // Initial load: fetch first page with initial spinner
+    useEffect(() => {
+        selectedCircleIdsRef.current = selectedCircleIds;
+    }, [selectedCircleIds]);
+
+    useEffect(() => {
+        const subscription = feedEvents.addListener(FEED_POST_CREATED, (newPost) => {
+            const circleIdsForPost = new Set((newPost.sharedWithCircles || []).map(circle => circle.id));
+            const currentFilter = selectedCircleIdsRef.current;
+
+            if (currentFilter.length > 0) {
+                const matchesFilter = currentFilter.some(circleId => circleIdsForPost.has(circleId));
+                if (!matchesFilter) {
+                    return;
+                }
+            }
+
+            setPosts(prevPosts => {
+                const withoutDuplicate = prevPosts.filter(post => post.id !== newPost.id);
+                return [newPost, ...withoutDuplicate];
+            });
+        });
+
+        return () => {
+            subscription.remove();
+        };
+    }, []);
+
     useEffect(() => {
         if (!isInitialLoad) {
             return;
