@@ -8,9 +8,10 @@ import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../theme/ThemeContext';
 import { makeStyles } from '../theme/makeStyles';
 import { useApi } from 'hooks/useApi';
+import { OptimisticPost, feedEvents, FEED_POST_STATUS_UPDATED } from 'hooks/feedEvents';
 
 interface PostProps {
-  post: PostType,
+  post: OptimisticPost,
   navigation?: any;
   isNavigable?: boolean;
   animationDelay?: number;
@@ -27,13 +28,78 @@ const Post: React.FC<PostProps> = ({ post, navigation, isNavigable = true, anima
   const opacity = useRef(new Animated.Value(shouldAnimate ? 0 : 1)).current;
   const scale = useRef(new Animated.Value(shouldAnimate ? 0.8 : 1)).current;
 
+  // Retry handler for failed posts
+  const handleRetry = useCallback(async () => {
+    if (!post._optimisticId || post._status !== 'failed') return;
+
+    // Update status to pending
+    feedEvents.emit(FEED_POST_STATUS_UPDATED, {
+      optimisticId: post._optimisticId,
+      status: 'pending',
+    });
+
+    // Retry the post creation
+    try {
+      // Check if it's an event or regular post based on properties
+      const isEvent = (post as any).isEvent || (post as any).startDateTime;
+
+      if (isEvent) {
+        const response = await ApiClient.call(c =>
+          c.event_CreateEvent({
+            title: (post as any).title || '',
+            text: post.text || '',
+            startDateTime: (post as any).startDateTime,
+            endDateTime: (post as any).endDateTime,
+            circleIds: (post.sharedWithCircles || []).map(c => c.id),
+          } as any)
+        );
+        feedEvents.emit(FEED_POST_STATUS_UPDATED, {
+          optimisticId: post._optimisticId,
+          status: 'posted',
+          actualPost: response,
+        });
+      } else {
+        // For regular posts with images, we can't retry because we don't have the image data anymore
+        // Just mark it as failed again
+        if (post.hasImage) {
+          feedEvents.emit(FEED_POST_STATUS_UPDATED, {
+            optimisticId: post._optimisticId,
+            status: 'failed',
+            error: 'Cannot retry posts with images',
+          });
+          return;
+        }
+
+        const response = await ApiClient.call(c =>
+          c.post_CreatePost(
+            post.text || null,
+            (post.sharedWithCircles || []).map(c => c.id),
+            []
+          )
+        );
+        feedEvents.emit(FEED_POST_STATUS_UPDATED, {
+          optimisticId: post._optimisticId,
+          status: 'posted',
+          actualPost: response,
+        });
+      }
+    } catch (error) {
+      console.error('Retry failed:', error);
+      feedEvents.emit(FEED_POST_STATUS_UPDATED, {
+        optimisticId: post._optimisticId,
+        status: 'failed',
+        error: 'Retry failed',
+      });
+    }
+  }, [post]);
+
   useEffect(() => {
     // Reset animation values when shouldAnimate changes
     if (shouldAnimate) {
       translateY.setValue(100);
       opacity.setValue(0);
       scale.setValue(0.8);
-      
+
       // Start the elastic spring animation with staggered delay
       const animateIn = () => {
         // console.log(`Starting animation for post ${post.id}`);
@@ -71,14 +137,14 @@ const Post: React.FC<PostProps> = ({ post, navigation, isNavigable = true, anima
     }
   }, [shouldAnimate, animationDelay, opacity, translateY, scale, post.id]);
 
-  const sharedWithText = post.sharedWithCircles && post.sharedWithCircles.length > 0 
+  const sharedWithText = post.sharedWithCircles && post.sharedWithCircles.length > 0
     ? post.sharedWithCircles.map(c => c.name).join(", ")
     : "you";
 
   const formatDate = (date: Date) => {
     const now = new Date();
     const isCurrentYear = now.getFullYear() === date.getFullYear();
-    
+
     const options: Intl.DateTimeFormatOptions = {
       month: 'numeric',
       day: 'numeric',
@@ -86,11 +152,11 @@ const Post: React.FC<PostProps> = ({ post, navigation, isNavigable = true, anima
       minute: '2-digit',
       hour12: true
     };
-    
+
     if (!isCurrentYear) {
       options.year = 'numeric';
     }
-    
+
     return date.toLocaleString('en-US', options);
   };
 
@@ -383,6 +449,23 @@ const Post: React.FC<PostProps> = ({ post, navigation, isNavigable = true, anima
           <Text style={styles.actionButtonText}>{post.commentCount} comments</Text>
         </TouchableOpacity>
       )}
+      {/* Status indicator */}
+      {post._status && post._status !== 'posted' && (
+        <View style={styles.statusIndicator}>
+          {post._status === 'pending' && (
+            <View style={styles.statusRow}>
+              <ActivityIndicator size="small" color={theme.colors.textMuted} style={styles.statusSpinner} />
+              <Text style={styles.statusText}>Posting...</Text>
+            </View>
+          )}
+          {post._status === 'failed' && (
+            <TouchableOpacity style={styles.statusRow} onPress={handleRetry} activeOpacity={0.7}>
+              <Ionicons name="alert-circle" size={14} color={theme.colors.danger} style={styles.statusIcon} />
+              <Text style={styles.statusTextError}>Failed to post - Retry?</Text>
+            </TouchableOpacity>
+          )}
+        </View>
+      )}
     </Animated.View>
   );
 };
@@ -572,6 +655,41 @@ const useStyles = makeStyles(theme => ({
   },
   twoRoot: { flexDirection:'row', width:'100%', height:220, borderRadius:10, overflow:'hidden', marginBottom:10 },
   twoImage: { flex:1 },
+  statusIndicator: {
+    position: 'absolute',
+    bottom: 8,
+    right: 8,
+    backgroundColor: theme.colors.card,
+    borderRadius: 8,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    shadowColor: theme.colors.shadow,
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.2,
+    shadowRadius: 2,
+    elevation: 2,
+  },
+  statusRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+  },
+  statusText: {
+    fontSize: 11,
+    color: theme.colors.textMuted,
+    fontStyle: 'italic',
+  },
+  statusTextError: {
+    fontSize: 11,
+    color: theme.colors.danger,
+    fontWeight: '500',
+  },
+  statusSpinner: {
+    marginRight: 2,
+  },
+  statusIcon: {
+    marginRight: 2,
+  },
 }));
 
 export default Post;

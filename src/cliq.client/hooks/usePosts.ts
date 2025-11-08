@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { FeedDto, PostDto, CirclePublicDto } from '../services/generated/generatedClient';
 import { ApiClient } from 'services/apiClient';
-import { feedEvents, FEED_POST_CREATED } from './feedEvents';
+import { feedEvents, FEED_POST_CREATED, FEED_POST_STATUS_UPDATED, OptimisticPost } from './feedEvents';
 
 // Logical page size for server paging. Matches server default behavior.
 const FEED_PAGE_SIZE = 20;
@@ -81,7 +81,7 @@ export function usePost(postId: string, includeComments: true) {
 }
 
 export function useFilteredFeed() {
-    const [posts, setPosts] = useState<PostDto[]>([]);
+    const [posts, setPosts] = useState<OptimisticPost[]>([]);
     const [notificationCount, setNotificationCount] = useState<number>(0);
     const [circles, setCircles] = useState<CirclePublicDto[]>([]);
     // Global "initial" loading. Only shows on first load for nicer UX.
@@ -259,8 +259,35 @@ export function useFilteredFeed() {
             });
         });
 
+        const statusSubscription = feedEvents.addListener(FEED_POST_STATUS_UPDATED, ({ optimisticId, status, actualPost, error }) => {
+            setPosts(prevPosts => {
+                return prevPosts.map(post => {
+                    // Find the optimistic post by either matching the optimistic ID or the actual post ID
+                    if (post._optimisticId === optimisticId || post.id === optimisticId) {
+                        if (status === 'posted' && actualPost) {
+                            // Replace optimistic post with actual post, preserving status for display
+                            return {
+                                ...actualPost,
+                                _optimisticId: optimisticId,
+                                _status: 'posted',
+                            } as OptimisticPost;
+                        } else if (status === 'failed') {
+                            // Update status to failed
+                            return {
+                                ...post,
+                                _status: 'failed',
+                                _error: error,
+                            } as OptimisticPost;
+                        }
+                    }
+                    return post;
+                });
+            });
+        });
+
         return () => {
             subscription.remove();
+            statusSubscription.remove();
         };
     }, []);
 
