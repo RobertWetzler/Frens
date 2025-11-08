@@ -16,7 +16,7 @@ if (generatedDev) {
   else if (generatedDev.default) generatedUrl = generatedDev.default;
 }
 
-const DEFAULT_DEV_URL = 'https://localhost:7188';
+const DEFAULT_DEV_URL = 'http://localhost:5188';
 
 const ENV = {
   development: {

@@ -24,7 +24,7 @@ import { useFocusEffect } from '@react-navigation/native';
 import Header from 'components/Header';
 import { useTheme } from '../theme/ThemeContext';
 import { makeStyles } from '../theme/makeStyles';
-import { feedEvents, FEED_POST_CREATED } from 'hooks/feedEvents';
+import { feedEvents, FEED_POST_CREATED, FEED_POST_STATUS_UPDATED, OptimisticPost } from 'hooks/feedEvents';
 
 
 const CreatePostScreen = ({ navigation, route }) => {
@@ -40,6 +40,7 @@ const CreatePostScreen = ({ navigation, route }) => {
   const [endDate, setEndDate] = useState('');
   const [endTime, setEndTime] = useState('');
   const [formError, setFormError] = useState<string | null>(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const { circles, isLoading, error, loadCircles } = useMemberCircles();
   const [showStartDatePicker, setShowStartDatePicker] = useState(false);
   const [showStartTimePicker, setShowStartTimePicker] = useState(false);
@@ -61,7 +62,7 @@ const CreatePostScreen = ({ navigation, route }) => {
   // NOTE: Defer loading/error early returns until after all hooks to preserve hook order
 
   const toggleCircleSelection = (circleId) => {
-    setSelectedCircleIds(prevSelected => 
+    setSelectedCircleIds(prevSelected =>
       prevSelected.includes(circleId)
         ? prevSelected.filter(id => id !== circleId)
         : [...prevSelected, circleId]
@@ -115,6 +116,9 @@ const CreatePostScreen = ({ navigation, route }) => {
   const toTimeStr = (d: Date) => `${pad(d.getHours())}:${pad(d.getMinutes())}`;
 
   const handleSubmit = async () => {
+    // Prevent double-submission
+    if (isSubmitting) return;
+
     setFormError(null);
     const MAX_TOTAL_IMAGES_BYTES = 50 * 1024 * 1024; // 50 MB
     if (!asEvent && images.length > 0) { // validate total image size for posts
@@ -145,59 +149,138 @@ const CreatePostScreen = ({ navigation, route }) => {
         end = parsedEnd;
       }
 
+      setIsSubmitting(true);
+
+      // Create optimistic event
+      const optimisticId = `optimistic-${Date.now()}-${Math.random()}`;
+      const optimisticEvent: OptimisticPost = {
+        id: optimisticId,
+        text: postContent.trim(),
+        date: new Date(),
+        user: { id: '', name: 'You', email: '' }, // Will be filled from context
+        sharedWithCircles: circles.filter(c => selectedCircleIds.includes(c.id)),
+        commentCount: 0,
+        hasImage: false,
+        _optimisticId: optimisticId,
+        _status: 'pending',
+        // Event-specific fields
+        _discriminator: 'Event',
+        title: eventTitle.trim(),
+        startDateTime: start,
+        endDateTime: end,
+        isEvent: true,
+      } as any;
+
+      // Emit optimistic event immediately
+      feedEvents.emit(FEED_POST_CREATED, optimisticEvent);
+
+      // Reset form and navigate back immediately
+      const capturedContent = postContent.trim();
+      const capturedTitle = eventTitle.trim();
+      const capturedCircleIds = [...selectedCircleIds];
+      setPostContent('');
+      setSelectedCircleIds([]);
+      setEventTitle('');
+      setStartDate('');
+      setStartTime('');
+      setEndDate('');
+      setEndTime('');
+      setAsEvent(false);
+      setIsSubmitting(false);
+      navigation.goBack();
+
+      // Make API call in background
       try {
         const response = await ApiClient.call(c =>
           c.event_CreateEvent(new CreateEventDto({
-            title: eventTitle.trim(),
-            text: postContent.trim(),
+            title: capturedTitle,
+            text: capturedContent,
             startDateTime: start,
             endDateTime: end,
-            circleIds: selectedCircleIds,
+            circleIds: capturedCircleIds,
           }))
         );
-        // reset
-        setPostContent('');
-        setSelectedCircleIds([]);
-        setEventTitle('');
-        setStartDate('');
-        setStartTime('');
-        setEndDate('');
-        setEndTime('');
-        setAsEvent(false);
         console.log('Event created:', response);
-        feedEvents.emit(FEED_POST_CREATED, response);
-        navigation.goBack();
+        // Update optimistic event with actual response
+        feedEvents.emit(FEED_POST_STATUS_UPDATED, {
+          optimisticId,
+          status: 'posted',
+          actualPost: response,
+        });
       } catch (error) {
         console.error('Error creating event:', error);
-        setFormError('Failed to create event.');
+        // Update status to failed
+        feedEvents.emit(FEED_POST_STATUS_UPDATED, {
+          optimisticId,
+          status: 'failed',
+          error: 'Failed to create event',
+        });
       }
       return;
     }
 
     // Normal post
     if (!isPostValid()) return;
+
+    setIsSubmitting(true);
+
+    // Create optimistic post
+    const optimisticId = `optimistic-${Date.now()}-${Math.random()}`;
+    const optimisticPost: OptimisticPost = {
+      id: optimisticId,
+      text: postContent.trim() || '',
+      date: new Date(),
+      user: { id: '', name: 'You', email: '' }, // Will be filled from context
+      sharedWithCircles: circles.filter(c => selectedCircleIds.includes(c.id)),
+      commentCount: 0,
+      hasImage: images.length > 0,
+      _optimisticId: optimisticId,
+      _status: 'pending',
+      _localImages: images.map(img => ({ uri: img.uri, fileName: img.fileName, type: img.type, webFile: img.webFile })),
+    } as OptimisticPost;
+
+    // Emit optimistic post immediately
+    feedEvents.emit(FEED_POST_CREATED, optimisticPost);
+
+    // Reset form and navigate back immediately
+    const capturedContent = postContent.trim() || null;
+    const capturedCircleIds = [...selectedCircleIds];
+    const capturedImages = [...images];
+    setPostContent('');
+    setSelectedCircleIds([]);
+    setImages([]);
+    setIsSubmitting(false);
+    navigation.goBack();
+
+    // Make API call in background
     try {
-      // Transform images into FileParameter[] expected by generated client
-      const fileParams = images.map(img => ({
+      const fileParams = capturedImages.map(img => ({
         data: Platform.OS === 'web' ? (img.webFile as any) : { uri: img.uri, name: img.fileName, type: img.type },
         fileName: img.fileName,
       }));
       const response = await ApiClient.call(c =>
-        c.post_CreatePost(postContent.trim() || null, selectedCircleIds, fileParams)
+        c.post_CreatePost(capturedContent, capturedCircleIds, fileParams)
       );
-      setPostContent('');
-      setSelectedCircleIds([]);
-      setImages([]);
-      console.log('Response:', response);
-      feedEvents.emit(FEED_POST_CREATED, response);
-      navigation.goBack();
+      console.log('Post created:', response);
+      // Update optimistic post with actual response
+      feedEvents.emit(FEED_POST_STATUS_UPDATED, {
+        optimisticId,
+        status: 'posted',
+        actualPost: response,
+      });
     } catch (error) {
       console.error('Error submitting post:', error);
+      // Update status to failed
+      feedEvents.emit(FEED_POST_STATUS_UPDATED, {
+        optimisticId,
+        status: 'failed',
+        error: 'Failed to create post',
+      });
     }
   };
 
   const handleCreateNewCircle = () => {
-    navigation.navigate('CreateCircle', { 
+    navigation.navigate('CreateCircle', {
       onReturn: () => navigation.setParams({ refresh: true })
     });  };
 
@@ -214,7 +297,7 @@ const CreatePostScreen = ({ navigation, route }) => {
           rightButton={{
             label: asEvent ? 'Create' : 'Post',
             onPress: handleSubmit,
-            disabled: asEvent ? !isEventValid : !isPostValid()
+            disabled: isSubmitting || (asEvent ? !isEventValid : !isPostValid())
           }}
         />
 
@@ -520,21 +603,21 @@ const CreatePostScreen = ({ navigation, route }) => {
             {formError ? <Text style={styles.formError}>{formError}</Text> : null}
           </View>
         )}
-        
+
         <View style={styles.circleSection}>
           <Text style={styles.circleHeaderTitle}>Share with Circles</Text>
           {selectedCircleIds.length === 0 && (
             <Text style={styles.circleWarning}>Select at least one circle</Text>
           )}
         </View>
-        
+
         <FlatList
           data={circles}
           keyExtractor={(item) => item.id.toString()}
           renderItem={({item}) => (
-            <TouchableOpacity 
+            <TouchableOpacity
               style={[
-                styles.circleItem, 
+                styles.circleItem,
                 selectedCircleIds.includes(item.id) && styles.selectedCircleItem
               ]}
               onPress={() => toggleCircleSelection(item.id)}
@@ -542,22 +625,22 @@ const CreatePostScreen = ({ navigation, route }) => {
             >
               <View style={styles.circleIconContainer}>
                 {item.isShared && (
-                  <Ionicons 
-                    name="people" 
-                    size={20} 
-                    color={selectedCircleIds.includes(item.id) ? theme.colors.primaryContrast : theme.colors.primary} 
+                  <Ionicons
+                    name="people"
+                    size={20}
+                    color={selectedCircleIds.includes(item.id) ? theme.colors.primaryContrast : theme.colors.primary}
                   />
                 )}
                 {!item.isShared && item.isOwner && (
-                  <Ionicons 
-                    name="person" 
-                    size={20} 
-                    color={selectedCircleIds.includes(item.id) ? theme.colors.primaryContrast : theme.colors.primary} 
+                  <Ionicons
+                    name="person"
+                    size={20}
+                    color={selectedCircleIds.includes(item.id) ? theme.colors.primaryContrast : theme.colors.primary}
                   />
                 )}
               </View>
               <Text style={[
-                styles.circleName, 
+                styles.circleName,
                 selectedCircleIds.includes(item.id) && styles.selectedCircleText
               ]}>
                 {item.name}
@@ -569,7 +652,7 @@ const CreatePostScreen = ({ navigation, route }) => {
           )}
           contentContainerStyle={styles.circleList}
           ListFooterComponent={
-            <TouchableOpacity 
+            <TouchableOpacity
               style={styles.createCircleButton}
               onPress={handleCreateNewCircle}
               activeOpacity={0.7}
@@ -582,7 +665,7 @@ const CreatePostScreen = ({ navigation, route }) => {
               </Text>
             </TouchableOpacity>
           }
-        /> 
+        />
       </KeyboardAvoidingView>
     </SafeAreaView>
   );
