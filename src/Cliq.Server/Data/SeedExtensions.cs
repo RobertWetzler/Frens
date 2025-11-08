@@ -119,7 +119,7 @@ public static class SeedExtensions
         await AddFriendshipsAsync(db, devon, new[] { jacob });
 
         // Add some outstanding friend requests
-        await AddFriendshipsAsync(db, robert, [anya, carlyn, mira], FriendshipStatus.Pending);
+        await AddFriendshipsAsync(db, robert, [anya, mira], FriendshipStatus.Pending);
 
         // Create circles
         var climbingCircle = await CreateCircleAsync(db, "Climbing Crew", false, robert, new[] { devon, spencer });
