@@ -28,5 +28,20 @@
                 }
             }
         }
+        ,
+        {
+            "name": "C#: Cliq.Server (no rebuild)",
+            "type": "coreclr",
+            "request": "launch",
+            // Launch prebuilt assembly directly; ensure you've built once so DLL exists.
+            "program": "${workspaceFolder}/src/Cliq.Server/bin/Debug/net8.0/Cliq.Server.dll",
+            "cwd": "${workspaceFolder}/src/Cliq.Server",
+            "env": {
+                "ASPNETCORE_ENVIRONMENT": "Development"
+            },
+            "console": "integratedTerminal",
+            "stopAtEntry": false,
+            "justMyCode": false
+        }
     ]
 }
