@@ -189,7 +189,7 @@ public class EventController : ControllerBase
 
         // Generate unique subscription link
         var subscriptionId = await _eventService.CreateICalSubscriptionAsync(userId);
-        var url = $"https://cliq.server-fly.dev/api/Event/ical/{subscriptionId}";
+        var url = $"https://cliq-server.fly.dev/api/Event/ical/{subscriptionId}";
         return Ok(url);
     }
 

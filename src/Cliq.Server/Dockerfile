@@ -1,4 +1,4 @@
-ARG DOTNET_SDK_VERSION=8.0
+ARG DOTNET_SDK_VERSION=9.0
 ARG DOTNET_OS_VERSION=-alpine
 
 # ---------- build stage ----------
