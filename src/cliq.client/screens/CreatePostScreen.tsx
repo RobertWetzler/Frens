@@ -24,6 +24,7 @@ import { useFocusEffect } from '@react-navigation/native';
 import Header from 'components/Header';
 import { useTheme } from '../theme/ThemeContext';
 import { makeStyles } from '../theme/makeStyles';
+import { feedEvents, FEED_POST_CREATED } from 'hooks/feedEvents';
 
 
 const CreatePostScreen = ({ navigation, route }) => {
@@ -164,6 +165,7 @@ const CreatePostScreen = ({ navigation, route }) => {
         setEndTime('');
         setAsEvent(false);
         console.log('Event created:', response);
+        feedEvents.emit(FEED_POST_CREATED, response);
         navigation.goBack();
       } catch (error) {
         console.error('Error creating event:', error);
@@ -187,6 +189,7 @@ const CreatePostScreen = ({ navigation, route }) => {
       setSelectedCircleIds([]);
       setImages([]);
       console.log('Response:', response);
+      feedEvents.emit(FEED_POST_CREATED, response);
       navigation.goBack();
     } catch (error) {
       console.error('Error submitting post:', error);

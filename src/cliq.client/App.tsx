@@ -10,7 +10,7 @@ import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import * as Linking from 'expo-linking';
 
 // Screens
-import HomeScreen from './screens/HomeSreen';
+import HomeScreen from './screens/HomeScreen';
 import CommentSection from './components/CommentSection';
 import GroupsScreen from './screens/GroupScreen';
 import CirclesScreen from './screens/CirclesScreen';

@@ -48,7 +48,7 @@ Checklist
 | `screens/CreateCircleScreen.tsx` | Screen | DONE | Form inputs, toggles, list themed | primary, textPrimary, textMuted, inputBorder |
 | `screens/CreatePostScreen.tsx` | Screen | DONE | Themed: inputs, circle list, switch, icons | primary, textSecondary, textMuted, separator, shadow |
 | `screens/ProfileScreen.tsx` | Screen | DONE | Themed: buttons, states, avatar, refresh | primary, accent, textMuted, separator |
-| `screens/HomeSreen.tsx` | Screen | DONE | Themed: gradient header, empty state, share btn | gradient.accent, primary, textMuted |
+| `screens/HomeScreen.tsx` | Screen | DONE | Themed: gradient header, empty state, share btn | gradient.accent, primary, textMuted |
 | `screens/CalendarScreen.tsx` | Screen | DONE | Themed: event color + nav icons | primary |
 | `screens/CirclesScreen.tsx` | Screen | DONE | Themed: menus, badges, modals, members list | primary, separator, textMuted |
 | `screens/NotificationScreen.tsx` | Screen | DONE | Themed: list items, buttons, empty state | primary, separator, textMuted |

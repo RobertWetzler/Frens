@@ -154,9 +154,6 @@ export class ApiClient {
                     this.signalAuthFailure();
                     throw error;
                 }
-                if (error.status == 201) {
-                    return;
-                }
             }
             
             throw error;
