@@ -687,7 +687,7 @@ export class Client {
         return Promise.resolve<EventDto[]>(null as any);
     }
 
-    event_GetMyEvents(page: number | undefined, pageSize: number | undefined, signal?: AbortSignal): Promise<EventDto[]> {
+    event_GetMyEvents(page: number | undefined, pageSize: number | undefined, signal?: AbortSignal): Promise<MyEventsResponse> {
         let url_ = this.baseUrl + "/api/Event/my-events?";
         if (page === null)
             throw new Error("The parameter 'page' cannot be null.");
@@ -712,21 +712,14 @@ export class Client {
         });
     }
 
-    protected processEvent_GetMyEvents(response: Response): Promise<EventDto[]> {
+    protected processEvent_GetMyEvents(response: Response): Promise<MyEventsResponse> {
         const status = response.status;
         let _headers: any = {}; if (response.headers && response.headers.forEach) { response.headers.forEach((v: any, k: any) => _headers[k] = v); };
         if (status === 200) {
             return response.text().then((_responseText) => {
             let result200: any = null;
             let resultData200 = _responseText === "" ? null : JSON.parse(_responseText, this.jsonParseReviver);
-            if (Array.isArray(resultData200)) {
-                result200 = [] as any;
-                for (let item of resultData200)
-                    result200!.push(EventDto.fromJS(item));
-            }
-            else {
-                result200 = <any>null;
-            }
+            result200 = MyEventsResponse.fromJS(resultData200);
             return result200;
             });
         } else if (status !== 200 && status !== 204) {
@@ -734,7 +727,7 @@ export class Client {
             return throwException("An unexpected server error occurred.", status, _responseText, _headers);
             });
         }
-        return Promise.resolve<EventDto[]>(null as any);
+        return Promise.resolve<MyEventsResponse>(null as any);
     }
 
     event_CreateEvent(createEventDto: CreateEventDto, signal?: AbortSignal): Promise<EventDto> {
@@ -2720,6 +2713,54 @@ export interface IEventRsvpDto {
     responseDate?: Date;
     notes?: string | undefined;
     user?: UserDto;
+}
+
+export class MyEventsResponse implements IMyEventsResponse {
+    events?: EventDto[];
+    calendarSubscriptionUrl?: string | undefined;
+
+    constructor(data?: IMyEventsResponse) {
+        if (data) {
+            for (var property in data) {
+                if (data.hasOwnProperty(property))
+                    (<any>this)[property] = (<any>data)[property];
+            }
+        }
+    }
+
+    init(_data?: any) {
+        if (_data) {
+            if (Array.isArray(_data["events"])) {
+                this.events = [] as any;
+                for (let item of _data["events"])
+                    this.events!.push(EventDto.fromJS(item));
+            }
+            this.calendarSubscriptionUrl = _data["calendarSubscriptionUrl"];
+        }
+    }
+
+    static fromJS(data: any): MyEventsResponse {
+        data = typeof data === 'object' ? data : {};
+        let result = new MyEventsResponse();
+        result.init(data);
+        return result;
+    }
+
+    toJSON(data?: any) {
+        data = typeof data === 'object' ? data : {};
+        if (Array.isArray(this.events)) {
+            data["events"] = [];
+            for (let item of this.events)
+                data["events"].push(item.toJSON());
+        }
+        data["calendarSubscriptionUrl"] = this.calendarSubscriptionUrl;
+        return data;
+    }
+}
+
+export interface IMyEventsResponse {
+    events?: EventDto[];
+    calendarSubscriptionUrl?: string | undefined;
 }
 
 export class CreateEventDto implements ICreateEventDto {

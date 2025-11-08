@@ -21,6 +21,7 @@ public interface IEventService
     Task<string> GenerateICalAsync(List<EventDto> events);
     Task<Guid> CreateICalSubscriptionAsync(Guid userId);
     Task<string> GenerateICalForSubscriptionAsync(Guid subscriptionId);
+    Task<string?> GetICalSubscriptionUrlAsync(Guid userId);
 }
 
 public class EventService : IEventService
@@ -448,6 +449,22 @@ public class EventService : IEventService
         var events = await GetAllEventsForUserAsync(userId);
         
         return await GenerateICalAsync(events);
+    }
+
+    public async Task<string?> GetICalSubscriptionUrlAsync(Guid userId)
+    {
+        var existingId = await _dbContext.CalendarSubscription
+            .Where(c => c.UserId == userId)
+            .Select(c => c.Id)
+            .FirstOrDefaultAsync();
+
+        if (existingId == Guid.Empty)
+        {
+            return null;
+        }
+
+        // TODO: Move base URL to configuration if needed
+        return $"https://cliq.server-fly.dev/api/Event/ical/{existingId}";
     }
 
 }

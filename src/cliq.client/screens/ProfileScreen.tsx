@@ -178,7 +178,7 @@ const ProfileScreen: React.FC<ProfileScreenProps> = ({ route, navigation }) => {
                             <Ionicons name="share-outline" size={24} color={theme.colors.primary} />
                         </TouchableOpacity>
                         {isOwnProfile && (
-                            <TouchableOpacity style={styles.iconButton} onPress={() => navigation.navigate('EditProfile')}>
+                            <TouchableOpacity style={styles.iconButton} onPress={() => navigation.navigate('Settings')}>
                                 <Ionicons name="settings-outline" size={24} color={theme.colors.primary} />
                             </TouchableOpacity>
                         )}

@@ -16,6 +16,7 @@ import GroupsScreen from './screens/GroupScreen';
 import CirclesScreen from './screens/CirclesScreen';
 import CalendarScreen from './screens/CalendarScreen';
 import ProfileScreen from './screens/ProfileScreen';
+import SettingsScreen from './screens/SettingsScreen';
 import SignInScreen from './screens/SignInScreen';
 import CreatePostScreen from './screens/CreatePostScreen';
 import { ActivityIndicator, SafeAreaView } from 'react-native';
@@ -38,6 +39,7 @@ type RootStackParamList = {
   AddUsersToCircle: { circleId: string; circleName: string; existingUserIds: string[] };
   Profile: { userId: string };
   Notifications: undefined;
+  Settings: undefined;
 };
 
 type TabParamList = {
@@ -368,6 +370,15 @@ const MainApp = () => {
               component={NotificationsScreen} 
               options={{ 
                 title: 'Notifications',
+                headerShown: false,
+                headerBackTitleVisible: false,
+              }}
+            />
+            <Stack.Screen 
+              name="Settings" 
+              component={SettingsScreen} 
+              options={{ 
+                title: 'Settings',
                 headerShown: false,
                 headerBackTitleVisible: false,
               }}

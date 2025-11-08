@@ -3,6 +3,7 @@ using System.Threading.Tasks;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.AspNetCore.Identity;
 using Cliq.Server.Models;
+using Cliq.Server.Data;
 
 namespace Cliq.Server.Utilities;
 
@@ -24,6 +25,9 @@ public static class CliTools
             case "reset-password":
                 await HandleResetPasswordAsync(args, rootServices);
                 return true;
+            case "remove-calendar-subscription":
+                await HandleRemoveCalendarSubscriptionAsync(args, rootServices);
+                return true;
             case "help":
             case "--help":
             case "-h":
@@ -37,10 +41,12 @@ public static class CliTools
     private static void PrintHelp()
     {
         Console.WriteLine("CLI Utility Commands:");
-        Console.WriteLine("  reset-password <email> <NewPassword>   Reset a user's password (clears lockout state).");
+        Console.WriteLine("  reset-password <email> <NewPassword>            Reset a user's password (clears lockout state).");
+        Console.WriteLine("  remove-calendar-subscription <email>             Delete any existing iCal subscription(s) for a user.");
         Console.WriteLine();
         Console.WriteLine("Examples:");
         Console.WriteLine("  dotnet run -- reset-password user@example.com 'TempPass123!!'");
+        Console.WriteLine("  dotnet run -- remove-calendar-subscription user@example.com");
     }
 
     private static async Task HandleResetPasswordAsync(string[] args, IServiceProvider rootServices)
@@ -87,5 +93,38 @@ public static class CliTools
             }
             Console.WriteLine("No changes were applied if errors are present.");
         }
+    }
+
+    private static async Task HandleRemoveCalendarSubscriptionAsync(string[] args, IServiceProvider rootServices)
+    {
+        if (args.Length < 2)
+        {
+            Console.WriteLine("Usage: dotnet run -- remove-calendar-subscription <email>");
+            return;
+        }
+
+        var email = args[1];
+
+        using var scope = rootServices.CreateScope();
+        var userManager = scope.ServiceProvider.GetRequiredService<UserManager<User>>();
+        var dbContext = scope.ServiceProvider.GetRequiredService<CliqDbContext>();
+
+        var user = await userManager.FindByEmailAsync(email);
+        if (user == null)
+        {
+            Console.WriteLine($"User not found: {email}");
+            return;
+        }
+
+        var subs = dbContext.CalendarSubscription.Where(c => c.UserId == user.Id).ToList();
+        if (subs.Count == 0)
+        {
+            Console.WriteLine("No calendar subscriptions found for user.");
+            return;
+        }
+
+        dbContext.CalendarSubscription.RemoveRange(subs);
+        await dbContext.SaveChangesAsync();
+        Console.WriteLine($"Removed {subs.Count} calendar subscription(s) for {email}.");
     }
 }

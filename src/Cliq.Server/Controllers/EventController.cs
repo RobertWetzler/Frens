@@ -52,7 +52,7 @@ public class EventController : ControllerBase
     }
 
     [HttpGet("my-events")]
-    public async Task<ActionResult<List<EventDto>>> GetMyEvents(int page = 1, int pageSize = 20)
+    public async Task<ActionResult<MyEventsResponse>> GetMyEvents(int page = 1, int pageSize = 20)
     {
         if (!AuthUtils.TryGetUserIdFromToken(HttpContext, out var userId))
         {
@@ -60,7 +60,12 @@ public class EventController : ControllerBase
         }
 
         var events = await _eventService.GetEventsForUserAsync(userId, page, pageSize);
-        return Ok(events);
+        var subscriptionUrl = await _eventService.GetICalSubscriptionUrlAsync(userId);
+        return Ok(new MyEventsResponse
+        {
+            Events = events,
+            CalendarSubscriptionUrl = subscriptionUrl
+        });
     }
 
     [HttpPost]
@@ -184,7 +189,7 @@ public class EventController : ControllerBase
 
         // Generate unique subscription link
         var subscriptionId = await _eventService.CreateICalSubscriptionAsync(userId);
-        var url = $"https://cliq.server-fly.dev/api/ical/{subscriptionId}";
+        var url = $"https://cliq.server-fly.dev/api/Event/ical/{subscriptionId}";
         return Ok(url);
     }
 
@@ -217,4 +222,10 @@ public class EventController : ControllerBase
             return StatusCode(500, "An error occurred while generating the calendar file");
         }
     }
+}
+
+public class MyEventsResponse
+{
+    public required List<EventDto> Events { get; set; }
+    public string? CalendarSubscriptionUrl { get; set; }
 }
