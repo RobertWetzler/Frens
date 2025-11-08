@@ -16,8 +16,133 @@ export default function SignInScreen({ route, navigation }: SignInScreenProps) {
     const fadeAnim = useRef(new Animated.Value(1)).current; // Initial opacity is 1 (visible)
     const scaleAnim = useRef(new Animated.Value(1)).current; // Initial scale is 1 (normal size)
     const blurAnim = useRef(new Animated.Value(0)).current; // Initial blur is 0 (no blur)
+    
+    // Crazy shake animation for auth errors
+    const screenShakeX = useRef(new Animated.Value(0)).current;
+    const screenShakeY = useRef(new Animated.Value(0)).current;
+    const screenRotate = useRef(new Animated.Value(0)).current;
+    
+    // Sad emoji effects - create multiple flying emojis
+    const [sadEmojis, setSadEmojis] = React.useState<Array<{
+        id: number;
+        leftPosition: number;
+        animValue: Animated.Value;
+        scaleAnim: Animated.Value;
+        rotateAnim: Animated.Value;
+        emoji: string;
+    }>>([]);
+    
     const { theme, name: themeName } = useTheme();
     const styles = useStyles();
+
+    const triggerSadEmojis = () => {
+        // Array of sad emojis to choose from
+        const sadEmojiList = ['😢', '😭', '😞', '😔', '😿', '💔', '😩', '🥺', '😣', '😖'];
+        
+        // Create 8-12 random flying emojis
+        const numEmojis = Math.floor(Math.random() * 5) + 8; // 8-12 emojis
+        const newEmojis = [];
+        
+        for (let i = 0; i < numEmojis; i++) {
+            const leftPosition = Math.random() * 100; // Random position 0-100%
+            const animValue = new Animated.Value(-20); // Start above screen
+            const scaleAnim = new Animated.Value(0.5); // Start small
+            const rotateAnim = new Animated.Value(0); // Start with no rotation
+            const delay = Math.random() * 500; // Random delay 0-500ms
+            const emoji = sadEmojiList[Math.floor(Math.random() * sadEmojiList.length)];
+            
+            newEmojis.push({
+                id: Date.now() + i,
+                leftPosition,
+                animValue,
+                scaleAnim,
+                rotateAnim,
+                emoji,
+            });
+            
+            // Animate the emoji flying down while growing and rotating
+            Animated.parallel([
+                // Fall down
+                Animated.sequence([
+                    Animated.delay(delay),
+                    Animated.timing(animValue, {
+                        toValue: 120, // Fall past the screen
+                        duration: 1500 + Math.random() * 1000, // Random speed 1500-2500ms
+                        useNativeDriver: true,
+                    }),
+                ]),
+                // Grow in size
+                Animated.sequence([
+                    Animated.delay(delay),
+                    Animated.timing(scaleAnim, {
+                        toValue: 1.5 + Math.random() * 1.5, // Grow to 1.5x-3x size
+                        duration: 1000 + Math.random() * 500,
+                        useNativeDriver: true,
+                    }),
+                ]),
+                // Rotate
+                Animated.sequence([
+                    Animated.delay(delay),
+                    Animated.timing(rotateAnim, {
+                        toValue: 360 * (Math.random() > 0.5 ? 1 : -1), // Full rotation, random direction
+                        duration: 1500 + Math.random() * 1000,
+                        useNativeDriver: true,
+                    }),
+                ]),
+            ]).start();
+        }
+        
+        setSadEmojis(newEmojis);
+        
+        // Clear emojis after animation
+        setTimeout(() => {
+            setSadEmojis([]);
+        }, 3500);
+    };
+
+    const handleAuthError = () => {
+        // Reset shake values
+        screenShakeX.setValue(0);
+        screenShakeY.setValue(0);
+        screenRotate.setValue(0);
+        
+        // Trigger sad emojis
+        triggerSadEmojis();
+        
+        // Create an even crazier shake for the whole screen
+        Animated.parallel([
+            // Diagonal shake pattern
+            Animated.sequence([
+                Animated.timing(screenShakeX, { toValue: 15, duration: 40, useNativeDriver: true }),
+                Animated.timing(screenShakeX, { toValue: -15, duration: 40, useNativeDriver: true }),
+                Animated.timing(screenShakeX, { toValue: 12, duration: 40, useNativeDriver: true }),
+                Animated.timing(screenShakeX, { toValue: -12, duration: 40, useNativeDriver: true }),
+                Animated.timing(screenShakeX, { toValue: 8, duration: 40, useNativeDriver: true }),
+                Animated.timing(screenShakeX, { toValue: -8, duration: 40, useNativeDriver: true }),
+                Animated.timing(screenShakeX, { toValue: 4, duration: 40, useNativeDriver: true }),
+                Animated.timing(screenShakeX, { toValue: -4, duration: 40, useNativeDriver: true }),
+                Animated.timing(screenShakeX, { toValue: 0, duration: 40, useNativeDriver: true }),
+            ]),
+            Animated.sequence([
+                Animated.timing(screenShakeY, { toValue: -12, duration: 45, useNativeDriver: true }),
+                Animated.timing(screenShakeY, { toValue: 12, duration: 45, useNativeDriver: true }),
+                Animated.timing(screenShakeY, { toValue: -10, duration: 45, useNativeDriver: true }),
+                Animated.timing(screenShakeY, { toValue: 10, duration: 45, useNativeDriver: true }),
+                Animated.timing(screenShakeY, { toValue: -6, duration: 45, useNativeDriver: true }),
+                Animated.timing(screenShakeY, { toValue: 6, duration: 45, useNativeDriver: true }),
+                Animated.timing(screenShakeY, { toValue: -3, duration: 45, useNativeDriver: true }),
+                Animated.timing(screenShakeY, { toValue: 3, duration: 45, useNativeDriver: true }),
+                Animated.timing(screenShakeY, { toValue: 0, duration: 45, useNativeDriver: true }),
+            ]),
+            Animated.sequence([
+                Animated.timing(screenRotate, { toValue: 3, duration: 80, useNativeDriver: true }),
+                Animated.timing(screenRotate, { toValue: -3, duration: 80, useNativeDriver: true }),
+                Animated.timing(screenRotate, { toValue: 2, duration: 80, useNativeDriver: true }),
+                Animated.timing(screenRotate, { toValue: -2, duration: 80, useNativeDriver: true }),
+                Animated.timing(screenRotate, { toValue: 0, duration: 80, useNativeDriver: true }),
+            ]),
+        ]).start();
+    };
 
     const handleExpandBlobs = () => {
         animateToExpanded(); // Use context method
@@ -93,7 +218,54 @@ export default function SignInScreen({ route, navigation }: SignInScreenProps) {
     return (
         <View style={styles.container}>
             <StatusBar backgroundColor={theme.colors.card} />
-            <View style={styles.contentContainer}>
+            
+            {/* Flying sad emojis overlay */}
+            {sadEmojis.map((emojiItem) => (
+                <Animated.View
+                    key={emojiItem.id}
+                    style={[
+                        styles.emojiContainer,
+                        {
+                            left: `${emojiItem.leftPosition}%`,
+                            transform: [
+                                {
+                                    translateY: emojiItem.animValue.interpolate({
+                                        inputRange: [-20, 120],
+                                        outputRange: ['-20%', '120%'],
+                                    }),
+                                },
+                                { scale: emojiItem.scaleAnim },
+                                {
+                                    rotate: emojiItem.rotateAnim.interpolate({
+                                        inputRange: [-360, 360],
+                                        outputRange: ['-360deg', '360deg'],
+                                    }),
+                                },
+                            ],
+                        },
+                    ]}
+                >
+                    <Text style={styles.emoji}>{emojiItem.emoji}</Text>
+                </Animated.View>
+            ))}
+            
+            <Animated.View 
+                style={[
+                    styles.contentContainer,
+                    {
+                        transform: [
+                            { translateX: screenShakeX },
+                            { translateY: screenShakeY },
+                            {
+                                rotate: screenRotate.interpolate({
+                                    inputRange: [-3, 3],
+                                    outputRange: ['-3deg', '3deg'],
+                                }),
+                            },
+                        ],
+                    },
+                ]}
+            >
                 <Animated.View
                     style={[
                         styles.animatedContent,
@@ -145,11 +317,12 @@ export default function SignInScreen({ route, navigation }: SignInScreenProps) {
                                 navigation={navigation}
                                 onPress={handleExpandBlobs}
                                 onCancelPress={handleShrinkBlobs}
+                                onAuthError={handleAuthError}
                             />
                         </View>
                     </View>
                 </Animated.View>
-            </View>
+            </Animated.View>
         </View>
     );
 }
@@ -160,6 +333,19 @@ const useStyles = makeStyles(theme => ({
         backgroundColor: 'transparent',
         padding: 20,
         zIndex: 1,
+    },
+    emojiContainer: {
+        position: 'absolute',
+        top: 0,
+        zIndex: 999,
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
+    emoji: {
+        fontSize: 48,
+        textShadowColor: 'rgba(0, 0, 0, 0.3)',
+        textShadowOffset: { width: 0, height: 4 },
+        textShadowRadius: 8,
     },
     contentContainer: {
         flex: 1,
