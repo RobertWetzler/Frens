@@ -1,3 +1,4 @@
+// Home feed screen. Now supports infinite scroll and pull-to-refresh
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { Text, View, FlatList, SafeAreaView, ActivityIndicator, TouchableOpacity, Animated } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
@@ -20,6 +21,7 @@ import { makeStyles } from '../theme/makeStyles';
 
 
 const HomeScreen = ({ navigation }) => {
+    // Extended hook data includes pagination + refresh states
     const {
         posts,
         circles,
@@ -110,10 +112,12 @@ const HomeScreen = ({ navigation }) => {
         setIsFilterExpanded(false);
     };
 
+    // Toggle filter dropdown
     const handleToggleFilterExpanded = () => {
         setIsFilterExpanded(!isFilterExpanded);
     };
 
+    // Guarded onEndReached handler so we don't fire overlapping requests
     const handleLoadMore = useCallback(() => {
         if (!hasMore || isLoading || isRefreshing || isLoadingMore || isFiltering || isPostTransition) {
             return;
@@ -276,12 +280,13 @@ const HomeScreen = ({ navigation }) => {
                 )}
                 scrollEventThrottle={16}
                 scrollEnabled={!isFilterExpanded} // Disable scrolling when filter dropdown is expanded
-                // Add these props for better UX
+                // Pull-to-refresh uses hook's refresh state
                 refreshing={isRefreshing}
                 onRefresh={() => {
-                    // Implement pull-to-refresh functionality
+                    // Reload first page while keeping filters applied
                     loadFeed();
                 }}
+                // Infinite scroll
                 onEndReached={handleLoadMore}
                 onEndReachedThreshold={0.4}
                 ListEmptyComponent={() => {
@@ -300,6 +305,7 @@ const HomeScreen = ({ navigation }) => {
                         </View>
                     );
                 }}
+                // Footer shows loading-more spinner or end-of-feed note, plus share CTA
                 ListFooterComponent={() => (
                     <View style={styles.footerContainer}>
                         {isLoadingMore && (

@@ -2,10 +2,17 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import { FeedDto, PostDto, CirclePublicDto } from '../services/generated/generatedClient';
 import { ApiClient } from 'services/apiClient';
 
+// Logical page size for server paging. Matches server default behavior.
 const FEED_PAGE_SIZE = 20;
 
+// Fetch modes help control UX state transitions (spinners/animations)
+// - initial: first page on screen mount
+// - refresh: pull-to-refresh reloading page 1
+// - filter: updating the circle filter (animate-out/animate-in)
+// - append: infinite scroll next page
 type FeedFetchMode = 'initial' | 'refresh' | 'filter' | 'append';
 
+// Options for a single fetch call
 interface FeedFetchOptions {
     page: number;
     circleIdsOverride?: string[];
@@ -51,6 +58,7 @@ export function usePost(postId: string, includeComments: true) {
     const loadPost = async () => {
         try {
             setIsLoading(true);
+            // Server requires explicit includeImageUrl flag; keep it false here to minimize payload
             const post = await ApiClient.call(c => c.post_GetPost(postId, includeComments, false));
             console.log("Loaded post with result: " + post);
             setPost(post);
@@ -75,18 +83,27 @@ export function useFilteredFeed() {
     const [posts, setPosts] = useState<PostDto[]>([]);
     const [notificationCount, setNotificationCount] = useState<number>(0);
     const [circles, setCircles] = useState<CirclePublicDto[]>([]);
+    // Global "initial" loading. Only shows on first load for nicer UX.
     const [isLoading, setIsLoading] = useState(true);
+    // Pull-to-refresh state (does not block scroll or show global spinner)
     const [isRefreshing, setIsRefreshing] = useState(false);
+    // Circle-filter update state (drives subtle "updating feed" label under filter)
     const [isFiltering, setIsFiltering] = useState(false);
+    // Tracks whether we've passed the very first load (controls initial animations)
     const [isInitialLoad, setIsInitialLoad] = useState(true);
+    // Flag used by Home to re-trigger entrance animations when filters change
     const [isPostTransition, setIsPostTransition] = useState(false);
+    // Infinite-scroll state
     const [isLoadingMore, setIsLoadingMore] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const [selectedCircleIds, setSelectedCircleIds] = useState<string[]>([]);
+    // Paging cursor (1-based) and whether more data is available
     const [page, setPage] = useState(1);
     const [hasMore, setHasMore] = useState(true);
+    // Timer holder for filter transition enter animation delay
     const filterAnimationTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
+    // Make sure we don't leave dangling timeouts between rapid filter changes/unmounts
     const clearPendingFilterAnimation = useCallback(() => {
         if (filterAnimationTimeoutRef.current) {
             clearTimeout(filterAnimationTimeoutRef.current);
@@ -94,6 +111,7 @@ export function useFilteredFeed() {
         }
     }, []);
 
+    // Core fetch function shared by initial, refresh, filter, and append flows
     const fetchFeed = useCallback(async ({ page: pageToLoad, circleIdsOverride, mode }: FeedFetchOptions) => {
         const targetCircleIds = circleIdsOverride ?? selectedCircleIds;
         const isAppendMode = mode === 'append';
@@ -118,6 +136,7 @@ export function useFilteredFeed() {
                 const circleIdsParam = targetCircleIds.join(',');
                 feedResponse = await ApiClient.call(c => c.post_GetFilteredFeed(pageToLoad, FEED_PAGE_SIZE, circleIdsParam));
             } else {
+                // Unfiltered path uses paging endpoint for infinite scroll
                 feedResponse = await ApiClient.call(c => c.post_GetFeedWithPaging(pageToLoad, FEED_PAGE_SIZE));
             }
 
@@ -129,6 +148,7 @@ export function useFilteredFeed() {
             setPage(pageToLoad);
 
             if (isAppendMode) {
+                // Append while de-duplicating by id (guards against race conditions)
                 setPosts(prevPosts => {
                     if (!prevPosts || prevPosts.length === 0) {
                         return incomingPosts;
@@ -144,6 +164,7 @@ export function useFilteredFeed() {
                     return merged;
                 });
             } else if (isFilterMode) {
+                // Filter transition: animate out old posts, then set new posts slightly later
                 clearPendingFilterAnimation();
                 setPosts([]);
                 filterAnimationTimeoutRef.current = setTimeout(() => {
@@ -183,10 +204,12 @@ export function useFilteredFeed() {
         }
     }, [selectedCircleIds, isInitialLoad, clearPendingFilterAnimation]);
 
+    // Exposed refresh: reload first page, keep current filters, show pull-to-refresh UI
     const loadFeed = useCallback(async () => {
         await fetchFeed({ page: 1, mode: 'refresh' });
     }, [fetchFeed]);
 
+    // Update current circle filter and animate feed transition
     const updateFilter = useCallback((circleIds: string[]) => {
         setHasMore(true);
         setPage(1);
@@ -194,6 +217,7 @@ export function useFilteredFeed() {
         fetchFeed({ page: 1, circleIdsOverride: circleIds, mode: 'filter' });
     }, [fetchFeed]);
 
+    // Clear filter and animate feed transition back to unfiltered
     const clearFilter = useCallback(() => {
         setHasMore(true);
         setPage(1);
@@ -201,6 +225,7 @@ export function useFilteredFeed() {
         fetchFeed({ page: 1, circleIdsOverride: [], mode: 'filter' });
     }, [fetchFeed]);
 
+    // Infinite scroll trigger: load the next page if not already busy and if more exists
     const loadMore = useCallback(() => {
         if (isLoading || isLoadingMore || isFiltering || isPostTransition || isRefreshing || !hasMore) {
             return;
@@ -209,6 +234,7 @@ export function useFilteredFeed() {
         fetchFeed({ page: nextPage, mode: 'append' });
     }, [fetchFeed, hasMore, isFiltering, isLoading, isLoadingMore, isPostTransition, isRefreshing, page]);
 
+    // Initial load: fetch first page with initial spinner
     useEffect(() => {
         if (!isInitialLoad) {
             return;
@@ -216,23 +242,24 @@ export function useFilteredFeed() {
         fetchFeed({ page: 1, mode: 'initial' });
     }, [fetchFeed, isInitialLoad]);
 
+    // Cleanup: ensure no timer is left running after unmount
     useEffect(() => {
         return () => {
             clearPendingFilterAnimation();
         };
     }, [clearPendingFilterAnimation]);
 
-    return { 
-        posts, 
+    return {
+        posts,
         circles,
-        notificationCount, 
+        notificationCount,
         isLoading: isLoading && isInitialLoad, // Only show loading spinner on initial load
         isRefreshing,
         isFiltering,
         isPostTransition, // New state for post transition animations
         isLoadingMore,
         hasMore,
-        error, 
+        error,
         loadFeed, // Manual refresh skips global loading state
         loadMore,
         selectedCircleIds,
