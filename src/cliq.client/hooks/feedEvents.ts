@@ -10,6 +10,7 @@ export interface OptimisticPost extends PostDto {
     _optimisticId?: string;
     _status?: PostStatus;
     _error?: string;
+    _localImages?: Array<{ uri: string; fileName: string; type: string; webFile?: File }>;
 }
 
 type FeedEventsMap = {

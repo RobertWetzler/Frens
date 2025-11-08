@@ -266,17 +266,25 @@ export function useFilteredFeed() {
                     if (post._optimisticId === optimisticId || post.id === optimisticId) {
                         if (status === 'posted' && actualPost) {
                             // Replace optimistic post with actual post, preserving status for display
+                            // Remove _localImages since we now have server images
                             return {
                                 ...actualPost,
                                 _optimisticId: optimisticId,
                                 _status: 'posted',
                             } as OptimisticPost;
                         } else if (status === 'failed') {
-                            // Update status to failed
+                            // Update status to failed, keep local images for retry/display
                             return {
                                 ...post,
                                 _status: 'failed',
                                 _error: error,
+                            } as OptimisticPost;
+                        } else if (status === 'pending') {
+                            // Handle retry: reset to pending
+                            return {
+                                ...post,
+                                _status: 'pending',
+                                _error: undefined,
                             } as OptimisticPost;
                         }
                     }

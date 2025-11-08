@@ -164,6 +164,7 @@ const CreatePostScreen = ({ navigation, route }) => {
         _optimisticId: optimisticId,
         _status: 'pending',
         // Event-specific fields
+        _discriminator: 'Event',
         title: eventTitle.trim(),
         startDateTime: start,
         endDateTime: end,
@@ -235,6 +236,7 @@ const CreatePostScreen = ({ navigation, route }) => {
       hasImage: images.length > 0,
       _optimisticId: optimisticId,
       _status: 'pending',
+      _localImages: images.map(img => ({ uri: img.uri, fileName: img.fileName, type: img.type, webFile: img.webFile })),
     } as OptimisticPost;
 
     // Emit optimistic post immediately
