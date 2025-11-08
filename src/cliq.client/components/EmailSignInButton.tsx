@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from 'react'
-import { View, Pressable, Text, StyleSheet, TextInput, Modal } from 'react-native'
+import { View, Pressable, Text, StyleSheet, TextInput, Modal, Animated } from 'react-native'
 import { EmailAuthResponse, useEmailAuth } from '../hooks/useEmailAuth'
 import { DateInput } from './DateInput'
 import { TermsOfService } from './TermsOfService'
@@ -14,9 +14,10 @@ interface EmailSignInButtonProps {
     navigation?: any;
     onPress?: () => void;
     onCancelPress?: () => void;
+    onAuthError?: () => void;
 }
 
-export const EmailSignInButton = ({ returnTo, navigation, onPress, onCancelPress }: EmailSignInButtonProps) => {
+export const EmailSignInButton = ({ returnTo, navigation, onPress, onCancelPress, onAuthError }: EmailSignInButtonProps) => {
     const { theme } = useTheme();
     const styles = useStyles();
     const { login } = useAuth();
@@ -34,8 +35,53 @@ export const EmailSignInButton = ({ returnTo, navigation, onPress, onCancelPress
     const [submitError, setSubmitError] = useState<Error>(null)
     const [tosAccepted, setTosAccepted] = useState(false)
     const [showTos, setShowTos] = useState(false)
+    
+    // Animation refs for shake effect
+    const shakeAnim = useRef(new Animated.Value(0)).current
+    const rotateAnim = useRef(new Animated.Value(0)).current
+    const scaleAnim = useRef(new Animated.Value(1)).current
 
     const passwordInputRef = useRef<TextInput>(null)
+
+    // Crazy shake animation for failed authentication
+    const triggerCrazyShake = () => {
+        // Reset animations
+        shakeAnim.setValue(0)
+        rotateAnim.setValue(0)
+        scaleAnim.setValue(1)
+        
+        // Create a crazy shake sequence with rotation and scaling
+        Animated.sequence([
+            // First: rapid horizontal shake with rotation
+            Animated.parallel([
+                Animated.sequence([
+                    Animated.timing(shakeAnim, { toValue: 10, duration: 50, useNativeDriver: true }),
+                    Animated.timing(shakeAnim, { toValue: -10, duration: 50, useNativeDriver: true }),
+                    Animated.timing(shakeAnim, { toValue: 10, duration: 50, useNativeDriver: true }),
+                    Animated.timing(shakeAnim, { toValue: -10, duration: 50, useNativeDriver: true }),
+                    Animated.timing(shakeAnim, { toValue: 8, duration: 50, useNativeDriver: true }),
+                    Animated.timing(shakeAnim, { toValue: -8, duration: 50, useNativeDriver: true }),
+                    Animated.timing(shakeAnim, { toValue: 5, duration: 50, useNativeDriver: true }),
+                    Animated.timing(shakeAnim, { toValue: -5, duration: 50, useNativeDriver: true }),
+                    Animated.timing(shakeAnim, { toValue: 0, duration: 50, useNativeDriver: true }),
+                ]),
+                Animated.sequence([
+                    Animated.timing(rotateAnim, { toValue: 5, duration: 100, useNativeDriver: true }),
+                    Animated.timing(rotateAnim, { toValue: -5, duration: 100, useNativeDriver: true }),
+                    Animated.timing(rotateAnim, { toValue: 3, duration: 100, useNativeDriver: true }),
+                    Animated.timing(rotateAnim, { toValue: -3, duration: 100, useNativeDriver: true }),
+                    Animated.timing(rotateAnim, { toValue: 0, duration: 50, useNativeDriver: true }),
+                ]),
+            ]),
+            // Second: bounce scale effect
+            Animated.sequence([
+                Animated.timing(scaleAnim, { toValue: 1.1, duration: 100, useNativeDriver: true }),
+                Animated.timing(scaleAnim, { toValue: 0.95, duration: 100, useNativeDriver: true }),
+                Animated.timing(scaleAnim, { toValue: 1.05, duration: 100, useNativeDriver: true }),
+                Animated.timing(scaleAnim, { toValue: 1, duration: 100, useNativeDriver: true }),
+            ]),
+        ]).start()
+    }
 
     const validateAge = (dob: Date): boolean => {
         const today = new Date()
@@ -154,7 +200,17 @@ export const EmailSignInButton = ({ returnTo, navigation, onPress, onCancelPress
 
             const { result, error } = authResponse;
 
-            if (error) throw error
+            // Check for error first and trigger animation
+            if (error) {
+
+                // // Trigger crazy shake animation on error
+                // triggerCrazyShake()
+                
+                // // Notify parent component about auth error
+                // onAuthError?.()
+                
+                throw error;
+            }
 
             if (result && result.user && result.token) {
                 await login(result.token, {
@@ -173,11 +229,20 @@ export const EmailSignInButton = ({ returnTo, navigation, onPress, onCancelPress
         } catch (error) {
             console.error('Authentication error:', error)
             
-            // For sign in, display the error as a general submit error
-            if (!isSignUp) {
+            // Trigger crazy shake animation on error
+            triggerCrazyShake()
+            
+            // Notify parent component about auth error
+            onAuthError?.()
+            
+            // Set error message based on mode
+            if (isSignUp) {
+                // For sign up, errors are already handled in handleSignUp
                 setSubmitError(error)
+            } else {
+                // For sign in, show custom error message
+                setSubmitError(new Error("YOU SHALL NOT PASS 🧙‍♂️ (your password may be incorrect)"))
             }
-            // For sign up, errors are already handled in handleSignUp
         }
     }
     
@@ -221,7 +286,23 @@ export const EmailSignInButton = ({ returnTo, navigation, onPress, onCancelPress
                 onRequestClose={() => setModalVisible(false)}
             >
                 <View style={[styles.modalContainer, { zIndex: 2 }]}>
-                    <View style={styles.modalContent}>
+                    <Animated.View
+                        style={[
+                            styles.modalContent,
+                            {
+                                transform: [
+                                    { translateX: shakeAnim },
+                                    {
+                                        rotate: rotateAnim.interpolate({
+                                            inputRange: [-5, 5],
+                                            outputRange: ['-5deg', '5deg'],
+                                        }),
+                                    },
+                                    { scale: scaleAnim },
+                                ],
+                            },
+                        ]}
+                    >
                         <Text style={styles.modalTitle}>
                             {isSignUp ? 'Create Account' : 'Sign In'}
                         </Text>
@@ -314,6 +395,13 @@ export const EmailSignInButton = ({ returnTo, navigation, onPress, onCancelPress
                             </>
                         )}
 
+                        {/* Show submit error for sign-in as well */}
+                        {!isSignUp && submitError && (
+                            <View style={styles.passwordErrorContainer}>
+                                <Text style={styles.errorText}>{submitError.message}</Text>
+                            </View>
+                        )}
+
                         <Pressable
                             style={styles.submitButton}
                             onPress={handleAuth}
@@ -347,7 +435,7 @@ export const EmailSignInButton = ({ returnTo, navigation, onPress, onCancelPress
                         >
                             <Text style={styles.closeButtonText}>Close</Text>
                         </Pressable>
-                    </View>
+                    </Animated.View>
                 </View>
             </Modal>
             
