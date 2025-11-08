@@ -1,4 +1,5 @@
-import React, { useEffect, useRef, useState } from 'react';
+// Home feed screen. Now supports infinite scroll and pull-to-refresh
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { Text, View, FlatList, SafeAreaView, ActivityIndicator, TouchableOpacity, Animated } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -20,7 +21,24 @@ import { makeStyles } from '../theme/makeStyles';
 
 
 const HomeScreen = ({ navigation }) => {
-    const { posts, circles, notificationCount, isLoading, isFiltering, isPostTransition, error, loadFeed, selectedCircleIds, updateFilter, clearFilter } = useFilteredFeed();
+    // Extended hook data includes pagination + refresh states
+    const {
+        posts,
+        circles,
+        notificationCount,
+        isLoading,
+        isRefreshing,
+        isFiltering,
+        isPostTransition,
+        isLoadingMore,
+        hasMore,
+        error,
+        loadFeed,
+        loadMore,
+        selectedCircleIds,
+        updateFilter,
+        clearFilter
+    } = useFilteredFeed();
     const authContext = useAuth();
     const { isExpanded, animateToExpanded } = useShaderBackground();
     const scrollY = useRef(new Animated.Value(0)).current;
@@ -94,9 +112,18 @@ const HomeScreen = ({ navigation }) => {
         setIsFilterExpanded(false);
     };
 
+    // Toggle filter dropdown
     const handleToggleFilterExpanded = () => {
         setIsFilterExpanded(!isFilterExpanded);
     };
+
+    // Guarded onEndReached handler so we don't fire overlapping requests
+    const handleLoadMore = useCallback(() => {
+        if (!hasMore || isLoading || isRefreshing || isLoadingMore || isFiltering || isPostTransition) {
+            return;
+        }
+        loadMore();
+    }, [hasMore, isLoading, isRefreshing, isLoadingMore, isFiltering, isPostTransition, loadMore]);
 
     // Header animation values
     const headerOpacity = scrollY.interpolate({
@@ -253,12 +280,15 @@ const HomeScreen = ({ navigation }) => {
                 )}
                 scrollEventThrottle={16}
                 scrollEnabled={!isFilterExpanded} // Disable scrolling when filter dropdown is expanded
-                // Add these props for better UX
-                refreshing={isLoading}
+                // Pull-to-refresh uses hook's refresh state
+                refreshing={isRefreshing}
                 onRefresh={() => {
-                    // Implement pull-to-refresh functionality
+                    // Reload first page while keeping filters applied
                     loadFeed();
                 }}
+                // Infinite scroll
+                onEndReached={handleLoadMore}
+                onEndReachedThreshold={0.4}
                 ListEmptyComponent={() => {
                     // Don't show empty state while loading, filtering, transitioning, or animating
                     if (isLoading || isFiltering || isPostTransition || shouldAnimateAfterFilter || isFirstLoad) {
@@ -275,8 +305,19 @@ const HomeScreen = ({ navigation }) => {
                         </View>
                     );
                 }}
+                // Footer shows loading-more spinner or end-of-feed note, plus share CTA
                 ListFooterComponent={() => (
                     <View style={styles.footerContainer}>
+                        {isLoadingMore && (
+                            <ActivityIndicator
+                                size="small"
+                                color={theme.colors.primary}
+                                style={styles.loadingMoreIndicator}
+                            />
+                        )}
+                        {!isLoadingMore && !hasMore && posts && posts.length > 0 && (
+                            <Text style={styles.endOfFeedText}>You're all caught up</Text>
+                        )}
                         <TouchableOpacity
                             style={[styles.shareButton, posts && posts.length > 0 && { marginTop: 20 }]}
                             onPress={() => handleShareProfile(authContext.user.id)}
@@ -317,7 +358,9 @@ const useStyles = makeStyles((theme) => ({
     },
     shareIcon: { marginRight: 8 },
     shareButtonText: { color: theme.colors.primaryContrast, fontSize: 16, fontWeight: '600' },
-    footerContainer: { alignItems: 'center', paddingVertical: 0, paddingHorizontal: 16 },
+    footerContainer: { alignItems: 'center', paddingVertical: 24, paddingHorizontal: 16 },
+    loadingMoreIndicator: { marginBottom: 16 },
+    endOfFeedText: { fontSize: 14, color: theme.colors.textMuted, marginBottom: 8 },
 }));
 
 export default HomeScreen;
