@@ -77,7 +77,7 @@ public static class SeedExtensions
         {
             new User("carolyn@example.com") { Name = "Carolyn Wetzler", Email = "carolyn@example.com" },
             new User("anya@example.com") { Name = "Anya Steinberg", Email = "anya@example.com" },
-            new User("kevin@example.com") { Name = "Kevin Jones", Email = "kevin@example.com" },
+            new User("carlyn@example.com") { Name = "Carlyn Chrabaszcz", Email = "carlyn@example.com" },
             new User("mira@example.com") { Name = "Mira Peterson", Email = "mira@example.com" },
             new User("eliza@example.com") { Name = "Eliza Topolosky", Email = "eliza@example.com" },
             new User("lauren@example.com") { Name = "Lauren Topolosky", Email = "lauren@example.com" },
@@ -104,7 +104,7 @@ public static class SeedExtensions
         var howard = GetUser(users, "daddio@example.com");
         var carolyn = GetUser(users, "carolyn@example.com");
         var anya = GetUser(users, "anya@example.com");
-        var kevin = GetUser(users, "kevin@example.com");
+        var carlyn = GetUser(users, "carlyn@example.com");
         var mira = GetUser(users, "mira@example.com");
         var eliza = GetUser(users, "eliza@example.com");
         var lauren = GetUser(users, "lauren@example.com");
@@ -113,13 +113,13 @@ public static class SeedExtensions
         var daltin = GetUser(users, "daltin@example.com");
 
         // Add friendships
-        await AddFriendshipsAsync(db, robert, new[] { sierra, spencer, devon, jacob, howard, carolyn, eliza, lauren, barbara, elana, daltin });
-        await AddFriendshipsAsync(db, sierra, new[] { anya, kevin, mira });
+        await AddFriendshipsAsync(db, robert, new[] { sierra, spencer, devon, jacob, howard, carolyn, eliza, lauren, barbara, elana, daltin, carlyn });
+        await AddFriendshipsAsync(db, sierra, new[] { anya, mira });
         await AddFriendshipsAsync(db, spencer, new[] { devon, sierra });
         await AddFriendshipsAsync(db, devon, new[] { jacob });
 
         // Add some outstanding friend requests
-        await AddFriendshipsAsync(db, robert, [anya, kevin, mira], FriendshipStatus.Pending);
+        await AddFriendshipsAsync(db, robert, [anya, mira], FriendshipStatus.Pending);
 
         // Create circles
         var climbingCircle = await CreateCircleAsync(db, "Climbing Crew", false, robert, new[] { devon, spencer });
@@ -130,7 +130,7 @@ public static class SeedExtensions
         await CreateCircleAsync(db, "Hiking Buddies", true, robert, new[] { sierra, jacob });
         await CreateCircleAsync(db, "Hiking Buddies", true, robert, new[] { sierra, jacob });
         var familyCircle = await CreateCircleAsync(db, "Family", false, robert, new[] { howard, elana, daltin, carolyn });
-        var sierraFriends = await CreateCircleAsync(db, "Sierra's Friends", true, sierra, new[] { anya, kevin, mira, robert });
+        var sierraFriends = await CreateCircleAsync(db, "Sierra's Friends", true, sierra, new[] { anya, mira, robert });
 
         // Create posts
         var post1 = await CreatePostAsync(db, robert, "Planning a climbing trip this weekend!", DateTime.UtcNow.AddHours(-10), new[] { climbingCircle });
