@@ -181,7 +181,7 @@ const useStyles = makeStyles(theme => ({
         fontWeight: '700',
         marginBottom: 8,
         letterSpacing: 1,
-        textShadowColor: theme.colors.shadow,
+        textShadowColor: 'rgba(0, 0, 0, 0.1)',
         textShadowOffset: { width: 0, height: 1 },
         textShadowRadius: 4,
         color: theme.colors.textPrimary,

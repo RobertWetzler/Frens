@@ -193,9 +193,9 @@ const MainApp = () => {
         setInitialURL(url);
         // Attempt to load spooky font; if missing, ignore error.
         try {
-          await Font.loadAsync({
-            SpookyHalloween: require('./assets/fonts/spooky-font.ttf'),
-          });
+          // await Font.loadAsync({
+          //   SpookyHalloween: require('./assets/fonts/spooky-font.ttf'),
+          // });
           setFontsLoaded(true);
         } catch (err) {
           console.warn('Spooky font not loaded (expected if file missing):', err?.message || err);
