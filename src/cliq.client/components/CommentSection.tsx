@@ -10,17 +10,12 @@ import {
   ActivityIndicator,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
-import {
-  PostDto as PostType,
-  CommentDto,
-  ICommentDto,
-  UserDto,
-} from "services/generated/generatedClient";
+import { CommentDto } from "services/generated/generatedClient";
 import { usePost } from "hooks/usePosts";
 import { ApiClient } from "services/apiClient";
 import Post from "./Post";
 import Svg, { Path } from "react-native-svg";
-import Avatar from "components/Avatar";
+import Username from "./Username";
 import { useTheme } from "../theme/ThemeContext";
 import { makeStyles } from "../theme/makeStyles";
 
@@ -196,20 +191,15 @@ const CommentTree: React.FC<CommentTreeProps> = ({
         </TouchableOpacity>
 
         <View style={styles.commentBody}>
-          <TouchableOpacity
-            onPress={() =>
-              navigation.navigate("Profile", { userId: comment.user.id })
-            }
-          >
-            <View style={styles.commentTitleRow}>
-              <Avatar
-                name={comment.user.name}
-                userId={comment.user.id}
-                navigation={navigation} // TODO: Pass navigation prop if needed
-              ></Avatar>
-              <Text style={styles.commentAuthor}>{comment.user.name}</Text>
-            </View>
-          </TouchableOpacity>
+          <Username
+            user={comment.user}
+            navigation={navigation}
+            styles={{
+              container: styles.commentTitleRow,
+              username: styles.commentAuthor,
+            }}
+            showAvatar
+          />
 
           {!collapsed && (
             <>
@@ -420,7 +410,7 @@ const CommentSection: React.FC<{
       </View>
       <ScrollView style={styles.scrollView}>
         <View style={styles.postContainer}>
-          <Post post={post} isNavigable={false} />
+          <Post post={post} navigation={navigation} />
         </View>
         <View style={styles.addCommentContainer}>
           {isAddingComment ? (

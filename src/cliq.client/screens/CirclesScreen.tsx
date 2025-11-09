@@ -16,6 +16,7 @@ import { useAuth } from '../contexts/AuthContext';
 import Header from '../components/Header';
 import { useTheme } from '../theme/ThemeContext';
 import { makeStyles } from '../theme/makeStyles';
+import Username from 'components/Username';
 
 const CirclesScreen = ({ navigation }) => {
   const { 
@@ -297,12 +298,15 @@ const CirclesScreen = ({ navigation }) => {
                           {circle.members && circle.members.length > 0 ? (
                             circle.members.map((member) => (
                               <View key={member.id} style={styles.memberItem}>
-                                <View style={styles.memberAvatar}>
-                                  <Text style={styles.memberAvatarText}>
-                                    {member.name?.charAt(0).toUpperCase() || '?'}
-                                  </Text>
-                                </View>
-                                <Text style={styles.memberName}>{member.name}</Text>
+                                <Username
+                                  user={member}
+                                  navigation={navigation}
+                                  styles={{
+                                    container: styles.memberNameContainer,
+                                    username: styles.memberName,
+                                  }}
+                                  showAvatar
+                                />
                                 {member.id !== user?.id && (
                                   <TouchableOpacity
                                     style={styles.removeUserButton}
@@ -379,12 +383,15 @@ const CirclesScreen = ({ navigation }) => {
                           {circle.members && circle.members.length > 0 ? (
                             circle.members.map((member) => (
                               <View key={member.id} style={styles.memberItem}>
-                                <View style={styles.memberAvatar}>
-                                  <Text style={styles.memberAvatarText}>
-                                    {member.name?.charAt(0).toUpperCase() || '?'}
-                                  </Text>
-                                </View>
-                                <Text style={styles.memberName}>{member.name}</Text>
+                                <Username
+                                  user={member}
+                                  navigation={navigation}
+                                  styles={{
+                                    container: styles.memberNameContainer,
+                                    username: styles.memberName,
+                                  }}
+                                  showAvatar
+                                />
                               </View>
                             ))
                           ) : (
@@ -544,8 +551,8 @@ const useStyles = makeStyles((theme) => ({
   addUserButtonText: { fontSize: 14, fontWeight: '500', color: theme.colors.primary, marginLeft: 6 },
   memberItem: { flexDirection: 'row', alignItems: 'center', paddingVertical: 8 },
   memberAvatar: { width: 36, height: 36, borderRadius: 18, backgroundColor: theme.colors.primary, justifyContent: 'center', alignItems: 'center', marginRight: 12 },
-  memberAvatarText: { fontSize: 16, fontWeight: '600', color: theme.colors.primaryContrast },
-  memberName: { fontSize: 16, color: theme.colors.textPrimary, flex: 1 },
+  memberNameContainer: { flexDirection: 'row', alignItems: 'center', flex: 1 },
+  memberName: { fontSize: 16, color: theme.colors.textPrimary },
   removeUserButton: { padding: 4, marginLeft: 8 },
   noMembersText: { fontSize: 14, color: theme.colors.textMuted, fontStyle: 'italic' },
   modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'center', alignItems: 'center', padding: 20 },
