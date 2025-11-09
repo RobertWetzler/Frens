@@ -303,12 +303,12 @@ const CreatePostScreen = ({ navigation, route }) => {
 
         <TextInput
           style={styles.input}
-          placeholder={asEvent ? "What's this event about? (optional details)" : "What's happening?"}
+          placeholder={asEvent ? "What's this event about? (optional details)" : "What's bopping?"}
           multiline
           value={postContent}
-            onChangeText={setPostContent}
+          onChangeText={setPostContent}
           autoFocus
-          maxLength={280}
+          maxLength={1000}
           placeholderTextColor={theme.colors.inputPlaceholder}
         />
 
