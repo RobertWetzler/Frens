@@ -6,6 +6,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../theme/ThemeContext';
 import { makeStyles } from '../theme/makeStyles';
 import { OptimisticPost, feedEvents, FEED_POST_STATUS_UPDATED } from 'hooks/feedEvents';
+import Username from './Username';
 
 interface PostProps {
   post: OptimisticPost,
@@ -162,7 +163,13 @@ const Post: React.FC<PostProps> = ({ post, navigation, isNavigable = true, anima
     <Animated.View style={[styles.container, { transform: [{ translateY }, { scale }], opacity }] }>
       <View style={styles.header}>
         <View style={styles.authorContainer}>
-          <Text style={styles.author}>{post.user.name}</Text>
+          <Username
+            user={post.user}
+            navigation={navigation}
+            styles={{
+              username: styles.author
+            }}
+          />
           <Text style={styles.sharedWith}> to {sharedWithText}</Text>
         </View>
         <Text style={styles.date}>{formatDate(post.date)}</Text>
