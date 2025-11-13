@@ -181,7 +181,7 @@ const HomeScreen = ({ navigation }) => {
                     <View style={styles.header}>
                         <View style={styles.titleRow}>
                             <Text style={[styles.headerTitle, theme.name === 'halloween' && { fontFamily: 'SpookyHalloween', fontWeight: '400' }]}>Frens</Text>
-                            {/* <Text style={[styles.headerSubtitle, theme.name === 'halloween' && { fontFamily: 'SpookyHalloween', fontWeight: '400' }]}>Spooky Edition</Text> */}
+                            <Text style={[styles.headerSubtitle, theme.name === 'halloween' && { /*</View>fontFamily: 'SpookyHalloween',*/ fontWeight: '100' }]}>giving 🦃</Text>
                         </View>
                         <NotificationBell
                             onPress={() => navigation.navigate('Notifications')}
@@ -317,7 +317,7 @@ const HomeScreen = ({ navigation }) => {
                         )}
                         {!isLoadingMore && !hasMore && posts && posts.length > 0 && (
                             <Text style={styles.endOfFeedText}>You're all caught up</Text>
-                        )}
+                        )}x
                         <TouchableOpacity
                             style={[styles.shareButton, posts && posts.length > 0 && { marginTop: 20 }]}
                             onPress={() => handleShareProfile(authContext.user.id)}
@@ -343,7 +343,7 @@ const useStyles = makeStyles((theme) => ({
     header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
     headerTitle: { fontSize: 30, fontWeight: 'bold', color: theme.colors.primaryContrast, textShadowColor: 'rgba(0,0,0,0.3)', textShadowOffset: { width: 0, height: 1 }, textShadowRadius: 2 },
     titleRow: { flexDirection: 'row', alignItems: 'baseline' },
-    headerSubtitle: { fontSize: 20, fontWeight: '600', color: theme.colors.primaryContrast, marginLeft: 10, textShadowColor: 'rgba(0,0,0,0.3)', textShadowOffset: { width: 0, height: 1 }, textShadowRadius: 2 },
+    headerSubtitle: { fontSize: 17, fontWeight: '600', color: theme.colors.primaryContrast, marginLeft: 5, textShadowColor: 'rgba(0,0,0,0.3)', textShadowOffset: { width: 0, height: 1 }, textShadowRadius: 2 },
     filterContainer: { marginHorizontal: 16, marginVertical: 2 },
     filteringIndicator: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', paddingVertical: 8, marginTop: 8 },
     filteringText: { marginLeft: 8, fontSize: 14, color: theme.colors.textMuted, fontStyle: 'italic' },

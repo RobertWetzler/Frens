@@ -294,11 +294,11 @@ export default function SignInScreen({ route, navigation }: SignInScreenProps) {
                     ]}
                 >
                     <Text style={[styles.appName, themeName === 'halloween' && { fontFamily: 'SpookyHalloween', fontWeight: '400' }]}>Frens</Text>
-                    {themeName === 'halloween' && (
+                    {/* {themeName === 'halloween' && ( */}
                         <Text style={[
                             styles.appName,
                             {
-                                fontFamily: 'SpookyHalloween',
+                                // fontFamily: 'SpookyHalloween',
                                 fontWeight: '400',
                                 fontSize: 20,
                                 transform: [{ rotate: '-12deg' }],
@@ -306,8 +306,8 @@ export default function SignInScreen({ route, navigation }: SignInScreenProps) {
                                 marginTop: -10,
                                 marginBottom: 30,
                             }
-                        ]}>Spooky Edition</Text>
-                    )}
+                        ]}>Giving 🦃</Text>
+                    {/* )} */}
                     <Text style={styles.subtitle}>Connect with your community</Text>
                     <View style={styles.signInContainer}>
                         <Text style={styles.signInText}>Sign in to continue</Text>
