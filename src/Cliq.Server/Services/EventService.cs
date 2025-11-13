@@ -146,7 +146,9 @@ public class EventService : IEventService
         {
             throw new BadHttpRequestException($"Cannot create post for invalid user {userId}");
         }
-        await CircleService.ValidateAuthorizationToPostAsync(_dbContext, createEventDto.CircleIds, userId);
+
+        await PostService.ValidateAuthorizationToPostAsync(_dbContext, createEventDto.CircleIds, createEventDto.UserIds, userId);
+
         var eventEntity = new Event
         {
             Id = Guid.NewGuid(),

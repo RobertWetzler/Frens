@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import { CirclePublicDto, CircleWithMembersDto, UpdateUsersInCircleRequest } from '../services/generated/generatedClient';
+import { CirclePublicDto, CircleWithMembersDto, UpdateUsersInCircleRequest, UserDto } from '../services/generated/generatedClient';
 import { ApiClient } from 'services/apiClient';
 
 export function useMemberCircles() {
@@ -27,6 +27,36 @@ export function useMemberCircles() {
     }, [loadCircles]);
 
     return { circles, isLoading, error, loadCircles };
+}
+
+export function useCreatePostData() {
+    const [circles, setCircles] = useState<CirclePublicDto[]>([]);
+    const [friends, setFriends] = useState<UserDto[]>([]);
+    const [isLoading, setIsLoading] = useState(true);
+    const [error, setError] = useState<string | null>(null);
+
+    const loadData = useCallback(async () => {
+        try {
+            setIsLoading(true);
+            const data = await ApiClient.call(c => c.post_GetCreatePostData());
+            setCircles(data.circles || []);
+            setFriends(data.friends || []);
+            setError(null);
+        } catch (err) {
+            console.log("Failed to load create post data with err " + err)
+            setError('Failed to load data');
+            setCircles([]);
+            setFriends([]);
+        } finally {
+            setIsLoading(false);
+        }
+    }, []);
+
+    useEffect(() => {
+        loadData();
+    }, [loadData]);
+
+    return { circles, friends, isLoading, error, loadData };
 }
 
 export function useCirclesWithMembers() {

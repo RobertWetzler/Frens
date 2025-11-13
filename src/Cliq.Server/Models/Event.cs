@@ -94,6 +94,7 @@ public class CreateEventDto
     
     // Post-related properties
     public Guid[] CircleIds { get; set; } = Array.Empty<Guid>();
+    public Guid[] UserIds { get; set; } = Array.Empty<Guid>();
 }
 
 public class UpdateEventDto

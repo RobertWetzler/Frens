@@ -11,10 +11,34 @@ namespace Cliq.Server.Controllers;
 public class PostController : ControllerBase
 {
     private readonly IPostService _postService;
+    private readonly ICircleService _circleService;
+    private readonly IFriendshipService _friendshipService;
 
-    public PostController(IPostService postService)
+    public PostController(IPostService postService, ICircleService circleService, IFriendshipService friendshipService)
     {
         _postService = postService;
+        _circleService = circleService;
+        _friendshipService = friendshipService;
+    }
+
+    // Get all data needed for the create post screen (circles and friends)
+    [HttpGet("create-post-data")]
+    [ProducesResponseType(typeof(CreatePostDataDto), StatusCodes.Status200OK)]
+    public async Task<ActionResult<CreatePostDataDto>> GetCreatePostData()
+    {
+        if (!AuthUtils.TryGetUserIdFromToken(HttpContext, out var userId))
+        {
+            return Unauthorized();
+        }
+
+        var circles = await _circleService.GetUserMemberCirclesAsync(userId);
+        var friends = await _friendshipService.GetFriendsAsync(userId);
+
+        return Ok(new CreatePostDataDto
+        {
+            Circles = circles.ToList(),
+            Friends = friends.ToList()
+        });
     }
 
     // Dedicated endpoint to fetch a short-lived image URL. Keeps feed lightweight while
@@ -156,6 +180,7 @@ public class PostController : ControllerBase
     [HttpPost]
     [RequestSizeLimit(50_000_000)] // ~25MB limit (adjust as needed)
     [Consumes("multipart/form-data", "application/json")]
+    [ProducesResponseType(typeof(PostDto), StatusCodes.Status201Created)]
     public async Task<ActionResult<PostDto>> CreatePost([FromForm] CreatePostWithImageRequest request)
     {
         var idClaim = this.HttpContext.User.Claims.FirstOrDefault(c => c.Type == "http://schemas.xmlsoap.org/ws/2005/05/identity/claims/nameidentifier");
@@ -202,7 +227,7 @@ public class PostController : ControllerBase
                 imageKeys.Add(key);
             }
         }
-        var createdPost = await _postService.CreatePostAsync(new Guid(idClaim.Value), request.CircleIds ?? Array.Empty<Guid>(), request.Text, imageKeys);
+        var createdPost = await _postService.CreatePostAsync(new Guid(idClaim.Value), request.CircleIds ?? Array.Empty<Guid>(), request.UserIds ?? Array.Empty<Guid>(), request.Text, imageKeys);
         return CreatedAtAction(nameof(GetPost), new { id = createdPost.Id }, createdPost);
     }
     // TODO: Authorize userId matches that of postId

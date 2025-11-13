@@ -137,10 +137,31 @@ public static class SeedExtensions
         await CreatePostAsync(db, robert, "New hiking trail opened up — let's go!", DateTime.UtcNow.AddHours(-8), new[] { hikingCircle, climbingCircle });
         await CreatePostAsync(db, sierra, "Anyone want to go for a hike Sunday?", DateTime.UtcNow.AddHours(-2), new[] { hikingCircle, sierraFriends });
         await CreatePostAsync(db, howard, "Letting family know: I'll be out mountaineering Sunday.", DateTime.UtcNow.AddHours(-5), new[] { familyCircle });
-        await CreatePostAsync(db, howard, "Letting family know: I'll be out mountaineering Sunday.", DateTime.UtcNow.AddHours(-5), new[] { familyCircle });
-        await CreatePostAsync(db, howard, "Letting family know: I'll be out mountaineering Sunday.", DateTime.UtcNow.AddHours(-5), new[] { familyCircle });
-        await CreatePostAsync(db, howard, "Letting family know: I'll be out mountaineering Sunday.", DateTime.UtcNow.AddHours(-5), new[] { familyCircle });
-        await CreatePostAsync(db, howard, "Letting family know: I'll be out mountaineering Sunday.", DateTime.UtcNow.AddHours(-5), new[] { familyCircle });
+        
+        // Posts shared directly with users (Robert is the viewer)
+        // 1. Post shared only with Robert (Robert receiving)
+        await CreatePostWithUsersAsync(db, sierra, "Hey Robert, wanted to share this just with you!", DateTime.UtcNow.AddHours(-1), [], new[] { robert });
+        
+        // 2. Post Robert created and shared with specific users (Robert as owner)
+        await CreatePostWithUsersAsync(db, robert, "Personal message for Devon and Spencer", DateTime.UtcNow.AddHours(-3), [], new[] { devon, spencer });
+        
+        // 3. Post shared with both circles and specific users (Robert receiving)
+        await CreatePostWithUsersAsync(db, jacob, "Climbing plans - including some folks not in the circle", DateTime.UtcNow.AddHours(-6), new[] { climbingCircle }, new[] { robert, sierra });
+        
+        // 4. Post Robert created shared with circle and specific users (Robert as owner)
+        await CreatePostWithUsersAsync(db, robert, "Special invite: hiking + dinner after", DateTime.UtcNow.AddHours(-4), new[] { hikingCircle }, new[] { devon, carolyn });
+        
+        // 5. Post shared with multiple users directly (Robert receiving)
+        await CreatePostWithUsersAsync(db, devon, "Secret climbing spot coordinates 🤫", DateTime.UtcNow.AddHours(-7), [], new[] { robert, spencer, jacob });
+        
+        // 6. Post Robert created for just one person
+        await CreatePostWithUsersAsync(db, robert, "Thanks for the advice yesterday!", DateTime.UtcNow.AddHours(-9), [], new[] { howard });
+        
+        // 7. Post shared with Robert and others he doesn't know are included
+        await CreatePostWithUsersAsync(db, sierra, "Weekend plans are set!", DateTime.UtcNow.AddHours(-11), [], new[] { robert, anya, mira });
+        
+        // 8. Post Robert created shared with family individually (not via circle)
+        await CreatePostWithUsersAsync(db, robert, "Individual update for family members", DateTime.UtcNow.AddHours(-12), [], new[] { howard, carolyn, elana, daltin });
 
         // Create events
         await CreateEventAsync(db, devon, "Climbing at Red Rock", "Climbing Trip", DateTime.UtcNow.AddDays(3).AddHours(9), DateTime.UtcNow.AddDays(3).AddHours(17), DateTime.UtcNow.AddHours(-1), new[] { climbingCircle });
@@ -235,6 +256,50 @@ public static class SeedExtensions
         }).ToList();
 
         await db.CirclePosts.AddRangeAsync(circlePosts);
+        await db.SaveChangesAsync();
+
+        return post;
+    }
+
+    private static async Task<Post> CreatePostWithUsersAsync(CliqDbContext db, User author, string text, DateTime date, Circle[] circles, User[] users)
+    {
+        var post = new Post
+        {
+            Id = Guid.NewGuid(),
+            UserId = author.Id,
+            Text = text,
+            Date = date
+        };
+
+        await db.Posts.AddAsync(post);
+        await db.SaveChangesAsync();
+
+        // Add circle shares if any
+        if (circles.Length > 0)
+        {
+            var circlePosts = circles.Select(circle => new CirclePost
+            {
+                CircleId = circle.Id,
+                PostId = post.Id,
+                SharedAt = date
+            }).ToList();
+
+            await db.CirclePosts.AddRangeAsync(circlePosts);
+        }
+
+        // Add individual user shares
+        if (users.Length > 0)
+        {
+            var individualPosts = users.Select(user => new IndividualPost
+            {
+                UserId = user.Id,
+                PostId = post.Id,
+                SharedAt = date
+            }).ToList();
+
+            await db.IndividualPosts.AddRangeAsync(individualPosts);
+        }
+
         await db.SaveChangesAsync();
 
         return post;

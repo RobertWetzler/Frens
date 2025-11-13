@@ -15,7 +15,7 @@ import {
 } from 'react-native';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { Ionicons } from '@expo/vector-icons';
-import { useMemberCircles } from 'hooks/useCircle';
+import { useCreatePostData } from 'hooks/useCircle';
 import ShaderBackground from 'components/ShaderBackground';
 import { CreateEventDto } from 'services/generated/generatedClient';
 import * as ImagePicker from 'expo-image-picker';
@@ -32,6 +32,7 @@ const CreatePostScreen = ({ navigation, route }) => {
   const styles = useStyles();
   const [postContent, setPostContent] = useState('');
   const [selectedCircleIds, setSelectedCircleIds] = useState([]);
+  const [selectedUserIds, setSelectedUserIds] = useState([]);
   const [asEvent, setAsEvent] = useState(false);
   const [images, setImages] = useState<Array<{ uri: string; fileName: string; type: string; size?: number; webFile?: File }>>([]); // added size
   const [eventTitle, setEventTitle] = useState('');
@@ -41,7 +42,7 @@ const CreatePostScreen = ({ navigation, route }) => {
   const [endTime, setEndTime] = useState('');
   const [formError, setFormError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const { circles, isLoading, error, loadCircles } = useMemberCircles();
+  const { circles, friends, isLoading, error, loadData } = useCreatePostData();
   const [showStartDatePicker, setShowStartDatePicker] = useState(false);
   const [showStartTimePicker, setShowStartTimePicker] = useState(false);
   const [showEndDatePicker, setShowEndDatePicker] = useState(false);
@@ -52,7 +53,7 @@ const CreatePostScreen = ({ navigation, route }) => {
     React.useCallback(() => {
       // Check if we should refresh data when screen is focused
       if (route.params?.refresh) {
-        loadCircles(); // Your function to fetch fresh data
+        loadData(); // Your function to fetch fresh data
         // Clear the parameter after refresh
         navigation.setParams({ refresh: undefined });
       }
@@ -69,8 +70,16 @@ const CreatePostScreen = ({ navigation, route }) => {
     );
   };
 
+  const toggleUserSelection = (userId) => {
+    setSelectedUserIds(prevSelected =>
+      prevSelected.includes(userId)
+        ? prevSelected.filter(id => id !== userId)
+        : [...prevSelected, userId]
+    );
+  };
+
   const isPostValid = () => {
-    return (postContent.trim() || images.length > 0) && selectedCircleIds.length > 0;
+    return (postContent.trim() || images.length > 0) && (selectedCircleIds.length > 0 || selectedUserIds.length > 0);
   };
 
   const isEventValid = useMemo(() => {
@@ -81,9 +90,9 @@ const CreatePostScreen = ({ navigation, route }) => {
     // End fields optional, but if one provided, require both
     const anyEnd = endDate.trim().length > 0 || endTime.trim().length > 0;
     if (anyEnd && (!endDate.match(/^\d{4}-\d{2}-\d{2}$/) || !endTime.match(/^\d{2}:\d{2}$/))) return false;
-    if (selectedCircleIds.length === 0) return false;
+    if (selectedCircleIds.length === 0 && selectedUserIds.length === 0) return false;
     return true;
-  }, [asEvent, eventTitle, startDate, startTime, endDate, endTime, selectedCircleIds]);
+  }, [asEvent, eventTitle, startDate, startTime, endDate, endTime, selectedCircleIds, selectedUserIds]);
 
   // Render loading state (after hooks)
   if (isLoading) {
@@ -178,8 +187,10 @@ const CreatePostScreen = ({ navigation, route }) => {
       const capturedContent = postContent.trim();
       const capturedTitle = eventTitle.trim();
       const capturedCircleIds = [...selectedCircleIds];
+      const capturedUserIds = [...selectedUserIds];
       setPostContent('');
       setSelectedCircleIds([]);
+      setSelectedUserIds([]);
       setEventTitle('');
       setStartDate('');
       setStartTime('');
@@ -245,9 +256,11 @@ const CreatePostScreen = ({ navigation, route }) => {
     // Reset form and navigate back immediately
     const capturedContent = postContent.trim() || null;
     const capturedCircleIds = [...selectedCircleIds];
+    const capturedUserIds = [...selectedUserIds];
     const capturedImages = [...images];
     setPostContent('');
     setSelectedCircleIds([]);
+    setSelectedUserIds([]);
     setImages([]);
     setIsSubmitting(false);
     navigation.goBack();
@@ -259,7 +272,7 @@ const CreatePostScreen = ({ navigation, route }) => {
         fileName: img.fileName,
       }));
       const response = await ApiClient.call(c =>
-        c.post_CreatePost(capturedContent, capturedCircleIds, fileParams)
+        c.post_CreatePost(capturedContent, capturedCircleIds, capturedUserIds, fileParams)
       );
       console.log('Post created:', response);
       // Update optimistic post with actual response
@@ -606,8 +619,8 @@ const CreatePostScreen = ({ navigation, route }) => {
 
         <View style={styles.circleSection}>
           <Text style={styles.circleHeaderTitle}>Share with Circles</Text>
-          {selectedCircleIds.length === 0 && (
-            <Text style={styles.circleWarning}>Select at least one circle</Text>
+          {selectedCircleIds.length === 0 && selectedUserIds.length === 0 && (
+            <Text style={styles.circleWarning}>Select at least one circle or friend</Text>
           )}
         </View>
 
@@ -665,6 +678,43 @@ const CreatePostScreen = ({ navigation, route }) => {
               </Text>
             </TouchableOpacity>
           }
+        />
+
+        <View style={styles.circleSection}>
+          <Text style={styles.circleHeaderTitle}>Share with Friends</Text>
+        </View>
+
+        <FlatList
+          data={friends}
+          keyExtractor={(item) => item.id.toString()}
+          renderItem={({item}) => (
+            <TouchableOpacity
+              style={[
+                styles.circleItem,
+                selectedUserIds.includes(item.id) && styles.selectedCircleItem
+              ]}
+              onPress={() => toggleUserSelection(item.id)}
+              activeOpacity={0.7}
+            >
+              <View style={styles.circleIconContainer}>
+                <Ionicons
+                  name="person"
+                  size={20}
+                  color={selectedUserIds.includes(item.id) ? theme.colors.primaryContrast : theme.colors.primary}
+                />
+              </View>
+              <Text style={[
+                styles.circleName,
+                selectedUserIds.includes(item.id) && styles.selectedCircleText
+              ]}>
+                {item.name}
+              </Text>
+              {selectedUserIds.includes(item.id) && (
+                <Ionicons name="checkmark-circle" size={22} color={theme.colors.primaryContrast} style={styles.checkIcon} />
+              )}
+            </TouchableOpacity>
+          )}
+          contentContainerStyle={styles.circleList}
         />
       </KeyboardAvoidingView>
     </SafeAreaView>

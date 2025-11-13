@@ -4,6 +4,9 @@ using Cliq.Server.Models;
 using Cliq.Server.Utilities;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Storage;
+using Cliq.Server.Services;
+using Microsoft.Extensions.Logging;
+using Moq;
 
 public class CommentTests : DatabaseTestBase
 {
@@ -88,7 +91,12 @@ public class CommentTests : DatabaseTestBase
         _comment2 = comment2;
         _subComment = subComment;
         _subComment2 = subComment2;
-        _commentService = new CommentService(context, _mapper);
+        
+        // Create mock services for CommentService
+        var mockEventNotificationService = new Mock<IEventNotificationService>();
+        var mockLogger = new Mock<ILogger<PostService>>();
+        
+        _commentService = new CommentService(context, _mapper, mockEventNotificationService.Object, mockLogger.Object);
     }
 
     #region Data querying tests

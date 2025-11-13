@@ -39,17 +39,6 @@ public class CircleMembership
     public bool IsModerator { get; set; } // Optional
 }
 
-public class CirclePost
-{
-    public Guid CircleId { get; set; }
-    public Circle? Circle { get; set; }
-
-    public Guid PostId { get; set; }
-    public Post? Post { get; set; }
-
-    public DateTime SharedAt { get; set; }
-}
-
 public class CirclePublicDto
 {
     public Guid Id { get; set; }

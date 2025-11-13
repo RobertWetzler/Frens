@@ -369,7 +369,7 @@ public class CircleServiceTests : IClassFixture<DatabaseFixture>
         // Act & Assert - No exception means it passed
         using (var context = _fixture.CreateContext())
         {
-            await CircleService.ValidateAuthorizationToPostAsync(context, circleIds, _userId1);
+            await PostService.ValidateAuthorizationToPostAsync(context, circleIds, Array.Empty<Guid>(), _userId1);
         }
     }
 
@@ -384,7 +384,7 @@ public class CircleServiceTests : IClassFixture<DatabaseFixture>
         using (var context = _fixture.CreateContext())
         {
             var exception = await Assert.ThrowsAsync<UnauthorizedAccessException>(() =>
-                CircleService.ValidateAuthorizationToPostAsync(context, circleIds, _userId2));
+                PostService.ValidateAuthorizationToPostAsync(context, circleIds, Array.Empty<Guid>(), _userId2));
             // Verify the error message contains the circle ID
             Assert.Contains(_circleId2.ToString(), exception.Message);
         }
@@ -401,7 +401,7 @@ public class CircleServiceTests : IClassFixture<DatabaseFixture>
         using (var context = _fixture.CreateContext())
         {
             var exception = await Assert.ThrowsAsync<BadHttpRequestException>(() =>
-                CircleService.ValidateAuthorizationToPostAsync(context, circleIds, _userId1));
+                PostService.ValidateAuthorizationToPostAsync(context, circleIds, Array.Empty<Guid>(), _userId1));
             // Verify the error message contains the circle ID
             Assert.Contains(invalidCircleId.ToString(), exception.Message);
         }

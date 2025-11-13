@@ -16,6 +16,12 @@ public class MappingProfile : Profile
                     Name = cp.Circle != null ? cp.Circle.Name : string.Empty,
                     IsShared = cp.Circle != null ? cp.Circle.IsShared : false,
                 })))
+            .ForMember(dest => dest.SharedWithUsers, opt => opt.MapFrom(src => 
+                src.SharedWithUsers.Select(ip => new UserDto
+                {
+                    Id = ip.UserId,
+                    Name = ip.User != null ? ip.User.Name : string.Empty
+                })))
             .ForMember(dest => dest.HasImage, opt => opt.MapFrom(src => src.ImageObjectKeys.Any()))
             .ForMember(dest => dest.ImageCount, opt => opt.MapFrom(src => src.ImageObjectKeys.Count));        
         CreateMap<User, UserDto>();

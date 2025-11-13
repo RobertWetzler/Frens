@@ -6,8 +6,25 @@ using Cliq.Server.Services.PushNotifications;
 using System;
 using System.Linq;
 using System.Threading.Tasks;
+using Microsoft.Extensions.DependencyInjection;
 
 namespace Cliq.Server.Test;
+
+// Test implementation of ISilentDbContextFactory for testing
+public class TestSilentDbContextFactory : ISilentDbContextFactory
+{
+    private readonly Func<CliqDbContext> _contextFactory;
+    
+    public TestSilentDbContextFactory(Func<CliqDbContext> contextFactory)
+    {
+        _contextFactory = contextFactory;
+    }
+    
+    public CliqDbContext CreateContext()
+    {
+        return _contextFactory();
+    }
+}
 
 public class BulkNotificationTests : IClassFixture<DatabaseFixture>
 {
@@ -17,12 +34,24 @@ public class BulkNotificationTests : IClassFixture<DatabaseFixture>
         _fixture = fixture;
     }
 
+    private PushNotificationQueueService CreateQueueService(DatabaseFixture fixture)
+    {
+        var serviceCollection = new ServiceCollection();
+        // Use a factory that creates new contexts from the fixture each time
+        serviceCollection.AddScoped<CliqDbContext>(_ => fixture.CreateContext());
+        var serviceProvider = serviceCollection.BuildServiceProvider();
+        var scopeFactory = serviceProvider.GetRequiredService<IServiceScopeFactory>();
+        var silentDbContextFactory = new TestSilentDbContextFactory(() => fixture.CreateContext());
+        
+        return new PushNotificationQueueService(scopeFactory, silentDbContextFactory);
+    }
+
     [Fact]
     public async Task AddBulkAsync_CreatesNotificationsForMultipleUsers()
     {
         var context = _fixture.CreateContext();
         // Arrange
-        var queueService = new PushNotificationQueueService(context);
+        var queueService = CreateQueueService(_fixture);
 
         // Use unique IDs for this test
         var userId1 = Guid.NewGuid();
@@ -59,8 +88,14 @@ public class BulkNotificationTests : IClassFixture<DatabaseFixture>
         await context.SaveChangesAsync();
 
         var userIds = new[] { userId1, userId2 };
+        
+        var notificationData = new AppAnnouncementNotificationData
+        {
+            AnnouncementTitle = "Test bulk message",
+            Body = "test metadata"
+        };
 
-        await queueService.AddBulkAsync(userIds, "Test bulk message", "{\"type\":\"test\",\"data\":\"test metadata\"}");
+        await queueService.AddBulkAsync(userIds, notificationData);
 
         // Assert
         var notifications = await context.Set<Notification>()
@@ -68,8 +103,8 @@ public class BulkNotificationTests : IClassFixture<DatabaseFixture>
             .ToListAsync();
 
         Assert.Equal(2, notifications.Count);
-        Assert.All(notifications, n => Assert.Equal("Test bulk message", n.Message));
-        Assert.All(notifications, n => Assert.Equal("{\"type\":\"test\",\"data\":\"test metadata\"}", n.Metadata));
+        Assert.All(notifications, n => Assert.Equal("test metadata", n.Message));
+        Assert.All(notifications, n => Assert.Contains("AppAnnouncement", n.Metadata ?? ""));
 
         var deliveries = await context.Set<NotificationDelivery>()
             .Where(d => notifications.Select(n => n.Id).Contains(d.NotificationId))
@@ -84,7 +119,7 @@ public class BulkNotificationTests : IClassFixture<DatabaseFixture>
     {
         var context = _fixture.CreateContext();
         // Arrange
-        var queueService = new PushNotificationQueueService(context);
+        var queueService = CreateQueueService(_fixture);
 
         // Use unique IDs for this test
         var userId = Guid.NewGuid();
@@ -108,11 +143,12 @@ public class BulkNotificationTests : IClassFixture<DatabaseFixture>
         var notificationData = new FriendRequestNotificationData
         {
             RequesterId = Guid.NewGuid(),
-            FriendshipId = Guid.NewGuid()
+            FriendshipId = Guid.NewGuid(),
+            RequesterName = "John Doe"
         };
 
         // Act
-        await queueService.AddAsync(userId, notificationData, "John Doe");
+        await queueService.AddAsync(userId, notificationData);
 
         // Assert
         var notifications = await context.Set<Notification>()
@@ -121,7 +157,8 @@ public class BulkNotificationTests : IClassFixture<DatabaseFixture>
 
         Assert.Single(notifications);
         var notification = notifications.First();
-        Assert.Equal("John Doe sent you a friend request", notification.Message);
+        Assert.Equal("sent you a friend request", notification.Message);
+        Assert.Equal("John Doe", notification.Title);
         Assert.Contains("FriendRequest", notification.Metadata ?? "");
     }
 
@@ -130,13 +167,19 @@ public class BulkNotificationTests : IClassFixture<DatabaseFixture>
     {
         var context = _fixture.CreateContext();
         // Arrange
-        var queueService = new PushNotificationQueueService(context);
+        var queueService = CreateQueueService(_fixture);
 
         // Count notifications before the operation
         var notificationCountBefore = await context.Set<Notification>().CountAsync();
 
+        var notificationData = new AppAnnouncementNotificationData
+        {
+            AnnouncementTitle = "Test message",
+            Body = "metadata"
+        };
+
         // Act
-        await queueService.AddBulkAsync(Array.Empty<Guid>(), "Test message", "metadata");
+        await queueService.AddBulkAsync(Array.Empty<Guid>(), notificationData);
 
         // Assert - no new notifications should be created
         var notificationCountAfter = await context.Set<Notification>().CountAsync();

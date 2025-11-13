@@ -69,6 +69,7 @@ public class EventController : ControllerBase
     }
 
     [HttpPost]
+    [ProducesResponseType(typeof(EventDto), StatusCodes.Status201Created)]
     public async Task<ActionResult<EventDto>> CreateEvent([FromBody] CreateEventDto createEventDto)
     {
         if (!AuthUtils.TryGetUserIdFromToken(HttpContext, out var userId))

@@ -12,7 +12,7 @@ public interface IPostService
     Task<FeedDto> GetFilteredFeedForUserAsync(Guid userId, Guid[]? circleIds, int page = 1, int pageSize = 20);
     Task<List<PostDto>> GetAllPostsAsync(bool includeCommentCount = false);
     Task<IEnumerable<PostDto>> GetUserPostsAsync(Guid userId, int page = 1, int pageSize = 20);
-    Task<PostDto> CreatePostAsync(Guid userId, Guid[] circleIds, string text, IEnumerable<string>? imageObjectKeys = null);
+    Task<PostDto> CreatePostAsync(Guid userId, Guid[] circleIds, Guid[] userIds, string text, IEnumerable<string>? imageObjectKeys = null);
     Task<PostDto?> UpdatePostAsync(Guid id, Guid updatedByUserId, string newText);
     Task<bool> DeletePostAsync(Guid id, Guid deletedByUserId);
     Task<bool> PostExistsAsync(Guid id);
@@ -75,6 +75,11 @@ public class PostService : IPostService
                 .Where(cp => cp.PostId == id)
                 .AnyAsync(cp => _dbContext.CircleMemberships
                     .Any(cm => cm.CircleId == cp.CircleId && cm.UserId == requestorId));
+
+            isAuthorized = isAuthorized ||
+                // Or if post is shared directly with the requestor
+                await _dbContext.IndividualPosts
+                    .AnyAsync(ip => ip.PostId == id && ip.UserId == requestorId);
 
             if (!isAuthorized)
             {
@@ -190,14 +195,32 @@ public class PostService : IPostService
             */
 
             // Step 1: Get post IDs for pagination (most efficient way to paginate)
-            var postIds = await _dbContext.Posts
-                .Where(p => p.SharedWithCircles.Any(cp =>
-                    cp.Circle != null && cp.Circle.Members.Any(m => m.UserId == userId)))
+            // Include posts:
+            // 1. Created by the user (so they see their own posts)
+            // 2. Shared with user's circles
+            // 3. Shared directly with the user
+            // Also track which posts were shared directly with the user (for privacy flag)
+            var postsWithSharingInfo = await _dbContext.Posts
+                .Where(p => 
+                    p.UserId == userId ||
+                    p.SharedWithCircles.Any(cp =>
+                        cp.Circle != null && cp.Circle.Members.Any(m => m.UserId == userId)) ||
+                    p.SharedWithUsers.Any(ip => ip.UserId == userId))
                 .OrderByDescending(p => p.Date)
                 .Skip((page - 1) * pageSize)
                 .Take(pageSize)
-                .Select(p => p.Id)
+                .Select(p => new
+                {
+                    PostId = p.Id,
+                    SharedDirectlyWithUser = p.SharedWithUsers.Any(ip => ip.UserId == userId)
+                })
                 .ToListAsync();
+
+            var postIds = postsWithSharingInfo.Select(p => p.PostId).ToList();
+            var postsSharedWithCurrentUserSet = postsWithSharingInfo
+                .Where(p => p.SharedDirectlyWithUser)
+                .Select(p => p.PostId)
+                .ToHashSet();
 
             //if (!postIds.Any())
             //    return new List<PostDto>();
@@ -245,6 +268,29 @@ public class PostService : IPostService
                 .GroupBy(c => c.PostId)
                 .ToDictionary(g => g.Key, g => g.ToList());
 
+            // Step 4: Get full sharing info ONLY for posts owned by the current user (for privacy)
+            var ownedPostIds = postsWithComments
+                .Where(pc => pc.Post.UserId == userId)
+                .Select(pc => pc.Post.Id)
+                .ToList();
+
+            var userInfoForOwnedPosts = await (
+                from ip in _dbContext.IndividualPosts
+                where ownedPostIds.Contains(ip.PostId)
+                join u in _dbContext.Users on ip.UserId equals u.Id
+                select new
+                {
+                    PostId = ip.PostId,
+                    UserId = u.Id,
+                    UserName = u.Name
+                })
+                .AsNoTracking()
+                .ToListAsync();
+
+            var usersByPost = userInfoForOwnedPosts
+                .GroupBy(u => u.PostId)
+                .ToDictionary(g => g.Key, g => g.ToList());
+
             this._logger.LogInformation("Done querying database for feed");
             // Combine the data
             var posts = postsWithComments.Select(pc =>
@@ -287,6 +333,25 @@ public class PostService : IPostService
                         IsShared = c.IsShared,
                     }).ToList()
                     : new List<CirclePublicDto>();
+                
+                // Privacy: Only show full SharedWithUsers list to post owner
+                bool isOwner = pc.Post.UserId == userId;
+                if (isOwner && usersByPost.ContainsKey(pc.Post.Id))
+                {
+                    dto.SharedWithUsers = usersByPost[pc.Post.Id].Select(u => new UserDto
+                    {
+                        Id = u.UserId,
+                        Name = u.UserName
+                    }).ToList();
+                }
+                else
+                {
+                    dto.SharedWithUsers = new List<UserDto>();
+                }
+                
+                // Set flag if this post was shared directly with the current user
+                dto.SharedWithYouDirectly = postsSharedWithCurrentUserSet.Contains(pc.Post.Id);
+                
                 return dto;
             }).ToList();
 
@@ -317,25 +382,42 @@ public class PostService : IPostService
             {
                 // If no circles specified, return all posts user has access to (same as GetFeedForUserAsync)
                 baseQuery = _dbContext.Posts
-                    .Where(p => p.SharedWithCircles.Any(cp =>
-                        cp.Circle != null && cp.Circle.Members.Any(m => m.UserId == userId)));
+                    .Where(p => 
+                        p.UserId == userId ||
+                        p.SharedWithCircles.Any(cp =>
+                            cp.Circle != null && cp.Circle.Members.Any(m => m.UserId == userId)) ||
+                        p.SharedWithUsers.Any(ip => ip.UserId == userId));
             }
             else
             {
-                // Filter by specific circles
+                // Filter by specific circles (still include posts created by user and shared directly with user)
                 baseQuery = _dbContext.Posts
-                    .Where(p => p.SharedWithCircles.Any(cp =>
-                        circleIds.Contains(cp.CircleId) &&
-                        cp.Circle != null && cp.Circle.Members.Any(m => m.UserId == userId)));
+                    .Where(p => 
+                        p.UserId == userId ||
+                        p.SharedWithCircles.Any(cp =>
+                            circleIds.Contains(cp.CircleId) &&
+                            cp.Circle != null && cp.Circle.Members.Any(m => m.UserId == userId)) ||
+                        p.SharedWithUsers.Any(ip => ip.UserId == userId));
             }
 
             // Step 1: Get post IDs for pagination
-            var postIds = await baseQuery
+            // Also track which posts were shared directly with the user (for privacy flag)
+            var postsWithSharingInfo = await baseQuery
                 .OrderByDescending(p => p.Date)
                 .Skip((page - 1) * pageSize)
                 .Take(pageSize)
-                .Select(p => p.Id)
+                .Select(p => new
+                {
+                    PostId = p.Id,
+                    SharedDirectlyWithUser = p.SharedWithUsers.Any(ip => ip.UserId == userId)
+                })
                 .ToListAsync();
+
+            var postIds = postsWithSharingInfo.Select(p => p.PostId).ToList();
+            var postsSharedWithCurrentUserSet = postsWithSharingInfo
+                .Where(p => p.SharedDirectlyWithUser)
+                .Select(p => p.PostId)
+                .ToHashSet();
 
             // Step 2: Get posts with comment counts
             var postsWithComments = await (
@@ -376,6 +458,29 @@ public class PostService : IPostService
             // Group circle info by post ID for easy lookup
             var circlesByPost = circleInfo
                 .GroupBy(c => c.PostId)
+                .ToDictionary(g => g.Key, g => g.ToList());
+
+            // Step 4: Get full sharing info ONLY for posts owned by the current user (for privacy)
+            var ownedPostIds = postsWithComments
+                .Where(pc => pc.Post.UserId == userId)
+                .Select(pc => pc.Post.Id)
+                .ToList();
+
+            var userInfoForOwnedPosts = await (
+                from ip in _dbContext.IndividualPosts
+                where ownedPostIds.Contains(ip.PostId)
+                join u in _dbContext.Users on ip.UserId equals u.Id
+                select new
+                {
+                    PostId = ip.PostId,
+                    UserId = u.Id,
+                    UserName = u.Name
+                })
+                .AsNoTracking()
+                .ToListAsync();
+
+            var usersByPost = userInfoForOwnedPosts
+                .GroupBy(u => u.PostId)
                 .ToDictionary(g => g.Key, g => g.ToList());
 
             // Combine the data
@@ -419,6 +524,25 @@ public class PostService : IPostService
                         IsShared = c.IsShared,
                     }).ToList()
                     : new List<CirclePublicDto>();
+                
+                // Privacy: Only show full SharedWithUsers list to post owner
+                bool isOwner = pc.Post.UserId == userId;
+                if (isOwner && usersByPost.ContainsKey(pc.Post.Id))
+                {
+                    dto.SharedWithUsers = usersByPost[pc.Post.Id].Select(u => new UserDto
+                    {
+                        Id = u.UserId,
+                        Name = u.UserName
+                    }).ToList();
+                }
+                else
+                {
+                    dto.SharedWithUsers = new List<UserDto>();
+                }
+                
+                // Set flag if this post was shared directly with the current user
+                dto.SharedWithYouDirectly = postsSharedWithCurrentUserSet.Contains(pc.Post.Id);
+                
                 return dto;
             }).ToList();
 
@@ -522,7 +646,7 @@ public class PostService : IPostService
         }
     }
 
-    public async Task<PostDto> CreatePostAsync(Guid userId, Guid[] circleIds, string text, IEnumerable<string>? imageObjectKeys = null)
+    public async Task<PostDto> CreatePostAsync(Guid userId, Guid[] circleIds, Guid[] userIds, string text, IEnumerable<string>? imageObjectKeys = null)
     {
         var user = await this._dbContext.Users.FirstOrDefaultAsync(u => u.Id == userId);
         if (user == null)
@@ -530,8 +654,10 @@ public class PostService : IPostService
             throw new BadHttpRequestException($"Cannot create post for invalid user {userId}");
         }
 
-        await CircleService.ValidateAuthorizationToPostAsync(_dbContext, circleIds, userId);
+        await ValidateAuthorizationToPostAsync(_dbContext, circleIds, userIds, userId);
 
+        // Use explicit transaction to ensure atomicity
+        using var transaction = await _dbContext.Database.BeginTransactionAsync();
         try
         {
             var post = new Post
@@ -547,24 +673,22 @@ public class PostService : IPostService
             var circlePosts = circleIds.Select(circleId => new CirclePost
             {
                 CircleId = circleId,
+                PostId = post.Id,    
+                SharedAt = DateTime.UtcNow
+            }).ToList();
+
+            var individualPosts = userIds.Select(targetUserId => new IndividualPost
+            {
+                UserId = targetUserId,
                 PostId = post.Id,
                 SharedAt = DateTime.UtcNow
             }).ToList();
+
+            await _dbContext.IndividualPosts.AddRangeAsync(individualPosts);
             await _dbContext.CirclePosts.AddRangeAsync(circlePosts);
             await SaveChangesAsync();
 
-            // Send notifications to circle members
-            try
-            {
-                await _eventNotificationService.SendNewPostNotificationAsync(post.Id, userId, text, circleIds, user.Name, imageObjectKeys.Count() > 0);
-            }
-            catch (Exception ex)
-            {
-                // Log error but don't fail the post creation
-                _logger.LogWarning(ex, "Failed to send post notifications for post {PostId}", post.Id);
-            }
-
-            // Reload the post with relationships
+            // Reload the post with relationships before committing
             await _dbContext.Entry(post)
                 .Reference(p => p.User)
                 .LoadAsync();
@@ -575,6 +699,27 @@ public class PostService : IPostService
                 .Include(cp => cp.Circle)
                 .LoadAsync();
 
+            await _dbContext.Entry(post)
+                .Collection(p => p.SharedWithUsers)
+                .Query()
+                .Include(ip => ip.User)
+                .LoadAsync();
+
+            // Commit transaction - all database changes are now persisted atomically
+            await transaction.CommitAsync();
+
+            // Send notifications after successful commit (outside transaction)
+            // If this fails, the post is still created successfully
+            try
+            {
+                await _eventNotificationService.SendNewPostNotificationAsync(post.Id, userId, text, circleIds, user.Name, imageObjectKeys != null && imageObjectKeys.Any());
+            }
+            catch (Exception ex)
+            {
+                // Log error but don't fail the post creation
+                _logger.LogWarning(ex, "Failed to send post notifications for post {PostId}", post.Id);
+            }
+
             var dto = this._mapper.Map<PostDto>(entry.Entity);
             dto.HasImage = post.ImageObjectKeys.Any();
             dto.ImageCount = post.ImageObjectKeys.Count;
@@ -582,6 +727,7 @@ public class PostService : IPostService
         }
         catch (Exception ex)
         {
+            // Transaction will automatically rollback on dispose if not committed
             _logger.LogError(ex, "Error creating post for user: {UserId}", userId);
             throw;
         }
@@ -662,14 +808,14 @@ public class PostService : IPostService
         }
     }
 
-    public async Task<Dictionary<int,string>> GetPostImageUrlsAsync(Guid requestorId, Guid postId, IEnumerable<int> indices, int expirySeconds = 60)
+    public async Task<Dictionary<int, string>> GetPostImageUrlsAsync(Guid requestorId, Guid postId, IEnumerable<int> indices, int expirySeconds = 60)
     {
-        var map = new Dictionary<int,string>();
+        var map = new Dictionary<int, string>();
         var post = await _dbContext.Posts.FirstOrDefaultAsync(p => p.Id == postId);
         if (post == null) return map;
         // internally performs authorization check
         // TODO: optimize to avoid double DB fetch
-        var auth = await GetPostByIdAsync(requestorId, postId, includeCommentTree:false, includeImageUrl:false);
+        var auth = await GetPostByIdAsync(requestorId, postId, includeCommentTree: false, includeImageUrl: false);
         if (auth == null) return map;
         foreach (var idx in indices.Distinct())
         {
@@ -684,6 +830,69 @@ public class PostService : IPostService
             }
         }
         return map;
+    }
+    
+    public static async Task ValidateAuthorizationToPostAsync(CliqDbContext dbContext, Guid[] circleIds, Guid[] userIds, Guid userId)
+    {
+        // VALIDATE USER IS MEMBER/OWNER OF CIRCLES
+        var circleValidation = await dbContext.Circles
+        .Where(c => circleIds.Contains(c.Id))
+        .Select(c => new
+        {
+            c.Id,
+            IsUserMember = c.Members.Any(m => m.UserId == userId) || c.OwnerId == userId
+        })
+        .ToListAsync();
+
+        // Check if any circles were not found
+        var foundCircleIds = circleValidation.Select(c => c.Id).ToList();
+        var missingCircleIds = circleIds.Except(foundCircleIds).ToList();
+        if (missingCircleIds.Any())
+        {
+            throw new BadHttpRequestException(
+                $"Cannot create post for invalid circle(s): {string.Join(", ", missingCircleIds)}");
+        }
+
+        // Check if user is not a member/owner of any of the circles
+        var unauthorizedCircleIds = circleValidation
+            .Where(c => !c.IsUserMember)
+            .Select(c => c.Id)
+            .ToList();
+        if (unauthorizedCircleIds.Any())
+        {
+            throw new UnauthorizedAccessException(
+                $"User is not a member of circle(s): {string.Join(", ", unauthorizedCircleIds)}");
+        }
+
+        // VALIDATE USERS ARE FRIENDS
+        if (userIds.Length > 0)
+        {
+            // Count how many of the target users are friends with userId
+            var friendshipCount = await dbContext.Friendships
+                .Where(f => 
+                    userIds.Contains(f.RequesterId) || userIds.Contains(f.AddresseeId))
+                .Where(f => 
+                    (f.RequesterId == userId || f.AddresseeId == userId) &&
+                    f.Status == FriendshipStatus.Accepted)
+                .CountAsync();
+
+            // If the count doesn't match the number of target users, some are not friends
+            if (friendshipCount != userIds.Length)
+            {
+                // Optionally, identify which users are not friends for a better error message
+                var friendUserIds = await dbContext.Friendships
+                    .Where(f => 
+                        ((f.RequesterId == userId && userIds.Contains(f.AddresseeId)) ||
+                         (f.AddresseeId == userId && userIds.Contains(f.RequesterId))) &&
+                        f.Status == FriendshipStatus.Accepted)
+                    .Select(f => f.RequesterId == userId ? f.AddresseeId : f.RequesterId)
+                    .ToListAsync();
+
+                var nonFriendUserIds = userIds.Except(friendUserIds).ToList();
+                throw new UnauthorizedAccessException(
+                    $"Cannot create post: User is not friends with {nonFriendUserIds.Count} user(s): {string.Join(", ", nonFriendUserIds)}");
+            }
+        }
     }
 }
 

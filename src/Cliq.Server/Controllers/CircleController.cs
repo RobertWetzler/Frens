@@ -64,6 +64,7 @@ public class CircleController : ControllerBase
     }
 
     [HttpPost]
+    [ProducesResponseType(typeof(CirclePublicDto), StatusCodes.Status201Created)]
     public async Task<ActionResult<CirclePublicDto>> CreateCircle([FromBody] CircleCreationDto circleDto)
     {
         if (!AuthUtils.TryGetUserIdFromToken(this.HttpContext, out var userId))

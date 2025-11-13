@@ -17,6 +17,7 @@ public class CliqDbContext : IdentityDbContext<User, CliqRole, Guid>
     public DbSet<Circle> Circles { get; set; }
     public DbSet<CircleMembership> CircleMemberships { get; set; }
     public DbSet<CirclePost> CirclePosts { get; set; }
+    public DbSet<IndividualPost> IndividualPosts { get; set; }
     public DbSet<EfPushSubscription> PushSubscriptions { get; set; }
     public DbSet<Notification> Notifications { get; set; }
     public DbSet<NotificationDelivery> NotificationDeliveries { get; set; }
@@ -128,10 +129,24 @@ public class CliqDbContext : IdentityDbContext<User, CliqRole, Guid>
         modelBuilder.Entity<CirclePost>()
             .HasIndex(cp => cp.PostId);   // For reverse joins if needed
 
+        modelBuilder.Entity<IndividualPost>()
+            .HasKey(ip => new { ip.UserId, ip.PostId });
+
+        modelBuilder.Entity<IndividualPost>()
+            .HasIndex(ip => ip.UserId); // For getting all individual posts per user
+
+        modelBuilder.Entity<IndividualPost>()
+            .HasIndex(ip => ip.PostId);   // For reverse joins if needed
+
         modelBuilder.Entity<Post>()
             .HasMany(p => p.SharedWithCircles)
             .WithOne(cp => cp.Post)
             .HasForeignKey(cp => cp.PostId);
+
+        modelBuilder.Entity<Post>()
+            .HasMany(p => p.SharedWithUsers)
+            .WithOne(ip => ip.Post)
+            .HasForeignKey(ip => ip.PostId);
 
         modelBuilder.Entity<Post>()
             .HasIndex(p => p.UserId);     // For querying all posts by a user

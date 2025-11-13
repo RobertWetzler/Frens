@@ -201,12 +201,12 @@ export class Client {
     protected processCircle_CreateCircle(response: Response): Promise<CirclePublicDto> {
         const status = response.status;
         let _headers: any = {}; if (response.headers && response.headers.forEach) { response.headers.forEach((v: any, k: any) => _headers[k] = v); };
-        if (status === 200 || status === 201) {
+        if (status === 201) {
             return response.text().then((_responseText) => {
-            let result200: any = null;
-            let resultData200 = _responseText === "" ? null : JSON.parse(_responseText, this.jsonParseReviver);
-            result200 = CirclePublicDto.fromJS(resultData200);
-            return result200;
+            let result201: any = null;
+            let resultData201 = _responseText === "" ? null : JSON.parse(_responseText, this.jsonParseReviver);
+            result201 = CirclePublicDto.fromJS(resultData201);
+            return result201;
             });
         } else if (status !== 200 && status !== 204) {
             return response.text().then((_responseText) => {
@@ -754,12 +754,12 @@ export class Client {
     protected processEvent_CreateEvent(response: Response): Promise<EventDto> {
         const status = response.status;
         let _headers: any = {}; if (response.headers && response.headers.forEach) { response.headers.forEach((v: any, k: any) => _headers[k] = v); };
-        if (status === 200 || status === 201) {
+        if (status === 201) {
             return response.text().then((_responseText) => {
-            let result200: any = null;
-            let resultData200 = _responseText === "" ? null : JSON.parse(_responseText, this.jsonParseReviver);
-            result200 = EventDto.fromJS(resultData200);
-            return result200;
+            let result201: any = null;
+            let resultData201 = _responseText === "" ? null : JSON.parse(_responseText, this.jsonParseReviver);
+            result201 = EventDto.fromJS(resultData201);
+            return result201;
             });
         } else if (status !== 200 && status !== 204) {
             return response.text().then((_responseText) => {
@@ -1502,6 +1502,41 @@ export class Client {
         return Promise.resolve<FileResponse>(null as any);
     }
 
+    post_GetCreatePostData(signal?: AbortSignal): Promise<CreatePostDataDto> {
+        let url_ = this.baseUrl + "/api/Post/create-post-data";
+        url_ = url_.replace(/[?&]$/, "");
+
+        let options_: RequestInit = {
+            method: "GET",
+            signal,
+            headers: {
+                "Accept": "application/json"
+            }
+        };
+
+        return this.http.fetch(url_, options_).then((_response: Response) => {
+            return this.processPost_GetCreatePostData(_response);
+        });
+    }
+
+    protected processPost_GetCreatePostData(response: Response): Promise<CreatePostDataDto> {
+        const status = response.status;
+        let _headers: any = {}; if (response.headers && response.headers.forEach) { response.headers.forEach((v: any, k: any) => _headers[k] = v); };
+        if (status === 200) {
+            return response.text().then((_responseText) => {
+            let result200: any = null;
+            let resultData200 = _responseText === "" ? null : JSON.parse(_responseText, this.jsonParseReviver);
+            result200 = CreatePostDataDto.fromJS(resultData200);
+            return result200;
+            });
+        } else if (status !== 200 && status !== 204) {
+            return response.text().then((_responseText) => {
+            return throwException("An unexpected server error occurred.", status, _responseText, _headers);
+            });
+        }
+        return Promise.resolve<CreatePostDataDto>(null as any);
+    }
+
     post_GetPostImage(id: string, index: number | undefined, expirySeconds: number | undefined, signal?: AbortSignal): Promise<PostImageUrlDto> {
         let url_ = this.baseUrl + "/api/Post/{id}/image?";
         if (id === undefined || id === null)
@@ -1849,7 +1884,7 @@ export class Client {
         return Promise.resolve<FeedDto>(null as any);
     }
 
-    post_CreatePost(text: string | null | undefined, circleIds: string[] | null | undefined, images: FileParameter[] | null | undefined, signal?: AbortSignal): Promise<PostDto> {
+    post_CreatePost(text: string | null | undefined, circleIds: string[] | null | undefined, userIds: string[] | null | undefined, images: FileParameter[] | null | undefined, signal?: AbortSignal): Promise<PostDto> {
         let url_ = this.baseUrl + "/api/Post";
         url_ = url_.replace(/[?&]$/, "");
 
@@ -1858,6 +1893,8 @@ export class Client {
             content_.append("Text", text.toString());
         if (circleIds !== null && circleIds !== undefined)
             circleIds.forEach(item_ => content_.append("CircleIds", item_.toString()));
+        if (userIds !== null && userIds !== undefined)
+            userIds.forEach(item_ => content_.append("UserIds", item_.toString()));
         if (images !== null && images !== undefined)
             images.forEach(item_ => content_.append("Images", item_.data, item_.fileName ? item_.fileName : "Images") );
 
@@ -1878,12 +1915,12 @@ export class Client {
     protected processPost_CreatePost(response: Response): Promise<PostDto> {
         const status = response.status;
         let _headers: any = {}; if (response.headers && response.headers.forEach) { response.headers.forEach((v: any, k: any) => _headers[k] = v); };
-        if (status === 200 || status === 201) {
+        if (status === 201) {
             return response.text().then((_responseText) => {
-            let result200: any = null;
-            let resultData200 = _responseText === "" ? null : JSON.parse(_responseText, this.jsonParseReviver);
-            result200 = PostDto.fromJS(resultData200);
-            return result200;
+            let result201: any = null;
+            let resultData201 = _responseText === "" ? null : JSON.parse(_responseText, this.jsonParseReviver);
+            result201 = PostDto.fromJS(resultData201);
+            return result201;
             });
         } else if (status !== 200 && status !== 204) {
             return response.text().then((_responseText) => {
@@ -2461,6 +2498,8 @@ export class PostDto implements IPostDto {
     user?: UserDto;
     comments?: CommentDto[];
     sharedWithCircles?: CirclePublicDto[];
+    sharedWithUsers?: UserDto[];
+    sharedWithYouDirectly?: boolean;
     commentCount?: number;
     hasImage?: boolean;
     imageCount?: number;
@@ -2495,6 +2534,12 @@ export class PostDto implements IPostDto {
                 for (let item of _data["sharedWithCircles"])
                     this.sharedWithCircles!.push(CirclePublicDto.fromJS(item));
             }
+            if (Array.isArray(_data["sharedWithUsers"])) {
+                this.sharedWithUsers = [] as any;
+                for (let item of _data["sharedWithUsers"])
+                    this.sharedWithUsers!.push(UserDto.fromJS(item));
+            }
+            this.sharedWithYouDirectly = _data["sharedWithYouDirectly"];
             this.commentCount = _data["commentCount"];
             this.hasImage = _data["hasImage"];
             this.imageCount = _data["imageCount"];
@@ -2532,6 +2577,12 @@ export class PostDto implements IPostDto {
             for (let item of this.sharedWithCircles)
                 data["sharedWithCircles"].push(item.toJSON());
         }
+        if (Array.isArray(this.sharedWithUsers)) {
+            data["sharedWithUsers"] = [];
+            for (let item of this.sharedWithUsers)
+                data["sharedWithUsers"].push(item.toJSON());
+        }
+        data["sharedWithYouDirectly"] = this.sharedWithYouDirectly;
         data["commentCount"] = this.commentCount;
         data["hasImage"] = this.hasImage;
         data["imageCount"] = this.imageCount;
@@ -2548,6 +2599,8 @@ export interface IPostDto {
     user?: UserDto;
     comments?: CommentDto[];
     sharedWithCircles?: CirclePublicDto[];
+    sharedWithUsers?: UserDto[];
+    sharedWithYouDirectly?: boolean;
     commentCount?: number;
     hasImage?: boolean;
     imageCount?: number;
@@ -2775,6 +2828,7 @@ export class CreateEventDto implements ICreateEventDto {
     isRecurring?: boolean;
     recurrenceRule?: string | undefined;
     circleIds?: string[];
+    userIds?: string[];
 
     constructor(data?: ICreateEventDto) {
         if (data) {
@@ -2801,6 +2855,11 @@ export class CreateEventDto implements ICreateEventDto {
                 this.circleIds = [] as any;
                 for (let item of _data["circleIds"])
                     this.circleIds!.push(item);
+            }
+            if (Array.isArray(_data["userIds"])) {
+                this.userIds = [] as any;
+                for (let item of _data["userIds"])
+                    this.userIds!.push(item);
             }
         }
     }
@@ -2829,6 +2888,11 @@ export class CreateEventDto implements ICreateEventDto {
             for (let item of this.circleIds)
                 data["circleIds"].push(item);
         }
+        if (Array.isArray(this.userIds)) {
+            data["userIds"] = [];
+            for (let item of this.userIds)
+                data["userIds"].push(item);
+        }
         return data;
     }
 }
@@ -2845,6 +2909,7 @@ export interface ICreateEventDto {
     isRecurring?: boolean;
     recurrenceRule?: string | undefined;
     circleIds?: string[];
+    userIds?: string[];
 }
 
 export class UpdateEventDto implements IUpdateEventDto {
@@ -3265,6 +3330,62 @@ export interface IAppAnnouncementRequest {
     title?: string;
     body?: string;
     actionUrl?: string | undefined;
+}
+
+export class CreatePostDataDto implements ICreatePostDataDto {
+    circles?: CirclePublicDto[];
+    friends?: UserDto[];
+
+    constructor(data?: ICreatePostDataDto) {
+        if (data) {
+            for (var property in data) {
+                if (data.hasOwnProperty(property))
+                    (<any>this)[property] = (<any>data)[property];
+            }
+        }
+    }
+
+    init(_data?: any) {
+        if (_data) {
+            if (Array.isArray(_data["circles"])) {
+                this.circles = [] as any;
+                for (let item of _data["circles"])
+                    this.circles!.push(CirclePublicDto.fromJS(item));
+            }
+            if (Array.isArray(_data["friends"])) {
+                this.friends = [] as any;
+                for (let item of _data["friends"])
+                    this.friends!.push(UserDto.fromJS(item));
+            }
+        }
+    }
+
+    static fromJS(data: any): CreatePostDataDto {
+        data = typeof data === 'object' ? data : {};
+        let result = new CreatePostDataDto();
+        result.init(data);
+        return result;
+    }
+
+    toJSON(data?: any) {
+        data = typeof data === 'object' ? data : {};
+        if (Array.isArray(this.circles)) {
+            data["circles"] = [];
+            for (let item of this.circles)
+                data["circles"].push(item.toJSON());
+        }
+        if (Array.isArray(this.friends)) {
+            data["friends"] = [];
+            for (let item of this.friends)
+                data["friends"].push(item.toJSON());
+        }
+        return data;
+    }
+}
+
+export interface ICreatePostDataDto {
+    circles?: CirclePublicDto[];
+    friends?: UserDto[];
 }
 
 export class PostImageUrlDto implements IPostImageUrlDto {

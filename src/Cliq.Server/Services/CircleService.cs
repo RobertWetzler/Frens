@@ -178,38 +178,6 @@ public class CircleService : ICircleService
         return _mapper.Map<IEnumerable<CirclePublicDto>>(memberCircles).Union(ownedCirclesMapped, new CircleIdComparer());
     }
 
-    public static async Task ValidateAuthorizationToPostAsync(CliqDbContext dbContext, Guid[] circleIds, Guid userId)
-    {
-        var circleValidation = await dbContext.Circles
-        .Where(c => circleIds.Contains(c.Id))
-        .Select(c => new
-        {
-            c.Id,
-            IsUserMember = c.Members.Any(m => m.UserId == userId) || c.OwnerId == userId
-        })
-        .ToListAsync();
-
-        // Check if any circles were not found
-        var foundCircleIds = circleValidation.Select(c => c.Id).ToList();
-        var missingCircleIds = circleIds.Except(foundCircleIds).ToList();
-        if (missingCircleIds.Any())
-        {
-            throw new BadHttpRequestException(
-                $"Cannot create post for invalid circle(s): {string.Join(", ", missingCircleIds)}");
-        }
-
-        // Check if user is not a member/owner of any of the circles
-        var unauthorizedCircleIds = circleValidation
-            .Where(c => !c.IsUserMember)
-            .Select(c => c.Id)
-            .ToList();
-        if (unauthorizedCircleIds.Any())
-        {
-            throw new UnauthorizedAccessException(
-                $"User is not a member of circle(s): {string.Join(", ", unauthorizedCircleIds)}");
-        }
-    }
-
     public async Task<IEnumerable<CircleWithMembersDto>> GetUserCirclesWithMembersAsync(Guid userId)
     {
         if (await this._dbContext.Users.FirstOrDefaultAsync(u => u.Id == userId) == null)

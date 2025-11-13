@@ -103,7 +103,7 @@ public class CircleAuthorizationTests : DatabaseTestBase
         var circleIds = new[] { _sharedCircleId };
 
         // Act & Assert - Should not throw exception
-        await CircleService.ValidateAuthorizationToPostAsync(Context, circleIds, _ownerId);
+        await PostService.ValidateAuthorizationToPostAsync(Context, circleIds, Array.Empty<Guid>(), _ownerId);
     }
 
     [Fact]
@@ -113,7 +113,7 @@ public class CircleAuthorizationTests : DatabaseTestBase
         var circleIds = new[] { _sharedCircleId };
 
         // Act & Assert - Should not throw exception
-        await CircleService.ValidateAuthorizationToPostAsync(Context, circleIds, _memberId);
+        await PostService.ValidateAuthorizationToPostAsync(Context, circleIds, Array.Empty<Guid>(), _memberId);
     }
 
     [Fact]
@@ -124,7 +124,7 @@ public class CircleAuthorizationTests : DatabaseTestBase
 
         // Act & Assert
         var exception = await Assert.ThrowsAsync<UnauthorizedAccessException>(
-            async () => await CircleService.ValidateAuthorizationToPostAsync(Context, circleIds, _nonMemberId)
+            async () => await PostService.ValidateAuthorizationToPostAsync(Context, circleIds, Array.Empty<Guid>(), _nonMemberId)
         );
 
         Assert.Contains(_sharedCircleId.ToString(), exception.Message);
@@ -137,7 +137,7 @@ public class CircleAuthorizationTests : DatabaseTestBase
         var circleIds = new[] { _sharedCircleId, _privateCircleId, _emptyCircleId };
 
         // Act & Assert - Should not throw exception
-        await CircleService.ValidateAuthorizationToPostAsync(Context, circleIds, _ownerId);
+        await PostService.ValidateAuthorizationToPostAsync(Context, circleIds, Array.Empty<Guid>(), _ownerId);
     }
 
     [Fact]
@@ -148,7 +148,7 @@ public class CircleAuthorizationTests : DatabaseTestBase
 
         // Act & Assert
         var exception = await Assert.ThrowsAsync<BadHttpRequestException>(
-            async () => await CircleService.ValidateAuthorizationToPostAsync(Context, circleIds, _ownerId)
+            async () => await PostService.ValidateAuthorizationToPostAsync(Context, circleIds, Array.Empty<Guid>(), _ownerId)
         );
 
         Assert.Contains(_nonExistentCircleId.ToString(), exception.Message);
@@ -162,7 +162,7 @@ public class CircleAuthorizationTests : DatabaseTestBase
 
         // Act & Assert
         var exception = await Assert.ThrowsAsync<BadHttpRequestException>(
-            async () => await CircleService.ValidateAuthorizationToPostAsync(Context, circleIds, _ownerId)
+            async () => await PostService.ValidateAuthorizationToPostAsync(Context, circleIds, Array.Empty<Guid>(), _ownerId)
         );
 
         Assert.Contains(_nonExistentCircleId.ToString(), exception.Message);
@@ -177,7 +177,7 @@ public class CircleAuthorizationTests : DatabaseTestBase
 
         // Act & Assert
         var exception = await Assert.ThrowsAsync<UnauthorizedAccessException>(
-            async () => await CircleService.ValidateAuthorizationToPostAsync(Context, circleIds, _memberId)
+            async () => await PostService.ValidateAuthorizationToPostAsync(Context, circleIds, Array.Empty<Guid>(), _memberId)
         );
 
         Assert.Contains(_emptyCircleId.ToString(), exception.Message);
@@ -191,6 +191,6 @@ public class CircleAuthorizationTests : DatabaseTestBase
         var circleIds = Array.Empty<Guid>();
 
         // Act & Assert - Should not throw exception
-        await CircleService.ValidateAuthorizationToPostAsync(Context, circleIds, _ownerId);
+        await PostService.ValidateAuthorizationToPostAsync(Context, circleIds, Array.Empty<Guid>(), _ownerId);
     }
 }

@@ -131,9 +131,24 @@ const Post: React.FC<PostProps> = ({ post, navigation, isNavigable = true, anima
     }
   }, [shouldAnimate, animationDelay, opacity, translateY, scale, post.id]);
 
-  const sharedWithText = post.sharedWithCircles && post.sharedWithCircles.length > 0
-    ? post.sharedWithCircles.map(c => c.name).join(", ")
-    : "you";
+  // Determine shared with text based on privacy settings
+  let sharedWithText = "you";
+  
+  if (post.sharedWithCircles && post.sharedWithCircles.length > 0) {
+    sharedWithText = post.sharedWithCircles.map(c => c.name).join(", ");
+  } else if (post.sharedWithYouDirectly) {
+    sharedWithText = "you";
+  }
+  
+  // If post has shared users (visible only to post owner), show them
+  if (post.sharedWithUsers && post.sharedWithUsers.length > 0) {
+    const userNames = post.sharedWithUsers.map(u => u.name).join(", ");
+    if (post.sharedWithCircles && post.sharedWithCircles.length > 0) {
+      sharedWithText = `${sharedWithText} and ${userNames}`;
+    } else {
+      sharedWithText = userNames;
+    }
+  }
 
   const formatDate = (date: Date) => {
     const now = new Date();
