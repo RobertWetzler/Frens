@@ -32,6 +32,8 @@ public class PostService : IPostService
     private readonly ILogger<PostService> _logger;
     private readonly IEventNotificationService _eventNotificationService;
     private readonly IObjectStorageService _storage;
+    private readonly MetricsService _metricsService;
+    private readonly UserActivityService _activityService;
 
     public PostService(
         CliqDbContext dbContext,
@@ -41,7 +43,9 @@ public class PostService : IPostService
         IMapper mapper,
         ILogger<PostService> logger,
     IEventNotificationService eventNotificationService,
-    IObjectStorageService storage)
+    IObjectStorageService storage,
+    MetricsService metricsService,
+    UserActivityService activityService)
     {
         _dbContext = dbContext;
         _commentService = commentService;
@@ -51,6 +55,8 @@ public class PostService : IPostService
         _logger = logger;
         _eventNotificationService = eventNotificationService;
     _storage = storage;
+    _metricsService = metricsService;
+    _activityService = activityService;
     }
 
     public async Task<PostDto?> GetPostByIdAsync(Guid requestorId, Guid id, bool includeCommentTree = true, int maxDepth = 3, bool includeImageUrl = false, int imageUrlExpirySeconds = 60)
@@ -357,6 +363,12 @@ public class PostService : IPostService
 
             var notificationCount = await _friendshipService.GetFriendRequestsCountAsync(userId);
             var userCircles = await _circleService.GetUserMemberCirclesAsync(userId);
+            
+            // Increment custom metrics for home feed loads
+            _metricsService.IncrementHomeFeedLoads();
+
+            // Record user activity for DAU/WAU/MAU tracking (fire-and-forget)
+            _ = Task.Run(async () => await _activityService.RecordActivityAsync(userId, UserActivityType.FeedLoaded));
             
             return new FeedDto
             {
@@ -707,6 +719,12 @@ public class PostService : IPostService
 
             // Commit transaction - all database changes are now persisted atomically
             await transaction.CommitAsync();
+
+            // Increment custom metrics for post creation
+            _metricsService.IncrementPostsCreated();
+
+            // Record user activity for DAU/WAU/MAU tracking (fire-and-forget)
+            _ = Task.Run(async () => await _activityService.RecordActivityAsync(userId, UserActivityType.PostCreated));
 
             // Send notifications after successful commit (outside transaction)
             // If this fails, the post is still created successfully

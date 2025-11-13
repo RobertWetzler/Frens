@@ -23,6 +23,7 @@ public class CliqDbContext : IdentityDbContext<User, CliqRole, Guid>
     public DbSet<NotificationDelivery> NotificationDeliveries { get; set; }
     public DbSet<EventRsvp> EventRsvps { get; set; }
     public DbSet<CalendarSubscription> CalendarSubscription { get; set; }
+    public DbSet<UserActivity> UserActivities { get; set; }
 
     public CliqDbContext(
             DbContextOptions<CliqDbContext> options,
@@ -352,6 +353,25 @@ public class CliqDbContext : IdentityDbContext<User, CliqRole, Guid>
             entity.HasOne<User>()
                   .WithMany()
                   .HasForeignKey(c => c.UserId)
+                  .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        // UserActivity configuration for DAU/WAU/MAU metrics
+        modelBuilder.Entity<UserActivity>(entity =>
+        {
+            entity.HasKey(a => a.Id);
+            entity.Property(a => a.UserId).IsRequired();
+            entity.Property(a => a.ActivityDate).IsRequired();
+            entity.Property(a => a.ActivityType).IsRequired();
+
+            // Index for efficient querying by user and date
+            entity.HasIndex(a => new { a.UserId, a.ActivityDate });
+            // Index for querying by date (for cleanup and DAU/WAU/MAU calculations)
+            entity.HasIndex(a => a.ActivityDate);
+
+            entity.HasOne(a => a.User)
+                  .WithMany()
+                  .HasForeignKey(a => a.UserId)
                   .OnDelete(DeleteBehavior.Cascade);
         });
     }

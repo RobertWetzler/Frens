@@ -17,17 +17,20 @@ public class CommentService : ICommentService
     private readonly IMapper _mapper;
     private readonly IEventNotificationService _eventNotificationService;
     private readonly ILogger _logger;
+    private readonly UserActivityService _activityService;
 
     public CommentService(CliqDbContext dbContext,
         IMapper mapper,
         IEventNotificationService eventNotificationService,
-        ILogger<PostService> logger
+        ILogger<PostService> logger,
+        UserActivityService activityService
         )
     {
         _dbContext = dbContext;
         _mapper = mapper;
         _eventNotificationService = eventNotificationService;
         _logger = logger;
+        _activityService = activityService;
     }
 
     public async Task<CommentDto> CreateCommentAsync(string text, Guid userId, Guid postId, Guid? parentCommentId = null)
@@ -109,6 +112,9 @@ public class CommentService : ICommentService
             // Log error but don't fail the post creation
             _logger.LogWarning(ex, "Failed to send post notifications for comment {CommentId}", comment.Id);
         }
+
+        // Record user activity for DAU/WAU/MAU tracking (fire-and-forget)
+        _ = Task.Run(async () => await _activityService.RecordActivityAsync(userId, UserActivityType.CommentCreated));
 
         return result;
     }

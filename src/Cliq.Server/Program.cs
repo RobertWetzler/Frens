@@ -25,6 +25,7 @@ using NSwag;
 using NSwag.Generation.Processors.Security;
 using Amazon.S3;
 using Amazon;
+using Prometheus;
 
 DotNetEnv.Env.Load();
 
@@ -174,8 +175,14 @@ builder.Services.AddSingleton<IAmazonS3>(sp =>
     logger.LogInformation("Initializing S3 client for endpoint {Endpoint} (KeyId length {KeyLen})", s3Config.ServiceURL, keyId.Length);
     return new AmazonS3Client(keyId, appKey, s3Config);
 });
-builder.Services.AddScoped<IObjectStorageService, BackblazeB2S3StorageService>();
+builder.Services.AddSingleton<IObjectStorageService, BackblazeB2S3StorageService>();
 builder.Services.AddSingleton<IImageProcessingService, ImageProcessingService>();
+
+// Configure Prometheus metrics
+builder.Services.AddSingleton<MetricsService>();
+builder.Services.AddScoped<UserActivityService>();
+builder.Services.AddHostedService<MetricsBackgroundService>();
+
 // Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle
 builder.Services.AddEndpointsApiExplorer();
 /** 
@@ -426,6 +433,10 @@ if (await CliTools.TryHandleCliAsync(args, app.Services))
 // Ensure authentication runs before authorization so JWTs are evaluated
 app.UseAuthentication();
 app.UseAuthorization();
+
+// Expose Prometheus metrics endpoint at /metrics
+app.UseHttpMetrics();
+app.MapMetrics();
 
 app.MapControllers();
 

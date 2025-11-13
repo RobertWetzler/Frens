@@ -15,6 +15,7 @@
 		<PackageReference Include="AWSSDK.S3" Version="3.7.301" />
 		<PackageReference Include="BCrypt.Net-Next" Version="4.0.3" />
 		<PackageReference Include="DotNetEnv" Version="3.1.1" />
+		<PackageReference Include="prometheus-net.AspNetCore" Version="8.2.1" />
 		<!-- Image processing for server-side compression/resizing -->
 		<PackageReference Include="SixLabors.ImageSharp" Version="3.1.4" />
 		<PackageReference Include="Lib.AspNetCore.WebPush" Version="2.2.2" />
