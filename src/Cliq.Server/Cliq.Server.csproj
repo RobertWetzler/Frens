@@ -7,7 +7,7 @@
 		<SpaRoot>..\cliq.client</SpaRoot>
 		<SpaProxyLaunchCommand>npm run start-with-ip-gen</SpaProxyLaunchCommand>
 		<SpaProxyServerUrl>http://localhost:8081</SpaProxyServerUrl>
-		<BuildFrontendEnabled>true</BuildFrontendEnabled>
+		<BuildFrontendEnabled>false</BuildFrontendEnabled>
 	</PropertyGroup>
 
 	<ItemGroup>

@@ -3,9 +3,10 @@ using Lib.Net.Http.WebPush;
 namespace Cliq.Server.Models;
 
 // The notification exposed to the frontend Notifications feed
-public class NotificationDto
+public class NotificationFeedDto
 {
     public IEnumerable<FriendRequestDto> friendRequests { get; set; }
+    public IEnumerable<NotificationDto> notifications { get; set; }
 }
 
 public class Notification
@@ -21,6 +22,17 @@ public class Notification
 
     public List<NotificationDelivery> Deliveries { get; set; } = new();
 }
+
+public class NotificationDto
+{
+    public Guid Id { get; set; }
+    public Guid? UserId { get; set; }
+    public string Title { get; set; }
+    public string Message { get; set; }
+    public string? Metadata { get; set; } // JSON
+    public DateTime CreatedAt { get; set; }
+}
+
 
 public class NotificationDelivery
 {

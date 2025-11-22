@@ -108,11 +108,12 @@ public class PushNotificationQueueService : IPushNotificationQueueService
                 .Where(s => userIdsList.Contains(s.UserId ?? Guid.Empty))
                 .ToListAsync();
 
-            if (!allSubscriptions.Any())
-            {
-                await transaction.CommitAsync();
-                return;
-            }
+            // Post to in-app notification feed even if they dont have subscriptions
+            // if (!allSubscriptions.Any())
+            // {
+            //     await transaction.CommitAsync();
+            //     return;
+            // }
 
             // Step 2: Create one notification per user
             var notifications = userIdsList.Select(userId => new Notification
@@ -131,6 +132,7 @@ public class PushNotificationQueueService : IPushNotificationQueueService
             var deliveries = new List<NotificationDelivery>();
             foreach (var notification in notifications)
             {
+                // TODO: I feel like this could be a join
                 var userSubscriptions = allSubscriptions.Where(s => s.UserId == notification.UserId);
                 deliveries.AddRange(userSubscriptions.Select(s => new NotificationDelivery
                 {

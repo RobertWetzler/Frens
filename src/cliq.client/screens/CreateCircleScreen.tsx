@@ -25,6 +25,7 @@ const CreateCircleScreen = ({ navigation }) => {
   const styles = useStyles();
   const [circleName, setCircleName] = useState('');
   const [isShared, setIsShared] = useState(false);
+  const [isSubscribable, setIsSubscribable] = useState(false);
   const [selectedFriendIds, setSelectedFriendIds] = useState([]);
   const [friends, setFriends] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -72,7 +73,8 @@ const CreateCircleScreen = ({ navigation }) => {
         c.circle_CreateCircle(new CircleCreationDto({
           name: circleName,
           isShared: isShared,
-          userIdsToAdd: selectedFriendIds
+          userIdsToAdd: selectedFriendIds,
+          isSubscribable: isSubscribable
         }))
       );
       
@@ -147,15 +149,32 @@ const CreateCircleScreen = ({ navigation }) => {
             maxLength={50}
           />
 
-          <View style={styles.switchContainer}>
-            <Text style={styles.switchLabel}>Shared Circle</Text>
-            <Switch
-              value={isShared}
-              onValueChange={setIsShared}
-              trackColor={{ false: theme.colors.separator, true: theme.colors.primary }}
-              thumbColor={isShared ? theme.colors.primary : theme.colors.card }
-              ios_backgroundColor={theme.colors.separator}
-            />
+            <View style={styles.switchOuterContainer}>
+            <View style={styles.switchContainer}>
+              <Text style={styles.switchLabel}>Anyone can post</Text>
+              <Switch
+                value={isShared}
+                onValueChange={setIsShared}
+                trackColor={{ false: theme.colors.separator, true: theme.colors.primary }}
+                thumbColor={isShared ? theme.colors.primary : theme.colors.card}
+                ios_backgroundColor={theme.colors.separator}
+              />
+            </View>
+            <Text style={styles.switchInfo}>If selected, any members can post and view who else is in the circle. Otherwise, only you can!</Text>
+          </View>
+
+          <View style={styles.switchOuterContainer}>
+            <View style={styles.switchContainer}>
+              <Text style={styles.switchLabel}>Anyone can join</Text>
+              <Switch
+                value={isSubscribable}
+                onValueChange={setIsSubscribable}
+                trackColor={{ false: theme.colors.separator, true: theme.colors.primary }}
+                thumbColor={isSubscribable ? theme.colors.primary : theme.colors.card}
+                ios_backgroundColor={theme.colors.separator}
+              />
+            </View>
+            <Text style={styles.switchInfo}>If selected, any of your frens can choose to follow this circle. Otherwise, you can choose the members below!</Text>
           </View>
 
           <View style={styles.friendsSection}>
@@ -215,8 +234,10 @@ const useStyles = makeStyles((theme) => ({
     borderWidth: 1, borderColor: theme.colors.inputBorder, borderRadius: 8, padding: 12, fontSize: 16, marginBottom: 20,
     color: theme.colors.textPrimary, backgroundColor: theme.colors.card,
   },
-  switchContainer: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 },
+  switchContainer: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 5},
+  switchOuterContainer: { marginBottom: 20 },
   switchLabel: { fontSize: 16, fontWeight: '500', color: theme.colors.textPrimary },
+  switchInfo: { fontSize: 12, color: theme.colors.textMuted, fontStyle: 'italic' },
   friendsSection: { marginTop: 10 },
   friendsSectionTitle: { fontSize: 16, fontWeight: '500', marginBottom: 8, color: theme.colors.textPrimary },
   friendsList: { paddingBottom: 20 },

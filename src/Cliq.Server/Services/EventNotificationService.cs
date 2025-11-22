@@ -17,6 +17,8 @@ public interface IEventNotificationService
     Task SendNewCommentNotificationAsync(Guid commentId, Guid postId, Guid postAuthorId, Guid commenterId, string commentText, string commenterName);
     Task SendCommentReplyNotificationAsync(Guid replyId, Guid postId, Guid parentCommentId, Guid parentCommentAuthorId, Guid replierId, string replyText, string commenterName);
     Task SendAppAnnouncementAsync(string title, string body, string? actionUrl = null);
+    Task SendNewSubscribableCircle(Guid authorId, string authorName, Guid circleId, string circleName, Guid[] recipients, Guid[] alreadyMembers);
+
 }
 
 public class EventNotificationService : IEventNotificationService
@@ -64,7 +66,7 @@ public class EventNotificationService : IEventNotificationService
             .Distinct()
             .ToListAsync();
 
-        if (recipientUserIds.Any())
+        if (recipientUserIds.Count != 0)
         {
             var notificationData = new NewPostNotificationData
             {
@@ -90,7 +92,7 @@ public class EventNotificationService : IEventNotificationService
             .Distinct()
             .ToListAsync();
 
-        if (recipientUserIds.Any())
+        if (recipientUserIds.Count != 0)
         {
             var notificationData = new NewEventNotificationData
             {
@@ -146,7 +148,7 @@ public class EventNotificationService : IEventNotificationService
             .Select(u => u.Id)
             .ToListAsync();
 
-        if (allUserIds.Any())
+        if (allUserIds.Count != 0)
         {
             var notificationData = new AppAnnouncementNotificationData
             {
@@ -156,6 +158,39 @@ public class EventNotificationService : IEventNotificationService
             };
 
             await _notificationQueue.AddBulkAsync(allUserIds, notificationData);
+        }
+    }
+
+    public async Task SendNewSubscribableCircle(Guid authorId, string authorName, Guid circleId, string circleName, Guid[] recipients, Guid[] alreadyMembers)
+    {
+        if (recipients.Length != 0)
+        {
+            var notificationData = new NewSubscribableCircle
+            {
+                AuthorId = authorId,
+                AuthorName = authorName,
+                CircleId = circleId,
+                CircleName = circleName,
+                IsAlreadyMember = false
+            };
+
+            await _notificationQueue.AddBulkAsync(recipients, notificationData);
+        }
+
+        // For already members, notify them of the new circle but dont prompt to follow
+        if (alreadyMembers.Length != 0)
+        {
+            var notificationData = new NewSubscribableCircle
+            {
+                AuthorId = authorId,
+                AuthorName = authorName,
+                CircleId = circleId,
+                CircleName = circleName,
+                IsAlreadyMember = true
+            };
+                        
+            await _notificationQueue.AddBulkAsync(alreadyMembers, notificationData);
+
         }
     }
 }

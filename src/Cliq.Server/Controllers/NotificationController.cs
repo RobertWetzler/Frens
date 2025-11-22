@@ -19,7 +19,7 @@ public class NotificationController : ControllerBase
     }
 
     [HttpGet]
-    public async Task<ActionResult<NotificationDto>> GetNotifications()
+    public async Task<ActionResult<NotificationFeedDto>> GetNotifications()
     {
         if (!AuthUtils.TryGetUserIdFromToken(this.HttpContext, out var userId))
         {

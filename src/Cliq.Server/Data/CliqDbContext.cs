@@ -93,6 +93,11 @@ public class CliqDbContext : IdentityDbContext<User, CliqRole, Guid>
 
         // Circles
         modelBuilder.Entity<Circle>()
+            .Property(c => c.IsSubscribable)
+            .HasDefaultValue(false)
+            .IsRequired();
+
+        modelBuilder.Entity<Circle>()
             .HasMany(c => c.Members)
             .WithOne(m => m.Circle)
             .HasForeignKey(m => m.CircleId);

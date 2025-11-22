@@ -13,7 +13,9 @@ public enum NotificationType
     CommentReply,
     AppAnnouncement,
     PostMention,
-    CommentMention
+    CommentMention,
+    NewSubscribableCircle,
+    NewSubscribableCircleNoFollow
 }
 
 /// <summary>
@@ -305,6 +307,59 @@ public class AppAnnouncementNotificationData : NotificationData
             Title = AnnouncementTitle,
             Body,
             ActionUrl
+        }.ToJson();
+        set { }
+    }
+}
+
+/// <summary>
+/// Notification data for new posts
+/// </summary>
+public class NewSubscribableCircle : NotificationData
+{
+    public Guid AuthorId { get; set; }
+    public required string AuthorName { get; set; }
+    public required Guid CircleId { get; set; }
+    public required string CircleName { get; set; }
+    public bool IsAlreadyMember { get; set; }
+
+    public NewSubscribableCircle()
+    {
+        Type = IsAlreadyMember ? NotificationType.NewSubscribableCircleNoFollow : NotificationType.NewSubscribableCircle;
+    }
+
+    public override string Title
+    {
+        get
+        {
+            if (IsAlreadyMember)
+            {
+                return $"{AuthorName} made a circle";
+            }
+            else
+            {
+                return $"Follow {AuthorName}'s new circle";
+            }
+        } 
+        set { }
+    }
+
+    public override string Message
+    {
+        get => CircleName;
+        set { }
+    }
+
+    public override string Metadata
+    {
+        get => new
+        {
+            Type = Type.ToString(),
+            CircleId,
+            CircleName,
+            IsAlreadyMember,
+            AuthorId,
+            AuthorName
         }.ToJson();
         set { }
     }

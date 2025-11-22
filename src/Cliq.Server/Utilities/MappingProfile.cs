@@ -15,6 +15,7 @@ public class MappingProfile : Profile
                     Id = cp.CircleId,
                     Name = cp.Circle != null ? cp.Circle.Name : string.Empty,
                     IsShared = cp.Circle != null ? cp.Circle.IsShared : false,
+                    IsSubscribable = cp.Circle != null ? cp.Circle.IsSubscribable : false,
                 })))
             .ForMember(dest => dest.SharedWithUsers, opt => opt.MapFrom(src => 
                 src.SharedWithUsers.Select(ip => new UserDto
@@ -47,6 +48,9 @@ public class MappingProfile : Profile
             .ForMember(dest => dest.NotGoingCount, opt => opt.Ignore())
             .ForMember(dest => dest.CurrentUserRsvp, opt => opt.Ignore());
         CreateMap<EventRsvp, EventRsvpDto>();
+
+        // Notification mappings
+        CreateMap<Notification, NotificationDto>();
     }
 }
 

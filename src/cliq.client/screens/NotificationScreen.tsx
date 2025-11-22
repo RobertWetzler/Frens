@@ -2,16 +2,58 @@ import React from 'react';
 import { View, Text, SafeAreaView, TouchableOpacity, FlatList, ActivityIndicator } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { Avatar } from '@rneui/base';
-import { useNotifications } from 'hooks/useNotifications';
-import { FriendRequestDto } from 'services/generated/generatedClient';
+import { useNotificationFeed } from 'hooks/useNotifications';
+import { FollowCircleRequest, FriendRequestDto, NotificationDto, NotificationFeedDto } from 'services/generated/generatedClient';
 import { ApiClient } from 'services/apiClient';
 import { useTheme } from '../theme/ThemeContext';
 import { makeStyles } from '../theme/makeStyles';
 
 interface NotificationsScreenProps { navigation: any; }
 
+interface IEnrichedNotification { metadata: any; fromId: string; fromName: string; createdAt}
+class NewSubscribableCircle implements IEnrichedNotification {
+  id: string;
+  fromId: string;
+  fromName: string;
+  circleId: string;
+  circleName: string;
+  isAlreadyMember: boolean;
+  metadata: any;
+  createdAt: any;
+  constructor(id, fromid, fromName, circleId, circleName, isAlreadyMember, createdAt, metadata)
+  {
+    this.id = id
+    this.fromId = fromid
+    this.fromName = fromName
+    this.circleId = circleId
+    this.circleName = circleName
+    this.isAlreadyMember = isAlreadyMember
+    this.createdAt = createdAt
+    this.metadata = metadata
+  }
+}
+
+// class NewComment implements IEnrichedNotification {
+//   fromId: string;
+//   fromName: string;
+//   commentId: string;
+//   postId: string;
+//   commentText: string;
+//   metadata: any;
+
+//   constructor(fromid, fromName, commentId, postId, commentText, metadata)
+//   {
+//     this.fromId = fromid
+//     this.fromName = fromName
+//     this.commentId = commentId
+//     this.postId = postId
+//     this.commentText = commentText
+//     this.metadata = metadata
+//   }
+// }
+
 const NotificationsScreen: React.FC<NotificationsScreenProps> = ({ navigation }) => {
-  const { notifications, isLoading, error, loadNotifications } = useNotifications();
+  const { notificationFeed: notificationFeed, processedNotifications: processedNotifications, isLoading, error, loadNotifications: loadNotificationFeed } = useNotificationFeed();
   const { theme } = useTheme();
   const styles = useStyles();
 
@@ -29,16 +71,44 @@ const NotificationsScreen: React.FC<NotificationsScreenProps> = ({ navigation })
   };
 
   const handleAcceptRequest = async (friendshipId: string) => {
-    try { await ApiClient.call(c => c.frenship_AcceptFriendRequest(friendshipId)); loadNotifications(); } catch (e) { console.error(e); }
+    try { await ApiClient.call(c => c.frenship_AcceptFriendRequest(friendshipId)); loadNotificationFeed(); } catch (e) { console.error(e); }
   };
   const handleDenyRequest = async (friendshipId: string) => {
-    try { await ApiClient.call(c => c.frenship_RejectFriendRequest(friendshipId)); loadNotifications(); } catch (e) { console.error(e); }
+    try { await ApiClient.call(c => c.frenship_RejectFriendRequest(friendshipId)); loadNotificationFeed(); } catch (e) { console.error(e); }
+  };
+
+  const handleFollowCircleRequest = async (circleId: string, notificationId: string) => {
+    try { await ApiClient.call(c => c.circle_FollowCircle(new FollowCircleRequest({circleId, notificationId}))); loadNotificationFeed(); } catch (e) { console.error(e); }
+  };
+
+  const handleDenyFollowCircleRequest = async (notificationId: string) => {
+    try { await ApiClient.call(c => c.circle_DenyFollowCircle(notificationId)); loadNotificationFeed(); } catch (e) { console.error(e); }
   };
   const handleAvatarPress = (userId: string) => navigation.navigate('Profile', { userId });
 
-  const sortedFriendRequests = notifications?.friendRequests?.slice().sort((a, b) => {
+  const sortedFriendRequests = notificationFeed?.friendRequests?.slice().sort((a, b) => {
     if (!a.createdAt || !b.createdAt) return 0; return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
   }) || [];
+
+  const sortedNotifications = notificationFeed?.notifications?.slice().sort((a, b) => {
+    if (!a.createdAt || !b.createdAt) return 0; return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+  }) || [];
+
+  // const sortedCombinedFeed: (FriendRequestDto | NewSubscribableCircle)[] = [];
+  // sortedCombinedFeed.concat(processedNotifications);
+  // sortedCombinedFeed.concat(notificationFeed.friendRequests);
+  // sortedCombinedFeed.sort((a, b) => {
+  //   if (!a.createdAt || !b.createdAt) return 0; return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+  // }) || [];
+
+  const sortedCombinedFeed: (FriendRequestDto | NewSubscribableCircle)[] = (processedNotifications as (NewSubscribableCircle | FriendRequestDto)[] || [])
+                                                                            .concat(notificationFeed?.friendRequests || [])
+                                                                            .sort((a,b) => {if (!a.createdAt || !b.createdAt) return 0; return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(); })
+                                                                            || [];
+  console.log("Sorted combined feed: ", sortedCombinedFeed)
+  console.log("First instance ofs", sortedCombinedFeed[0] instanceof NewSubscribableCircle, sortedCombinedFeed[0] instanceof FriendRequestDto, typeof sortedCombinedFeed[0], typeof sortedCombinedFeed[1])
+  console.log("First instance ofs", sortedCombinedFeed[1] instanceof NewSubscribableCircle, sortedCombinedFeed[1] instanceof FriendRequestDto, typeof sortedCombinedFeed[1], typeof sortedCombinedFeed[1])
+
 
   const renderFriendRequest = ({ item }: { item: FriendRequestDto }) => (
     <View style={styles.notificationItem}>
@@ -62,6 +132,42 @@ const NotificationsScreen: React.FC<NotificationsScreenProps> = ({ navigation })
       </View>
     </View>
   );
+
+  const renderNotifications = ({ item }: { item: (FriendRequestDto | NewSubscribableCircle) }) => (
+      <View>
+      {/* For some reason, checking in reverse order doesnt work. item isinstanceof NewSubscribableCircle is always false (prototype never gets set?) */}
+      { item instanceof FriendRequestDto  ? (
+        renderFriendRequest({item})
+      ) : (
+        renderNewSubscribableCircle({item})
+      )}
+      </View>)
+    ;
+
+
+  const renderNewSubscribableCircle = ({ item }: { item: (NewSubscribableCircle)}) => (
+    <View style={styles.notificationItem}>
+      <TouchableOpacity onPress={() => handleAvatarPress(item.fromId)} style={styles.avatarContainer}>
+        <Avatar rounded size="medium" overlayContainerStyle={{ backgroundColor: theme.colors.accent }} title={item.fromName?.charAt(0).toUpperCase() || '?'} />
+      </TouchableOpacity>
+      <View style={styles.notificationContent}>
+        <View style={styles.notificationText}>
+          <Text style={styles.userName}>{item.fromName || 'Unknown User'} </Text>
+          <Text style={styles.actionText}>created a circle you can follow: </Text>
+          <Text style={styles.boldText}>{item.circleName}</Text>
+        </View>
+        <Text style={styles.timeText}>{item.createdAt ? formatDate(new Date(item.createdAt)) : ''}</Text>
+        <View style={styles.actionButtons}>
+          <TouchableOpacity style={styles.acceptButton} onPress={() => handleFollowCircleRequest(item.circleId, item.id)}>
+            <Text style={styles.acceptButtonText}>Follow</Text>
+          </TouchableOpacity>
+          <TouchableOpacity style={styles.denyButton} onPress={() => handleDenyFollowCircleRequest(item.id)}>
+            <Text style={styles.denyButtonText}>Deny</Text>
+          </TouchableOpacity>
+        </View>
+      </View>
+    </View>
+  )
 
   if (isLoading) return (
     <SafeAreaView style={styles.container}>
@@ -87,7 +193,7 @@ const NotificationsScreen: React.FC<NotificationsScreenProps> = ({ navigation })
       </View>
       <View style={styles.errorContainer}>
         <Text style={styles.errorText}>{error}</Text>
-        <TouchableOpacity style={styles.retryButton} onPress={loadNotifications}>
+        <TouchableOpacity style={styles.retryButton} onPress={loadNotificationFeed}>
           <Text style={styles.retryButtonText}>Retry</Text>
         </TouchableOpacity>
       </View>
@@ -103,8 +209,11 @@ const NotificationsScreen: React.FC<NotificationsScreenProps> = ({ navigation })
         <Text style={styles.headerTitle}>Notifications</Text>
         <View style={styles.placeholder} />
       </View>
-      {sortedFriendRequests.length > 0 ? (
-        <FlatList data={sortedFriendRequests} renderItem={renderFriendRequest} keyExtractor={i => i.id} style={styles.list} showsVerticalScrollIndicator={false} />
+      {sortedFriendRequests.length + sortedNotifications.length > 0 ? (
+          <View>
+            {/* <FlatList data={sortedFriendRequests} renderItem={renderFriendRequest} keyExtractor={i => i.id} style={styles.list} showsVerticalScrollIndicator={false} /> */}
+            <FlatList data={sortedCombinedFeed} renderItem={renderNotifications} keyExtractor={i => i.id} style={styles.list} showsVerticalScrollIndicator={false} />
+          </View>
       ) : (
         <View style={styles.emptyContainer}>
           <Ionicons name="notifications-outline" size={64} color={theme.colors.separator} />
@@ -134,6 +243,7 @@ const useStyles = makeStyles((theme) => ({
   notificationText: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', marginBottom: 4 },
   userName: { fontWeight: 'bold', fontSize: 16, color: theme.colors.primary },
   actionText: { fontSize: 16, color: theme.colors.textPrimary },
+  boldText: { fontSize: 16,  fontWeight: 'bold', color: theme.colors.textPrimary },
   timeText: { fontSize: 14, color: theme.colors.textMuted, marginBottom: 12 },
   actionButtons: { flexDirection: 'row', gap: 12 },
   acceptButton: { backgroundColor: theme.colors.primary, paddingHorizontal: 16, paddingVertical: 8, borderRadius: 16, minWidth: 70, alignItems: 'center' },

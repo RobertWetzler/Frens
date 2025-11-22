@@ -316,7 +316,7 @@ const CreatePostScreen = ({ navigation, route }) => {
 
         <TextInput
           style={styles.input}
-          placeholder={asEvent ? "What's this event about? (optional details)" : "What's bopping?"}
+          placeholder={asEvent ? "What's this event about? (optional details)" : "What's boopping?"}
           multiline
           value={postContent}
           onChangeText={setPostContent}

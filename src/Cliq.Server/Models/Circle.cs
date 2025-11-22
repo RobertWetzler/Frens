@@ -4,6 +4,7 @@ public class Circle
     public Guid Id { get; set; }
     public required string Name { get; set; }
     public bool IsShared { get; set; } // If true, multiple members can post
+    public bool IsSubscribable { get; set; } // If true, users can subscribe to the circle
     public Guid OwnerId { get; set; }
     public User? Owner { get; set; }
 
@@ -44,6 +45,7 @@ public class CirclePublicDto
     public Guid Id { get; set; }
     public required string Name { get; set; }
     public bool IsShared { get; set; }
+    public bool IsSubscribable { get; set; }
     public bool IsOwner {get; set; } = false;
 }
 
@@ -52,6 +54,7 @@ public class CircleWithMembersDto
     public Guid Id { get; set; }
     public required string Name { get; set; }
     public bool IsShared { get; set; }
+    public bool IsSubscribable { get; set; }
     public bool IsOwner { get; set; } = false;
     public UserDto? Owner { get; set; }
     public List<UserDto> Members { get; set; } = new List<UserDto>();
@@ -61,5 +64,6 @@ public class CircleCreationDto
 {
     public required string Name { get; set; }
     public required bool IsShared { get; set; } // If true, multiple members can post
+    public bool IsSubscribable { get; set; } = false;
     public Guid[] UserIdsToAdd { get; set; } = Array.Empty<Guid>();
 }

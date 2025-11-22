@@ -380,6 +380,135 @@ export class Client {
         return Promise.resolve<FileResponse>(null as any);
     }
 
+    circle_FollowCircle(followCircleRequest: FollowCircleRequest, signal?: AbortSignal): Promise<FileResponse> {
+        let url_ = this.baseUrl + "/api/Circle/follow";
+        url_ = url_.replace(/[?&]$/, "");
+
+        const content_ = JSON.stringify(followCircleRequest);
+
+        let options_: RequestInit = {
+            body: content_,
+            method: "POST",
+            signal,
+            headers: {
+                "Content-Type": "application/json",
+                "Accept": "application/octet-stream"
+            }
+        };
+
+        return this.http.fetch(url_, options_).then((_response: Response) => {
+            return this.processCircle_FollowCircle(_response);
+        });
+    }
+
+    protected processCircle_FollowCircle(response: Response): Promise<FileResponse> {
+        const status = response.status;
+        let _headers: any = {}; if (response.headers && response.headers.forEach) { response.headers.forEach((v: any, k: any) => _headers[k] = v); };
+        if (status === 200 || status === 206) {
+            const contentDisposition = response.headers ? response.headers.get("content-disposition") : undefined;
+            let fileNameMatch = contentDisposition ? /filename\*=(?:(\\?['"])(.*?)\1|(?:[^\s]+'.*?')?([^;\n]*))/g.exec(contentDisposition) : undefined;
+            let fileName = fileNameMatch && fileNameMatch.length > 1 ? fileNameMatch[3] || fileNameMatch[2] : undefined;
+            if (fileName) {
+                fileName = decodeURIComponent(fileName);
+            } else {
+                fileNameMatch = contentDisposition ? /filename="?([^"]*?)"?(;|$)/g.exec(contentDisposition) : undefined;
+                fileName = fileNameMatch && fileNameMatch.length > 1 ? fileNameMatch[1] : undefined;
+            }
+            return response.blob().then(blob => { return { fileName: fileName, data: blob, status: status, headers: _headers }; });
+        } else if (status !== 200 && status !== 204) {
+            return response.text().then((_responseText) => {
+            return throwException("An unexpected server error occurred.", status, _responseText, _headers);
+            });
+        }
+        return Promise.resolve<FileResponse>(null as any);
+    }
+
+    circle_DenyFollowCircle(notificationId: string, signal?: AbortSignal): Promise<FileResponse> {
+        let url_ = this.baseUrl + "/api/Circle/deny";
+        url_ = url_.replace(/[?&]$/, "");
+
+        const content_ = JSON.stringify(notificationId);
+
+        let options_: RequestInit = {
+            body: content_,
+            method: "POST",
+            signal,
+            headers: {
+                "Content-Type": "application/json",
+                "Accept": "application/octet-stream"
+            }
+        };
+
+        return this.http.fetch(url_, options_).then((_response: Response) => {
+            return this.processCircle_DenyFollowCircle(_response);
+        });
+    }
+
+    protected processCircle_DenyFollowCircle(response: Response): Promise<FileResponse> {
+        const status = response.status;
+        let _headers: any = {}; if (response.headers && response.headers.forEach) { response.headers.forEach((v: any, k: any) => _headers[k] = v); };
+        if (status === 200 || status === 206) {
+            const contentDisposition = response.headers ? response.headers.get("content-disposition") : undefined;
+            let fileNameMatch = contentDisposition ? /filename\*=(?:(\\?['"])(.*?)\1|(?:[^\s]+'.*?')?([^;\n]*))/g.exec(contentDisposition) : undefined;
+            let fileName = fileNameMatch && fileNameMatch.length > 1 ? fileNameMatch[3] || fileNameMatch[2] : undefined;
+            if (fileName) {
+                fileName = decodeURIComponent(fileName);
+            } else {
+                fileNameMatch = contentDisposition ? /filename="?([^"]*?)"?(;|$)/g.exec(contentDisposition) : undefined;
+                fileName = fileNameMatch && fileNameMatch.length > 1 ? fileNameMatch[1] : undefined;
+            }
+            return response.blob().then(blob => { return { fileName: fileName, data: blob, status: status, headers: _headers }; });
+        } else if (status !== 200 && status !== 204) {
+            return response.text().then((_responseText) => {
+            return throwException("An unexpected server error occurred.", status, _responseText, _headers);
+            });
+        }
+        return Promise.resolve<FileResponse>(null as any);
+    }
+
+    circle_UnfollowCircle(circleId: string, signal?: AbortSignal): Promise<FileResponse> {
+        let url_ = this.baseUrl + "/api/Circle/unfollow";
+        url_ = url_.replace(/[?&]$/, "");
+
+        const content_ = JSON.stringify(circleId);
+
+        let options_: RequestInit = {
+            body: content_,
+            method: "POST",
+            signal,
+            headers: {
+                "Content-Type": "application/json",
+                "Accept": "application/octet-stream"
+            }
+        };
+
+        return this.http.fetch(url_, options_).then((_response: Response) => {
+            return this.processCircle_UnfollowCircle(_response);
+        });
+    }
+
+    protected processCircle_UnfollowCircle(response: Response): Promise<FileResponse> {
+        const status = response.status;
+        let _headers: any = {}; if (response.headers && response.headers.forEach) { response.headers.forEach((v: any, k: any) => _headers[k] = v); };
+        if (status === 200 || status === 206) {
+            const contentDisposition = response.headers ? response.headers.get("content-disposition") : undefined;
+            let fileNameMatch = contentDisposition ? /filename\*=(?:(\\?['"])(.*?)\1|(?:[^\s]+'.*?')?([^;\n]*))/g.exec(contentDisposition) : undefined;
+            let fileName = fileNameMatch && fileNameMatch.length > 1 ? fileNameMatch[3] || fileNameMatch[2] : undefined;
+            if (fileName) {
+                fileName = decodeURIComponent(fileName);
+            } else {
+                fileNameMatch = contentDisposition ? /filename="?([^"]*?)"?(;|$)/g.exec(contentDisposition) : undefined;
+                fileName = fileNameMatch && fileNameMatch.length > 1 ? fileNameMatch[1] : undefined;
+            }
+            return response.blob().then(blob => { return { fileName: fileName, data: blob, status: status, headers: _headers }; });
+        } else if (status !== 200 && status !== 204) {
+            return response.text().then((_responseText) => {
+            return throwException("An unexpected server error occurred.", status, _responseText, _headers);
+            });
+        }
+        return Promise.resolve<FileResponse>(null as any);
+    }
+
     circle_AddUsersToCircle(request: UpdateUsersInCircleRequest, signal?: AbortSignal): Promise<FileResponse> {
         let url_ = this.baseUrl + "/api/Circle/users";
         url_ = url_.replace(/[?&]$/, "");
@@ -1381,7 +1510,7 @@ export class Client {
         return Promise.resolve<boolean>(null as any);
     }
 
-    notification_GetNotifications(signal?: AbortSignal): Promise<NotificationDto> {
+    notification_GetNotifications(signal?: AbortSignal): Promise<NotificationFeedDto> {
         let url_ = this.baseUrl + "/api/Notification";
         url_ = url_.replace(/[?&]$/, "");
 
@@ -1398,14 +1527,14 @@ export class Client {
         });
     }
 
-    protected processNotification_GetNotifications(response: Response): Promise<NotificationDto> {
+    protected processNotification_GetNotifications(response: Response): Promise<NotificationFeedDto> {
         const status = response.status;
         let _headers: any = {}; if (response.headers && response.headers.forEach) { response.headers.forEach((v: any, k: any) => _headers[k] = v); };
         if (status === 200) {
             return response.text().then((_responseText) => {
             let result200: any = null;
             let resultData200 = _responseText === "" ? null : JSON.parse(_responseText, this.jsonParseReviver);
-            result200 = NotificationDto.fromJS(resultData200);
+            result200 = NotificationFeedDto.fromJS(resultData200);
             return result200;
             });
         } else if (status !== 200 && status !== 204) {
@@ -1413,7 +1542,7 @@ export class Client {
             return throwException("An unexpected server error occurred.", status, _responseText, _headers);
             });
         }
-        return Promise.resolve<NotificationDto>(null as any);
+        return Promise.resolve<NotificationFeedDto>(null as any);
     }
 
     notification_StoreSubscription(subscription: PushSubscriptionDto, signal?: AbortSignal): Promise<FileResponse> {
@@ -2222,6 +2351,7 @@ export class CirclePublicDto implements ICirclePublicDto {
     id?: string;
     name?: string;
     isShared?: boolean;
+    isSubscribable?: boolean;
     isOwner?: boolean;
 
     constructor(data?: ICirclePublicDto) {
@@ -2238,6 +2368,7 @@ export class CirclePublicDto implements ICirclePublicDto {
             this.id = _data["id"];
             this.name = _data["name"];
             this.isShared = _data["isShared"];
+            this.isSubscribable = _data["isSubscribable"];
             this.isOwner = _data["isOwner"];
         }
     }
@@ -2254,6 +2385,7 @@ export class CirclePublicDto implements ICirclePublicDto {
         data["id"] = this.id;
         data["name"] = this.name;
         data["isShared"] = this.isShared;
+        data["isSubscribable"] = this.isSubscribable;
         data["isOwner"] = this.isOwner;
         return data;
     }
@@ -2263,6 +2395,7 @@ export interface ICirclePublicDto {
     id?: string;
     name?: string;
     isShared?: boolean;
+    isSubscribable?: boolean;
     isOwner?: boolean;
 }
 
@@ -2270,6 +2403,7 @@ export class CircleWithMembersDto implements ICircleWithMembersDto {
     id?: string;
     name?: string;
     isShared?: boolean;
+    isSubscribable?: boolean;
     isOwner?: boolean;
     owner?: UserDto | undefined;
     members?: UserDto[];
@@ -2288,6 +2422,7 @@ export class CircleWithMembersDto implements ICircleWithMembersDto {
             this.id = _data["id"];
             this.name = _data["name"];
             this.isShared = _data["isShared"];
+            this.isSubscribable = _data["isSubscribable"];
             this.isOwner = _data["isOwner"];
             this.owner = _data["owner"] ? UserDto.fromJS(_data["owner"]) : <any>undefined;
             if (Array.isArray(_data["members"])) {
@@ -2310,6 +2445,7 @@ export class CircleWithMembersDto implements ICircleWithMembersDto {
         data["id"] = this.id;
         data["name"] = this.name;
         data["isShared"] = this.isShared;
+        data["isSubscribable"] = this.isSubscribable;
         data["isOwner"] = this.isOwner;
         data["owner"] = this.owner ? this.owner.toJSON() : <any>undefined;
         if (Array.isArray(this.members)) {
@@ -2325,6 +2461,7 @@ export interface ICircleWithMembersDto {
     id?: string;
     name?: string;
     isShared?: boolean;
+    isSubscribable?: boolean;
     isOwner?: boolean;
     owner?: UserDto | undefined;
     members?: UserDto[];
@@ -2333,6 +2470,7 @@ export interface ICircleWithMembersDto {
 export class CircleCreationDto implements ICircleCreationDto {
     name?: string;
     isShared?: boolean;
+    isSubscribable?: boolean;
     userIdsToAdd?: string[];
 
     constructor(data?: ICircleCreationDto) {
@@ -2348,6 +2486,7 @@ export class CircleCreationDto implements ICircleCreationDto {
         if (_data) {
             this.name = _data["name"];
             this.isShared = _data["isShared"];
+            this.isSubscribable = _data["isSubscribable"];
             if (Array.isArray(_data["userIdsToAdd"])) {
                 this.userIdsToAdd = [] as any;
                 for (let item of _data["userIdsToAdd"])
@@ -2367,6 +2506,7 @@ export class CircleCreationDto implements ICircleCreationDto {
         data = typeof data === 'object' ? data : {};
         data["name"] = this.name;
         data["isShared"] = this.isShared;
+        data["isSubscribable"] = this.isSubscribable;
         if (Array.isArray(this.userIdsToAdd)) {
             data["userIdsToAdd"] = [];
             for (let item of this.userIdsToAdd)
@@ -2379,7 +2519,48 @@ export class CircleCreationDto implements ICircleCreationDto {
 export interface ICircleCreationDto {
     name?: string;
     isShared?: boolean;
+    isSubscribable?: boolean;
     userIdsToAdd?: string[];
+}
+
+export class FollowCircleRequest implements IFollowCircleRequest {
+    circleId?: string;
+    notificationId?: string | undefined;
+
+    constructor(data?: IFollowCircleRequest) {
+        if (data) {
+            for (var property in data) {
+                if (data.hasOwnProperty(property))
+                    (<any>this)[property] = (<any>data)[property];
+            }
+        }
+    }
+
+    init(_data?: any) {
+        if (_data) {
+            this.circleId = _data["circleId"];
+            this.notificationId = _data["notificationId"];
+        }
+    }
+
+    static fromJS(data: any): FollowCircleRequest {
+        data = typeof data === 'object' ? data : {};
+        let result = new FollowCircleRequest();
+        result.init(data);
+        return result;
+    }
+
+    toJSON(data?: any) {
+        data = typeof data === 'object' ? data : {};
+        data["circleId"] = this.circleId;
+        data["notificationId"] = this.notificationId;
+        return data;
+    }
+}
+
+export interface IFollowCircleRequest {
+    circleId?: string;
+    notificationId?: string | undefined;
 }
 
 export class UpdateUsersInCircleRequest implements IUpdateUsersInCircleRequest {
@@ -3136,10 +3317,11 @@ export enum VisibleStatus {
     BlockedBy = "BlockedBy",
 }
 
-export class NotificationDto implements INotificationDto {
+export class NotificationFeedDto implements INotificationFeedDto {
     friendRequests?: FriendRequestDto[];
+    notifications?: NotificationDto[];
 
-    constructor(data?: INotificationDto) {
+    constructor(data?: INotificationFeedDto) {
         if (data) {
             for (var property in data) {
                 if (data.hasOwnProperty(property))
@@ -3155,12 +3337,17 @@ export class NotificationDto implements INotificationDto {
                 for (let item of _data["friendRequests"])
                     this.friendRequests!.push(FriendRequestDto.fromJS(item));
             }
+            if (Array.isArray(_data["notifications"])) {
+                this.notifications = [] as any;
+                for (let item of _data["notifications"])
+                    this.notifications!.push(NotificationDto.fromJS(item));
+            }
         }
     }
 
-    static fromJS(data: any): NotificationDto {
+    static fromJS(data: any): NotificationFeedDto {
         data = typeof data === 'object' ? data : {};
-        let result = new NotificationDto();
+        let result = new NotificationFeedDto();
         result.init(data);
         return result;
     }
@@ -3172,12 +3359,18 @@ export class NotificationDto implements INotificationDto {
             for (let item of this.friendRequests)
                 data["friendRequests"].push(item.toJSON());
         }
+        if (Array.isArray(this.notifications)) {
+            data["notifications"] = [];
+            for (let item of this.notifications)
+                data["notifications"].push(item.toJSON());
+        }
         return data;
     }
 }
 
-export interface INotificationDto {
+export interface INotificationFeedDto {
     friendRequests?: FriendRequestDto[];
+    notifications?: NotificationDto[];
 }
 
 export class FriendRequestDto implements IFriendRequestDto {
@@ -3242,6 +3435,62 @@ export interface IFriendRequestDto {
     addressee?: UserDto | undefined;
     createdAt?: Date;
     acceptedAt?: Date | undefined;
+}
+
+export class NotificationDto implements INotificationDto {
+    id?: string;
+    userId?: string | undefined;
+    title?: string;
+    message?: string;
+    metadata?: string | undefined;
+    createdAt?: Date;
+
+    constructor(data?: INotificationDto) {
+        if (data) {
+            for (var property in data) {
+                if (data.hasOwnProperty(property))
+                    (<any>this)[property] = (<any>data)[property];
+            }
+        }
+    }
+
+    init(_data?: any) {
+        if (_data) {
+            this.id = _data["id"];
+            this.userId = _data["userId"];
+            this.title = _data["title"];
+            this.message = _data["message"];
+            this.metadata = _data["metadata"];
+            this.createdAt = _data["createdAt"] ? new Date(_data["createdAt"].toString()) : <any>undefined;
+        }
+    }
+
+    static fromJS(data: any): NotificationDto {
+        data = typeof data === 'object' ? data : {};
+        let result = new NotificationDto();
+        result.init(data);
+        return result;
+    }
+
+    toJSON(data?: any) {
+        data = typeof data === 'object' ? data : {};
+        data["id"] = this.id;
+        data["userId"] = this.userId;
+        data["title"] = this.title;
+        data["message"] = this.message;
+        data["metadata"] = this.metadata;
+        data["createdAt"] = this.createdAt ? this.createdAt.toISOString() : <any>undefined;
+        return data;
+    }
+}
+
+export interface INotificationDto {
+    id?: string;
+    userId?: string | undefined;
+    title?: string;
+    message?: string;
+    metadata?: string | undefined;
+    createdAt?: Date;
 }
 
 export class PushSubscriptionDto implements IPushSubscriptionDto {

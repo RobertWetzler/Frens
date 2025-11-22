@@ -74,7 +74,7 @@ public class CircleController : ControllerBase
         var createdCircle = await _circleService.CreateCircleAsync(userId, circleDto);
         return CreatedAtAction(nameof(GetCircle),
             new { circleId = createdCircle.Id }, // Route values
-            new CirclePublicDto { Id = createdCircle.Id, Name = createdCircle.Name, IsShared = createdCircle.IsShared });
+            createdCircle);
     }
 
     [HttpDelete("{circleId}")]
@@ -99,6 +99,80 @@ public class CircleController : ControllerBase
             return NotFound(ex.Message);
         }
     }
+
+    public record FollowCircleRequest(Guid circleId, Guid? notificationId);
+
+    [HttpPost("follow")]
+    public async Task<ActionResult> FollowCircle([FromBody] FollowCircleRequest followCircleRequest)
+    {
+        if (!AuthUtils.TryGetUserIdFromToken(this.HttpContext, out var userId))
+        {
+            return Unauthorized();
+        }
+        
+        try
+        {
+            await _circleService.FollowCircle(userId, followCircleRequest.circleId, followCircleRequest.notificationId);
+            // For now, we assume a user followed a circle from a notification, so we remove the notification. In future, we should not derive viewer seeing circle invitation based on notification, but instead from the Circle table itself
+            return Ok(new { message = $"Successfully followed circle" });
+        }
+        catch (UnauthorizedAccessException ex)
+        {
+            return Forbid(ex.Message);
+        }
+        catch (BadHttpRequestException ex)
+        {
+            return BadRequest(ex.Message);
+        }
+    }
+
+    [HttpPost("deny")]
+    public async Task<ActionResult> DenyFollowCircle([FromBody] Guid notificationId)
+    {
+        if (!AuthUtils.TryGetUserIdFromToken(this.HttpContext, out var userId))
+        {
+            return Unauthorized();
+        }
+        
+        try
+        {
+            await _circleService.DenyFollowCircle(userId, notificationId);
+            // For now, we assume a user followed a circle from a notification, so we remove the notification. In future, we should not derive viewer seeing circle invitation based on notification, but instead from the Circle table itself
+            return Ok(new { message = $"Successfully denied followed circle" });
+        }
+        catch (UnauthorizedAccessException ex)
+        {
+            return Forbid(ex.Message);
+        }
+        catch (BadHttpRequestException ex)
+        {
+            return BadRequest(ex.Message);
+        }
+    }
+
+    [HttpPost("unfollow")]
+    public async Task<ActionResult> UnfollowCircle([FromBody] Guid circleId)
+    {
+        if (!AuthUtils.TryGetUserIdFromToken(this.HttpContext, out var userId))
+        {
+            return Unauthorized();
+        }
+        
+        try
+        {
+            await _circleService.UnfollowCircle(userId, circleId);
+            return Ok(new { message = $"Successfully unfollowed circle" });
+        }
+        catch (UnauthorizedAccessException ex)
+        {
+            return Forbid(ex.Message);
+        }
+        catch (BadHttpRequestException ex)
+        {
+            return BadRequest(ex.Message);
+        }
+    }
+
 
     [HttpPost("users")]
     public async Task<ActionResult> AddUsersToCircle([FromBody] UpdateUsersInCircleRequest request)

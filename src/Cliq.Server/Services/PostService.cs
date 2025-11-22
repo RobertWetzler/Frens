@@ -31,6 +31,7 @@ public class PostService : IPostService
     private readonly IMapper _mapper;
     private readonly ILogger<PostService> _logger;
     private readonly IEventNotificationService _eventNotificationService;
+    private readonly INotificationService _notificationService;
     private readonly IObjectStorageService _storage;
     private readonly MetricsService _metricsService;
     private readonly UserActivityService _activityService;
@@ -43,6 +44,7 @@ public class PostService : IPostService
         IMapper mapper,
         ILogger<PostService> logger,
     IEventNotificationService eventNotificationService,
+    INotificationService notificationService,
     IObjectStorageService storage,
     MetricsService metricsService,
     UserActivityService activityService)
@@ -54,6 +56,7 @@ public class PostService : IPostService
         _mapper = mapper;
         _logger = logger;
         _eventNotificationService = eventNotificationService;
+        _notificationService = notificationService;
     _storage = storage;
     _metricsService = metricsService;
     _activityService = activityService;
@@ -361,7 +364,8 @@ public class PostService : IPostService
                 return dto;
             }).ToList();
 
-            var notificationCount = await _friendshipService.GetFriendRequestsCountAsync(userId);
+            var notifications = await _notificationService.GetNotifications(userId);
+            var notificationCount = notifications.friendRequests.Count() + notifications.notifications.Count
             var userCircles = await _circleService.GetUserMemberCirclesAsync(userId);
             
             // Increment custom metrics for home feed loads
@@ -462,7 +466,8 @@ public class PostService : IPostService
                     CircleId = c.Id,
                     CircleName = c.Name,
                     IsShared = c.IsShared,
-                    SharedAt = cp.SharedAt
+                    SharedAt = cp.SharedAt,
+                    c.IsSubscribable
                 })
                 .AsNoTracking()
                 .ToListAsync();
@@ -534,6 +539,7 @@ public class PostService : IPostService
                         Id = c.CircleId,
                         Name = c.CircleName,
                         IsShared = c.IsShared,
+                        IsSubscribable = c.IsSubscribable
                     }).ToList()
                     : new List<CirclePublicDto>();
                 

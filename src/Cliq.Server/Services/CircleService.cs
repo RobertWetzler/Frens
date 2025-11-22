@@ -2,6 +2,7 @@ using AutoMapper;
 using Cliq.Server.Data;
 using Cliq.Server.Models;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.VisualBasic;
 
 namespace Cliq.Server.Services;
 
@@ -13,6 +14,9 @@ public interface ICircleService
     Task<IEnumerable<CirclePublicDto>> GetUserMemberCirclesAsync(Guid userId);
     Task<IEnumerable<CircleWithMembersDto>> GetUserCirclesWithMembersAsync(Guid userId);
     Task DeleteCircleAsync(Guid requestorId, Guid circleId);
+    Task FollowCircle(Guid userId, Guid circleId, Guid? notificationId);
+    Task DenyFollowCircle(Guid userId, Guid notificationId);
+    Task UnfollowCircle(Guid userId, Guid circleId);
     Task AddUsersToCircleAsync(Guid requestorId, Guid circleId, Guid[] userIdsToAdd);
     Task RemoveUsersFromCircleAsync(Guid userId, Guid circleId, Guid[] userIds);
 }
@@ -21,28 +25,32 @@ public class CircleService : ICircleService
 {
     private readonly CliqDbContext _dbContext;
     private readonly ICommentService _commentService;
+    private readonly IFriendshipService _friendshipService;
     private readonly IMapper _mapper;
+    private readonly IEventNotificationService _eventNotificationService;
     private readonly ILogger<CircleService> _logger;
 
     public CircleService(
         CliqDbContext dbContext,
         ICommentService commentService,
+        IFriendshipService friendshipService,
         IMapper mapper,
+        IEventNotificationService eventNotificationService,
         ILogger<CircleService> logger)
     {
         _dbContext = dbContext;
         _commentService = commentService;
+        _friendshipService = friendshipService;
         _mapper = mapper;
+        _eventNotificationService = eventNotificationService;
         _logger = logger;
     }
 
     public async Task<CirclePublicDto> CreateCircleAsync(Guid creatorId, CircleCreationDto circleDto)
     {
         // TODO: Use a method from UserService for finding User by ID
-        if (await this._dbContext.Users.FirstOrDefaultAsync(u => u.Id == creatorId) == null)
-        {
-            throw new BadHttpRequestException($"Cannot create post for invalid user {creatorId}");
-        }
+        var creator = await this._dbContext.Users.FirstOrDefaultAsync(u => u.Id == creatorId) 
+            ?? throw new BadHttpRequestException($"Cannot create post for invalid user {creatorId}");
 
         // Start a transaction to ensure all operations succeed or fail together
         using var transaction = await _dbContext.Database.BeginTransactionAsync();
@@ -54,6 +62,7 @@ public class CircleService : ICircleService
                 OwnerId = creatorId,
                 Name = circleDto.Name,
                 IsShared = circleDto.IsShared,
+                IsSubscribable = circleDto.IsSubscribable
             };
             var entry = await _dbContext.Circles.AddAsync(circle);
             await _dbContext.SaveChangesAsync();
@@ -110,6 +119,26 @@ public class CircleService : ICircleService
             await _dbContext.SaveChangesAsync();
             await transaction.CommitAsync();
 
+            // Send a notification to users that new subscribable circle is available
+            if (circleDto.IsSubscribable)
+            {
+                IEnumerable<Guid> alreadyMembers = [];
+                // Get distinct lists of frens vs users already added to the circle
+                if (userIdsToAdd != null)
+                {
+                    alreadyMembers = userIdsToAdd.Where(id => id != creatorId);
+                }
+                // Really gotta reduce these N+1 queries on writes and put this into a background job...
+                var allFrens = await _friendshipService.GetFriendsAsync(creatorId);
+                var nonMembers = allFrens.Where(u => !alreadyMembers.Contains(u.Id)).Select(u => u.Id).ToArray();
+                await _eventNotificationService.SendNewSubscribableCircle(authorId: creatorId,
+                    authorName: creator.Name,
+                    circleId: circle.Id,
+                    circleName: circle.Name,
+                    recipients: nonMembers,
+                    alreadyMembers: alreadyMembers.ToArray());
+            }
+
             return this._mapper.Map<CirclePublicDto>(entry.Entity);
         }
         catch (Exception ex)
@@ -119,6 +148,7 @@ public class CircleService : ICircleService
             throw;
         }
     }
+
     public async Task<CirclePublicDto> GetCircleAsync(Guid requestorId, Guid circleId)
     {
         var circle = await _dbContext.Circles
@@ -283,6 +313,93 @@ public class CircleService : ICircleService
         }
     }
 
+    /// <summary>
+    /// Allows a requestor, userId, to follow a fren's circle if it is subscribable
+    /// </summary>
+    /// <param name="userId">Requestor submitting follow</param>
+    /// <param name="circleId">Circle to follow</param>
+    /// <returns></returns>
+    /// <exception cref="BadHttpRequestException"></exception>
+    public async Task FollowCircle(Guid userId, Guid circleId, Guid? notificationId)
+    {
+        // Validate circle exists and is subscribable
+        // Single query to get circle info, check ownership, and get existing members
+        var circleInfo = await _dbContext.Circles
+            .Where(c => c.Id == circleId && c.IsSubscribable)
+            .Select(c => new
+            {
+                CircleId = c.Id,
+                c.OwnerId,
+                ExistingMemberIds = c.Members.Select(m => m.UserId).ToList()
+            })
+            .FirstOrDefaultAsync();
+        if(circleInfo == null)
+        {
+            throw new BadHttpRequestException($"Subscribable circle {circleId} not found");
+        }
+
+        if (userId == circleInfo.OwnerId)
+        {
+            throw new BadHttpRequestException($"Circle owners cannot follow their own circle, they already have access!");
+        }
+        
+        // Validate userId exists and is friends with circleId owner
+        if (!await _friendshipService.AreFriendsAsync(userId, circleInfo.OwnerId))
+        {
+            throw new BadHttpRequestException($"User {userId} is not friends with circle owner, cannot subscribe");
+        }
+
+        // Validate user is not already a member of the circle
+        if (circleInfo.ExistingMemberIds.Contains(userId))
+        {
+            throw new BadHttpRequestException($"User {userId} is already subscribed to circle {circleId}");
+        }
+        
+        // Add user as CircleMember
+        var membership = new CircleMembership
+        {
+            CircleId = circleId,
+            UserId = userId,
+            IsModerator = false
+        };
+
+        using var transaction = await _dbContext.Database.BeginTransactionAsync();
+        await _dbContext.CircleMemberships.AddAsync(membership);
+
+        if (notificationId != null)
+        {
+            var notif = await _dbContext.Notifications.Where(n => n.Id == notificationId).FirstOrDefaultAsync();
+            if (notif != null)
+            {
+                _dbContext.Notifications.Remove(notif);
+            }
+        }
+        await _dbContext.SaveChangesAsync();
+
+
+        await transaction.CommitAsync();
+        // TODO Send notification of new subscriber
+    }
+
+    public async Task DenyFollowCircle(Guid userId, Guid notificationId)
+    {
+        var notif = await _dbContext.Notifications.Where(n => n.Id == notificationId && n.UserId == userId).FirstOrDefaultAsync();
+        if (notif == null)
+        {
+            // Yes this is the wrong http status...
+            throw new BadHttpRequestException("Not found");
+        }
+        
+        if (notif.Metadata == null || !notif.Metadata.Contains("NewSubscribableCircle"))
+        {
+            throw new BadHttpRequestException("Cannot unfollow on a notification that is not NewSubscribableCircle");
+        }
+        _dbContext.Notifications.Remove(notif);
+        await _dbContext.SaveChangesAsync();
+    }
+
+
+
     public async Task AddUsersToCircleAsync(Guid requestorId, Guid circleId, Guid[] userIdsToAdd)
     {
         if (userIdsToAdd == null || userIdsToAdd.Length == 0)
@@ -372,6 +489,58 @@ public class CircleService : ICircleService
         {
             await transaction.RollbackAsync();
             _logger.LogError(ex, "Error adding users to circle {CircleId} for user: {RequestorId}", circleId, requestorId);
+            throw;
+        }
+    }
+
+    /// <summary>
+    /// Allows a requestor, userId, to unfollow a fren's circle if it is subscribable
+    /// </summary>
+    /// <param name="userId">Requestor submitting follow</param>
+    /// <param name="circleId">Circle to follow</param>
+    /// <returns></returns>
+    /// <exception cref="BadHttpRequestException"></exception>
+    public async Task UnfollowCircle(Guid userId, Guid circleId)
+    {
+        // Validate circle exists and is subscribable
+        // Single query to get circle info, check ownership, and get existing members
+        var circleInfo = await _dbContext.Circles
+            .Where(c => c.Id == circleId && c.IsSubscribable)
+            .Select(c => new
+            {
+                CircleId = c.Id,
+                c.OwnerId,
+                ExistingMemberIds = c.Members.Select(m => m.UserId).ToList()
+            })
+            .FirstOrDefaultAsync() 
+            ?? throw new BadHttpRequestException($"Subscribable circle {circleId} not found");
+        
+        if (circleInfo.OwnerId == userId)
+        {
+            throw new BadHttpRequestException($"Circle owners cannot unfolllow their own circle!");
+        }
+
+        // Validate user is a member of the circle
+        if (!circleInfo.ExistingMemberIds.Contains(userId))
+        {
+            throw new BadHttpRequestException($"User {userId} is not already subscribed to circle {circleId}");
+        }
+
+        using var transaction = _dbContext.Database.BeginTransaction();
+        try
+        {
+            var membershipToRemove = _dbContext.CircleMemberships
+                .Where(cm => cm.CircleId == circleId && cm.UserId == userId).FirstOrDefault() 
+                ?? throw new BadHttpRequestException("Could not find existing membership");
+            
+            _dbContext.CircleMemberships.Remove(membershipToRemove);
+            await _dbContext.SaveChangesAsync();
+            await transaction.CommitAsync();
+        }
+        catch (Exception ex)
+        {
+            transaction.Rollback();
+            _logger.LogError(ex, "Error unfollowing circle {CircleId} for user: {UserId}", circleId, userId);
             throw;
         }
     }
