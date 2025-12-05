@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState, useCallback } from 'react';
-import { View, Text, TouchableOpacity, Image, ActivityIndicator, Modal } from 'react-native';
+import { View, Text, TouchableOpacity, Image, ActivityIndicator, Modal, Animated, PanResponder, Dimensions } from 'react-native';
 import { PostImageIndexedUrlDto, PostImagesUrlDto } from 'services/generated/generatedClient';
 import { getSignedImageUrl, primeSignedImageUrl, invalidateSignedImageUrl, peekSignedImageUrl, hasValidSignedImageUrl } from 'services/imageUrlCache';
 import { CachedImage } from './CachedImage';
@@ -7,6 +7,8 @@ import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../theme/ThemeContext';
 import { makeStyles } from '../theme/makeStyles';
 import { useApi } from 'hooks/useApi';
+
+const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 
 interface PostImageGridProps {
   postId: string;
@@ -35,6 +37,16 @@ export const PostImageGrid: React.FC<PostImageGridProps> = ({
   const [aspectRatios, setAspectRatios] = useState<Record<number, number>>({});
   // Track retry attempts per image index to avoid infinite loops on persistent 403
   const retryCountsRef = useRef<Record<number, number>>({});
+
+  // Zoom state for fullscreen image
+  const scale = useRef(new Animated.Value(1)).current;
+  const translateX = useRef(new Animated.Value(0)).current;
+  const translateY = useRef(new Animated.Value(0)).current;
+  const lastScale = useRef(1);
+  const lastTranslateX = useRef(0);
+  const lastTranslateY = useRef(0);
+  const lastTapTime = useRef(0);
+  const initialDistance = useRef<number | null>(null);
 
   // If we have local images, use those instead of fetching from server
   const isOptimistic = localImages && localImages.length > 0;
@@ -126,10 +138,117 @@ export const PostImageGrid: React.FC<PostImageGridProps> = ({
     fetchSingle(fullScreenIndex - 1);
   }, [fullScreenIndex, fetchSingle]);
 
-  const openFullScreen = (index: number) => { setFullScreenIndex(index); };
-  const closeFullScreen = () => setFullScreenIndex(null);
-  const goNext = () => setFullScreenIndex(i => (i == null ? i : Math.min(imageCount - 1, i + 1)));
-  const goPrev = () => setFullScreenIndex(i => (i == null ? i : Math.max(0, i - 1)));
+  const resetZoom = useCallback(() => {
+    Animated.parallel([
+      Animated.timing(scale, { toValue: 1, duration: 200, useNativeDriver: true }),
+      Animated.timing(translateX, { toValue: 0, duration: 200, useNativeDriver: true }),
+      Animated.timing(translateY, { toValue: 0, duration: 200, useNativeDriver: true }),
+    ]).start();
+    lastScale.current = 1;
+    lastTranslateX.current = 0;
+    lastTranslateY.current = 0;
+  }, [scale, translateX, translateY]);
+
+  const openFullScreen = (index: number) => { 
+    resetZoom();
+    setFullScreenIndex(index); 
+  };
+  const closeFullScreen = () => {
+    resetZoom();
+    setFullScreenIndex(null);
+  };
+  const goNext = () => {
+    resetZoom();
+    setFullScreenIndex(i => (i == null ? i : Math.min(imageCount - 1, i + 1)));
+  };
+  const goPrev = () => {
+    resetZoom();
+    setFullScreenIndex(i => (i == null ? i : Math.max(0, i - 1)));
+  };
+
+  // Pan responder for zoom and pan gestures
+  const panResponder = useRef(
+    PanResponder.create({
+      onStartShouldSetPanResponder: () => true,
+      onMoveShouldSetPanResponder: (evt, gestureState) => {
+        // Only handle if we have multiple touches (pinch) or we're already zoomed
+        return evt.nativeEvent.touches.length >= 2 || lastScale.current > 1;
+      },
+      onPanResponderGrant: (evt) => {
+        // Handle double tap to zoom
+        const now = Date.now();
+        if (now - lastTapTime.current < 300 && evt.nativeEvent.touches.length === 1) {
+          if (lastScale.current > 1) {
+            resetZoom();
+          } else {
+            // Zoom to 2x at tap location
+            const touch = evt.nativeEvent.touches[0];
+            const touchX = touch.pageX - SCREEN_WIDTH / 2;
+            const touchY = touch.pageY - SCREEN_HEIGHT / 2;
+            
+            Animated.parallel([
+              Animated.spring(scale, { toValue: 2, useNativeDriver: true, friction: 7 }),
+              Animated.spring(translateX, { toValue: -touchX * 0.5, useNativeDriver: true, friction: 7 }),
+              Animated.spring(translateY, { toValue: -touchY * 0.5, useNativeDriver: true, friction: 7 }),
+            ]).start();
+            lastScale.current = 2;
+            lastTranslateX.current = -touchX * 0.5;
+            lastTranslateY.current = -touchY * 0.5;
+          }
+        }
+        lastTapTime.current = now;
+      },
+      onPanResponderMove: (evt, gestureState) => {
+        const touches = evt.nativeEvent.touches;
+        
+        // Pinch to zoom
+        if (touches.length === 2) {
+          const touch1 = touches[0];
+          const touch2 = touches[1];
+          const distance = Math.sqrt(
+            Math.pow(touch2.pageX - touch1.pageX, 2) + 
+            Math.pow(touch2.pageY - touch1.pageY, 2)
+          );
+          
+          if (!initialDistance.current) {
+            initialDistance.current = distance;
+          } else {
+            const newScale = Math.max(1, Math.min(4, lastScale.current * (distance / initialDistance.current)));
+            scale.setValue(newScale);
+          }
+        } 
+        // Pan when zoomed
+        else if (touches.length === 1 && lastScale.current > 1) {
+          const maxTranslate = (lastScale.current - 1) * SCREEN_WIDTH / 2;
+          const maxTranslateY = (lastScale.current - 1) * SCREEN_HEIGHT / 2;
+          
+          const newX = lastTranslateX.current + gestureState.dx;
+          const newY = lastTranslateY.current + gestureState.dy;
+          
+          translateX.setValue(Math.max(-maxTranslate, Math.min(maxTranslate, newX)));
+          translateY.setValue(Math.max(-maxTranslateY, Math.min(maxTranslateY, newY)));
+        }
+      },
+      onPanResponderRelease: (evt, gestureState) => {
+        const touches = evt.nativeEvent.touches;
+        
+        if (touches.length === 0) {
+          // Save current scale and position
+          lastScale.current = (scale as any)._value;
+          lastTranslateX.current = (translateX as any)._value;
+          lastTranslateY.current = (translateY as any)._value;
+          
+          // Reset if zoomed out too much
+          if (lastScale.current < 1.1) {
+            resetZoom();
+          }
+          
+          // Reset initial distance for next pinch
+          initialDistance.current = null;
+        }
+      },
+    })
+  ).current;
 
   // Compute aspect ratio for each loaded image
   useEffect(() => {
@@ -285,6 +404,9 @@ export const PostImageGrid: React.FC<PostImageGridProps> = ({
   const renderFullScreen = () => {
     if (fullScreenIndex == null) return null;
 
+    const currentScale = lastScale.current;
+    const showNavButtons = currentScale <= 1.1; // Only show nav buttons when not zoomed
+
     let imageSource;
     if (isOptimistic && localImages) {
       imageSource = <Image source={{ uri: localImages[fullScreenIndex]?.uri }} style={styles.fullScreenImage} resizeMode="contain" />;
@@ -315,20 +437,32 @@ export const PostImageGrid: React.FC<PostImageGridProps> = ({
           <TouchableOpacity style={styles.fullScreenClose} onPress={closeFullScreen}>
             <Ionicons name="close" size={32} color="#fff" />
           </TouchableOpacity>
-          {fullScreenIndex > 0 && (
+          {showNavButtons && fullScreenIndex > 0 && (
             <TouchableOpacity style={[styles.navButton, styles.navLeft]} onPress={goPrev}>
               <Ionicons name="chevron-back" size={42} color="#fff" />
             </TouchableOpacity>
           )}
-          {fullScreenIndex < imageCount - 1 && (
+          {showNavButtons && fullScreenIndex < imageCount - 1 && (
             <TouchableOpacity style={[styles.navButton, styles.navRight]} onPress={goNext}>
               <Ionicons name="chevron-forward" size={42} color="#fff" />
             </TouchableOpacity>
           )}
-          <View style={styles.fullScreenBackdrop}>
+          <Animated.View 
+            style={[
+              styles.fullScreenBackdrop,
+              {
+                transform: [
+                  { scale },
+                  { translateX },
+                  { translateY },
+                ]
+              }
+            ]}
+            {...panResponder.panHandlers}
+          >
             {imageSource}
-            <Text style={styles.counterText}>{`${(fullScreenIndex + 1)} / ${imageCount}`}</Text>
-          </View>
+          </Animated.View>
+          <Text style={styles.counterText}>{`${(fullScreenIndex + 1)} / ${imageCount}`}</Text>
         </View>
       </Modal>
     );
@@ -438,11 +572,11 @@ const useStyles = makeStyles(theme => ({
     width: '100%',
     justifyContent: 'center',
     alignItems: 'center',
-    paddingHorizontal: 12
+    paddingHorizontal: 12,
   },
   fullScreenImage: {
     width: '100%',
-    height: '100%'
+    height: '100%',
   },
   navButton: {
     position: 'absolute',
