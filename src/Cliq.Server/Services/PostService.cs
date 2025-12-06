@@ -365,7 +365,7 @@ public class PostService : IPostService
             }).ToList();
 
             var notifications = await _notificationService.GetNotifications(userId);
-            var notificationCount = notifications.friendRequests.Count() + notifications.notifications.Count
+            var notificationCount = notifications.friendRequests.Count() + notifications.notifications.Count();
             var userCircles = await _circleService.GetUserMemberCirclesAsync(userId);
             
             // Increment custom metrics for home feed loads
