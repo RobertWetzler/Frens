@@ -410,7 +410,12 @@ const CommentSection: React.FC<{
       </View>
       <ScrollView style={styles.scrollView}>
         <View style={styles.postContainer}>
-          <Post post={post} navigation={navigation} />
+          <Post 
+            post={post} 
+            navigation={navigation}
+            shouldAnimate={false}
+            showDefaultCommentButton={false}
+          />
         </View>
         <View style={styles.addCommentContainer}>
           {isAddingComment ? (

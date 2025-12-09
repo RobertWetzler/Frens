@@ -6,8 +6,6 @@ import {
   TouchableOpacity,
   ActivityIndicator,
   SafeAreaView,
-  Modal,
-  Pressable,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useFocusEffect } from '@react-navigation/native';
@@ -17,6 +15,8 @@ import Header from '../components/Header';
 import { useTheme } from '../theme/ThemeContext';
 import { makeStyles } from '../theme/makeStyles';
 import Username from 'components/Username';
+import DropdownMenu, { DropdownMenuItem } from '../components/DropdownMenu';
+import ConfirmationModal from '../components/ConfirmationModal';
 
 const CirclesScreen = ({ navigation }) => {
   const { 
@@ -246,37 +246,25 @@ const CirclesScreen = ({ navigation }) => {
                           />
                         </TouchableOpacity>
                         
-                        <View style={styles.menuContainer}>
-                          <TouchableOpacity
-                            style={styles.menuButton}
-                            onPress={() => toggleMenu(circle.id || '')}
-                            hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-                          >
-                            <Ionicons name="ellipsis-horizontal" size={20} color={theme.colors.textMuted} />
-                          </TouchableOpacity>
-                          
-                          {menuVisible === circle.id && (
-                            <View style={styles.menuDropdown}>
-                              <TouchableOpacity
-                                style={styles.menuItem}
-                                onPress={() => handleMenuAction('rename', circle.id || '', circle.name || '')}
-                              >
-                                <Ionicons name="pencil-outline" size={16} color={theme.colors.textPrimary} />
-                                <Text style={styles.menuItemText}>Rename Circle</Text>
-                              </TouchableOpacity>
-                              <TouchableOpacity
-                                style={[styles.menuItem, styles.deleteMenuItem]}
-                                onPress={() => {
-                                  console.log('Delete menu item pressed for circle:', circle.id, circle.name);
-                                  handleMenuAction('delete', circle.id || '', circle.name || '');
-                                }}
-                              >
-                                <Ionicons name="trash-outline" size={16} color={theme.colors.danger} />
-                                <Text style={[styles.menuItemText, styles.deleteMenuItemText]}>Delete Circle</Text>
-                              </TouchableOpacity>
-                            </View>
-                          )}
-                        </View>
+                        <DropdownMenu
+                          visible={menuVisible === circle.id}
+                          onClose={() => toggleMenu(circle.id || '')}
+                          items={[
+                            {
+                              id: 'rename',
+                              label: 'Rename Circle',
+                              icon: 'pencil-outline',
+                              onPress: () => handleMenuAction('rename', circle.id || '', circle.name || ''),
+                            },
+                            {
+                              id: 'delete',
+                              label: 'Delete Circle',
+                              icon: 'trash-outline',
+                              onPress: () => handleMenuAction('delete', circle.id || '', circle.name || ''),
+                              destructive: true,
+                            },
+                          ]}
+                        />
                       </View>
 
                       {isExpanded && (
@@ -419,90 +407,30 @@ const CirclesScreen = ({ navigation }) => {
       </ScrollView>
 
       {/* Delete Confirmation Modal */}
-      <Modal
+      <ConfirmationModal
         visible={deleteModalVisible}
-        transparent={true}
-        animationType="fade"
-        onRequestClose={cancelDelete}
-      >
-        <View style={styles.modalOverlay}>
-          <View style={styles.modalContainer}>
-            <View style={styles.modalHeader}>
-              <Ionicons name="warning" size={24} color={theme.colors.danger} />
-              <Text style={styles.modalTitle}>Delete Circle</Text>
-            </View>
-            
-            <Text style={styles.modalMessage}>
-              Are you sure you want to delete "{circleToDelete?.name}"? This action cannot be undone.
-            </Text>
-            
-            <View style={styles.modalButtons}>
-              <Pressable
-                style={[styles.modalButton, styles.cancelButton]}
-                onPress={cancelDelete}
-                disabled={isDeleting}
-              >
-                <Text style={styles.cancelButtonText}>Cancel</Text>
-              </Pressable>
-              
-              <Pressable
-                style={[styles.modalButton, styles.modalDeleteButton]}
-                onPress={confirmDelete}
-                disabled={isDeleting}
-              >
-                {isDeleting ? (
-                  <ActivityIndicator size="small" color={theme.colors.primaryContrast} />
-                ) : (
-                  <Text style={styles.deleteButtonText}>Delete</Text>
-                )}
-              </Pressable>
-            </View>
-          </View>
-        </View>
-      </Modal>
+        title="Delete Circle"
+        message={`Are you sure you want to delete "${circleToDelete?.name}"? This action cannot be undone.`}
+        confirmLabel="Delete"
+        cancelLabel="Cancel"
+        onConfirm={confirmDelete}
+        onCancel={cancelDelete}
+        isLoading={isDeleting}
+        destructive={true}
+      />
 
       {/* Remove User Confirmation Modal */}
-      <Modal
+      <ConfirmationModal
         visible={removeUserModalVisible}
-        transparent={true}
-        animationType="fade"
-        onRequestClose={cancelRemoveUser}
-      >
-        <View style={styles.modalOverlay}>
-          <View style={styles.modalContainer}>
-            <View style={styles.modalHeader}>
-              <Ionicons name="warning" size={24} color={theme.colors.danger} />
-              <Text style={styles.modalTitle}>Remove User</Text>
-            </View>
-            
-            <Text style={styles.modalMessage}>
-              Are you sure you want to remove "{userToRemove?.userName}" from the circle "{userToRemove?.circleName}"?
-            </Text>
-            
-            <View style={styles.modalButtons}>
-              <Pressable
-                style={[styles.modalButton, styles.cancelButton]}
-                onPress={cancelRemoveUser}
-                disabled={isRemovingUser}
-              >
-                <Text style={styles.cancelButtonText}>Cancel</Text>
-              </Pressable>
-              
-              <Pressable
-                style={[styles.modalButton, styles.modalDeleteButton]}
-                onPress={confirmRemoveUser}
-                disabled={isRemovingUser}
-              >
-                {isRemovingUser ? (
-                  <ActivityIndicator size="small" color={theme.colors.primaryContrast} />
-                ) : (
-                  <Text style={styles.deleteButtonText}>Remove</Text>
-                )}
-              </Pressable>
-            </View>
-          </View>
-        </View>
-      </Modal>
+        title="Remove User"
+        message={`Are you sure you want to remove "${userToRemove?.userName}" from the circle "${userToRemove?.circleName}"?`}
+        confirmLabel="Remove"
+        cancelLabel="Cancel"
+        onConfirm={confirmRemoveUser}
+        onCancel={cancelRemoveUser}
+        isLoading={isRemovingUser}
+        destructive={true}
+      />
     </SafeAreaView>
   );
 };
@@ -525,13 +453,6 @@ const useStyles = makeStyles((theme) => ({
   circleHeader: { flexDirection: 'row', alignItems: 'center', padding: 16 },
   circleInfo: { flex: 1 },
   circleMainContent: { flex: 1, flexDirection: 'row', alignItems: 'center' },
-  menuContainer: { position: 'relative' },
-  menuButton: { padding: 8 },
-  menuDropdown: { position: 'absolute', top: 36, right: 0, backgroundColor: theme.colors.card, borderRadius: 8, minWidth: 150, shadowColor: theme.colors.shadow, shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.15, shadowRadius: 8, elevation: 20, borderWidth: 1, borderColor: theme.colors.separator, zIndex: 10000 },
-  menuItem: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 16, paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: theme.colors.separator },
-  deleteMenuItem: { borderBottomWidth: 0 },
-  menuItemText: { fontSize: 14, color: theme.colors.textPrimary, marginLeft: 12, fontWeight: '500' },
-  deleteMenuItemText: { color: theme.colors.danger },
   circleActions: { flexDirection: 'row', alignItems: 'center' },
   deleteButton: { backgroundColor: theme.colors.danger },
   circleTitleRow: { flexDirection: 'row', alignItems: 'center', marginBottom: 8 },
@@ -555,17 +476,6 @@ const useStyles = makeStyles((theme) => ({
   memberName: { fontSize: 16, color: theme.colors.textPrimary },
   removeUserButton: { padding: 4, marginLeft: 8 },
   noMembersText: { fontSize: 14, color: theme.colors.textMuted, fontStyle: 'italic' },
-  modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'center', alignItems: 'center', padding: 20 },
-  modalContainer: { backgroundColor: theme.colors.card, borderRadius: 12, padding: 24, width: '90%', maxWidth: 400, shadowColor: theme.colors.shadow, shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.25, shadowRadius: 12, elevation: 8 },
-  modalHeader: { flexDirection: 'row', alignItems: 'center', marginBottom: 16 },
-  modalTitle: { fontSize: 18, fontWeight: '600', color: theme.colors.textPrimary, marginLeft: 12 },
-  modalMessage: { fontSize: 16, color: theme.colors.textSecondary, lineHeight: 24, marginBottom: 24 },
-  modalButtons: { flexDirection: 'row', justifyContent: 'space-between', gap: 12 },
-  modalButton: { flex: 1, paddingVertical: 12, paddingHorizontal: 20, borderRadius: 8, alignItems: 'center', justifyContent: 'center', minHeight: 48 },
-  cancelButton: { backgroundColor: theme.colors.backgroundAlt, borderWidth: 1, borderColor: theme.colors.separator },
-  cancelButtonText: { fontSize: 16, fontWeight: '600', color: theme.colors.textPrimary },
-  modalDeleteButton: { backgroundColor: theme.colors.danger },
-  deleteButtonText: { fontSize: 16, fontWeight: '600', color: theme.colors.primaryContrast },
 }));
 
 export default CirclesScreen;

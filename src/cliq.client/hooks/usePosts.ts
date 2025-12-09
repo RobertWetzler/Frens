@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { FeedDto, PostDto, CirclePublicDto } from '../services/generated/generatedClient';
 import { ApiClient } from 'services/apiClient';
-import { feedEvents, FEED_POST_CREATED, FEED_POST_STATUS_UPDATED, OptimisticPost } from './feedEvents';
+import { feedEvents, FEED_POST_CREATED, FEED_POST_STATUS_UPDATED, FEED_POST_DELETED, OptimisticPost } from './feedEvents';
 
 // Logical page size for server paging. Matches server default behavior.
 const FEED_PAGE_SIZE = 20;
@@ -76,6 +76,27 @@ export function usePost(postId: string, includeComments: true) {
     useEffect(() => {
         loadPost();
     }, []);
+
+    // Listen for delete events
+    useEffect(() => {
+        const deleteSubscription = feedEvents.addListener(FEED_POST_DELETED, (deletedPostId) => {
+            if (deletedPostId === postId) {
+                setPost(prevPost => {
+                    if (prevPost) {
+                        return {
+                            ...prevPost,
+                            _status: 'deleted',
+                        } as OptimisticPost;
+                    }
+                    return prevPost;
+                });
+            }
+        });
+
+        return () => {
+            deleteSubscription.remove();
+        };
+    }, [postId]);
 
     return { post, isLoading, error, loadPost };
 }
@@ -293,9 +314,30 @@ export function useFilteredFeed() {
             });
         });
 
+        const deleteSubscription = feedEvents.addListener(FEED_POST_DELETED, (postId) => {
+            // Mark as deleted first (for animation)
+            setPosts(prevPosts => {
+                return prevPosts.map(post => {
+                    if (post.id === postId) {
+                        return {
+                            ...post,
+                            _status: 'deleted',
+                        } as OptimisticPost;
+                    }
+                    return post;
+                });
+            });
+
+            // Actually remove the post after animation completes (1.4s total: 800ms delay + 400ms animation + 200ms buffer)
+            setTimeout(() => {
+                setPosts(prevPosts => prevPosts.filter(post => post.id !== postId));
+            }, 1400);
+        });
+
         return () => {
             subscription.remove();
             statusSubscription.remove();
+            deleteSubscription.remove();
         };
     }, []);
 
