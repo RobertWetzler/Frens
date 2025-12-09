@@ -167,7 +167,17 @@ public class IndividualPostTests : IClassFixture<DatabaseFixture>
         var context = _fixture.CreateContext();
         var commentService = _mockCommentService.Object;
         var friendshipService = new FriendshipService(context, _mapper, _mockEventNotificationService.Object);
-        var circleService = new CircleService(context, commentService, _mapper, _mockCircleLogger.Object);
+        var circleService = new CircleService(context, commentService, friendshipService, _mapper, _mockEventNotificationService.Object, _mockCircleLogger.Object);
+        var mockNotificationService = new Mock<INotificationService>();
+        // Setup mock to return empty notifications
+        mockNotificationService.Setup(x => x.GetNotifications(It.IsAny<Guid>()))
+            .ReturnsAsync(new NotificationFeedDto
+            {
+                friendRequests = new List<FriendRequestDto>(),
+                notifications = new List<NotificationDto>()
+            });
+        var metricsService = new MetricsService();  // Use real instance, not mock
+        var mockActivityService = new Mock<IUserActivityService>();
         
         return new PostService(
             context,
@@ -177,7 +187,10 @@ public class IndividualPostTests : IClassFixture<DatabaseFixture>
             _mapper,
             _mockPostLogger.Object,
             _mockEventNotificationService.Object,
-            _mockStorageService.Object);
+            mockNotificationService.Object,
+            _mockStorageService.Object,
+            metricsService,
+            mockActivityService.Object);
     }
 
     [Fact]

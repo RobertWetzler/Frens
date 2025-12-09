@@ -176,11 +176,15 @@ public class CircleServiceTests : IClassFixture<DatabaseFixture>
     {
         // Create a fresh context for each test
         var context = _fixture.CreateContext();
+        var mockFriendshipService = new Mock<IFriendshipService>();
+        var mockEventNotificationService = new Mock<IEventNotificationService>();
         
         return new CircleService(
             context,
             _mockCommentService.Object,
+            mockFriendshipService.Object,
             _mapper,
+            mockEventNotificationService.Object,
             _mockLogger.Object);
     }
 

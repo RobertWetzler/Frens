@@ -95,8 +95,9 @@ public class CommentTests : DatabaseTestBase
         // Create mock services for CommentService
         var mockEventNotificationService = new Mock<IEventNotificationService>();
         var mockLogger = new Mock<ILogger<PostService>>();
+        var mockActivityService = new Mock<IUserActivityService>();
         
-        _commentService = new CommentService(context, _mapper, mockEventNotificationService.Object, mockLogger.Object);
+        _commentService = new CommentService(context, _mapper, mockEventNotificationService.Object, mockLogger.Object, mockActivityService.Object);
     }
 
     #region Data querying tests

@@ -34,7 +34,7 @@ public class PostService : IPostService
     private readonly INotificationService _notificationService;
     private readonly IObjectStorageService _storage;
     private readonly MetricsService _metricsService;
-    private readonly UserActivityService _activityService;
+    private readonly IUserActivityService _activityService;
 
     public PostService(
         CliqDbContext dbContext,
@@ -47,7 +47,7 @@ public class PostService : IPostService
     INotificationService notificationService,
     IObjectStorageService storage,
     MetricsService metricsService,
-    UserActivityService activityService)
+    IUserActivityService activityService)
     {
         _dbContext = dbContext;
         _commentService = commentService;
@@ -723,6 +723,25 @@ public class PostService : IPostService
                 .Include(ip => ip.User)
                 .LoadAsync();
 
+            // Create notification rows in the same transaction to guarantee atomicity
+            // The actual push notification sending happens asynchronously via background worker
+            try
+            {
+                await _eventNotificationService.SendNewPostNotificationAsync(
+                    post.Id, 
+                    userId, 
+                    text, 
+                    circleIds, 
+                    user.Name, 
+                    imageObjectKeys != null && imageObjectKeys.Any());
+            }
+            catch (Exception ex)
+            {
+                // If notification creation fails, rollback the entire transaction
+                _logger.LogError(ex, "Failed to create notification rows for post {PostId}, rolling back transaction", post.Id);
+                throw; // This will cause the transaction to rollback on dispose
+            }
+
             // Commit transaction - all database changes are now persisted atomically
             await transaction.CommitAsync();
 
@@ -731,18 +750,6 @@ public class PostService : IPostService
 
             // Record user activity for DAU/WAU/MAU tracking (fire-and-forget)
             _ = Task.Run(async () => await _activityService.RecordActivityAsync(userId, UserActivityType.PostCreated));
-
-            // Send notifications after successful commit (outside transaction)
-            // If this fails, the post is still created successfully
-            try
-            {
-                await _eventNotificationService.SendNewPostNotificationAsync(post.Id, userId, text, circleIds, user.Name, imageObjectKeys != null && imageObjectKeys.Any());
-            }
-            catch (Exception ex)
-            {
-                // Log error but don't fail the post creation
-                _logger.LogWarning(ex, "Failed to send post notifications for post {PostId}", post.Id);
-            }
 
             var dto = this._mapper.Map<PostDto>(entry.Entity);
             dto.HasImage = post.ImageObjectKeys.Any();

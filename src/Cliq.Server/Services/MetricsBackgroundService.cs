@@ -49,7 +49,7 @@ public class MetricsBackgroundService : BackgroundService
         using var scope = _serviceProvider.CreateScope();
         var dbContext = scope.ServiceProvider.GetRequiredService<CliqDbContext>();
         var metricsService = scope.ServiceProvider.GetRequiredService<MetricsService>();
-        var activityService = scope.ServiceProvider.GetRequiredService<UserActivityService>();
+        var activityService = scope.ServiceProvider.GetRequiredService<IUserActivityService>();
 
         // Cleanup old activity data (older than 30 days)
         await activityService.CleanupOldActivitiesAsync(cancellationToken);

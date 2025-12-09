@@ -10,7 +10,7 @@ namespace Cliq.Server.Services.PushNotifications;
 public interface IPushNotificationQueueService
 {
     Task AddAsync(Guid userId, NotificationData notificationData);
-    Task AddBulkAsync(IEnumerable<Guid> userIds, NotificationData notificationData);
+    Task AddBulkAsync(CliqDbContext dbContext, IEnumerable<Guid> userIds, NotificationData notificationData);
     Task<List<NotificationDelivery>> DequeueAsync(int batchSize, CancellationToken cancellationToken = default);
     Task MarkAsSentAsync(Guid deliveryId);
     Task MarkAsFailedAsync(Guid deliveryId);
@@ -22,7 +22,9 @@ public class PushNotificationQueueService : IPushNotificationQueueService
     private string _instanceId;
     private readonly TimeSpan _lockLeaseDuration = TimeSpan.FromMinutes(1);
     
-    public PushNotificationQueueService(IServiceScopeFactory serviceScopeFactory, ISilentDbContextFactory silentDbContextFactory)
+    public PushNotificationQueueService(
+        IServiceScopeFactory serviceScopeFactory, 
+        ISilentDbContextFactory silentDbContextFactory)
     {
         _serviceScopeFactory = serviceScopeFactory;
         _silentDbContextFactory = silentDbContextFactory;
@@ -36,6 +38,14 @@ public class PushNotificationQueueService : IPushNotificationQueueService
         }
     }
 
+    /// <summary>
+    /// Add a notification for a single user with its own scope and transaction.
+    /// This method creates its own scope because it's typically called as fire-and-forget
+    /// (no await) after an operation has already been saved (e.g., friend requests).
+    /// 
+    /// Note: If you need transactional behavior (notification rolled back if operation fails),
+    /// use AddBulkAsync with the injected _dbContext instead, and await the call.
+    /// </summary>
     public async Task AddAsync(Guid userId, NotificationData notificationData)
     {
         using var scope = _serviceScopeFactory.CreateScope();
@@ -87,73 +97,54 @@ public class PushNotificationQueueService : IPushNotificationQueueService
         }
     }
 
-    public async Task AddBulkAsync(IEnumerable<Guid> userIds, NotificationData notifcationData)
+    /// <summary>
+    /// Add bulk notifications using the provided DbContext
+    /// Will participate in any existing transaction on the DbContext
+    /// </summary>
+    public async Task AddBulkAsync(CliqDbContext dbContext, IEnumerable<Guid> userIds, NotificationData notificationData)
     {
-        using var scope = _serviceScopeFactory.CreateScope();
-        var dbContext = scope.ServiceProvider.GetRequiredService<CliqDbContext>();
-        
-        using var transaction = await dbContext.Database.BeginTransactionAsync();
-
-        try
+        var userIdsList = userIds.ToList();
+        if (!userIdsList.Any())
         {
-            var userIdsList = userIds.ToList();
-            if (!userIdsList.Any())
-            {
-                await transaction.CommitAsync();
-                return;
-            }
-
-            // Step 1: Get all subscriptions for all users in one query
-            var allSubscriptions = await dbContext.Set<EfPushSubscription>()
-                .Where(s => userIdsList.Contains(s.UserId ?? Guid.Empty))
-                .ToListAsync();
-
-            // Post to in-app notification feed even if they dont have subscriptions
-            // if (!allSubscriptions.Any())
-            // {
-            //     await transaction.CommitAsync();
-            //     return;
-            // }
-
-            // Step 2: Create one notification per user
-            var notifications = userIdsList.Select(userId => new Notification
-            {
-                UserId = userId,
-                Title = notifcationData.Title,
-                Message = notifcationData.Message,
-                Metadata = notifcationData.Metadata,
-                CreatedAt = DateTime.UtcNow,
-            }).ToList();
-
-            dbContext.Notifications.AddRange(notifications);
-            await dbContext.SaveChangesAsync(); // Save to get Notification.Ids
-
-            // Step 3: Create deliveries for all subscriptions
-            var deliveries = new List<NotificationDelivery>();
-            foreach (var notification in notifications)
-            {
-                // TODO: I feel like this could be a join
-                var userSubscriptions = allSubscriptions.Where(s => s.UserId == notification.UserId);
-                deliveries.AddRange(userSubscriptions.Select(s => new NotificationDelivery
-                {
-                    NotificationId = notification.Id,
-                    PushSubscriptionEndpoint = s.Endpoint,
-                    SubscriptionId = s.Id,
-                    Status = "pending",
-                    Retries = 0,
-                    CreatedAt = DateTime.UtcNow
-                }));
-            }
-
-            dbContext.AddRange(deliveries);
-            await dbContext.SaveChangesAsync();
-            await transaction.CommitAsync();
+            return;
         }
-        catch
+
+        // Step 1: Get all subscriptions for all users in one query
+        var allSubscriptions = await dbContext.Set<EfPushSubscription>()
+            .Where(s => userIdsList.Contains(s.UserId ?? Guid.Empty))
+            .ToListAsync();
+
+        // Step 2: Create one notification per user
+        var notifications = userIdsList.Select(userId => new Notification
         {
-            await transaction.RollbackAsync();
-            throw;
+            UserId = userId,
+            Title = notificationData.Title,
+            Message = notificationData.Message,
+            Metadata = notificationData.Metadata,
+            CreatedAt = DateTime.UtcNow,
+        }).ToList();
+
+        dbContext.Notifications.AddRange(notifications);
+        await dbContext.SaveChangesAsync(); // Save to get Notification.Ids
+
+        // Step 3: Create deliveries for all subscriptions
+        var deliveries = new List<NotificationDelivery>();
+        foreach (var notification in notifications)
+        {
+            var userSubscriptions = allSubscriptions.Where(s => s.UserId == notification.UserId);
+            deliveries.AddRange(userSubscriptions.Select(s => new NotificationDelivery
+            {
+                NotificationId = notification.Id,
+                PushSubscriptionEndpoint = s.Endpoint,
+                SubscriptionId = s.Id,
+                Status = "pending",
+                Retries = 0,
+                CreatedAt = DateTime.UtcNow
+            }));
         }
+
+        dbContext.AddRange(deliveries);
+        await dbContext.SaveChangesAsync();
     }
 
 public async Task<List<NotificationDelivery>> DequeueAsync(int batchSize, CancellationToken cancellationToken = default)

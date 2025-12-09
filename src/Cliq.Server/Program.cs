@@ -180,7 +180,7 @@ builder.Services.AddSingleton<IImageProcessingService, ImageProcessingService>()
 
 // Configure Prometheus metrics
 builder.Services.AddSingleton<MetricsService>();
-builder.Services.AddScoped<UserActivityService>();
+builder.Services.AddScoped<IUserActivityService, UserActivityService>();
 builder.Services.AddHostedService<MetricsBackgroundService>();
 
 // Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle

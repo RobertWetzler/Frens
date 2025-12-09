@@ -7,7 +7,7 @@ namespace Cliq.Server.Services;
 /// <summary>
 /// Service to track and record user activity for metrics
 /// </summary>
-public class UserActivityService
+public class UserActivityService : IUserActivityService
 {
     private readonly CliqDbContext _dbContext;
     private readonly ILogger<UserActivityService> _logger;

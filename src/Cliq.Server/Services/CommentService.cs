@@ -17,13 +17,13 @@ public class CommentService : ICommentService
     private readonly IMapper _mapper;
     private readonly IEventNotificationService _eventNotificationService;
     private readonly ILogger _logger;
-    private readonly UserActivityService _activityService;
+    private readonly IUserActivityService _activityService;
 
     public CommentService(CliqDbContext dbContext,
         IMapper mapper,
         IEventNotificationService eventNotificationService,
         ILogger<PostService> logger,
-        UserActivityService activityService
+        IUserActivityService activityService
         )
     {
         _dbContext = dbContext;

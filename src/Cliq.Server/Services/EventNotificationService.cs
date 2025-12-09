@@ -77,7 +77,7 @@ public class EventNotificationService : IEventNotificationService
                 HasImage = hasImage
             };
 
-            await _notificationQueue.AddBulkAsync(recipientUserIds, notificationData);
+            await _notificationQueue.AddBulkAsync(_dbContext, recipientUserIds, notificationData);
         }
     }
 
@@ -102,7 +102,7 @@ public class EventNotificationService : IEventNotificationService
                 EventTitle = title
             };
 
-            await _notificationQueue.AddBulkAsync(recipientUserIds, notificationData);
+            await _notificationQueue.AddBulkAsync(_dbContext, recipientUserIds, notificationData);
         }
     }
 
@@ -157,7 +157,7 @@ public class EventNotificationService : IEventNotificationService
                 ActionUrl = actionUrl
             };
 
-            await _notificationQueue.AddBulkAsync(allUserIds, notificationData);
+            await _notificationQueue.AddBulkAsync(_dbContext, allUserIds, notificationData);
         }
     }
 
@@ -174,7 +174,7 @@ public class EventNotificationService : IEventNotificationService
                 IsAlreadyMember = false
             };
 
-            await _notificationQueue.AddBulkAsync(recipients, notificationData);
+            await _notificationQueue.AddBulkAsync(_dbContext, recipients, notificationData);
         }
 
         // For already members, notify them of the new circle but dont prompt to follow
@@ -189,7 +189,7 @@ public class EventNotificationService : IEventNotificationService
                 IsAlreadyMember = true
             };
                         
-            await _notificationQueue.AddBulkAsync(alreadyMembers, notificationData);
+            await _notificationQueue.AddBulkAsync(_dbContext, alreadyMembers, notificationData);
 
         }
     }
