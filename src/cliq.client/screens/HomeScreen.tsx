@@ -181,7 +181,7 @@ const HomeScreen = ({ navigation }) => {
                     <View style={styles.header}>
                         <View style={styles.titleRow}>
                             <Text style={[styles.headerTitle, theme.name === 'halloween' && { fontFamily: 'SpookyHalloween', fontWeight: '400' }]}>Frens</Text>
-                            <Text style={[styles.headerSubtitle, theme.name === 'halloween' && { /*</View>fontFamily: 'SpookyHalloween',*/ fontWeight: '100' }]}>giving 🦃</Text>
+                            {/* <Text style={[styles.headerSubtitle, theme.name === 'halloween' && { fontFamily: 'SpookyHalloween', fontWeight: '100' }]}>giving 🦃</Text> */}
                         </View>
                         <NotificationBell
                             onPress={() => navigation.navigate('Notifications')}

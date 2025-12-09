@@ -294,7 +294,7 @@ export default function SignInScreen({ route, navigation }: SignInScreenProps) {
                     ]}
                 >
                     <Text style={[styles.appName, themeName === 'halloween' && { fontFamily: 'SpookyHalloween', fontWeight: '400' }]}>Frens</Text>
-                    {/* {themeName === 'halloween' && ( */}
+                    {/* {themeName === 'halloween' && ( 
                         <Text style={[
                             styles.appName,
                             {
