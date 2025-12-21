@@ -5,6 +5,7 @@ import {
   ScrollView,
   TouchableOpacity,
   TextInput,
+  Switch,
   StyleSheet,
   SafeAreaView,
   ActivityIndicator,
@@ -130,7 +131,9 @@ interface CommentTreeProps {
   depth: number;
   onAddReply: (
     text,
-    parentCommentId: string | undefined
+    parentCommentId: string | undefined,
+    isCarpool?: boolean,
+    spots?: number
   ) => Promise<CommentDto>;
   isSubmitting: boolean;
   submitError: string | null;
@@ -154,6 +157,8 @@ const CommentTree: React.FC<CommentTreeProps> = ({
   const [collapsed, setCollapsed] = useState(false);
   const [replyText, setReplyText] = useState("");
   const [isReplying, setIsReplying] = useState(false);
+  const [isCarpoolReply, setIsCarpoolReply] = useState(false);
+  const [carpoolReplySpots, setCarpoolReplySpots] = useState("1");
   const [lastChildHeight, setLastChildHeight] = useState(0);
   // Using theme-aware styles from parent invocation; hook can be called here too without redeclare conflicts
   const { theme } = useTheme();
@@ -173,9 +178,12 @@ const CommentTree: React.FC<CommentTreeProps> = ({
   const handleReply = async () => {
     if (replyText.trim()) {
       try {
-        await onAddReply(replyText.trim(), comment.id);
+        const spots = parseInt(carpoolReplySpots || "1", 10) || 1;
+        await onAddReply(replyText.trim(), comment.id, isCarpoolReply, spots);
         setReplyText("");
         setIsReplying(false);
+        setIsCarpoolReply(false);
+        setCarpoolReplySpots("1");
       } catch (error) {
         // Error is handled by parent component via submitError prop
       }
@@ -261,6 +269,27 @@ const CommentTree: React.FC<CommentTreeProps> = ({
                     multiline
                     editable={!isSubmitting}
                   />
+                  <View style={styles.carpoolRow}>
+                    <View style={styles.carpoolToggleRow}>
+                      <Text style={styles.carpoolLabel}>Carpool</Text>
+                      <Switch
+                        value={isCarpoolReply}
+                        onValueChange={setIsCarpoolReply}
+                      />
+                    </View>
+                    {isCarpoolReply && (
+                      <View style={styles.carpoolSpotsRow}>
+                        <Text style={styles.carpoolSpotsLabel}>Spots Available</Text>
+                        <TextInput
+                          style={styles.carpoolSpotsInput}
+                          value={carpoolReplySpots}
+                          onChangeText={setCarpoolReplySpots}
+                          keyboardType="numeric"
+                          placeholder="1"
+                        />
+                      </View>
+                    )}
+                  </View>
                   <View style={styles.replyButtons}>
                     <TouchableOpacity
                       style={styles.cancelButton}
@@ -325,6 +354,8 @@ const CommentSection: React.FC<{
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [newCommentText, setNewCommentText] = useState("");
   const [isAddingComment, setIsAddingComment] = useState(false);
+  const [isCarpoolNewComment, setIsCarpoolNewComment] = useState(false);
+  const [carpoolNewCommentSpots, setCarpoolNewCommentSpots] = useState("1");
   const { theme } = useTheme();
   const styles = useCommentStyles();
 
@@ -338,9 +369,17 @@ const CommentSection: React.FC<{
   const handleAddComment = async () => {
     if (newCommentText.trim()) {
       try {
-        const comment = await addReply(newCommentText.trim(), undefined);
+        const spots = parseInt(carpoolNewCommentSpots || "1", 10) || 1;
+        const comment = await addReply(
+          newCommentText.trim(),
+          undefined,
+          isCarpoolNewComment,
+          spots
+        );
         setNewCommentText("");
         setIsAddingComment(false);
+        setIsCarpoolNewComment(false);
+        setCarpoolNewCommentSpots("1");
         return comment;
       } catch (error) {
         // Error handled by addReply
@@ -348,15 +387,39 @@ const CommentSection: React.FC<{
     }
   };
 
-  const addReply = async (text, parentCommentId: string | undefined) => {
+  const addReply = async (
+    text,
+    parentCommentId: string | undefined,
+    isCarpool?: boolean,
+    spots?: number
+  ) => {
     setIsSubmitting(true);
     setSubmitError(null);
 
     try {
-      // Call the API to create the comment
-      const response = await ApiClient.call((c) =>
-        c.comment_PostComment(text, postId, parentCommentId)
-      );
+      let response: CommentDto;
+      if (isCarpool) {
+        // call server carpool endpoint directly (generated client doesn't include this method)
+        response = await ApiClient.call(async (c) => {
+          const base = (c as any).baseUrl as string;
+          const http = (c as any).http as any;
+          const url = `${base}/api/Comment/carpool?text=${encodeURIComponent(
+            text
+          )}&postId=${encodeURIComponent(postId)}&spots=${encodeURIComponent(
+            (spots || 1).toString()
+          )}${parentCommentId ? `&parentCommentId=${encodeURIComponent(parentCommentId)}` : ""}`;
+          const res = await http.fetch(url, { method: "POST", headers: { Accept: "application/json" } });
+          if (!res.ok) {
+            const txt = await res.text();
+            throw new Error(txt || "Failed to post carpool comment");
+          }
+          const json = await res.json();
+          return CommentDto.fromJS(json);
+        });
+      } else {
+        // Regular comment
+        response = await ApiClient.call((c) => c.comment_PostComment(text, postId, parentCommentId));
+      }
 
       // If the API call was successful, update the UI with the returned comment
       if (!parentCommentId) {
@@ -455,6 +518,27 @@ const CommentSection: React.FC<{
                 onChangeText={setNewCommentText}
                 autoFocus
               />
+              <View style={styles.carpoolRow}>
+                <View style={styles.carpoolToggleRow}>
+                  <Text style={styles.carpoolLabel}>Carpool</Text>
+                  <Switch
+                    value={isCarpoolNewComment}
+                    onValueChange={setIsCarpoolNewComment}
+                  />
+                </View>
+                {isCarpoolNewComment && (
+                  <View style={styles.carpoolSpotsRow}>
+                    <Text style={styles.carpoolSpotsLabel}>Spots Available</Text>
+                    <TextInput
+                      style={styles.carpoolSpotsInput}
+                      value={carpoolNewCommentSpots}
+                      onChangeText={setCarpoolNewCommentSpots}
+                      keyboardType="numeric"
+                      placeholder="1"
+                    />
+                  </View>
+                )}
+              </View>
               <View style={styles.replyButtons}>
                 <TouchableOpacity
                   style={styles.cancelButton}
@@ -759,6 +843,42 @@ const useCommentStyles = makeStyles((theme) => ({
     minHeight: 100,
     fontSize: 15,
     textAlignVertical: "top",
+  },
+  carpoolRow: {
+    marginTop: 8,
+  },
+  carpoolToggleRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "flex-start",
+    gap: 8,
+  },
+  carpoolLabel: {
+    marginRight: 8,
+    color: theme.colors.textMuted,
+    fontSize: 14,
+  },
+  carpoolSpotsRow: {
+    marginTop: 8,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "flex-start",
+    gap: 8,
+  },
+  carpoolSpotsLabel: {
+    color: theme.colors.textMuted,
+    fontSize: 14,
+    marginRight: 8,
+  },
+  carpoolSpotsInput: {
+    width: 80,
+    borderWidth: 1,
+    borderColor: theme.colors.separator,
+    borderRadius: 8,
+    paddingHorizontal: 8,
+    paddingVertical: 6,
+    textAlign: "center",
+    backgroundColor: theme.colors.card,
   },
 }));
 
