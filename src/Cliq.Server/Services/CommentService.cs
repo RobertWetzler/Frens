@@ -8,8 +8,11 @@ using Npgsql;
 public interface ICommentService
 {
     public Task<CommentDto> CreateCommentAsync(string text, Guid userId, Guid postId, Guid? parentCommentId = null);
+    public Task<CommentDto> CreateCarpoolCommentAsync(string text, Guid userId, Guid postId, int spots, Guid? parentCommentId = null);
     public Task<IEnumerable<CommentDto>> GetAllCommentsForPostAsync(Guid postId);
     public Task<bool> DeleteCommentAsync(Guid commentId, Guid userId);
+    // Toggle seat in carpool: if not joined, attempt to join; if already joined, leave. Returns true on join, false on leave.
+    public Task<bool> ToggleCarpoolSeatAsync(Guid commentId, Guid userId);
 }
 public class CommentService : ICommentService
 {
@@ -119,6 +122,49 @@ public class CommentService : ICommentService
         return result;
     }
 
+    public async Task<CommentDto> CreateCarpoolCommentAsync(string text, Guid userId, Guid postId, int spots, Guid? parentCommentId = null)
+    {
+        var parentPost = await _dbContext.Posts
+            .FirstOrDefaultAsync(p => p.Id == postId);
+        if (parentPost == null)
+            throw new ArgumentException("Parent post not found");
+
+        // Validate parent comment if provided
+        if (parentCommentId.HasValue)
+        {
+            var parentComment = await _dbContext.Comments
+                .FirstOrDefaultAsync(c => c.Id == parentCommentId && c.PostId == postId)
+                ?? throw new ArgumentException("Parent comment not found or doesn't belong to specified post");
+        }
+
+        var comment = new Comment
+        {
+            Id = Guid.NewGuid(),
+            Text = text,
+            UserId = userId,
+            PostId = postId,
+            ParentCommentId = parentCommentId,
+            Date = DateTime.UtcNow,
+            Type = CommentType.Carpool,
+            CarpoolSpots = spots
+        };
+
+        await _dbContext.Comments.AddAsync(comment);
+        await _dbContext.SaveChangesAsync();
+
+        var commentWithUser = await _dbContext.Comments
+            .Include(c => c.User)
+            .Include(c => c.CarpoolSeats).ThenInclude(s => s.User)
+            .FirstAsync(c => c.Id == comment.Id);
+
+        var result = _mapper.Map<CommentDto>(commentWithUser);
+
+        // record activity
+        _ = Task.Run(async () => await _activityService.RecordActivityAsync(userId, UserActivityType.CommentCreated));
+
+        return result;
+    }
+
     // New method to efficiently get comment count for posts
     public async Task<Dictionary<Guid, int>> GetCommentCountsForPostsAsync(IEnumerable<Guid> postIds)
     {
@@ -140,6 +186,7 @@ public class CommentService : ICommentService
             .Where(c => c.PostId == postId)
             //.Where(c => c.ParentCommentId == null) // root comments
             .Include(c => c.User)
+            .Include(c => c.CarpoolSeats).ThenInclude(s => s.User)
             .OrderByDescending(c => c.Date)
             .ToListAsync();
 
@@ -182,6 +229,48 @@ public class CommentService : ICommentService
         _dbContext.Comments.Remove(comment);
         await _dbContext.SaveChangesAsync();
         return true;
+    }
+
+    public async Task<bool> ToggleCarpoolSeatAsync(Guid commentId, Guid userId)
+    {
+        // Find the carpool comment
+        var comment = await _dbContext.Comments
+            .Include(c => c.CarpoolSeats)
+            .FirstOrDefaultAsync(c => c.Id == commentId);
+
+        if (comment == null) throw new ArgumentException("Comment not found");
+        if (comment.Type != CommentType.Carpool) throw new ArgumentException("Comment is not a carpool announcement");
+
+        var existingSeat = comment.CarpoolSeats.FirstOrDefault(s => s.UserId == userId);
+        if (existingSeat != null)
+        {
+            // Leave: remove seat
+            _dbContext.CarpoolSeats.Remove(existingSeat);
+            await _dbContext.SaveChangesAsync();
+            return false; // indicates leave
+        }
+
+        // Check capacity if set
+        if (comment.CarpoolSpots.HasValue)
+        {
+            var taken = comment.CarpoolSeats.Count;
+            if (taken >= comment.CarpoolSpots.Value)
+            {
+                throw new InvalidOperationException("No available carpool spots");
+            }
+        }
+
+        var seat = new CarpoolSeat
+        {
+            Id = Guid.NewGuid(),
+            CommentId = commentId,
+            UserId = userId,
+            ReservedAt = DateTime.UtcNow
+        };
+        await _dbContext.CarpoolSeats.AddAsync(seat);
+        await _dbContext.SaveChangesAsync();
+
+        return true; // indicates join
     }
 }
 // Extension method for dependency injection

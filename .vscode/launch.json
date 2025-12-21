@@ -1,4 +1,41 @@
 {
+  "version": "0.2.0",
+    "configurations": [
+        {
+            "name": "Launch Cliq.Server (project)",
+            "type": "coreclr",
+            "request": "launch",
+            "preLaunchTask": "build Cliq.Server",
+            "program": "${workspaceFolder}/src/Cliq.Server/bin/Debug/net9.0/Cliq.Server.dll",
+            "args": [],
+            "cwd": "${workspaceFolder}/src/Cliq.Server",
+            "stopAtEntry": false,
+            "env": {
+                "ASPNETCORE_ENVIRONMENT": "Development"
+            },
+            "console": "integratedTerminal"
+        },
+        {
+            "name": "Launch Cliq.Server (dotnet run)",
+            "type": "coreclr",
+            "request": "launch",
+            "preLaunchTask": "build Cliq.Server",
+            "program": "dotnet",
+            "args": [
+                "run",
+                "--project",
+                "${workspaceFolder}/src/Cliq.Server/Cliq.Server.csproj"
+            ],
+            "cwd": "${workspaceFolder}",
+            "stopAtEntry": false,
+            "env": {
+                "ASPNETCORE_ENVIRONMENT": "Development"
+            },
+            "console": "integratedTerminal"
+        }
+    ]
+}
+{
     "version": "0.2.0",
     "configurations": [
         {

@@ -31,7 +31,10 @@ public class MappingProfile : Profile
         CreateMap<Friendship, FriendRequestDto>();
         CreateMap<Comment, CommentDto>()
             // We'll handle replies separately due to their recursive nature
-            .ForMember(dest => dest.Replies, opt => opt.Ignore());
+            .ForMember(dest => dest.Replies, opt => opt.Ignore())
+            .ForMember(dest => dest.Type, opt => opt.MapFrom(src => src.Type))
+            .ForMember(dest => dest.CarpoolSpots, opt => opt.MapFrom(src => src.CarpoolSpots))
+            .ForMember(dest => dest.CarpoolRiders, opt => opt.MapFrom(src => src.CarpoolSeats != null ? src.CarpoolSeats.Select(s => s.User) : new List<User>()));
         CreateMap<Circle, CirclePublicDto>();
         
         // CirclePost mapping
