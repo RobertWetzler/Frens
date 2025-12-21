@@ -122,7 +122,7 @@ const formatDate = (date: Date) => {
     options.year = 'numeric';
   }
 
-  return date.toLocaleString('en-US', options);
+  return date.toLocaleString(undefined, options);
 };
 
 interface CommentTreeProps {
