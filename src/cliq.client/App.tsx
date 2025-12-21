@@ -28,6 +28,7 @@ import NotificationsScreen from 'screens/NotificationScreen';
 import { useServiceWorker } from './hooks/useServiceWorker';
 import { ShaderBackgroundProvider } from 'contexts/ShaderBackgroundContext';
 import GlobalShaderBackground from 'components/GlobalShaderBackground';
+import { SnowCollisionProvider } from 'contexts/SnowCollisionContext';
 import { enableImageBinaryCacheDebug, getImageBinaryCacheStats } from 'services/imageBinaryCache';
 
 type RootStackParamList = {
@@ -138,7 +139,7 @@ const BottomTabs = ({ navigation }) => {
         tabBarActiveTintColor: theme.colors.primary,
         tabBarInactiveTintColor: theme.colors.textMuted,
         tabBarStyle: {
-          backgroundColor: theme.isDark ? 'rgba(30,30,30,0.85)' : 'rgba(255,255,255,0.8)',
+          backgroundColor: theme.isDark ? 'rgba(30,30,30,0.85)' : 'rgba(255, 255, 255, 0.91)',
           borderTopWidth: 0,
           elevation: 0,
           position: 'absolute',
@@ -198,6 +199,9 @@ const MainApp = () => {
           // await Font.loadAsync({
           //   SpookyHalloween: require('./assets/fonts/spooky-font.ttf'),
           // });
+           await Font.loadAsync({
+             Holiday: require('./assets/fonts/holiday.otf'),
+           });
           setFontsLoaded(true);
         } catch (err) {
           console.warn('Spooky font not loaded (expected if file missing):', err?.message || err);
@@ -431,13 +435,15 @@ export default function App() {
       <ThemeProvider>
         <AuthProvider>
           <ShaderBackgroundProvider>
-            {/* Wrapper View creates proper sibling relationship between shader background and MainApp,
-                allowing z-index layering to work correctly with React Navigation's DOM structure.
-                Needed for preventing MainApp UI from blocking background. */}
-            <View style={{ flex: 1 }}>
-              <GlobalShaderBackground />
-              <ThemedMainAppWrapper />
-            </View>
+            <SnowCollisionProvider>
+              {/* Wrapper View creates proper sibling relationship between shader background and MainApp,
+                  allowing z-index layering to work correctly with React Navigation's DOM structure.
+                  Needed for preventing MainApp UI from blocking background. */}
+              <View style={{ flex: 1 }}>
+                <GlobalShaderBackground />
+                <ThemedMainAppWrapper />
+              </View>
+            </SnowCollisionProvider>
           </ShaderBackgroundProvider>
         </AuthProvider>
       </ThemeProvider>

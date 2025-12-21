@@ -11,6 +11,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { useApi } from '../hooks/useApi';
 import DropdownMenu, { DropdownMenuItem } from './DropdownMenu';
 import ConfirmationModal from './ConfirmationModal';
+import { useSnowCollision } from '../contexts/SnowCollisionContext';
 
 interface PostProps {
   post: OptimisticPost,
@@ -21,11 +22,13 @@ interface PostProps {
   renderPreContent?: React.ReactNode | (() => React.ReactNode);
   renderFooterContent?: React.ReactNode | (() => React.ReactNode);
   showDefaultCommentButton?: boolean;
+  isFirstPost?: boolean; // Track if this is the first visible post for snow collision
+  onFirstPostLayout?: (height: number) => void; // Callback to report first post height
 }
 
 const isSafari = typeof navigator !== 'undefined' && /^((?!chrome|android).)*safari/i.test(navigator.userAgent);
 
-const Post: React.FC<PostProps> = ({ post, navigation, isNavigable = true, animationDelay = 0, shouldAnimate = false, renderPreContent, renderFooterContent, showDefaultCommentButton = true }) => {
+const Post: React.FC<PostProps> = ({ post, navigation, isNavigable = true, animationDelay = 0, shouldAnimate = false, renderPreContent, renderFooterContent, showDefaultCommentButton = true, isFirstPost = false, onFirstPostLayout }) => {
   const translateY = useRef(new Animated.Value(shouldAnimate ? 100 : 0)).current;
   const opacity = useRef(new Animated.Value(shouldAnimate ? 0 : 1)).current;
   const scale = useRef(new Animated.Value(shouldAnimate ? 0.8 : 1)).current;
@@ -36,6 +39,8 @@ const Post: React.FC<PostProps> = ({ post, navigation, isNavigable = true, anima
   const [deleteModalVisible, setDeleteModalVisible] = useState(false);
   const [isAnimatingDelete, setIsAnimatingDelete] = useState(false);
   const [shouldHide, setShouldHide] = useState(false);
+  const { setTopPostBoundary } = useSnowCollision();
+  const postRef = useRef<View>(null);
 
   // Delete post API call (lazy - only called when user confirms delete)
   const { refetch: deletePost, isLoading: isDeleting } = useApi(
@@ -143,6 +148,47 @@ const Post: React.FC<PostProps> = ({ post, navigation, isNavigable = true, anima
       });
     }
   }, [post]);
+
+  // Measure post position for snow collision (only if first post)
+  useEffect(() => {
+    if (isFirstPost && postRef.current) {
+      const measurePost = () => {
+        postRef.current?.measure((x, y, width, height, pageX, pageY) => {
+          const boundary = {
+            top: pageY,
+            left: pageX,
+            right: pageX + width,
+            height: height,
+          };
+          console.log('📍 First Post measured:', boundary);
+          setTopPostBoundary(boundary);
+          
+          // Report height to parent for scroll threshold
+          if (onFirstPostLayout) {
+            onFirstPostLayout(height);
+          }
+        });
+      };
+
+      // Measure after a brief delay to ensure layout is complete
+      const timer = setTimeout(measurePost, 100);
+      
+      // Re-measure when animations complete
+      if (shouldAnimate) {
+        const animationTimer = setTimeout(measurePost, animationDelay + 1000);
+        return () => {
+          clearTimeout(timer);
+          clearTimeout(animationTimer);
+        };
+      }
+      
+      return () => clearTimeout(timer);
+    } else if (!isFirstPost) {
+      // Clear boundary if this is no longer the first post
+      console.log('📍 Clearing post boundary (not first post)');
+      setTopPostBoundary(null);
+    }
+  }, [isFirstPost, shouldAnimate, animationDelay, setTopPostBoundary]);
 
   // Handle delete animation
   useEffect(() => {
@@ -264,18 +310,20 @@ const Post: React.FC<PostProps> = ({ post, navigation, isNavigable = true, anima
   }
 
   return (
-    <Animated.View style={[
-      styles.container,
-      { 
-        transform: [
-          { translateY }, 
-          { scale: (isDeleted && shouldAnimate) ? deleteHeight : scale }
-        ], 
-        opacity: (isDeleted && shouldAnimate) ? deleteOpacity : opacity 
-      },
-      isDeleted && styles.deletedContainer
-    ]}
-    pointerEvents={isDeleted ? 'none' : 'auto'}
+    <Animated.View 
+      ref={postRef}
+      style={[
+        styles.container,
+        { 
+          transform: [
+            { translateY }, 
+            { scale: (isDeleted && shouldAnimate) ? deleteHeight : scale }
+          ], 
+          opacity: (isDeleted && shouldAnimate) ? deleteOpacity : opacity 
+        },
+        isDeleted && styles.deletedContainer
+      ]}
+      pointerEvents={isDeleted ? 'none' : 'auto'}
     >
       {isDeleted && (
         <View style={styles.deletedOverlay} pointerEvents="none">

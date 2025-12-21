@@ -18,6 +18,8 @@ import { EventDto } from 'services/generated/generatedClient';
 import Event from 'components/Event';
 import { useTheme } from '../theme/ThemeContext';
 import { makeStyles } from '../theme/makeStyles';
+import { useSnowCollision } from 'contexts/SnowCollisionContext';
+import { Svg, Circle, Ellipse, Path, Rect, Line } from 'react-native-svg';
 
 
 const HomeScreen = ({ navigation }) => {
@@ -41,10 +43,13 @@ const HomeScreen = ({ navigation }) => {
     } = useFilteredFeed();
     const authContext = useAuth();
     const { isExpanded, animateToExpanded } = useShaderBackground();
+    const { setIsPilingActive } = useSnowCollision();
     const scrollY = useRef(new Animated.Value(0)).current;
     const [isPWABannerVisible, setIsPWABannerVisible] = useState(true);
     const [isFirstLoad, setIsFirstLoad] = useState(true);
     const [isFilterExpanded, setIsFilterExpanded] = useState(false);
+    const [firstPostHeight, setFirstPostHeight] = useState<number>(0);
+    const [isPilingDelayComplete, setIsPilingDelayComplete] = useState(false);
     const { theme } = useTheme();
     const styles = useStyles();
 
@@ -66,6 +71,24 @@ const HomeScreen = ({ navigation }) => {
             animateToExpanded();
         }
     }, [isExpanded, animateToExpanded]);
+
+    // Disable snow piling during initial animation, enable after delay
+    useEffect(() => {
+        // Start with piling disabled
+        setIsPilingActive(false);
+        
+        if (posts && posts.length > 0 && !isLoading) {
+            // Enable piling after animation completes (ANIMATION_DELAY + some buffer for first post to animate in)
+            const pilingDelay = ANIMATION_DELAY + 2000; // Wait for first post animation to complete
+            const timer = setTimeout(() => {
+                setIsPilingDelayComplete(true);
+                setIsPilingActive(true);
+                console.log('Snow: Piling enabled after initial animation');
+            }, pilingDelay);
+            
+            return () => clearTimeout(timer);
+        }
+    }, [posts, isLoading, setIsPilingActive]);
 
     // Mark that we've moved past first load when posts come in (only for initial load)
     useEffect(() => {
@@ -142,7 +165,7 @@ const HomeScreen = ({ navigation }) => {
     if (isLoading) {
         return (
             <SafeAreaView style={[styles.container, isExpanded && styles.expandedContainer]}>
-                <ActivityIndicator size={36} color={theme.colors.primary} />
+                {/* <ActivityIndicator size={36} color={theme.colors.primary} /> */}
             </SafeAreaView>
         );
     }
@@ -180,8 +203,50 @@ const HomeScreen = ({ navigation }) => {
                 >
                     <View style={styles.header}>
                         <View style={styles.titleRow}>
+                            {theme.name === 'holiday' && (
+                                <View style={{ marginRight: 8 }}>
+                                    <Svg width={32} height={40} viewBox="0 0 40 50">
+                                        {/* Bottom snowball */}
+                                        <Circle cx={20} cy={40} r={10} fill="#FFFFFF" stroke="#E0E0E0" strokeWidth={1} />
+                                        {/* Middle snowball */}
+                                        <Circle cx={20} cy={26} r={8} fill="#FFFFFF" stroke="#E0E0E0" strokeWidth={1} />
+                                        {/* Head */}
+                                        <Circle cx={20} cy={14} r={6} fill="#FFFFFF" stroke="#E0E0E0" strokeWidth={1} />
+                                        {/* Top hat */}
+                                        <Rect x={13} y={6} width={14} height={2} fill="#2C2C2C" />
+                                        <Rect x={15} y={0} width={10} height={6} fill="#2C2C2C" />
+                                        <Rect x={15} y={3} width={10} height={2} fill="#C41E3A" />
+                                        {/* Eyes */}
+                                        <Circle cx={17} cy={12} r={1} fill="#2C2C2C" />
+                                        <Circle cx={23} cy={12} r={1} fill="#2C2C2C" />
+                                        {/* Carrot nose */}
+                                        <Path d="M20 14 L26 15 L20 16 Z" fill="#FF6B35" />
+                                        {/* Smile */}
+                                        <Circle cx={16} cy={17} r={0.7} fill="#2C2C2C" />
+                                        <Circle cx={18.5} cy={18} r={0.7} fill="#2C2C2C" />
+                                        <Circle cx={21.5} cy={18} r={0.7} fill="#2C2C2C" />
+                                        <Circle cx={24} cy={17} r={0.7} fill="#2C2C2C" />
+                                        {/* Scarf */}
+                                        <Path d="M14 20 Q20 22 26 20" stroke="#C41E3A" strokeWidth={2} fill="none" />
+                                        <Rect x={24} y={20} width={3} height={8} rx={1} fill="#C41E3A" />
+                                        {/* Buttons */}
+                                        <Circle cx={20} cy={24} r={1} fill="#2C2C2C" />
+                                        <Circle cx={20} cy={28} r={1} fill="#2C2C2C" />
+                                        {/* Arms (sticks) */}
+                                        <Line x1={12} y1={26} x2={4} y2={22} stroke="#8B4513" strokeWidth={1.5} strokeLinecap="round" />
+                                        <Line x1={28} y1={26} x2={36} y2={22} stroke="#8B4513" strokeWidth={1.5} strokeLinecap="round" />
+                                        {/* Twig fingers on left arm */}
+                                        <Line x1={4} y1={22} x2={2} y2={19} stroke="#8B4513" strokeWidth={1} strokeLinecap="round" />
+                                        <Line x1={4} y1={22} x2={1} y2={23} stroke="#8B4513" strokeWidth={1} strokeLinecap="round" />
+                                        {/* Twig fingers on right arm */}
+                                        <Line x1={36} y1={22} x2={38} y2={19} stroke="#8B4513" strokeWidth={1} strokeLinecap="round" />
+                                        <Line x1={36} y1={22} x2={39} y2={23} stroke="#8B4513" strokeWidth={1} strokeLinecap="round" />
+                                    </Svg>
+                                </View>
+                            )}
                             <Text style={[styles.headerTitle, theme.name === 'halloween' && { fontFamily: 'SpookyHalloween', fontWeight: '400' }]}>Frens</Text>
-                            {/* <Text style={[styles.headerSubtitle, theme.name === 'halloween' && { fontFamily: 'SpookyHalloween', fontWeight: '100' }]}>giving 🦃</Text> */}
+                            {/* <Text style={[styles.headerSubtitle, theme.name === 'halloween' && { fontFamily: 'SpookyHalloween', fontWeight: '100' }]}>spooky edition</Text> */}
+                            <Text style={[styles.headerSubtitle, { fontFamily: 'Holiday', fontSize: 20, fontWeight: '100' }]}>Sleigh edition</Text>
                         </View>
                         <NotificationBell
                             onPress={() => navigation.navigate('Notifications')}
@@ -228,6 +293,8 @@ const HomeScreen = ({ navigation }) => {
                             navigation={navigation}
                             shouldAnimate={shouldAnimate}
                             animationDelay={animationDelay}
+                            isFirstPost={index === 0}
+                            onFirstPostLayout={index === 0 ? setFirstPostHeight : undefined}
                         />
                     );
                 }}
@@ -274,10 +341,18 @@ const HomeScreen = ({ navigation }) => {
                         paddingBottom: insets.bottom + 60
                     }
                 ]}
-                onScroll={Animated.event(
-                    [{ nativeEvent: { contentOffset: { y: scrollY } } }],
-                    { useNativeDriver: false }
-                )}
+                onScroll={(event) => {
+                    // Update animated scroll value
+                    scrollY.setValue(event.nativeEvent.contentOffset.y);
+                    
+                    // Only manage piling based on scroll if initial delay is complete
+                    if (isPilingDelayComplete) {
+                        // Check if scrolled past first post height (deactivate snow piling)
+                        const scrollOffset = event.nativeEvent.contentOffset.y;
+                        const threshold = firstPostHeight > 0 ? firstPostHeight / 8 : 150; // Default to 150 if not measured
+                        setIsPilingActive(scrollOffset < threshold);
+                    }
+                }}
                 scrollEventThrottle={16}
                 scrollEnabled={!isFilterExpanded} // Disable scrolling when filter dropdown is expanded
                 // Pull-to-refresh uses hook's refresh state
@@ -341,10 +416,10 @@ const useStyles = makeStyles((theme) => ({
         shadowColor: theme.colors.shadow, shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.3, shadowRadius: 8, elevation: 8,
     },
     header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
-    headerTitle: { fontSize: 30, fontWeight: 'bold', color: theme.colors.primaryContrast, textShadowColor: 'rgba(0,0,0,0.3)', textShadowOffset: { width: 0, height: 1 }, textShadowRadius: 2 },
+    headerTitle: { fontSize: 38, fontWeight: 'bold', color: theme.colors.primaryContrast, textShadowColor: 'rgba(0,0,0,0.3)', textShadowOffset: { width: 0, height: 1 }, textShadowRadius: 2 },
     titleRow: { flexDirection: 'row', alignItems: 'baseline' },
     headerSubtitle: { fontSize: 17, fontWeight: '600', color: theme.colors.primaryContrast, marginLeft: 5, textShadowColor: 'rgba(0,0,0,0.3)', textShadowOffset: { width: 0, height: 1 }, textShadowRadius: 2 },
-    filterContainer: { marginHorizontal: 16, marginVertical: 2 },
+    filterContainer: { marginHorizontal: 16, marginVertical: 5, marginTop: 8 },
     filteringIndicator: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', paddingVertical: 8, marginTop: 8 },
     filteringText: { marginLeft: 8, fontSize: 14, color: theme.colors.textMuted, fontStyle: 'italic' },
     listContent: {},

@@ -1,7 +1,8 @@
 import React, { useRef, useImperativeHandle, forwardRef, useEffect } from 'react';
 import { GLView } from 'expo-gl';
-import { Dimensions, StyleSheet, Platform } from 'react-native'
+import { Dimensions, StyleSheet, Platform, View } from 'react-native'
 import { useTheme } from '../theme/ThemeContext';
+import SimpleSnowfall from './SimpleSnowfall';
 
 // Basic vertex shader - passes texture coordinates to fragment shader
 const vertexShader = `
@@ -355,10 +356,17 @@ const ShaderBackground = forwardRef<ShaderBackgroundRef>((props, ref) => {
     };
 
     return (
-        <GLView
-            style={styles.container}
-            onContextCreate={setupGL}
-        />
+        <View style={styles.container}>
+            <GLView
+                style={styles.glView}
+                onContextCreate={setupGL}
+            />
+            <SimpleSnowfall
+                count={200}
+                minSize={2}
+                maxSize={6}
+            />
+        </View>
     );
 });
 
@@ -367,6 +375,10 @@ const styles = StyleSheet.create({
         ...StyleSheet.absoluteFillObject,
         backgroundColor: 'transparent',
         pointerEvents: 'none',
+    },
+    glView: {
+        ...StyleSheet.absoluteFillObject,
+        backgroundColor: 'transparent',
     }
 });
 

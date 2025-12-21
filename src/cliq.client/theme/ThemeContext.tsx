@@ -10,7 +10,7 @@ interface ThemeContextValue {
 
 const ThemeContext = createContext<ThemeContextValue | undefined>(undefined);
 
-export const ThemeProvider: React.FC<{ initial?: ThemeName; children: ReactNode }> = ({ initial = 'light', children }) => {
+export const ThemeProvider: React.FC<{ initial?: ThemeName; children: ReactNode }> = ({ initial = 'holiday', children }) => {
   const [name, setName] = useState<ThemeName>(initial);
   const setTheme = useCallback((next: ThemeName) => setName(next), []);
   const toggleTheme = useCallback(() => setName(prev => prev === 'light' ? 'dark' : 'light'), []);

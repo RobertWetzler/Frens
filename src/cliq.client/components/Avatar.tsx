@@ -68,6 +68,35 @@ export const Avatar: React.FC<AvatarProps> = ({ name, userId, imageUrl, navigati
         );
     }
 
+    if (theme.name === 'holiday') {
+        return (
+            <View style={styles.avatarContainer} accessibilityLabel={`Avatar ${initial}`}>
+                <View style={styles.pumpkinWrapper}>
+                    <Svg width={44} height={44} viewBox="0 0 44 44">
+                        {/* Snowman face */}
+                        <Ellipse cx={22} cy={24} rx={16} ry={16} fill="#FFFFFF" stroke="#E0E0E0" strokeWidth={1.5} />
+                        {/* Eyes - coal dots */}
+                        <Ellipse cx={16} cy={20} rx={2.5} ry={2.5} fill="#2C2C2C" />
+                        <Ellipse cx={28} cy={20} rx={2.5} ry={2.5} fill="#2C2C2C" />
+                        {/* Carrot nose */}
+                        <Path d="M20 21 L28 24 L20 27 Z" fill="#FF6B35" stroke="#E55A2B" strokeWidth={0.5} />
+                        {/* Smile - coal dots */}
+                        <Ellipse cx={14} cy={30} rx={1.5} ry={1.5} fill="#2C2C2C" />
+                        <Ellipse cx={18} cy={32} rx={1.5} ry={1.5} fill="#2C2C2C" />
+                        <Ellipse cx={22} cy={33} rx={1.5} ry={1.5} fill="#2C2C2C" />
+                        <Ellipse cx={26} cy={32} rx={1.5} ry={1.5} fill="#2C2C2C" />
+                        <Ellipse cx={30} cy={30} rx={1.5} ry={1.5} fill="#2C2C2C" />
+                        {/* Top hat */}
+                        <Path d="M12 10 L32 10 L32 12 L12 12 Z" fill="#2C2C2C" />
+                        <Path d="M16 2 L28 2 L28 10 L16 10 Z" fill="#2C2C2C" />
+                        {/* Hat band */}
+                        <Path d="M16 7 L28 7 L28 9 L16 9 Z" fill="#C41E3A" />
+                    </Svg>
+                </View>
+            </View>
+        );
+    }
+
     return (
         <View style={styles.avatarContainer}>
             <RneuiAvatar
