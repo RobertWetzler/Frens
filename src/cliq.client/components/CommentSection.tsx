@@ -274,10 +274,10 @@ const CommentTree: React.FC<CommentTreeProps> = ({
                     style={[
                       styles.carpoolButton,
                       isJoined && styles.carpoolButtonJoined,
-                      isTogglingCarpool && styles.disabledButton,
+                      (isTogglingCarpool || (availableSeats === 0 && !isJoined)) && styles.disabledButton,
                     ]}
                     onPress={handleToggleCarpoolSeat}
-                    disabled={isTogglingCarpool}
+                    disabled={isTogglingCarpool || (availableSeats === 0 && !isJoined)}
                   >
                     <Text
                       style={isJoined ? styles.carpoolButtonTextJoined : styles.carpoolButtonText}
