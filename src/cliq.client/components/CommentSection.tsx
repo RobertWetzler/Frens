@@ -221,7 +221,7 @@ const CommentTree: React.FC<CommentTreeProps> = ({
               showAvatar
             />
             {comment.date && (
-              <Text style={styles.commentDate}>{formatDate(new Date(comment.date))}</Text>
+              <Text style={styles.commentDate}>{formatDate(comment.date)}</Text>
             )}
           </View>
 
