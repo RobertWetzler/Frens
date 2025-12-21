@@ -106,6 +106,25 @@ const ThreadLine: React.FC<ThreadLineProps> = ({
   );
 };
 
+const formatDate = (date: Date) => {
+  const now = new Date();
+  const isCurrentYear = now.getFullYear() === date.getFullYear();
+
+  const options: Intl.DateTimeFormatOptions = {
+    month: 'numeric',
+    day: 'numeric',
+    hour: 'numeric',
+    minute: '2-digit',
+    hour12: true
+  };
+
+  if (!isCurrentYear) {
+    options.year = 'numeric';
+  }
+
+  return date.toLocaleString('en-US', options);
+};
+
 interface CommentTreeProps {
   comment: CommentDto;
   depth: number;
@@ -191,15 +210,20 @@ const CommentTree: React.FC<CommentTreeProps> = ({
         </TouchableOpacity>
 
         <View style={styles.commentBody}>
-          <Username
-            user={comment.user}
-            navigation={navigation}
-            styles={{
-              container: styles.commentTitleRow,
-              username: styles.commentAuthor,
-            }}
-            showAvatar
-          />
+          <View style={styles.commentHeaderRow}>
+            <Username
+              user={comment.user}
+              navigation={navigation}
+              styles={{
+                container: styles.commentTitleRow,
+                username: styles.commentAuthor,
+              }}
+              showAvatar
+            />
+            {comment.date && (
+              <Text style={styles.commentDate}>{formatDate(new Date(comment.date))}</Text>
+            )}
+          </View>
 
           {!collapsed && (
             <>
@@ -617,23 +641,21 @@ const useCommentStyles = makeStyles((theme) => ({
     marginBottom: 0,
     alignItems: "center",
   },
-  // Add this to your StyleSheet:
-  avatarContainer: {
-    padding: 2, // Creates spacing around the avatar
-    backgroundColor: theme.colors.card, // Match card surface
-    borderRadius: 60, // Fully rounded to match the avatar
-    marginRight: 7,
-    // Optional shadow for more definition
-    // shadowColor: '#fff',
-    // shadowOpacity: 1,
-    // shadowOffset: { width: 0, height: 0 },
-    // shadowRadius: 3,
+  commentHeaderRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    gap: 8,
   },
   commentAuthor: {
     fontWeight: "600",
     fontSize: 14,
     color: theme.colors.textSecondary,
     marginBottom: 4,
+  },
+  commentDate: {
+    fontSize: 13,
+    color: theme.colors.textMuted,
   },
   commentText: {
     fontSize: 15,
