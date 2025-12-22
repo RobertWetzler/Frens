@@ -1,5 +1,6 @@
 ﻿using Cliq.Server.Models;
 using Cliq.Server.Services;
+using Cliq.Utilities;
 using Microsoft.AspNetCore.Mvc;
 
 namespace Cliq.Server.Controllers;
@@ -67,14 +68,15 @@ public class CommentController : ControllerBase
     [HttpPost("{commentId:guid}/carpool/optin")]
     public async Task<ActionResult> ToggleCarpoolSeat(Guid commentId)
     {
-        var idClaim = this.HttpContext.User.Claims.FirstOrDefault(c => c.Type == "http://schemas.xmlsoap.org/ws/2005/05/identity/claims/nameidentifier");
-        if (idClaim == null)
+        if (!AuthUtils.TryGetUserIdFromToken(this.HttpContext, out var userId))
         {
             return Unauthorized();
         }
+        var username = "";
+        AuthUtils.TryGetUserNameFromToken(this.HttpContext, out username);
         try
         {
-            var joined = await _commentService.ToggleCarpoolSeatAsync(commentId, new Guid(idClaim.Value));
+            var joined = await _commentService.ToggleCarpoolSeatAsync(commentId, userId, username);
             return Ok(new { joined });
         }
         catch (InvalidOperationException ex)

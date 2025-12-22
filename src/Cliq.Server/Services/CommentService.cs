@@ -3,6 +3,7 @@ using Cliq.Server.Data;
 using Cliq.Server.Models;
 using Cliq.Server.Services;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.IdentityModel.Tokens;
 using Npgsql;
 
 public interface ICommentService
@@ -14,7 +15,7 @@ public interface ICommentService
     Task<IEnumerable<CommentDto>> GetAllCommentsForPostAsync(Guid postId);
     Task<bool> DeleteCommentAsync(Guid commentId, Guid userId);
     // Toggle seat in carpool: if not joined, attempt to join; if already joined, leave. Returns true on join, false on leave.
-    Task<bool> ToggleCarpoolSeatAsync(Guid commentId, Guid userId);
+    Task<bool> ToggleCarpoolSeatAsync(Guid commentId, Guid userId, string username);
 }
 public class CommentService : ICommentService
 {
@@ -127,7 +128,7 @@ public class CommentService : ICommentService
                     commentText: comment.Text,
                     commenterName: commentWithUser.User.Name);
             }
-
+            // TODO Dont notify post author if they are also the parent comment author
             // Notify parent comment author if this is a reply (and not replying to own comment)
             if (parentComment?.User != null && parentComment.User.Id != comment.UserId)
             {
@@ -224,7 +225,7 @@ public class CommentService : ICommentService
         return true;
     }
 
-    public async Task<bool> ToggleCarpoolSeatAsync(Guid commentId, Guid userId)
+    public async Task<bool> ToggleCarpoolSeatAsync(Guid commentId, Guid userId, string username)
     {
         // Find the carpool comment
         var comment = await _dbContext.Comments
@@ -235,35 +236,48 @@ public class CommentService : ICommentService
         if (comment.Type != CommentType.Carpool) throw new ArgumentException("Comment is not a carpool announcement");
 
         var existingSeat = comment.CarpoolSeats.FirstOrDefault(s => s.UserId == userId);
-        if (existingSeat != null)
+        bool isOptIn = existingSeat == null;
+
+        if (isOptIn)
+        {
+            // Check capacity if set
+            if (comment.CarpoolSpots.HasValue)
+            {
+                var taken = comment.CarpoolSeats.Count;
+                if (taken >= comment.CarpoolSpots.Value)
+                {
+                    throw new InvalidOperationException("No available carpool spots");
+                }
+            }
+
+            var seat = new CarpoolSeat
+            {
+                Id = Guid.NewGuid(),
+                CommentId = commentId,
+                UserId = userId,
+                ReservedAt = DateTime.UtcNow
+            };
+            await _dbContext.CarpoolSeats.AddAsync(seat);
+            await _dbContext.SaveChangesAsync();
+        }
+        else
         {
             // Leave: remove seat
+#pragma warning disable CS8604 // Possible null reference argument.
             _dbContext.CarpoolSeats.Remove(existingSeat);
+#pragma warning restore CS8604 // Possible null reference argument.
             await _dbContext.SaveChangesAsync();
             return false; // indicates leave
         }
-
-        // Check capacity if set
-        if (comment.CarpoolSpots.HasValue)
-        {
-            var taken = comment.CarpoolSeats.Count;
-            if (taken >= comment.CarpoolSpots.Value)
-            {
-                throw new InvalidOperationException("No available carpool spots");
-            }
-        }
-
-        var seat = new CarpoolSeat
-        {
-            Id = Guid.NewGuid(),
-            CommentId = commentId,
-            UserId = userId,
-            ReservedAt = DateTime.UtcNow
-        };
-        await _dbContext.CarpoolSeats.AddAsync(seat);
-        await _dbContext.SaveChangesAsync();
-
-        return true; // indicates join
+        await _eventNotificationService.SendCarpoolReplyNotificationAsync(
+            postId: comment.PostId,
+            commentId: comment.Id,
+            commentAuthorId: comment.UserId,
+            commentText: comment.Text,
+            carpoolerId: userId,
+            carpoolerName: username.IsNullOrEmpty() ? (await _dbContext.Users.FindAsync(userId))?.Name ?? "Someone" : username,
+            isOptIn: isOptIn);
+        return isOptIn; // indicates join
     }
 }
 // Extension method for dependency injection
