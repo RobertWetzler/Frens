@@ -285,7 +285,7 @@ const CommentTree: React.FC<CommentTreeProps> = ({
                       {isJoined ? "Leave" : "Join"}
                     </Text>
                   </TouchableOpacity>
-                  {isOwner && carpoolRiders.length > 0 && (
+                  {carpoolRiders.length > 0 && (
                     <TouchableOpacity
                       style={styles.carpoolViewButton}
                       onPress={() => setShowCarpoolRiders(!showCarpoolRiders)}
@@ -339,27 +339,6 @@ const CommentTree: React.FC<CommentTreeProps> = ({
                     multiline
                     editable={!isSubmitting}
                   />
-                  <View style={styles.carpoolRow}>
-                    <View style={styles.carpoolToggleRow}>
-                      <Text style={styles.carpoolLabel}>Carpool</Text>
-                      <Switch
-                        value={isCarpoolReply}
-                        onValueChange={setIsCarpoolReply}
-                      />
-                    </View>
-                    {isCarpoolReply && (
-                      <View style={styles.carpoolSpotsRow}>
-                        <Text style={styles.carpoolSpotsLabel}>Spots Available</Text>
-                        <TextInput
-                          style={styles.carpoolSpotsInput}
-                          value={carpoolReplySpots}
-                          onChangeText={setCarpoolReplySpots}
-                          keyboardType="numeric"
-                          placeholder="1"
-                        />
-                      </View>
-                    )}
-                  </View>
                   <View style={styles.replyButtons}>
                     <TouchableOpacity
                       style={styles.cancelButton}
@@ -426,7 +405,7 @@ const CommentSection: React.FC<{
   const [newCommentText, setNewCommentText] = useState("");
   const [isAddingComment, setIsAddingComment] = useState(false);
   const [isCarpoolNewComment, setIsCarpoolNewComment] = useState(false);
-  const [carpoolNewCommentSpots, setCarpoolNewCommentSpots] = useState("1");
+  const [carpoolNewCommentSpots, setCarpoolNewCommentSpots] = useState("");
   const { user: currentUser } = useAuth();
   const { theme } = useTheme();
   const styles = useCommentStyles();
@@ -451,7 +430,7 @@ const CommentSection: React.FC<{
         setNewCommentText("");
         setIsAddingComment(false);
         setIsCarpoolNewComment(false);
-        setCarpoolNewCommentSpots("1");
+        setCarpoolNewCommentSpots("");
         return comment;
       } catch (error) {
         // Error handled by addReply
@@ -537,7 +516,11 @@ const CommentSection: React.FC<{
             const riders = c.carpoolRiders ? [...c.carpoolRiders] : [];
             if (joined) {
               if (currentUser && !riders.some((r) => r.id === currentUser.id)) {
-                const name = (currentUser.username + " (You)") || "You";
+                let name ="You";
+                if (currentUser.username)
+                {
+                  name = currentUser.username + " (You)";
+                }
                 riders.push({ id: currentUser.id, name: name } as any);
               }
             } else if (currentUser) {
@@ -631,11 +614,19 @@ const CommentSection: React.FC<{
                     <TextInput
                       style={styles.carpoolSpotsInput}
                       value={carpoolNewCommentSpots}
-                      onChangeText={setCarpoolNewCommentSpots}
+                      onChangeText={(text) => {
+                        // Only allow numeric input
+                        const numericText = text.replace(/[^0-9]/g, '');
+                        setCarpoolNewCommentSpots(numericText);
+                      }}
                       keyboardType="numeric"
-                      placeholder="1"
+                      placeholder="#"
+                      placeholderTextColor={theme.colors.textMuted}
                     />
                   </View>
+                )}
+                {isCarpoolNewComment && carpoolNewCommentSpots !== '' && parseInt(carpoolNewCommentSpots, 10) < 1 && (
+                  <Text style={styles.errorText}>Spots must be at least 1</Text>
                 )}
               </View>
               <View style={styles.replyButtons}>
@@ -652,10 +643,10 @@ const CommentSection: React.FC<{
                 <TouchableOpacity
                   style={[
                     styles.replyButton,
-                    isSubmitting && styles.disabledButton,
+                    (isSubmitting || (isCarpoolNewComment && (parseInt(carpoolNewCommentSpots, 10) || 0) < 1)) && styles.disabledButton,
                   ]}
                   onPress={handleAddComment}
-                  disabled={isSubmitting || !newCommentText.trim()}
+                  disabled={isSubmitting || !newCommentText.trim() || (isCarpoolNewComment && (parseInt(carpoolNewCommentSpots, 10) || 0) < 1)}
                 >
                   <Text style={styles.replyButtonText}>
                     {isSubmitting ? "Posting..." : "Comment"}
