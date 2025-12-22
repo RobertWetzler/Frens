@@ -7,12 +7,14 @@ using Npgsql;
 
 public interface ICommentService
 {
-    public Task<CommentDto> CreateCommentAsync(string text, Guid userId, Guid postId, Guid? parentCommentId = null);
-    public Task<CommentDto> CreateCarpoolCommentAsync(string text, Guid userId, Guid postId, int spots, Guid? parentCommentId = null);
-    public Task<IEnumerable<CommentDto>> GetAllCommentsForPostAsync(Guid postId);
-    public Task<bool> DeleteCommentAsync(Guid commentId, Guid userId);
+    /// <summary>
+    /// Unified comment creation method - handles all comment types via polymorphic request objects.
+    /// </summary>
+    Task<CommentDto> CreateCommentAsync(CreateCommentRequest request);
+    Task<IEnumerable<CommentDto>> GetAllCommentsForPostAsync(Guid postId);
+    Task<bool> DeleteCommentAsync(Guid commentId, Guid userId);
     // Toggle seat in carpool: if not joined, attempt to join; if already joined, leave. Returns true on join, false on leave.
-    public Task<bool> ToggleCarpoolSeatAsync(Guid commentId, Guid userId);
+    Task<bool> ToggleCarpoolSeatAsync(Guid commentId, Guid userId);
 }
 public class CommentService : ICommentService
 {
@@ -36,42 +38,53 @@ public class CommentService : ICommentService
         _activityService = activityService;
     }
 
-    public async Task<CommentDto> CreateCommentAsync(string text, Guid userId, Guid postId, Guid? parentCommentId = null)
+    /// <summary>
+    /// Unified comment creation - all comment types go through this single code path.
+    /// Type-specific behavior is handled via the polymorphic request object.
+    /// </summary>
+    public async Task<CommentDto> CreateCommentAsync(CreateCommentRequest request)
     {
+        // 1. Validate parent post exists
         var parentPost = await _dbContext.Posts
-            .FirstOrDefaultAsync(p => p.Id == postId);
-        if (parentPost == null)
-            throw new ArgumentException("Parent post not found");
+            .FirstOrDefaultAsync(p => p.Id == request.PostId)
+            ?? throw new ArgumentException("Parent post not found");
 
+        // 2. Validate parent comment if this is a reply
         Comment? parentComment = null;
-        if (parentCommentId.HasValue)
+        if (request.ParentCommentId.HasValue)
         {
-            // Verify parent comment exists and belongs to the same post
             parentComment = await _dbContext.Comments
                 .Include(c => c.User) // Include User data for notifications
-                .FirstOrDefaultAsync(c => c.Id == parentCommentId && c.PostId == postId)
+                .FirstOrDefaultAsync(c => c.Id == request.ParentCommentId && c.PostId == request.PostId)
                 ?? throw new ArgumentException("Parent comment not found or doesn't belong to specified post");
         }
 
+        // 3. Build the comment entity
         var comment = new Comment
         {
             Id = Guid.NewGuid(),
-            Text = text,
-            UserId = userId,
-            PostId = postId,
-            ParentCommentId = parentCommentId,
+            Text = request.Text,
+            UserId = request.UserId,
+            PostId = request.PostId,
+            ParentCommentId = request.ParentCommentId,
             Date = DateTime.UtcNow
         };
 
+        // 4. Apply type-specific properties (carpool spots, etc.)
+        request.ApplyTo(comment);
+
+        // 5. Persist the comment
         CommentDto result;
         Comment commentWithUser;
         try
         {
             await _dbContext.Comments.AddAsync(comment);
             await _dbContext.SaveChangesAsync();
-            // Fetch the newly created comment with User data included
+
+            // Fetch with all related data for mapping
             commentWithUser = await _dbContext.Comments
                 .Include(c => c.User)
+                .Include(c => c.CarpoolSeats).ThenInclude(s => s.User)
                 .FirstAsync(c => c.Id == comment.Id);
 
             result = _mapper.Map<CommentDto>(commentWithUser);
@@ -82,87 +95,57 @@ public class CommentService : ICommentService
             throw new ArgumentException("Parent post not found");
         }
 
-        // Send notification of comment
+        // 6. Send notifications (all comment types get notifications)
+        await SendCommentNotificationsAsync(comment, commentWithUser, parentPost, parentComment);
+
+        // 7. Record user activity for DAU/WAU/MAU tracking (fire-and-forget)
+        _ = Task.Run(async () => await _activityService.RecordActivityAsync(request.UserId, UserActivityType.CommentCreated));
+
+        return result;
+    }
+
+    /// <summary>
+    /// Handles all notification logic for comment creation.
+    /// Extracted to keep the main creation method clean.
+    /// </summary>
+    private async Task SendCommentNotificationsAsync(
+        Comment comment,
+        Comment commentWithUser,
+        Post parentPost,
+        Comment? parentComment)
+    {
         try
         {
-            // To post author
-            if (parentPost.UserId != userId && commentWithUser.User != null)
+            // Notify post author (if not commenting on own post)
+            if (parentPost.UserId != comment.UserId && commentWithUser.User != null)
             {
                 await _eventNotificationService.SendNewCommentNotificationAsync(
                     commentId: comment.Id,
-                    postId: postId,
+                    postId: comment.PostId,
                     postAuthorId: parentPost.UserId,
-                    commenterId: userId,
-                    commentText: text,
-                    commenterName: commentWithUser.User!.Name);
+                    commenterId: comment.UserId,
+                    commentText: comment.Text,
+                    commenterName: commentWithUser.User.Name);
             }
 
-            // To parent comment author (if applicable)
-            if (parentComment != null && parentComment.User != null && parentComment.User.Id != userId) // Don't notify if replying to own comment
+            // Notify parent comment author if this is a reply (and not replying to own comment)
+            if (parentComment?.User != null && parentComment.User.Id != comment.UserId)
             {
                 await _eventNotificationService.SendCommentReplyNotificationAsync(
-                    replyId: commentWithUser.Id,
-                    postId: postId,
-                    parentCommentId: parentCommentId!.Value,
+                    replyId: comment.Id,
+                    postId: comment.PostId,
+                    parentCommentId: parentComment.Id,
                     parentCommentAuthorId: parentComment.User.Id,
-                    replierId: userId,
-                    replyText: text,
+                    replierId: comment.UserId,
+                    replyText: comment.Text,
                     commenterName: commentWithUser.User!.Name);
             }
         }
         catch (Exception ex)
         {
-            // Log error but don't fail the post creation
-            _logger.LogWarning(ex, "Failed to send post notifications for comment {CommentId}", comment.Id);
+            // Log error but don't fail the comment creation
+            _logger.LogWarning(ex, "Failed to send notifications for comment {CommentId}", comment.Id);
         }
-
-        // Record user activity for DAU/WAU/MAU tracking (fire-and-forget)
-        _ = Task.Run(async () => await _activityService.RecordActivityAsync(userId, UserActivityType.CommentCreated));
-
-        return result;
-    }
-
-    public async Task<CommentDto> CreateCarpoolCommentAsync(string text, Guid userId, Guid postId, int spots, Guid? parentCommentId = null)
-    {
-        var parentPost = await _dbContext.Posts
-            .FirstOrDefaultAsync(p => p.Id == postId);
-        if (parentPost == null)
-            throw new ArgumentException("Parent post not found");
-
-        // Validate parent comment if provided
-        if (parentCommentId.HasValue)
-        {
-            var parentComment = await _dbContext.Comments
-                .FirstOrDefaultAsync(c => c.Id == parentCommentId && c.PostId == postId)
-                ?? throw new ArgumentException("Parent comment not found or doesn't belong to specified post");
-        }
-
-        var comment = new Comment
-        {
-            Id = Guid.NewGuid(),
-            Text = text,
-            UserId = userId,
-            PostId = postId,
-            ParentCommentId = parentCommentId,
-            Date = DateTime.UtcNow,
-            Type = CommentType.Carpool,
-            CarpoolSpots = spots
-        };
-
-        await _dbContext.Comments.AddAsync(comment);
-        await _dbContext.SaveChangesAsync();
-
-        var commentWithUser = await _dbContext.Comments
-            .Include(c => c.User)
-            .Include(c => c.CarpoolSeats).ThenInclude(s => s.User)
-            .FirstAsync(c => c.Id == comment.Id);
-
-        var result = _mapper.Map<CommentDto>(commentWithUser);
-
-        // record activity
-        _ = Task.Run(async () => await _activityService.RecordActivityAsync(userId, UserActivityType.CommentCreated));
-
-        return result;
     }
 
     // New method to efficiently get comment count for posts

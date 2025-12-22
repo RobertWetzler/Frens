@@ -65,3 +65,42 @@ public class CarpoolSeat
     public Comment? Comment { get; set; }
     public User? User { get; set; }
 }
+
+// Request objects for comment creation - enables unified code path
+public record CreateCommentRequest(
+    string Text,
+    Guid UserId,
+    Guid PostId,
+    Guid? ParentCommentId = null
+)
+{
+    /// <summary>
+    /// Override in derived types to set the comment type
+    /// </summary>
+    public virtual CommentType CommentType => CommentType.Standard;
+
+    /// <summary>
+    /// Apply type-specific properties to the comment entity
+    /// </summary>
+    public virtual void ApplyTo(Comment comment)
+    {
+        comment.Type = CommentType;
+    }
+}
+
+public record CreateCarpoolCommentRequest(
+    string Text,
+    Guid UserId,
+    Guid PostId,
+    int Spots,
+    Guid? ParentCommentId = null
+) : CreateCommentRequest(Text, UserId, PostId, ParentCommentId)
+{
+    public override CommentType CommentType => CommentType.Carpool;
+
+    public override void ApplyTo(Comment comment)
+    {
+        base.ApplyTo(comment);
+        comment.CarpoolSpots = Spots;
+    }
+}

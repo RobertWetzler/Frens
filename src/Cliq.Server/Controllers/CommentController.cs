@@ -19,12 +19,21 @@ public class CommentController : ControllerBase
     [HttpPost]
     public async Task<ActionResult<CommentDto>> PostComment(string text, Guid postId, Guid? parentCommentid = null)
     {
+        var id = this.HttpContext.User.Identity;
         var idClaim = this.HttpContext.User.Claims.FirstOrDefault(c => c.Type == "http://schemas.xmlsoap.org/ws/2005/05/identity/claims/nameidentifier");
         if (idClaim == null)
         {
             return Unauthorized();
         }
-        var comment = await _commentService.CreateCommentAsync(text, new Guid(idClaim.Value), postId, parentCommentid);
+
+        var request = new CreateCommentRequest(
+            Text: text,
+            UserId: new Guid(idClaim.Value),
+            PostId: postId,
+            ParentCommentId: parentCommentid
+        );
+
+        var comment = await _commentService.CreateCommentAsync(request);
         if (comment == null)
         {
             return NotFound();
@@ -41,7 +50,16 @@ public class CommentController : ControllerBase
         {
             return Unauthorized();
         }
-        var comment = await _commentService.CreateCarpoolCommentAsync(text, new Guid(idClaim.Value), postId, spots, parentCommentId);
+
+        var request = new CreateCarpoolCommentRequest(
+            Text: text,
+            UserId: new Guid(idClaim.Value),
+            PostId: postId,
+            Spots: spots,
+            ParentCommentId: parentCommentId
+        );
+
+        var comment = await _commentService.CreateCommentAsync(request);
         return Ok(comment);
     }
 
