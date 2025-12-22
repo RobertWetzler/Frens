@@ -3,7 +3,7 @@ import { Avatar as RneuiAvatar } from '@rneui/base';
 import Svg, { Ellipse, Path } from 'react-native-svg';
 import { useTheme } from '../theme/ThemeContext';
 import { makeStyles } from '../theme/makeStyles';
-import { useRef, useState } from 'react';
+import { useRef, useState, useEffect } from 'react';
 
 // Create animated SVG components
 const AnimatedEllipse = Animated.createAnimatedComponent(Ellipse);
@@ -184,6 +184,15 @@ export const Avatar: React.FC<AvatarProps> = ({ name, userId, imageUrl, navigati
         inputRange: [0, 1],
         outputRange: ['0deg', '360deg'],
     });
+
+    // Cleanup timer on unmount
+    useEffect(() => {
+        return () => {
+            if (tapTimerRef.current) {
+                clearTimeout(tapTimerRef.current);
+            }
+        };
+    }, []);
 
     if (theme.name === 'halloween') {
         return (
