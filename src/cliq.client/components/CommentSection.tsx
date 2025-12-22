@@ -537,7 +537,8 @@ const CommentSection: React.FC<{
             const riders = c.carpoolRiders ? [...c.carpoolRiders] : [];
             if (joined) {
               if (currentUser && !riders.some((r) => r.id === currentUser.id)) {
-                riders.push({ id: currentUser.id, name: currentUser.username || currentUser.email } as any);
+                const name = (currentUser.username + " (You)") || "You";
+                riders.push({ id: currentUser.id, name: name } as any);
               }
             } else if (currentUser) {
               const idx = riders.findIndex((r) => r.id === currentUser.id);
