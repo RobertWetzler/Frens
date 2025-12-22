@@ -1,5 +1,5 @@
 {
-  "version": "0.2.0",
+    "version": "0.2.0",
     "configurations": [
         {
             "name": "Launch Cliq.Server (project)",
@@ -32,12 +32,7 @@
                 "ASPNETCORE_ENVIRONMENT": "Development"
             },
             "console": "integratedTerminal"
-        }
-    ]
-}
-{
-    "version": "0.2.0",
-    "configurations": [
+        },
         {
             "name": "C#: Cliq.Server Debug",
             "type": "dotnet",
@@ -64,13 +59,11 @@
                     "enabled": true
                 }
             }
-        }
-        ,
+        },
         {
             "name": "C#: Cliq.Server (no rebuild)",
             "type": "coreclr",
             "request": "launch",
-            // Launch prebuilt assembly directly; ensure you've built once so DLL exists.
             "program": "${workspaceFolder}/src/Cliq.Server/bin/Debug/net8.0/Cliq.Server.dll",
             "cwd": "${workspaceFolder}/src/Cliq.Server",
             "env": {

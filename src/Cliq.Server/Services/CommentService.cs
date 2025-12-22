@@ -124,6 +124,9 @@ public class CommentService : ICommentService
 
     public async Task<CommentDto> CreateCarpoolCommentAsync(string text, Guid userId, Guid postId, int spots, Guid? parentCommentId = null)
     {
+        if (spots < 1 || spots > 100)
+            throw new ArgumentException("Spots must be between 1 and 100");
+
         var parentPost = await _dbContext.Posts
             .FirstOrDefaultAsync(p => p.Id == postId);
         if (parentPost == null)

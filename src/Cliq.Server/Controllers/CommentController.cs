@@ -36,6 +36,11 @@ public class CommentController : ControllerBase
     [HttpPost("carpool")]
     public async Task<ActionResult<CommentDto>> PostCarpoolComment(string text, Guid postId, int spots, Guid? parentCommentId = null)
     {
+        if (spots < 1 || spots > 100)
+        {
+            return BadRequest("Spots must be between 1 and 100");
+        }
+
         var idClaim = this.HttpContext.User.Claims.FirstOrDefault(c => c.Type == "http://schemas.xmlsoap.org/ws/2005/05/identity/claims/nameidentifier");
         if (idClaim == null)
         {
