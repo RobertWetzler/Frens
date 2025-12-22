@@ -87,7 +87,7 @@ public class CommentService : ICommentService
                 .Include(c => c.CarpoolSeats).ThenInclude(s => s.User)
                 .FirstAsync(c => c.Id == comment.Id);
 
-            result = _mapper.Map<CommentDto>(commentWithUser);
+            result = MapCommentToDto(commentWithUser);
         }
         catch (DbUpdateException ex) when (ex.InnerException is PostgresException pgEx &&
                                          pgEx.SqlState == PostgresErrorCodes.ForeignKeyViolation)
@@ -184,13 +184,23 @@ public class CommentService : ICommentService
     }
 
     /// <summary>
+    /// Maps a comment entity to the appropriate polymorphic DTO type
+    /// </summary>
+    private CommentDto MapCommentToDto(Comment comment)
+    {
+        return comment.Type switch
+        {
+            CommentType.Carpool => _mapper.Map<CarpoolCommentDto>(comment),
+            _ => _mapper.Map<CommentDto>(comment)
+        };
+    }
+
+    /// <summary>
     /// This method recursively maps a comment and all of its replies to a DTO
     /// </summary>
-    /// <param name="comment"></param>
-    /// <returns></returns>
     private CommentDto MapCommentTree(Comment comment)
     {
-        var dto = _mapper.Map<CommentDto>(comment);
+        var dto = MapCommentToDto(comment);
         if (comment.Replies != null)
         {
             dto.Replies = comment.Replies

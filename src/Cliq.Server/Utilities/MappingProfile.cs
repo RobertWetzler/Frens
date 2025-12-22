@@ -29,12 +29,19 @@ public class MappingProfile : Profile
         CreateMap<User, UserProfileDto>();
         CreateMap<Friendship, FriendshipDto>();
         CreateMap<Friendship, FriendRequestDto>();
+        
+        // Base comment mapping - handles standard comments
         CreateMap<Comment, CommentDto>()
-            // We'll handle replies separately due to their recursive nature
             .ForMember(dest => dest.Replies, opt => opt.Ignore())
-            .ForMember(dest => dest.Type, opt => opt.MapFrom(src => src.Type))
+            .IncludeAllDerived();
+        
+        // Carpool comment mapping - includes carpool-specific fields
+        CreateMap<Comment, CarpoolCommentDto>()
+            .ForMember(dest => dest.Replies, opt => opt.Ignore())
             .ForMember(dest => dest.CarpoolSpots, opt => opt.MapFrom(src => src.CarpoolSpots))
-            .ForMember(dest => dest.CarpoolRiders, opt => opt.MapFrom(src => src.CarpoolSeats != null ? src.CarpoolSeats.Select(s => s.User) : new List<User>()));
+            .ForMember(dest => dest.CarpoolRiders, opt => opt.MapFrom(src => 
+                src.CarpoolSeats != null ? src.CarpoolSeats.Select(s => s.User) : new List<User>()));
+        
         CreateMap<Circle, CirclePublicDto>();
         
         // CirclePost mapping

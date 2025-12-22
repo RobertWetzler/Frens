@@ -1,4 +1,5 @@
 ﻿using System.ComponentModel.DataAnnotations;
+using System.Text.Json.Serialization;
 
 namespace Cliq.Server.Models;
 
@@ -27,26 +28,30 @@ public class Comment
     public ICollection<CarpoolSeat> CarpoolSeats { get; set; } = new List<CarpoolSeat>();
 }
 
+// Polymorphism for DTOs - carpool comments get their own derived type with additional fields
+[JsonPolymorphic(TypeDiscriminatorPropertyName = "type")]
+[JsonDerivedType(typeof(CommentDto), typeDiscriminator: "Standard")]
+[JsonDerivedType(typeof(CarpoolCommentDto), typeDiscriminator: "Carpool")]
 public class CommentDto
 {
     public required Guid Id { get; set; }
     public required DateTime Date { get; set; }
     public required string Text { get; set; }
-    public CommentType Type { get; set; } = CommentType.Standard;
-
-    // Carpool info (if type == Carpool)
-    public int? CarpoolSpots { get; set; }
-    public List<UserDto>? CarpoolRiders { get; set; } = new List<UserDto>();
 
     // User info
     public required UserDto User { get; set; }
 
-    // Parent references
-    //public string PostId { get; set; }
-
     // Optional list of replies - can be null if replies aren't loaded
     public List<CommentDto>? Replies { get; set; } = new List<CommentDto>();
-    //public string? ParentCommentId { get; set; }
+}
+
+/// <summary>
+/// DTO for carpool announcement comments - includes carpool-specific fields
+/// </summary>
+public class CarpoolCommentDto : CommentDto
+{
+    public int? CarpoolSpots { get; set; }
+    public List<UserDto> CarpoolRiders { get; set; } = new List<UserDto>();
 }
 
 public enum CommentType
