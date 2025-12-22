@@ -5,6 +5,7 @@ import {
   ScrollView,
   TouchableOpacity,
   TextInput,
+  Switch,
   StyleSheet,
   SafeAreaView,
   ActivityIndicator,
@@ -18,6 +19,7 @@ import Svg, { Path } from "react-native-svg";
 import Username from "./Username";
 import { useTheme } from "../theme/ThemeContext";
 import { makeStyles } from "../theme/makeStyles";
+import { useAuth } from "../contexts/AuthContext";
 
 interface ThreadLineProps {
   color: string;
@@ -130,8 +132,11 @@ interface CommentTreeProps {
   depth: number;
   onAddReply: (
     text,
-    parentCommentId: string | undefined
+    parentCommentId: string | undefined,
+    isCarpool?: boolean,
+    spots?: number
   ) => Promise<CommentDto>;
+  onToggleCarpool?: (commentId: string, joined: boolean) => void;
   isSubmitting: boolean;
   submitError: string | null;
   isLastInBranch?: boolean;
@@ -144,6 +149,7 @@ const CommentTree: React.FC<CommentTreeProps> = ({
   comment,
   depth,
   onAddReply,
+  onToggleCarpool,
   isSubmitting,
   submitError,
   isLastInBranch = false,
@@ -154,9 +160,14 @@ const CommentTree: React.FC<CommentTreeProps> = ({
   const [collapsed, setCollapsed] = useState(false);
   const [replyText, setReplyText] = useState("");
   const [isReplying, setIsReplying] = useState(false);
+  const [isCarpoolReply, setIsCarpoolReply] = useState(false);
+  const [carpoolReplySpots, setCarpoolReplySpots] = useState("1");
+  const [isTogglingCarpool, setIsTogglingCarpool] = useState(false);
+  const [showCarpoolRiders, setShowCarpoolRiders] = useState(false);
   const [lastChildHeight, setLastChildHeight] = useState(0);
   // Using theme-aware styles from parent invocation; hook can be called here too without redeclare conflicts
   const { theme } = useTheme();
+  const { user: currentUser } = useAuth();
   // Function to capture height from the last child
   const handleLastChildHeight = (height: number) => {
     setLastChildHeight(height);
@@ -173,9 +184,12 @@ const CommentTree: React.FC<CommentTreeProps> = ({
   const handleReply = async () => {
     if (replyText.trim()) {
       try {
-        await onAddReply(replyText.trim(), comment.id);
+        const spots = parseInt(carpoolReplySpots || "1", 10) || 1;
+        await onAddReply(replyText.trim(), comment.id, isCarpoolReply, spots);
         setReplyText("");
         setIsReplying(false);
+        setIsCarpoolReply(false);
+        setCarpoolReplySpots("1");
       } catch (error) {
         // Error is handled by parent component via submitError prop
       }
@@ -186,6 +200,29 @@ const CommentTree: React.FC<CommentTreeProps> = ({
   //const lineColor = depth === 0 ? '#1DA1F2' : ['#FF4500', '#9370DB', '#4CBB17', '#FF8C00', '#1E90FF'][depth % 5];
   const lineColor = theme.colors.primary;
   const hasReplies = comment.replies && comment.replies.length > 0;
+  const carpoolSpots = comment.carpoolSpots ?? null;
+  const carpoolRiders = comment.carpoolRiders ?? [];
+  const isJoined = !!currentUser && carpoolRiders.some((r) => r.id === currentUser.id);
+  const availableSeats = carpoolSpots !== null
+    ? Math.max(0, carpoolSpots - carpoolRiders.length)
+    : null;
+  const isOwner = !!currentUser && currentUser.id === comment.user?.id;
+
+  const handleToggleCarpoolSeat = async () => {
+    if (!comment.id) return;
+    setIsTogglingCarpool(true);
+    try {
+      const result = await ApiClient.call((c) => c.comment_ToggleCarpoolSeat(comment.id));
+      const joined = !!result?.joined;
+      if (onToggleCarpool && comment.id) {
+        onToggleCarpool(comment.id, joined);
+      }
+    } catch (err) {
+      console.error("Failed to toggle carpool seat", err);
+    } finally {
+      setIsTogglingCarpool(false);
+    }
+  };
 
   return (
     <View
@@ -228,6 +265,47 @@ const CommentTree: React.FC<CommentTreeProps> = ({
           {!collapsed && (
             <>
               <Text style={styles.commentText}>{comment.text}</Text>
+              {carpoolSpots !== null && (
+                <View style={styles.carpoolInfoRow}>
+                  <Text style={styles.carpoolInfoText}>
+                    {availableSeats} seats available
+                  </Text>
+                  <TouchableOpacity
+                    style={[
+                      styles.carpoolButton,
+                      isJoined && styles.carpoolButtonJoined,
+                      (isTogglingCarpool || (availableSeats === 0 && !isJoined)) && styles.disabledButton,
+                    ]}
+                    onPress={handleToggleCarpoolSeat}
+                    disabled={isTogglingCarpool || (availableSeats === 0 && !isJoined)}
+                  >
+                    <Text
+                      style={isJoined ? styles.carpoolButtonTextJoined : styles.carpoolButtonText}
+                    >
+                      {isJoined ? "Leave" : "Join"}
+                    </Text>
+                  </TouchableOpacity>
+                  {carpoolRiders.length > 0 && (
+                    <TouchableOpacity
+                      style={styles.carpoolViewButton}
+                      onPress={() => setShowCarpoolRiders(!showCarpoolRiders)}
+                    >
+                      <Text style={styles.carpoolViewButtonText}>
+                        {showCarpoolRiders ? "Hide riders" : "View riders"}
+                      </Text>
+                    </TouchableOpacity>
+                  )}
+                </View>
+              )}
+              {showCarpoolRiders && carpoolRiders.length > 0 && (
+                <View style={styles.carpoolRidersList}>
+                  {carpoolRiders.map((rider) => (
+                    <Text key={rider.id} style={styles.carpoolRiderItem}>
+                      {rider.name}
+                    </Text>
+                  ))}
+                </View>
+              )}
               <View style={styles.actionButtons}>
                 <TouchableOpacity style={styles.actionButton}>
                   <Ionicons
@@ -292,6 +370,7 @@ const CommentTree: React.FC<CommentTreeProps> = ({
                       comment={reply}
                       depth={depth + 1}
                       onAddReply={onAddReply}
+                      onToggleCarpool={onToggleCarpool}
                       isSubmitting={isSubmitting}
                       submitError={submitError}
                       isLastInBranch={index === comment.replies.length - 1}
@@ -325,6 +404,9 @@ const CommentSection: React.FC<{
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [newCommentText, setNewCommentText] = useState("");
   const [isAddingComment, setIsAddingComment] = useState(false);
+  const [isCarpoolNewComment, setIsCarpoolNewComment] = useState(false);
+  const [carpoolNewCommentSpots, setCarpoolNewCommentSpots] = useState("");
+  const { user: currentUser } = useAuth();
   const { theme } = useTheme();
   const styles = useCommentStyles();
 
@@ -338,9 +420,17 @@ const CommentSection: React.FC<{
   const handleAddComment = async () => {
     if (newCommentText.trim()) {
       try {
-        const comment = await addReply(newCommentText.trim(), undefined);
+        const spots = parseInt(carpoolNewCommentSpots || "1", 10) || 1;
+        const comment = await addReply(
+          newCommentText.trim(),
+          undefined,
+          isCarpoolNewComment,
+          spots
+        );
         setNewCommentText("");
         setIsAddingComment(false);
+        setIsCarpoolNewComment(false);
+        setCarpoolNewCommentSpots("");
         return comment;
       } catch (error) {
         // Error handled by addReply
@@ -348,15 +438,39 @@ const CommentSection: React.FC<{
     }
   };
 
-  const addReply = async (text, parentCommentId: string | undefined) => {
+  const addReply = async (
+    text,
+    parentCommentId: string | undefined,
+    isCarpool?: boolean,
+    spots?: number
+  ) => {
     setIsSubmitting(true);
     setSubmitError(null);
 
     try {
-      // Call the API to create the comment
-      const response = await ApiClient.call((c) =>
-        c.comment_PostComment(text, postId, parentCommentId)
-      );
+      let response: CommentDto;
+      if (isCarpool) {
+        // call server carpool endpoint directly (generated client doesn't include this method)
+        response = await ApiClient.call(async (c) => {
+          const base = (c as any).baseUrl as string;
+          const http = (c as any).http as any;
+          const url = `${base}/api/Comment/carpool?text=${encodeURIComponent(
+            text
+          )}&postId=${encodeURIComponent(postId)}&spots=${encodeURIComponent(
+            (spots || 1).toString()
+          )}${parentCommentId ? `&parentCommentId=${encodeURIComponent(parentCommentId)}` : ""}`;
+          const res = await http.fetch(url, { method: "POST", headers: { Accept: "application/json" } });
+          if (!res.ok) {
+            const txt = await res.text();
+            throw new Error(txt || "Failed to post carpool comment");
+          }
+          const json = await res.json();
+          return CommentDto.fromJS(json);
+        });
+      } else {
+        // Regular comment
+        response = await ApiClient.call((c) => c.comment_PostComment(text, postId, parentCommentId));
+      }
 
       // If the API call was successful, update the UI with the returned comment
       if (!parentCommentId) {
@@ -392,6 +506,37 @@ const CommentSection: React.FC<{
     } finally {
       setIsSubmitting(false);
     }
+  };
+
+  const updateCarpoolMembership = (commentId: string, joined: boolean) => {
+    setComments((prev) => {
+      const updateTree = (nodes: CommentDto[]): CommentDto[] =>
+        nodes.map((c) => {
+          if (c.id === commentId) {
+            const riders = c.carpoolRiders ? [...c.carpoolRiders] : [];
+            if (joined) {
+              if (currentUser && !riders.some((r) => r.id === currentUser.id)) {
+                let name ="You";
+                if (currentUser.username)
+                {
+                  name = currentUser.username + " (You)";
+                }
+                riders.push({ id: currentUser.id, name: name } as any);
+              }
+            } else if (currentUser) {
+              const idx = riders.findIndex((r) => r.id === currentUser.id);
+              if (idx >= 0) riders.splice(idx, 1);
+            }
+            return new CommentDto({ ...c, carpoolRiders: riders });
+          }
+          if (c.replies) {
+            return new CommentDto({ ...c, replies: updateTree(c.replies) });
+          }
+          return c;
+        });
+
+      return updateTree(prev);
+    });
   };
 
   // Handle loading state
@@ -455,6 +600,35 @@ const CommentSection: React.FC<{
                 onChangeText={setNewCommentText}
                 autoFocus
               />
+              <View style={styles.carpoolRow}>
+                <View style={styles.carpoolToggleRow}>
+                  <Text style={styles.carpoolLabel}>Carpool</Text>
+                  <Switch
+                    value={isCarpoolNewComment}
+                    onValueChange={setIsCarpoolNewComment}
+                  />
+                </View>
+                {isCarpoolNewComment && (
+                  <View style={styles.carpoolSpotsRow}>
+                    <Text style={styles.carpoolSpotsLabel}>Spots Available</Text>
+                    <TextInput
+                      style={styles.carpoolSpotsInput}
+                      value={carpoolNewCommentSpots}
+                      onChangeText={(text) => {
+                        // Only allow numeric input
+                        const numericText = text.replace(/[^0-9]/g, '');
+                        setCarpoolNewCommentSpots(numericText);
+                      }}
+                      keyboardType="numeric"
+                      placeholder="#"
+                      placeholderTextColor={theme.colors.textMuted}
+                    />
+                  </View>
+                )}
+                {isCarpoolNewComment && carpoolNewCommentSpots !== '' && parseInt(carpoolNewCommentSpots, 10) < 1 && (
+                  <Text style={styles.errorText}>Spots must be at least 1</Text>
+                )}
+              </View>
               <View style={styles.replyButtons}>
                 <TouchableOpacity
                   style={styles.cancelButton}
@@ -469,10 +643,10 @@ const CommentSection: React.FC<{
                 <TouchableOpacity
                   style={[
                     styles.replyButton,
-                    isSubmitting && styles.disabledButton,
+                    (isSubmitting || (isCarpoolNewComment && (parseInt(carpoolNewCommentSpots, 10) || 0) < 1)) && styles.disabledButton,
                   ]}
                   onPress={handleAddComment}
-                  disabled={isSubmitting || !newCommentText.trim()}
+                  disabled={isSubmitting || !newCommentText.trim() || (isCarpoolNewComment && (parseInt(carpoolNewCommentSpots, 10) || 0) < 1)}
                 >
                   <Text style={styles.replyButtonText}>
                     {isSubmitting ? "Posting..." : "Comment"}
@@ -503,6 +677,7 @@ const CommentSection: React.FC<{
                 comment={comment}
                 depth={0}
                 onAddReply={addReply}
+                onToggleCarpool={updateCarpoolMembership}
                 isSubmitting={isSubmitting}
                 submitError={submitError}
                 isLastInBranch={index === comments.length - 1}
@@ -664,6 +839,65 @@ const useCommentStyles = makeStyles((theme) => ({
     color: theme.colors.textPrimary,
     marginBottom: 8,
   },
+  carpoolInfoRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    marginLeft: 8,
+    marginBottom: 8,
+  },
+  carpoolInfoText: {
+    color: theme.colors.textMuted,
+    fontSize: 14,
+  },
+  carpoolButton: {
+    paddingVertical: 6,
+    paddingHorizontal: 12,
+    borderRadius: 8,
+    backgroundColor: theme.colors.primary,
+  },
+  carpoolButtonJoined: {
+    backgroundColor: theme.colors.backgroundAlt,
+    borderWidth: 1,
+    borderColor: theme.colors.separator,
+  },
+  carpoolButtonText: {
+    color: theme.colors.primaryContrast,
+    fontWeight: "600",
+    fontSize: 14,
+  },
+  carpoolButtonTextJoined: {
+    color: theme.colors.textPrimary,
+    fontWeight: "600",
+    fontSize: 14,
+  },
+  carpoolViewButton: {
+    paddingVertical: 6,
+    paddingHorizontal: 10,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: theme.colors.separator,
+    backgroundColor: theme.colors.backgroundAlt,
+  },
+  carpoolViewButtonText: {
+    color: theme.colors.textPrimary,
+    fontWeight: "600",
+    fontSize: 13,
+  },
+  carpoolRidersList: {
+    marginTop: 6,
+    marginLeft: 8,
+    padding: 10,
+    borderRadius: 8,
+    backgroundColor: theme.colors.backgroundAlt,
+    borderWidth: 1,
+    borderColor: theme.colors.separator,
+    gap: 6,
+  },
+  carpoolRiderItem: {
+    color: theme.colors.textPrimary,
+    fontSize: 14,
+  },
   actionButtons: {
     flexDirection: "row",
     marginTop: 4,
@@ -759,6 +993,42 @@ const useCommentStyles = makeStyles((theme) => ({
     minHeight: 100,
     fontSize: 15,
     textAlignVertical: "top",
+  },
+  carpoolRow: {
+    marginTop: 8,
+  },
+  carpoolToggleRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "flex-start",
+    gap: 8,
+  },
+  carpoolLabel: {
+    marginRight: 8,
+    color: theme.colors.textMuted,
+    fontSize: 14,
+  },
+  carpoolSpotsRow: {
+    marginTop: 8,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "flex-start",
+    gap: 8,
+  },
+  carpoolSpotsLabel: {
+    color: theme.colors.textMuted,
+    fontSize: 14,
+    marginRight: 8,
+  },
+  carpoolSpotsInput: {
+    width: 80,
+    borderWidth: 1,
+    borderColor: theme.colors.separator,
+    borderRadius: 8,
+    paddingHorizontal: 8,
+    paddingVertical: 6,
+    textAlign: "center",
+    backgroundColor: theme.colors.card,
   },
 }));
 

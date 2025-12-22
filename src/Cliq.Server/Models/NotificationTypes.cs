@@ -11,6 +11,7 @@ public enum NotificationType
     NewEvent,
     NewComment,
     CommentReply,
+    CarpoolReply,
     AppAnnouncement,
     PostMention,
     CommentMention,
@@ -268,6 +269,48 @@ public class CommentReplyNotificationData : NotificationData
             ParentCommentId,
             ReplierId,
             ReplyText
+        }.ToJson();
+        set { }
+    }
+}
+
+/// <summary>
+/// Notification data for comment replies
+/// </summary>
+public class CarpoolReplyNotificationData : NotificationData
+{
+    public Guid PostId { get; set; }
+    public Guid CommentId { get; set; }
+    public string CommentText { get; set; } = string.Empty;
+    public Guid CarpoolerId { get; set; }
+    public required string CarpoolerName { get; set; }
+    public bool IsOptIn { get; set; }
+
+    public CarpoolReplyNotificationData()
+    {
+        Type = NotificationType.CarpoolReply;
+    }
+
+    public override string Title
+    {
+        get => $"{CarpoolerName}";
+        set { }
+    }
+
+    public override string Message
+    {
+        get => (IsOptIn ? "joined" : "left") + " your carpool \"" + (CommentText.Length > 100 ? CommentText[..100] + "..." : CommentText) + "\"" ;
+        set { }
+    }
+
+    public override string Metadata
+    {
+        get => new
+        {
+            Type = Type.ToString(),
+            CommentId,
+            PostId,
+            CarpoolerId,
         }.ToJson();
         set { }
     }

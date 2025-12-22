@@ -24,6 +24,7 @@ public class CliqDbContext : IdentityDbContext<User, CliqRole, Guid>
     public DbSet<EventRsvp> EventRsvps { get; set; }
     public DbSet<CalendarSubscription> CalendarSubscription { get; set; }
     public DbSet<UserActivity> UserActivities { get; set; }
+    public DbSet<CarpoolSeat> CarpoolSeats { get; set; }
 
     public CliqDbContext(
             DbContextOptions<CliqDbContext> options,
@@ -69,6 +70,26 @@ public class CliqDbContext : IdentityDbContext<User, CliqRole, Guid>
                 .WithMany(c => c.Replies)
                 .HasForeignKey(c => c.ParentCommentId)
                 .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        // CarpoolSeat configuration
+        modelBuilder.Entity<CarpoolSeat>(entity =>
+        {
+            entity.HasKey(s => s.Id);
+            entity.Property(s => s.ReservedAt).HasDefaultValueSql("NOW()");
+
+            entity.HasOne(s => s.Comment)
+                .WithMany(c => c.CarpoolSeats)
+                .HasForeignKey(s => s.CommentId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            entity.HasOne(s => s.User)
+                .WithMany()
+                .HasForeignKey(s => s.UserId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            // Prevent duplicate seat reservations by the same user for the same carpool
+            entity.HasIndex(s => new { s.CommentId, s.UserId }).IsUnique();
         });
 
         modelBuilder.Entity<Friendship>(entity =>

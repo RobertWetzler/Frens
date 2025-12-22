@@ -640,6 +640,44 @@ export class Client {
         return Promise.resolve<CommentDto>(null as any);
     }
 
+    comment_ToggleCarpoolSeat(commentId: string, signal?: AbortSignal): Promise<{ joined?: boolean }> {
+        let url_ = this.baseUrl + "/api/Comment/{commentId}/carpool/optin";
+        if (commentId === undefined || commentId === null)
+            throw new Error("The parameter 'commentId' must be defined.");
+        url_ = url_.replace("{commentId}", encodeURIComponent("" + commentId));
+        url_ = url_.replace(/[?&]$/, "");
+
+        let options_: RequestInit = {
+            method: "POST",
+            signal,
+            headers: {
+                "Accept": "application/json"
+            }
+        };
+
+        return this.http.fetch(url_, options_).then((_response: Response) => {
+            return this.processComment_ToggleCarpoolSeat(_response);
+        });
+    }
+
+    protected processComment_ToggleCarpoolSeat(response: Response): Promise<{ joined?: boolean }> {
+        const status = response.status;
+        let _headers: any = {}; if (response.headers && response.headers.forEach) { response.headers.forEach((v: any, k: any) => _headers[k] = v); };
+        if (status === 200) {
+            return response.text().then((_responseText) => {
+            let result200: any = null;
+            let resultData200 = _responseText === "" ? null : JSON.parse(_responseText, this.jsonParseReviver);
+            result200 = resultData200;
+            return result200;
+            });
+        } else if (status !== 200 && status !== 204) {
+            return response.text().then((_responseText) => {
+            return throwException("An unexpected server error occurred.", status, _responseText, _headers);
+            });
+        }
+        return Promise.resolve<{ joined?: boolean }>(null as any);
+    }
+
     event_GetEvent(id: string, includeRsvps: boolean | undefined, signal?: AbortSignal): Promise<EventDto> {
         let url_ = this.baseUrl + "/api/Event/{id}?";
         if (id === undefined || id === null)
@@ -2616,6 +2654,10 @@ export class CommentDto implements ICommentDto {
     date?: Date;
     text?: string;
     user?: UserDto;
+    // Carpool fields
+    type?: number;
+    carpoolSpots?: number;
+    carpoolRiders?: UserDto[] | undefined;
     replies?: CommentDto[] | undefined;
 
     constructor(data?: ICommentDto) {
@@ -2633,6 +2675,13 @@ export class CommentDto implements ICommentDto {
             this.date = _data["date"] ? new Date(_data["date"].toString()) : <any>undefined;
             this.text = _data["text"];
             this.user = _data["user"] ? UserDto.fromJS(_data["user"]) : <any>undefined;
+            this.type = _data["type"];
+            this.carpoolSpots = _data["carpoolSpots"];
+            if (Array.isArray(_data["carpoolRiders"])) {
+                this.carpoolRiders = [] as any;
+                for (let item of _data["carpoolRiders"])
+                    this.carpoolRiders!.push(UserDto.fromJS(item));
+            }
             if (Array.isArray(_data["replies"])) {
                 this.replies = [] as any;
                 for (let item of _data["replies"])
@@ -2654,6 +2703,13 @@ export class CommentDto implements ICommentDto {
         data["date"] = this.date ? this.date.toISOString() : <any>undefined;
         data["text"] = this.text;
         data["user"] = this.user ? this.user.toJSON() : <any>undefined;
+        data["type"] = this.type;
+        data["carpoolSpots"] = this.carpoolSpots;
+        if (Array.isArray(this.carpoolRiders)) {
+            data["carpoolRiders"] = [];
+            for (let item of this.carpoolRiders)
+                data["carpoolRiders"].push(item.toJSON());
+        }
         if (Array.isArray(this.replies)) {
             data["replies"] = [];
             for (let item of this.replies)
@@ -2668,6 +2724,9 @@ export interface ICommentDto {
     date?: Date;
     text?: string;
     user?: UserDto;
+    type?: number;
+    carpoolSpots?: number;
+    carpoolRiders?: UserDto[] | undefined;
     replies?: CommentDto[] | undefined;
 }
 

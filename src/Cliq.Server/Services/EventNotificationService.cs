@@ -16,6 +16,7 @@ public interface IEventNotificationService
     Task SendNewEventNotificationAsync(Guid eventId, Guid authorId, string title, IEnumerable<Guid> circleIds, string authorName);
     Task SendNewCommentNotificationAsync(Guid commentId, Guid postId, Guid postAuthorId, Guid commenterId, string commentText, string commenterName);
     Task SendCommentReplyNotificationAsync(Guid replyId, Guid postId, Guid parentCommentId, Guid parentCommentAuthorId, Guid replierId, string replyText, string commenterName);
+    Task SendCarpoolReplyNotificationAsync(Guid postId, Guid commentId, Guid commentAuthorId, string commentText, Guid carpoolerId, string carpoolerName, bool isOptIn);
     Task SendAppAnnouncementAsync(string title, string body, string? actionUrl = null);
     Task SendNewSubscribableCircle(Guid authorId, string authorName, Guid circleId, string circleName, Guid[] recipients, Guid[] alreadyMembers);
 
@@ -139,6 +140,24 @@ public class EventNotificationService : IEventNotificationService
         };
 
         await _notificationQueue.AddAsync(parentCommentAuthorId, notificationData);
+    }
+
+    public async Task SendCarpoolReplyNotificationAsync(Guid postId, Guid commentId, Guid commentAuthorId, string commentText, Guid carpoolerId, string carpoolerName, bool isOptIn)
+    {
+        // Don't notify if replying to own carpool
+        if (commentAuthorId == carpoolerId) return;
+
+        var notificationData = new CarpoolReplyNotificationData
+        {
+            PostId = postId,
+            CommentId = commentId,
+            CommentText = commentText,
+            CarpoolerId = carpoolerId,
+            CarpoolerName = carpoolerName,
+            IsOptIn = isOptIn
+        };
+
+        await _notificationQueue.AddAsync(commentAuthorId, notificationData);
     }
 
     public async Task SendAppAnnouncementAsync(string title, string body, string? actionUrl = null)

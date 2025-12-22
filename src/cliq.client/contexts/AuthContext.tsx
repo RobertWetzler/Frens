@@ -69,8 +69,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             const user: AuthUser = {
                 id: payload.nameid,
                 email: payload.email,
-                // TODO: Add username to token in backend
-                username: payload.username, // This doesnt actually exist in the token at the moment
+                username: payload.unique_name, // Not really unique, but this is what ASP.NET Identity  calls the name claim in JWT
             };
             return { user, expiration };
         } catch (error) {
