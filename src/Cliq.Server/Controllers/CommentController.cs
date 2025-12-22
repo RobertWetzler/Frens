@@ -1,4 +1,5 @@
-﻿using Cliq.Server.Models;
+﻿using System.ComponentModel.DataAnnotations;
+using Cliq.Server.Models;
 using Cliq.Server.Services;
 using Cliq.Utilities;
 using Microsoft.AspNetCore.Mvc;
@@ -44,7 +45,7 @@ public class CommentController : ControllerBase
 
     // Create a carpool comment (special comment that allows users to claim seats)
     [HttpPost("carpool")]
-    public async Task<ActionResult<CommentDto>> PostCarpoolComment(string text, Guid postId, int spots, Guid? parentCommentId = null)
+    public async Task<ActionResult<CommentDto>> PostCarpoolComment(string text, Guid postId, [Range(1, int.MaxValue, ErrorMessage = "Spots must be 1 or greater")] int spots, Guid? parentCommentId = null)
     {
         var idClaim = this.HttpContext.User.Claims.FirstOrDefault(c => c.Type == "http://schemas.xmlsoap.org/ws/2005/05/identity/claims/nameidentifier");
         if (idClaim == null)
