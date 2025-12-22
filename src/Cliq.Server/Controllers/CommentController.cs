@@ -72,8 +72,7 @@ public class CommentController : ControllerBase
         {
             return Unauthorized();
         }
-        var username = "";
-        AuthUtils.TryGetUserNameFromToken(this.HttpContext, out username);
+        AuthUtils.TryGetUserNameFromToken(this.HttpContext, out var username);
         try
         {
             var joined = await _commentService.ToggleCarpoolSeatAsync(commentId, userId, username);
