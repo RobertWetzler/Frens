@@ -24,16 +24,20 @@ public class EasterEggController : ControllerBase
     /// <summary>
     /// Record that the current user has discovered an easter egg
     /// </summary>
+    /// <param name="request">The easter egg discovery request containing the easter egg ID</param>
+    /// <returns>The easter egg discovery record with timestamp</returns>
+    /// <remarks>
+    /// This endpoint is idempotent - discovering the same easter egg multiple times will return the existing record.
+    /// Each user can only discover each unique easter egg once.
+    /// </remarks>
     [HttpPost("discover")]
     public async Task<ActionResult<EasterEggDto>> DiscoverEasterEgg([FromBody] DiscoverEasterEggRequest request)
     {
         var userId = Guid.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
-        _logger.LogInformation("🎉 DiscoverEasterEgg called - UserId from claims: {UserId}, EasterEggId: {EasterEggId}", userId, request.EasterEggId);
 
         // Check if user has already discovered this easter egg
         var existing = await _context.EasterEggs
             .FirstOrDefaultAsync(e => e.UserId == userId && e.EasterEggId == request.EasterEggId);
-        _logger.LogInformation("Existing easter egg found: {Found}", existing != null);
 
         if (existing != null)
         {
@@ -68,6 +72,8 @@ public class EasterEggController : ControllerBase
     /// <summary>
     /// Get all easter eggs discovered by the current user or a specific user
     /// </summary>
+    /// <param name="userId">Optional user ID. If not provided, returns easter eggs for the current user</param>
+    /// <returns>List of discovered easter eggs ordered by discovery date</returns>
     [HttpGet]
     public async Task<ActionResult<List<EasterEggDto>>> GetDiscoveredEasterEggs([FromQuery] Guid? userId = null)
     {

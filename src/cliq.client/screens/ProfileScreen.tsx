@@ -24,6 +24,9 @@ import Header from 'components/Header';
 import { useTheme } from '../theme/ThemeContext';
 import { makeStyles } from '../theme/makeStyles';
 
+// Easter egg snowman growth rate
+const PIXELS_PER_EGG = 2;
+
 // makeStyles at bottom
 const useStyles = makeStyles((theme) => ({
     container: { flex: 1, backgroundColor: theme.colors.backgroundAlt },
@@ -116,10 +119,7 @@ const ProfileScreen: React.FC<ProfileScreenProps> = ({ route, navigation }) => {
             }
             setPosts(profileData.recentPosts);
             setNotificationCount(profileData.notificationCount);
-            // @ts-ignore - Will be available after regenerating client
-            const eggCount = profileData.easterEggCount || 0;
-            console.log('🥚 Easter egg count from API:', eggCount, 'Full data:', profileData.easterEggsFound);
-            setEasterEggCount(eggCount);
+            setEasterEggCount(profileData.easterEggCount || 0);
             setError(null);
         }
         catch (err) {
@@ -258,14 +258,14 @@ const ProfileScreen: React.FC<ProfileScreenProps> = ({ route, navigation }) => {
                                     <View style={styles.snowmanContainer}>
                                         <Svg 
                                             width={50} 
-                                            height={80 + (easterEggCount * 3)} 
-                                            viewBox={`0 0 50 ${80 + (easterEggCount * 3)}`}
+                                            height={80 + (easterEggCount * PIXELS_PER_EGG)} 
+                                            viewBox={`0 0 50 ${80 + (easterEggCount * PIXELS_PER_EGG)}`}
                                         >
                                             {/* Calculate hat height based on easter eggs */}
                                             {(() => {
                                                 const baseHatHeight = 10;
-                                                const hatHeight = baseHatHeight + (easterEggCount * 3);
-                                                const svgHeight = 80 + (easterEggCount * 3);
+                                                const hatHeight = baseHatHeight + (easterEggCount * PIXELS_PER_EGG);
+                                                const svgHeight = 80 + (easterEggCount * PIXELS_PER_EGG);
                                                 const hatTop = svgHeight - 60 - hatHeight;
                                                 const hatBrim = svgHeight - 60;
                                                 const headCenter = svgHeight - 52;

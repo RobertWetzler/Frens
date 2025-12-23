@@ -89,14 +89,14 @@ export const Avatar: React.FC<AvatarProps> = ({ name, userId, imageUrl, navigati
 
     const recordEasterEgg = async () => {
         try {
-            console.log('🎉 Recording easter egg discovery...');
-            const result = await ApiClient.call(c => c.easterEgg_DiscoverEasterEgg({
+            await ApiClient.call(c => c.easterEgg_DiscoverEasterEgg({
                 easterEggId: 'snowman_dance'
             }));
-            console.log('✅ Easter egg recorded:', result);
         } catch (error) {
             // Silently fail - easter egg discovery is non-critical
-            console.log('❌ Failed to record easter egg:', error);
+            if (__DEV__) {
+                console.log('Failed to record easter egg:', error);
+            }
         }
     };
 

@@ -6,6 +6,10 @@ using Microsoft.EntityFrameworkCore.Migrations;
 namespace Cliq.Server.Migrations
 {
     /// <inheritdoc />
+    /// <remarks>
+    /// Creates EasterEggs table to track user discoveries of hidden features.
+    /// Includes unique constraint on (UserId, EasterEggId) to ensure each user can only discover each easter egg once.
+    /// </remarks>
     public partial class AddEasterEggTable : Migration
     {
         /// <inheritdoc />

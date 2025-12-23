@@ -88,16 +88,6 @@ namespace Cliq.Server.Controllers
                 })
                 .ToListAsync();
 
-            // Debug logging
-            var allEggs = await _context.EasterEggs.ToListAsync();
-            Console.WriteLine($"🥚 GetProfile - Looking for UserId: {userIdToUse}");
-            Console.WriteLine($"🥚 Total eggs in DB: {allEggs.Count}");
-            Console.WriteLine($"🥚 Eggs for this user: {easterEggs.Count}");
-            foreach (var egg in allEggs)
-            {
-                Console.WriteLine($"  - Egg UserId: {egg.UserId}, EasterEggId: {egg.EasterEggId}");
-            }
-
             response.EasterEggsFound = easterEggs;
             response.EasterEggCount = easterEggs.Count;
 
