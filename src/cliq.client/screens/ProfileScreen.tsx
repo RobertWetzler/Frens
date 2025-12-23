@@ -6,10 +6,14 @@ import {
     TouchableOpacity,
     ActivityIndicator,
     RefreshControl,
-    SafeAreaView
+    SafeAreaView,
+    Modal,
+    Pressable
 } from 'react-native';
+import { useFocusEffect } from '@react-navigation/native';
 import { Avatar } from '@rneui/base';
 import { Ionicons } from '@expo/vector-icons';
+import Svg, { Ellipse, Path, Circle } from 'react-native-svg';
 import { ApiClient } from 'services/apiClient';
 import { FriendshipDto, FriendshipStatus, FriendshipStatusDto, PostDto, ProfilePageResponseDto, UserDto, UserProfileDto, VisibleStatus } from 'services/generated/generatedClient';
 import Post from '../components/Post';
@@ -34,7 +38,7 @@ const useStyles = makeStyles((theme) => ({
     avatarContainer: { marginBottom: 16 },
     userName: { fontSize: 24, fontWeight: 'bold', marginBottom: 8, color: theme.colors.textPrimary },
     userBio: { fontSize: 16, color: theme.colors.textSecondary, textAlign: 'center', marginBottom: 16, paddingHorizontal: 20 },
-    statsContainer: { flexDirection: 'row', width: '100%', justifyContent: 'space-around', marginBottom: 24 },
+    statsContainer: { flexDirection: 'row', justifyContent: 'center', alignItems: 'center', gap: 24, marginBottom: 24 },
     statItem: { alignItems: 'center' },
     statNumber: { fontSize: 18, fontWeight: 'bold', color: theme.colors.textPrimary },
     statLabel: { fontSize: 14, color: theme.colors.textMuted },
@@ -54,6 +58,28 @@ const useStyles = makeStyles((theme) => ({
     sectionTitle: { fontSize: 18, fontWeight: 'bold', alignSelf: 'flex-start', marginBottom: 12, color: theme.colors.textPrimary },
     emptyPostsContainer: { padding: 40, alignItems: 'center' },
     emptyPostsText: { marginTop: 16, fontSize: 16, color: theme.colors.textMuted, textAlign: 'center' },
+    snowmanContainer: { 
+        alignItems: 'center', 
+        justifyContent: 'flex-end',
+    },
+    modalOverlay: {
+        flex: 1,
+        backgroundColor: 'rgba(0, 0, 0, 0.5)',
+        justifyContent: 'center',
+        alignItems: 'center'
+    },
+    tooltip: {
+        backgroundColor: theme.colors.card,
+        borderRadius: 8,
+        padding: 12,
+        borderWidth: 1,
+        borderColor: theme.colors.primary
+    },
+    tooltipText: {
+        color: theme.colors.textPrimary,
+        fontSize: 14,
+        fontWeight: '600'
+    },
 }));
 
 interface ProfileScreenProps {
@@ -74,6 +100,8 @@ const ProfileScreen: React.FC<ProfileScreenProps> = ({ route, navigation }) => {
     const [friendshipStatus, setFriendshipStatus] = useState<FriendshipStatusDto | null>(null);
     const [posts, setPosts] = useState<PostDto[]>([]);
     const [notificationCount, setNotificationCount] = useState<number>();
+    const [easterEggCount, setEasterEggCount] = useState<number>(0);
+    const [showEggTooltip, setShowEggTooltip] = useState(false);
     const [isLoading, setIsLoading] = useState(true);
     const [isRefreshing, setIsRefreshing] = useState(false);
     const [error, setError] = useState<string | null>(null);
@@ -88,6 +116,10 @@ const ProfileScreen: React.FC<ProfileScreenProps> = ({ route, navigation }) => {
             }
             setPosts(profileData.recentPosts);
             setNotificationCount(profileData.notificationCount);
+            // @ts-ignore - Will be available after regenerating client
+            const eggCount = profileData.easterEggCount || 0;
+            console.log('🥚 Easter egg count from API:', eggCount, 'Full data:', profileData.easterEggsFound);
+            setEasterEggCount(eggCount);
             setError(null);
         }
         catch (err) {
@@ -102,6 +134,15 @@ const ProfileScreen: React.FC<ProfileScreenProps> = ({ route, navigation }) => {
     useEffect(() => {
         fetchUserProfile();
     }, [userId]);
+
+    // Refresh profile when screen comes into focus (e.g., after triggering easter egg)
+    useFocusEffect(
+        React.useCallback(() => {
+            if (!isLoading) {
+                fetchUserProfile();
+            }
+        }, [userId])
+    );
 
     const handleRefresh = () => {
         setIsRefreshing(true);
@@ -207,7 +248,134 @@ const ProfileScreen: React.FC<ProfileScreenProps> = ({ route, navigation }) => {
                                 <Text style={styles.statNumber}>{posts.length}</Text>
                                 <Text style={styles.statLabel}>Posts</Text>
                             </View>
+                            
+                            {/* Easter Egg - Hidden Snowman */}
+                            {theme.name === 'holiday' && (
+                                <Pressable 
+                                    style={styles.statItem}
+                                    onPress={() => setShowEggTooltip(true)}
+                                >
+                                    <View style={styles.snowmanContainer}>
+                                        <Svg 
+                                            width={50} 
+                                            height={80 + (easterEggCount * 3)} 
+                                            viewBox={`0 0 50 ${80 + (easterEggCount * 3)}`}
+                                        >
+                                            {/* Calculate hat height based on easter eggs */}
+                                            {(() => {
+                                                const baseHatHeight = 10;
+                                                const hatHeight = baseHatHeight + (easterEggCount * 3);
+                                                const svgHeight = 80 + (easterEggCount * 3);
+                                                const hatTop = svgHeight - 60 - hatHeight;
+                                                const hatBrim = svgHeight - 60;
+                                                const headCenter = svgHeight - 52;
+                                                const middleCenter = svgHeight - 35;
+                                                const bottomCenter = svgHeight - 15;
+                                                
+                                                return (
+                                                    <>
+                                                        {/* Bottom snowball */}
+                                                        <Ellipse 
+                                                            cx={25} 
+                                                            cy={bottomCenter} 
+                                                            rx={14} 
+                                                            ry={12} 
+                                                            fill="#FFFFFF" 
+                                                            stroke="#E0E0E0" 
+                                                            strokeWidth={1.5} 
+                                                        />
+                                                        
+                                                        {/* Middle snowball */}
+                                                        <Ellipse 
+                                                            cx={25} 
+                                                            cy={middleCenter} 
+                                                            rx={11} 
+                                                            ry={9} 
+                                                            fill="#FFFFFF" 
+                                                            stroke="#E0E0E0" 
+                                                            strokeWidth={1.5} 
+                                                        />
+                                                        
+                                                        {/* Head */}
+                                                        <Ellipse 
+                                                            cx={25} 
+                                                            cy={headCenter} 
+                                                            rx={9} 
+                                                            ry={8} 
+                                                            fill="#FFFFFF" 
+                                                            stroke="#E0E0E0" 
+                                                            strokeWidth={1.5} 
+                                                        />
+                                                        
+                                                        {/* Eyes */}
+                                                        <Circle cx={22} cy={headCenter - 1} r={1.2} fill="#2C2C2C" />
+                                                        <Circle cx={28} cy={headCenter - 1} r={1.2} fill="#2C2C2C" />
+                                                        
+                                                        {/* Carrot nose */}
+                                                        <Path 
+                                                            d={`M23.5 ${headCenter + 0.5} L28 ${headCenter + 1} L23.5 ${headCenter + 1.5} Z`}
+                                                            fill="#FF6B35" 
+                                                            stroke="#E55A2B" 
+                                                            strokeWidth={0.3} 
+                                                        />
+                                                        
+                                                        {/* Smile */}
+                                                        <Path 
+                                                            d={`M22 ${headCenter + 3.5} Q25 ${headCenter + 4.5} 28 ${headCenter + 3.5}`}
+                                                            stroke="#2C2C2C" 
+                                                            strokeWidth={1} 
+                                                            fill="none" 
+                                                            strokeLinecap="round"
+                                                        />
+                                                        
+                                                        {/* Coal buttons on middle */}
+                                                        <Circle cx={25} cy={middleCenter - 3} r={1} fill="#2C2C2C" />
+                                                        <Circle cx={25} cy={middleCenter} r={1} fill="#2C2C2C" />
+                                                        <Circle cx={25} cy={middleCenter + 3} r={1} fill="#2C2C2C" />
+                                                        
+                                                        {/* Growing Hat - height increases with easter eggs */}
+                                                        {/* Hat brim */}
+                                                        <Path 
+                                                            d={`M16 ${hatBrim} L34 ${hatBrim} L34 ${hatBrim + 2} L16 ${hatBrim + 2} Z`} 
+                                                            fill="#2C2C2C" 
+                                                        />
+                                                        {/* Hat top - grows taller */}
+                                                        <Path 
+                                                            d={`M20 ${hatTop} L30 ${hatTop} L30 ${hatBrim} L20 ${hatBrim} Z`} 
+                                                            fill="#2C2C2C" 
+                                                        />
+                                                        {/* Hat band - moves with hat height */}
+                                                        <Path 
+                                                            d={`M20 ${hatBrim - 3} L30 ${hatBrim - 3} L30 ${hatBrim - 1.5} L20 ${hatBrim - 1.5} Z`} 
+                                                            fill="#C41E3A" 
+                                                        />
+                                                    </>
+                                                );
+                                            })()}
+                                        </Svg>
+                                    </View>
+                                </Pressable>
+                            )}
                         </View>
+
+                        {/* Tooltip Modal */}
+                        <Modal
+                            visible={showEggTooltip}
+                            transparent
+                            animationType="fade"
+                            onRequestClose={() => setShowEggTooltip(false)}
+                        >
+                            <Pressable 
+                                style={styles.modalOverlay}
+                                onPress={() => setShowEggTooltip(false)}
+                            >
+                                <View style={styles.tooltip}>
+                                    <Text style={styles.tooltipText}>
+                                        🎉 Easter Eggs: {easterEggCount}
+                                    </Text>
+                                </View>
+                            </Pressable>
+                        </Modal>
 
                         {!isOwnProfile && (
                             <TouchableOpacity

@@ -25,6 +25,7 @@ public class CliqDbContext : IdentityDbContext<User, CliqRole, Guid>
     public DbSet<CalendarSubscription> CalendarSubscription { get; set; }
     public DbSet<UserActivity> UserActivities { get; set; }
     public DbSet<CarpoolSeat> CarpoolSeats { get; set; }
+    public DbSet<EasterEgg> EasterEggs { get; set; }
 
     public CliqDbContext(
             DbContextOptions<CliqDbContext> options,
@@ -90,6 +91,22 @@ public class CliqDbContext : IdentityDbContext<User, CliqRole, Guid>
 
             // Prevent duplicate seat reservations by the same user for the same carpool
             entity.HasIndex(s => new { s.CommentId, s.UserId }).IsUnique();
+        });
+
+        // EasterEgg configuration
+        modelBuilder.Entity<EasterEgg>(entity =>
+        {
+            entity.HasKey(e => e.Id);
+
+            entity.HasOne(e => e.User)
+                .WithMany()
+                .HasForeignKey(e => e.UserId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            // Prevent duplicate discoveries - same user can't discover same easter egg twice
+            entity.HasIndex(e => new { e.UserId, e.EasterEggId }).IsUnique();
+
+            entity.Property(e => e.DiscoveredAt).HasDefaultValueSql("NOW()");
         });
 
         modelBuilder.Entity<Friendship>(entity =>

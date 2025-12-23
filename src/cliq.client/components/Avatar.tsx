@@ -4,6 +4,7 @@ import Svg, { Ellipse, Path } from 'react-native-svg';
 import { useTheme } from '../theme/ThemeContext';
 import { makeStyles } from '../theme/makeStyles';
 import { useRef, useState, useEffect } from 'react';
+import { ApiClient } from '../services/apiClient';
 
 // Create animated SVG components
 const AnimatedEllipse = Animated.createAnimatedComponent(Ellipse);
@@ -82,6 +83,20 @@ export const Avatar: React.FC<AvatarProps> = ({ name, userId, imageUrl, navigati
         if (newCount === 3) {
             setTapCount(0); // Reset immediately
             animateFrosty();
+            recordEasterEgg();
+        }
+    };
+
+    const recordEasterEgg = async () => {
+        try {
+            console.log('🎉 Recording easter egg discovery...');
+            const result = await ApiClient.call(c => c.easterEgg_DiscoverEasterEgg({
+                easterEggId: 'snowman_dance'
+            }));
+            console.log('✅ Easter egg recorded:', result);
+        } catch (error) {
+            // Silently fail - easter egg discovery is non-critical
+            console.log('❌ Failed to record easter egg:', error);
         }
     };
 

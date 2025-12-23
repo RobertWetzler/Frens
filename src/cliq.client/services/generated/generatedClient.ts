@@ -640,11 +640,22 @@ export class Client {
         return Promise.resolve<CommentDto>(null as any);
     }
 
-    comment_ToggleCarpoolSeat(commentId: string, signal?: AbortSignal): Promise<{ joined?: boolean }> {
-        let url_ = this.baseUrl + "/api/Comment/{commentId}/carpool/optin";
-        if (commentId === undefined || commentId === null)
-            throw new Error("The parameter 'commentId' must be defined.");
-        url_ = url_.replace("{commentId}", encodeURIComponent("" + commentId));
+    comment_PostCarpoolComment(text: string | undefined, postId: string | undefined, spots: number | undefined, parentCommentId: string | null | undefined, signal?: AbortSignal): Promise<CommentDto> {
+        let url_ = this.baseUrl + "/api/Comment/carpool?";
+        if (text === null)
+            throw new Error("The parameter 'text' cannot be null.");
+        else if (text !== undefined)
+            url_ += "text=" + encodeURIComponent("" + text) + "&";
+        if (postId === null)
+            throw new Error("The parameter 'postId' cannot be null.");
+        else if (postId !== undefined)
+            url_ += "postId=" + encodeURIComponent("" + postId) + "&";
+        if (spots === null)
+            throw new Error("The parameter 'spots' cannot be null.");
+        else if (spots !== undefined)
+            url_ += "spots=" + encodeURIComponent("" + spots) + "&";
+        if (parentCommentId !== undefined && parentCommentId !== null)
+            url_ += "parentCommentId=" + encodeURIComponent("" + parentCommentId) + "&";
         url_ = url_.replace(/[?&]$/, "");
 
         let options_: RequestInit = {
@@ -656,18 +667,18 @@ export class Client {
         };
 
         return this.http.fetch(url_, options_).then((_response: Response) => {
-            return this.processComment_ToggleCarpoolSeat(_response);
+            return this.processComment_PostCarpoolComment(_response);
         });
     }
 
-    protected processComment_ToggleCarpoolSeat(response: Response): Promise<{ joined?: boolean }> {
+    protected processComment_PostCarpoolComment(response: Response): Promise<CommentDto> {
         const status = response.status;
         let _headers: any = {}; if (response.headers && response.headers.forEach) { response.headers.forEach((v: any, k: any) => _headers[k] = v); };
         if (status === 200) {
             return response.text().then((_responseText) => {
             let result200: any = null;
             let resultData200 = _responseText === "" ? null : JSON.parse(_responseText, this.jsonParseReviver);
-            result200 = resultData200;
+            result200 = CommentDto.fromJS(resultData200);
             return result200;
             });
         } else if (status !== 200 && status !== 204) {
@@ -675,7 +686,132 @@ export class Client {
             return throwException("An unexpected server error occurred.", status, _responseText, _headers);
             });
         }
-        return Promise.resolve<{ joined?: boolean }>(null as any);
+        return Promise.resolve<CommentDto>(null as any);
+    }
+
+    comment_ToggleCarpoolSeat(commentId: string, signal?: AbortSignal): Promise<FileResponse> {
+        let url_ = this.baseUrl + "/api/Comment/{commentId}/carpool/optin";
+        if (commentId === undefined || commentId === null)
+            throw new Error("The parameter 'commentId' must be defined.");
+        url_ = url_.replace("{commentId}", encodeURIComponent("" + commentId));
+        url_ = url_.replace(/[?&]$/, "");
+
+        let options_: RequestInit = {
+            method: "POST",
+            signal,
+            headers: {
+                "Accept": "application/octet-stream"
+            }
+        };
+
+        return this.http.fetch(url_, options_).then((_response: Response) => {
+            return this.processComment_ToggleCarpoolSeat(_response);
+        });
+    }
+
+    protected processComment_ToggleCarpoolSeat(response: Response): Promise<FileResponse> {
+        const status = response.status;
+        let _headers: any = {}; if (response.headers && response.headers.forEach) { response.headers.forEach((v: any, k: any) => _headers[k] = v); };
+        if (status === 200 || status === 206) {
+            const contentDisposition = response.headers ? response.headers.get("content-disposition") : undefined;
+            let fileNameMatch = contentDisposition ? /filename\*=(?:(\\?['"])(.*?)\1|(?:[^\s]+'.*?')?([^;\n]*))/g.exec(contentDisposition) : undefined;
+            let fileName = fileNameMatch && fileNameMatch.length > 1 ? fileNameMatch[3] || fileNameMatch[2] : undefined;
+            if (fileName) {
+                fileName = decodeURIComponent(fileName);
+            } else {
+                fileNameMatch = contentDisposition ? /filename="?([^"]*?)"?(;|$)/g.exec(contentDisposition) : undefined;
+                fileName = fileNameMatch && fileNameMatch.length > 1 ? fileNameMatch[1] : undefined;
+            }
+            return response.blob().then(blob => { return { fileName: fileName, data: blob, status: status, headers: _headers }; });
+        } else if (status !== 200 && status !== 204) {
+            return response.text().then((_responseText) => {
+            return throwException("An unexpected server error occurred.", status, _responseText, _headers);
+            });
+        }
+        return Promise.resolve<FileResponse>(null as any);
+    }
+
+    easterEgg_DiscoverEasterEgg(request: DiscoverEasterEggRequest, signal?: AbortSignal): Promise<EasterEggDto> {
+        let url_ = this.baseUrl + "/api/EasterEgg/discover";
+        url_ = url_.replace(/[?&]$/, "");
+
+        const content_ = JSON.stringify(request);
+
+        let options_: RequestInit = {
+            body: content_,
+            method: "POST",
+            signal,
+            headers: {
+                "Content-Type": "application/json",
+                "Accept": "application/json"
+            }
+        };
+
+        return this.http.fetch(url_, options_).then((_response: Response) => {
+            return this.processEasterEgg_DiscoverEasterEgg(_response);
+        });
+    }
+
+    protected processEasterEgg_DiscoverEasterEgg(response: Response): Promise<EasterEggDto> {
+        const status = response.status;
+        let _headers: any = {}; if (response.headers && response.headers.forEach) { response.headers.forEach((v: any, k: any) => _headers[k] = v); };
+        if (status === 200) {
+            return response.text().then((_responseText) => {
+            let result200: any = null;
+            let resultData200 = _responseText === "" ? null : JSON.parse(_responseText, this.jsonParseReviver);
+            result200 = EasterEggDto.fromJS(resultData200);
+            return result200;
+            });
+        } else if (status !== 200 && status !== 204) {
+            return response.text().then((_responseText) => {
+            return throwException("An unexpected server error occurred.", status, _responseText, _headers);
+            });
+        }
+        return Promise.resolve<EasterEggDto>(null as any);
+    }
+
+    easterEgg_GetDiscoveredEasterEggs(userId: string | null | undefined, signal?: AbortSignal): Promise<EasterEggDto[]> {
+        let url_ = this.baseUrl + "/api/EasterEgg?";
+        if (userId !== undefined && userId !== null)
+            url_ += "userId=" + encodeURIComponent("" + userId) + "&";
+        url_ = url_.replace(/[?&]$/, "");
+
+        let options_: RequestInit = {
+            method: "GET",
+            signal,
+            headers: {
+                "Accept": "application/json"
+            }
+        };
+
+        return this.http.fetch(url_, options_).then((_response: Response) => {
+            return this.processEasterEgg_GetDiscoveredEasterEggs(_response);
+        });
+    }
+
+    protected processEasterEgg_GetDiscoveredEasterEggs(response: Response): Promise<EasterEggDto[]> {
+        const status = response.status;
+        let _headers: any = {}; if (response.headers && response.headers.forEach) { response.headers.forEach((v: any, k: any) => _headers[k] = v); };
+        if (status === 200) {
+            return response.text().then((_responseText) => {
+            let result200: any = null;
+            let resultData200 = _responseText === "" ? null : JSON.parse(_responseText, this.jsonParseReviver);
+            if (Array.isArray(resultData200)) {
+                result200 = [] as any;
+                for (let item of resultData200)
+                    result200!.push(EasterEggDto.fromJS(item));
+            }
+            else {
+                result200 = <any>null;
+            }
+            return result200;
+            });
+        } else if (status !== 200 && status !== 204) {
+            return response.text().then((_responseText) => {
+            return throwException("An unexpected server error occurred.", status, _responseText, _headers);
+            });
+        }
+        return Promise.resolve<EasterEggDto[]>(null as any);
     }
 
     event_GetEvent(id: string, includeRsvps: boolean | undefined, signal?: AbortSignal): Promise<EventDto> {
@@ -2654,11 +2790,9 @@ export class CommentDto implements ICommentDto {
     date?: Date;
     text?: string;
     user?: UserDto;
-    // Carpool fields
-    type?: number;
-    carpoolSpots?: number;
-    carpoolRiders?: UserDto[] | undefined;
     replies?: CommentDto[] | undefined;
+
+    protected _discriminator: string;
 
     constructor(data?: ICommentDto) {
         if (data) {
@@ -2667,6 +2801,7 @@ export class CommentDto implements ICommentDto {
                     (<any>this)[property] = (<any>data)[property];
             }
         }
+        this._discriminator = "CommentDto";
     }
 
     init(_data?: any) {
@@ -2675,13 +2810,6 @@ export class CommentDto implements ICommentDto {
             this.date = _data["date"] ? new Date(_data["date"].toString()) : <any>undefined;
             this.text = _data["text"];
             this.user = _data["user"] ? UserDto.fromJS(_data["user"]) : <any>undefined;
-            this.type = _data["type"];
-            this.carpoolSpots = _data["carpoolSpots"];
-            if (Array.isArray(_data["carpoolRiders"])) {
-                this.carpoolRiders = [] as any;
-                for (let item of _data["carpoolRiders"])
-                    this.carpoolRiders!.push(UserDto.fromJS(item));
-            }
             if (Array.isArray(_data["replies"])) {
                 this.replies = [] as any;
                 for (let item of _data["replies"])
@@ -2692,6 +2820,11 @@ export class CommentDto implements ICommentDto {
 
     static fromJS(data: any): CommentDto {
         data = typeof data === 'object' ? data : {};
+        if (data["type"] === "Carpool") {
+            let result = new CarpoolCommentDto();
+            result.init(data);
+            return result;
+        }
         let result = new CommentDto();
         result.init(data);
         return result;
@@ -2699,17 +2832,11 @@ export class CommentDto implements ICommentDto {
 
     toJSON(data?: any) {
         data = typeof data === 'object' ? data : {};
+        data["type"] = this._discriminator;
         data["id"] = this.id;
         data["date"] = this.date ? this.date.toISOString() : <any>undefined;
         data["text"] = this.text;
         data["user"] = this.user ? this.user.toJSON() : <any>undefined;
-        data["type"] = this.type;
-        data["carpoolSpots"] = this.carpoolSpots;
-        if (Array.isArray(this.carpoolRiders)) {
-            data["carpoolRiders"] = [];
-            for (let item of this.carpoolRiders)
-                data["carpoolRiders"].push(item.toJSON());
-        }
         if (Array.isArray(this.replies)) {
             data["replies"] = [];
             for (let item of this.replies)
@@ -2724,10 +2851,129 @@ export interface ICommentDto {
     date?: Date;
     text?: string;
     user?: UserDto;
-    type?: number;
-    carpoolSpots?: number;
-    carpoolRiders?: UserDto[] | undefined;
     replies?: CommentDto[] | undefined;
+}
+
+export class CarpoolCommentDto extends CommentDto implements ICarpoolCommentDto {
+    carpoolSpots?: number | undefined;
+    carpoolRiders?: UserDto[];
+
+    constructor(data?: ICarpoolCommentDto) {
+        super(data);
+        this._discriminator = "Carpool";
+    }
+
+    init(_data?: any) {
+        super.init(_data);
+        if (_data) {
+            this.carpoolSpots = _data["carpoolSpots"];
+            if (Array.isArray(_data["carpoolRiders"])) {
+                this.carpoolRiders = [] as any;
+                for (let item of _data["carpoolRiders"])
+                    this.carpoolRiders!.push(UserDto.fromJS(item));
+            }
+        }
+    }
+
+    static fromJS(data: any): CarpoolCommentDto {
+        data = typeof data === 'object' ? data : {};
+        let result = new CarpoolCommentDto();
+        result.init(data);
+        return result;
+    }
+
+    toJSON(data?: any) {
+        data = typeof data === 'object' ? data : {};
+        data["carpoolSpots"] = this.carpoolSpots;
+        if (Array.isArray(this.carpoolRiders)) {
+            data["carpoolRiders"] = [];
+            for (let item of this.carpoolRiders)
+                data["carpoolRiders"].push(item.toJSON());
+        }
+        super.toJSON(data);
+        return data;
+    }
+}
+
+export interface ICarpoolCommentDto extends ICommentDto {
+    carpoolSpots?: number | undefined;
+    carpoolRiders?: UserDto[];
+}
+
+export class EasterEggDto implements IEasterEggDto {
+    easterEggId?: string;
+    discoveredAt?: Date;
+
+    constructor(data?: IEasterEggDto) {
+        if (data) {
+            for (var property in data) {
+                if (data.hasOwnProperty(property))
+                    (<any>this)[property] = (<any>data)[property];
+            }
+        }
+    }
+
+    init(_data?: any) {
+        if (_data) {
+            this.easterEggId = _data["easterEggId"];
+            this.discoveredAt = _data["discoveredAt"] ? new Date(_data["discoveredAt"].toString()) : <any>undefined;
+        }
+    }
+
+    static fromJS(data: any): EasterEggDto {
+        data = typeof data === 'object' ? data : {};
+        let result = new EasterEggDto();
+        result.init(data);
+        return result;
+    }
+
+    toJSON(data?: any) {
+        data = typeof data === 'object' ? data : {};
+        data["easterEggId"] = this.easterEggId;
+        data["discoveredAt"] = this.discoveredAt ? this.discoveredAt.toISOString() : <any>undefined;
+        return data;
+    }
+}
+
+export interface IEasterEggDto {
+    easterEggId?: string;
+    discoveredAt?: Date;
+}
+
+export class DiscoverEasterEggRequest implements IDiscoverEasterEggRequest {
+    easterEggId?: string;
+
+    constructor(data?: IDiscoverEasterEggRequest) {
+        if (data) {
+            for (var property in data) {
+                if (data.hasOwnProperty(property))
+                    (<any>this)[property] = (<any>data)[property];
+            }
+        }
+    }
+
+    init(_data?: any) {
+        if (_data) {
+            this.easterEggId = _data["easterEggId"];
+        }
+    }
+
+    static fromJS(data: any): DiscoverEasterEggRequest {
+        data = typeof data === 'object' ? data : {};
+        let result = new DiscoverEasterEggRequest();
+        result.init(data);
+        return result;
+    }
+
+    toJSON(data?: any) {
+        data = typeof data === 'object' ? data : {};
+        data["easterEggId"] = this.easterEggId;
+        return data;
+    }
+}
+
+export interface IDiscoverEasterEggRequest {
+    easterEggId?: string;
 }
 
 export class PostDto implements IPostDto {
@@ -3894,6 +4140,8 @@ export class ProfilePageResponseDto implements IProfilePageResponseDto {
     friendshipStatus?: FriendshipStatusDto | undefined;
     recentPosts?: PostDto[];
     notificationCount?: number;
+    easterEggCount?: number;
+    easterEggsFound?: EasterEggDto[];
 
     constructor(data?: IProfilePageResponseDto) {
         if (data) {
@@ -3915,6 +4163,12 @@ export class ProfilePageResponseDto implements IProfilePageResponseDto {
                     this.recentPosts!.push(PostDto.fromJS(item));
             }
             this.notificationCount = _data["notificationCount"];
+            this.easterEggCount = _data["easterEggCount"];
+            if (Array.isArray(_data["easterEggsFound"])) {
+                this.easterEggsFound = [] as any;
+                for (let item of _data["easterEggsFound"])
+                    this.easterEggsFound!.push(EasterEggDto.fromJS(item));
+            }
         }
     }
 
@@ -3936,6 +4190,12 @@ export class ProfilePageResponseDto implements IProfilePageResponseDto {
                 data["recentPosts"].push(item.toJSON());
         }
         data["notificationCount"] = this.notificationCount;
+        data["easterEggCount"] = this.easterEggCount;
+        if (Array.isArray(this.easterEggsFound)) {
+            data["easterEggsFound"] = [];
+            for (let item of this.easterEggsFound)
+                data["easterEggsFound"].push(item.toJSON());
+        }
         return data;
     }
 }
@@ -3946,6 +4206,8 @@ export interface IProfilePageResponseDto {
     friendshipStatus?: FriendshipStatusDto | undefined;
     recentPosts?: PostDto[];
     notificationCount?: number;
+    easterEggCount?: number;
+    easterEggsFound?: EasterEggDto[];
 }
 
 export class UserProfileDto implements IUserProfileDto {

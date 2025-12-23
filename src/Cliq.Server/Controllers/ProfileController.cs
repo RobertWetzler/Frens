@@ -1,9 +1,11 @@
 using AutoMapper;
+using Cliq.Server.Data;
 using Cliq.Server.Models;
 using Cliq.Server.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
 using System.Security.Claims;
 
 namespace Cliq.Server.Controllers
@@ -17,17 +19,20 @@ namespace Cliq.Server.Controllers
         private readonly IFriendshipService _friendshipService;
         private readonly IPostService _postService;
         private readonly IMapper _mapper;
+        private readonly CliqDbContext _context;
 
         public ProfileController(
             UserManager<User> userManager,
             IFriendshipService friendshipService,
             IPostService postService,
-            IMapper mapper)
+            IMapper mapper,
+            CliqDbContext context)
         {
             _userManager = userManager;
             _friendshipService = friendshipService;
             _postService = postService;
             _mapper = mapper;
+            _context = context;
         }
 
         [HttpGet]
@@ -73,6 +78,29 @@ namespace Cliq.Server.Controllers
                 // TODO: only get posts user has access to view
             }
 
+            // Get easter egg count and list
+            var easterEggs = await _context.EasterEggs
+                .Where(e => e.UserId == userIdToUse)
+                .Select(e => new EasterEggDto
+                {
+                    EasterEggId = e.EasterEggId,
+                    DiscoveredAt = e.DiscoveredAt
+                })
+                .ToListAsync();
+
+            // Debug logging
+            var allEggs = await _context.EasterEggs.ToListAsync();
+            Console.WriteLine($"🥚 GetProfile - Looking for UserId: {userIdToUse}");
+            Console.WriteLine($"🥚 Total eggs in DB: {allEggs.Count}");
+            Console.WriteLine($"🥚 Eggs for this user: {easterEggs.Count}");
+            foreach (var egg in allEggs)
+            {
+                Console.WriteLine($"  - Egg UserId: {egg.UserId}, EasterEggId: {egg.EasterEggId}");
+            }
+
+            response.EasterEggsFound = easterEggs;
+            response.EasterEggCount = easterEggs.Count;
+
             return Ok(response);
         }
 
@@ -85,6 +113,8 @@ namespace Cliq.Server.Controllers
             public FriendshipStatusDto? FriendshipStatus { get; set; }
             public IEnumerable<PostDto> RecentPosts { get; set; } = new List<PostDto>();
             public int NotificationCount { get; set; } = 0;
+            public int EasterEggCount { get; set; } = 0;
+            public List<EasterEggDto> EasterEggsFound { get; set; } = new List<EasterEggDto>();
         }
     }
 }
