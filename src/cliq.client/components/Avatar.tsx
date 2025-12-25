@@ -63,6 +63,12 @@ export const Avatar: React.FC<AvatarProps> = ({ name, userId, imageUrl, navigati
         egg => egg.easterEggId === 'snowman_dance'
     ) ?? false;
     
+    // Check if user is Spencer (ginger hair and beard easter egg)
+    const isSpencer = name?.toLowerCase().includes('spencer') ?? false;
+    
+    // Check if user is Carlyn (long blonde hair and big smile)
+    const isCarlyn = name?.toLowerCase().includes('carlyn') ?? false;
+    
     // Easter egg: Triple-tap animation state
     const spinAnim = useRef(new Animated.Value(0)).current;
     const hatScaleAnim = useRef(new Animated.Value(1)).current;
@@ -272,6 +278,41 @@ export const Avatar: React.FC<AvatarProps> = ({ name, userId, imageUrl, navigati
                         <Svg width={44} height={44} viewBox="0 0 44 44">
                             {/* Snowman face */}
                             <Ellipse cx={22} cy={24} rx={16} ry={16} fill="#FFFFFF" stroke="#E0E0E0" strokeWidth={1.5} />
+                            
+                            {/* Spencer's ginger hair */}
+                            {isSpencer && (
+                                <>
+                                    {/* Ginger hair on top - short textured strands */}
+                                    <Path d="M10 16 Q11 10 14 12" stroke="#C94A1C" strokeWidth={2} fill="none" strokeLinecap="round" />
+                                    <Path d="M13 14 Q14 8 17 10" stroke="#D4582A" strokeWidth={2} fill="none" strokeLinecap="round" />
+                                    <Path d="M16 12 Q17 6 20 9" stroke="#C94A1C" strokeWidth={2.5} fill="none" strokeLinecap="round" />
+                                    <Path d="M19 11 Q20 5 23 8" stroke="#B8421A" strokeWidth={2} fill="none" strokeLinecap="round" />
+                                    <Path d="M22 10 Q23 5 26 8" stroke="#D4582A" strokeWidth={2.5} fill="none" strokeLinecap="round" />
+                                    <Path d="M25 11 Q26 6 29 9" stroke="#C94A1C" strokeWidth={2} fill="none" strokeLinecap="round" />
+                                    <Path d="M28 12 Q29 8 32 11" stroke="#B8421A" strokeWidth={2} fill="none" strokeLinecap="round" />
+                                    <Path d="M31 14 Q32 10 34 13" stroke="#D4582A" strokeWidth={2} fill="none" strokeLinecap="round" />
+                                </>
+                            )}
+                            
+                            {/* Carlyn's long blonde hair */}
+                            {isCarlyn && (
+                                <>
+                                    {/* Long flowing wavy blonde hair - left side */}
+                                    <Path d="M8 12 Q4 18 6 26 Q4 32 3 40" stroke="#E8C266" strokeWidth={3} fill="none" strokeLinecap="round" />
+                                    <Path d="M10 10 Q5 16 7 24 Q5 30 4 38" stroke="#F5D67A" strokeWidth={3} fill="none" strokeLinecap="round" />
+                                    <Path d="M12 9 Q7 15 9 22 Q6 28 6 36" stroke="#D4B04A" strokeWidth={2.5} fill="none" strokeLinecap="round" />
+                                    <Path d="M14 8 Q10 14 11 20 Q8 26 8 34" stroke="#E8C266" strokeWidth={2.5} fill="none" strokeLinecap="round" />
+                                    {/* Top of head hair */}
+                                    <Path d="M14 10 Q18 5 22 7" stroke="#F5D67A" strokeWidth={3} fill="none" strokeLinecap="round" />
+                                    <Path d="M22 7 Q26 5 30 10" stroke="#E8C266" strokeWidth={3} fill="none" strokeLinecap="round" />
+                                    {/* Right side flowing wavy hair */}
+                                    <Path d="M30 8 Q34 14 33 20 Q36 26 36 34" stroke="#E8C266" strokeWidth={2.5} fill="none" strokeLinecap="round" />
+                                    <Path d="M32 9 Q37 15 35 22 Q38 28 38 36" stroke="#D4B04A" strokeWidth={2.5} fill="none" strokeLinecap="round" />
+                                    <Path d="M34 10 Q39 16 37 24 Q39 30 40 38" stroke="#F5D67A" strokeWidth={3} fill="none" strokeLinecap="round" />
+                                    <Path d="M36 12 Q40 18 38 26 Q40 32 41 40" stroke="#E8C266" strokeWidth={3} fill="none" strokeLinecap="round" />
+                                </>
+                            )}
+                            
                             {/* Left eye - open (visible when winkAnim = 1) */}
                             <AnimatedEllipse 
                                 cx={16} 
@@ -296,12 +337,43 @@ export const Avatar: React.FC<AvatarProps> = ({ name, userId, imageUrl, navigati
                             <Ellipse cx={28} cy={20} rx={2.5} ry={2.5} fill="#2C2C2C" />
                             {/* Carrot nose */}
                             <Path d="M20 21 L28 24 L20 27 Z" fill="#FF6B35" stroke="#E55A2B" strokeWidth={0.5} />
-                            {/* Smile - coal dots */}
-                            <Ellipse cx={14} cy={30} rx={1.5} ry={1.5} fill="#2C2C2C" />
-                            <Ellipse cx={18} cy={32} rx={1.5} ry={1.5} fill="#2C2C2C" />
-                            <Ellipse cx={22} cy={33} rx={1.5} ry={1.5} fill="#2C2C2C" />
-                            <Ellipse cx={26} cy={32} rx={1.5} ry={1.5} fill="#2C2C2C" />
-                            <Ellipse cx={30} cy={30} rx={1.5} ry={1.5} fill="#2C2C2C" />
+                            
+                            {/* Spencer's ginger beard */}
+                            {isSpencer ? (
+                                <>
+                                    {/* Ginger beard - short textured strands */}
+                                    <Path d="M12 28 Q11 32 12 35" stroke="#C94A1C" strokeWidth={1.5} fill="none" strokeLinecap="round" />
+                                    <Path d="M14 29 Q13 34 14 37" stroke="#D4582A" strokeWidth={1.5} fill="none" strokeLinecap="round" />
+                                    <Path d="M16 30 Q15 35 16 38" stroke="#B8421A" strokeWidth={1.5} fill="none" strokeLinecap="round" />
+                                    <Path d="M18 31 Q17 36 18 39" stroke="#C94A1C" strokeWidth={1.5} fill="none" strokeLinecap="round" />
+                                    <Path d="M20 31 Q19 37 20 40" stroke="#D4582A" strokeWidth={1.5} fill="none" strokeLinecap="round" />
+                                    <Path d="M22 32 Q22 38 22 41" stroke="#C94A1C" strokeWidth={1.5} fill="none" strokeLinecap="round" />
+                                    <Path d="M24 31 Q25 37 24 40" stroke="#B8421A" strokeWidth={1.5} fill="none" strokeLinecap="round" />
+                                    <Path d="M26 31 Q27 36 26 39" stroke="#D4582A" strokeWidth={1.5} fill="none" strokeLinecap="round" />
+                                    <Path d="M28 30 Q29 35 28 38" stroke="#C94A1C" strokeWidth={1.5} fill="none" strokeLinecap="round" />
+                                    <Path d="M30 29 Q31 34 30 37" stroke="#B8421A" strokeWidth={1.5} fill="none" strokeLinecap="round" />
+                                    <Path d="M32 28 Q33 32 32 35" stroke="#D4582A" strokeWidth={1.5} fill="none" strokeLinecap="round" />
+                                    {/* Mustache */}
+                                    <Path d="M15 28 Q18 30 22 28 Q26 30 29 28" stroke="#B8421A" strokeWidth={2} fill="none" strokeLinecap="round" />
+                                </>
+                            ) : isCarlyn ? (
+                                <>
+                                    {/* Big :D smile for Carlyn - open mouth with teeth */}
+                                    <Path d="M14 28 Q22 44 30 28" stroke="#2C2C2C" strokeWidth={1.5} fill="none" strokeLinecap="round" />
+                                    <Path d="M14 28 L30 28" stroke="#2C2C2C" strokeWidth={1.5} strokeLinecap="round" />
+                                    {/* Teeth */}
+                                    {/* <Path d="M15 28 L15 30 M18 28 L18 31 M21 28 L21 31.5 M24 28 L24 31 M27 28 L27 30" stroke="#FFFFFF" strokeWidth={2} strokeLinecap="round" /> */}
+                                </>
+                            ) : (
+                                <>
+                                    {/* Normal smile - coal dots */}
+                                    <Ellipse cx={14} cy={30} rx={1.5} ry={1.5} fill="#2C2C2C" />
+                                    <Ellipse cx={18} cy={32} rx={1.5} ry={1.5} fill="#2C2C2C" />
+                                    <Ellipse cx={22} cy={33} rx={1.5} ry={1.5} fill="#2C2C2C" />
+                                    <Ellipse cx={26} cy={32} rx={1.5} ry={1.5} fill="#2C2C2C" />
+                                    <Ellipse cx={30} cy={30} rx={1.5} ry={1.5} fill="#2C2C2C" />
+                                </>
+                            )}
                         </Svg>
                         {/* Animated kiss (heart) */}
                         <Animated.View 
