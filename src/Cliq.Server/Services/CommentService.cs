@@ -84,7 +84,7 @@ public class CommentService : ICommentService
 
             // Fetch with all related data for mapping
             commentWithUser = await _dbContext.Comments
-                .Include(c => c.User)
+                .Include(c => c.User).ThenInclude(u => u.DiscoveredEasterEggs)
                 .Include(c => c.CarpoolSeats).ThenInclude(s => s.User)
                 .FirstAsync(c => c.Id == comment.Id);
 

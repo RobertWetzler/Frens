@@ -361,8 +361,6 @@ export const Avatar: React.FC<AvatarProps> = ({ name, userId, imageUrl, navigati
                                     {/* Big :D smile for Carlyn - open mouth with teeth */}
                                     <Path d="M14 28 Q22 44 30 28" stroke="#2C2C2C" strokeWidth={1.5} fill="none" strokeLinecap="round" />
                                     <Path d="M14 28 L30 28" stroke="#2C2C2C" strokeWidth={1.5} strokeLinecap="round" />
-                                    {/* Teeth */}
-                                    {/* <Path d="M15 28 L15 30 M18 28 L18 31 M21 28 L21 31.5 M24 28 L24 31 M27 28 L27 30" stroke="#FFFFFF" strokeWidth={2} strokeLinecap="round" /> */}
                                 </>
                             ) : (
                                 <>
