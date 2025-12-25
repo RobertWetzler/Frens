@@ -25,7 +25,7 @@ import { useTheme } from '../theme/ThemeContext';
 import { makeStyles } from '../theme/makeStyles';
 
 // Easter egg snowman growth rate
-const PIXELS_PER_EGG = 2;
+const PIXELS_PER_EGG = 20;
 
 // makeStyles at bottom
 const useStyles = makeStyles((theme) => ({

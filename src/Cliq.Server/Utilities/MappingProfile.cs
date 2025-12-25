@@ -27,6 +27,7 @@ public class MappingProfile : Profile
             .ForMember(dest => dest.ImageCount, opt => opt.MapFrom(src => src.ImageObjectKeys.Count));        
         CreateMap<User, UserDto>();
         CreateMap<User, UserProfileDto>();
+        CreateMap<EasterEgg, EasterEggDto>();
         CreateMap<Friendship, FriendshipDto>();
         CreateMap<Friendship, FriendRequestDto>();
         

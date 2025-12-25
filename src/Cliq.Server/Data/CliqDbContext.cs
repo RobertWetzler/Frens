@@ -99,7 +99,7 @@ public class CliqDbContext : IdentityDbContext<User, CliqRole, Guid>
             entity.HasKey(e => e.Id);
 
             entity.HasOne(e => e.User)
-                .WithMany()
+                .WithMany(u => u.DiscoveredEasterEggs)
                 .HasForeignKey(e => e.UserId)
                 .OnDelete(DeleteBehavior.Cascade);
 

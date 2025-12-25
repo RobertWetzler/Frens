@@ -19,15 +19,27 @@ const Username: React.FC<UsernameProps> = ({
   styles,
   showAvatar = false,
 }) => {
+  const hasSnowmanDanceEasterEgg = user.discoveredEasterEggs?.some(
+    (egg) => egg.easterEggId === "snowman_dance"
+  );
+
   return (
     <TouchableOpacity
       style={styles.container}
       onPress={() => navigation.navigate("Profile", { userId: user.id })}
     >
       {showAvatar && (
-        <Avatar name={user.name} userId={user.id} navigation={navigation} />
+        <Avatar
+          name={user.name}
+          userId={user.id}
+          navigation={navigation}
+          discoveredEasterEggs={user.discoveredEasterEggs}
+        />
       )}
-      <Text style={styles.username}>{user.name}</Text>
+      <Text style={styles.username}>
+        {user.name}
+        {hasSnowmanDanceEasterEgg && " ❄️"}
+      </Text>
     </TouchableOpacity>
   );
 };

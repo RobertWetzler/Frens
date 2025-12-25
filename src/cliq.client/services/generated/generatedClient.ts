@@ -2396,6 +2396,7 @@ export interface ISignInResponseDto {
 export class UserDto implements IUserDto {
     id?: string;
     name?: string;
+    discoveredEasterEggs?: EasterEggDto[];
 
     constructor(data?: IUserDto) {
         if (data) {
@@ -2410,6 +2411,11 @@ export class UserDto implements IUserDto {
         if (_data) {
             this.id = _data["id"];
             this.name = _data["name"];
+            if (Array.isArray(_data["discoveredEasterEggs"])) {
+                this.discoveredEasterEggs = [] as any;
+                for (let item of _data["discoveredEasterEggs"])
+                    this.discoveredEasterEggs!.push(EasterEggDto.fromJS(item));
+            }
         }
     }
 
@@ -2424,6 +2430,11 @@ export class UserDto implements IUserDto {
         data = typeof data === 'object' ? data : {};
         data["id"] = this.id;
         data["name"] = this.name;
+        if (Array.isArray(this.discoveredEasterEggs)) {
+            data["discoveredEasterEggs"] = [];
+            for (let item of this.discoveredEasterEggs)
+                data["discoveredEasterEggs"].push(item.toJSON());
+        }
         return data;
     }
 }
@@ -2431,6 +2442,47 @@ export class UserDto implements IUserDto {
 export interface IUserDto {
     id?: string;
     name?: string;
+    discoveredEasterEggs?: EasterEggDto[];
+}
+
+export class EasterEggDto implements IEasterEggDto {
+    easterEggId?: string;
+    discoveredAt?: Date;
+
+    constructor(data?: IEasterEggDto) {
+        if (data) {
+            for (var property in data) {
+                if (data.hasOwnProperty(property))
+                    (<any>this)[property] = (<any>data)[property];
+            }
+        }
+    }
+
+    init(_data?: any) {
+        if (_data) {
+            this.easterEggId = _data["easterEggId"];
+            this.discoveredAt = _data["discoveredAt"] ? new Date(_data["discoveredAt"].toString()) : <any>undefined;
+        }
+    }
+
+    static fromJS(data: any): EasterEggDto {
+        data = typeof data === 'object' ? data : {};
+        let result = new EasterEggDto();
+        result.init(data);
+        return result;
+    }
+
+    toJSON(data?: any) {
+        data = typeof data === 'object' ? data : {};
+        data["easterEggId"] = this.easterEggId;
+        data["discoveredAt"] = this.discoveredAt ? this.discoveredAt.toISOString() : <any>undefined;
+        return data;
+    }
+}
+
+export interface IEasterEggDto {
+    easterEggId?: string;
+    discoveredAt?: Date;
 }
 
 export class RegisterModel implements IRegisterModel {
@@ -2898,46 +2950,6 @@ export class CarpoolCommentDto extends CommentDto implements ICarpoolCommentDto 
 export interface ICarpoolCommentDto extends ICommentDto {
     carpoolSpots?: number | undefined;
     carpoolRiders?: UserDto[];
-}
-
-export class EasterEggDto implements IEasterEggDto {
-    easterEggId?: string;
-    discoveredAt?: Date;
-
-    constructor(data?: IEasterEggDto) {
-        if (data) {
-            for (var property in data) {
-                if (data.hasOwnProperty(property))
-                    (<any>this)[property] = (<any>data)[property];
-            }
-        }
-    }
-
-    init(_data?: any) {
-        if (_data) {
-            this.easterEggId = _data["easterEggId"];
-            this.discoveredAt = _data["discoveredAt"] ? new Date(_data["discoveredAt"].toString()) : <any>undefined;
-        }
-    }
-
-    static fromJS(data: any): EasterEggDto {
-        data = typeof data === 'object' ? data : {};
-        let result = new EasterEggDto();
-        result.init(data);
-        return result;
-    }
-
-    toJSON(data?: any) {
-        data = typeof data === 'object' ? data : {};
-        data["easterEggId"] = this.easterEggId;
-        data["discoveredAt"] = this.discoveredAt ? this.discoveredAt.toISOString() : <any>undefined;
-        return data;
-    }
-}
-
-export interface IEasterEggDto {
-    easterEggId?: string;
-    discoveredAt?: Date;
 }
 
 export class DiscoverEasterEggRequest implements IDiscoverEasterEggRequest {
