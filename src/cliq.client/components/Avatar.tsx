@@ -4,6 +4,10 @@ import Svg, { Ellipse, Path } from 'react-native-svg';
 import { useTheme } from '../theme/ThemeContext';
 import { makeStyles } from '../theme/makeStyles';
 import { useRef, useState, useEffect } from 'react';
+import { ApiClient } from '../services/apiClient';
+import { easterEggEvents, EASTER_EGG_DISCOVERED } from '../hooks/easterEggEvents';
+import { DiscoverEasterEggRequest } from 'services/generated/generatedClient';
+import InfoModal from './InfoModal';
 
 // Create animated SVG components
 const AnimatedEllipse = Animated.createAnimatedComponent(Ellipse);
@@ -14,6 +18,7 @@ interface AvatarProps {
     userId: string;
     imageUrl?: string;
     navigation?: any;
+    discoveredEasterEggs?: { easterEggId?: string }[];
 }
 
 const useStyles = makeStyles((theme) => ({
@@ -48,10 +53,15 @@ const useStyles = makeStyles((theme) => ({
     // Additional style tokens could be added here
 }));
 
-export const Avatar: React.FC<AvatarProps> = ({ name, userId, imageUrl, navigation }) => {
+export const Avatar: React.FC<AvatarProps> = ({ name, userId, imageUrl, navigation, discoveredEasterEggs }) => {
     const { theme } = useTheme();
     const styles = useStyles();
     const initial = name?.charAt(0)?.toUpperCase() || '?';
+    
+    // Check if user has discovered the snowman_dance easter egg
+    const hasSnowmanDanceEasterEgg = discoveredEasterEggs?.some(
+        egg => egg.easterEggId === 'snowman_dance'
+    ) ?? false;
     
     // Easter egg: Triple-tap animation state
     const spinAnim = useRef(new Animated.Value(0)).current;
@@ -63,6 +73,7 @@ export const Avatar: React.FC<AvatarProps> = ({ name, userId, imageUrl, navigati
     const kissScale = useRef(new Animated.Value(0.5)).current;
     const [tapCount, setTapCount] = useState(0);
     const tapTimerRef = useRef<NodeJS.Timeout | null>(null);
+    const [showEasterEggModal, setShowEasterEggModal] = useState(false);
 
     const handleTripleTap = () => {
         const newCount = tapCount + 1;
@@ -82,7 +93,37 @@ export const Avatar: React.FC<AvatarProps> = ({ name, userId, imageUrl, navigati
         if (newCount === 3) {
             setTapCount(0); // Reset immediately
             animateFrosty();
+            recordEasterEgg();
         }
+    };
+
+    const recordEasterEgg = async () => {
+        // Don't show modal if user already has this easter egg
+        // if (hasSnowmanDanceEasterEgg) {
+        //     return;
+        // }
+        
+        try {
+            const result = await ApiClient.call(c => c.easterEgg_DiscoverEasterEgg(new DiscoverEasterEggRequest({
+                easterEggId: 'snowman_dance'
+            })));
+            // Show modal for new discovery after animation completes (~1.5s)
+            if (result) {
+                setTimeout(() => {
+                    setShowEasterEggModal(true);
+                }, 1600);
+            }
+        } catch (error) {
+            // Silently fail - easter egg discovery is non-critical
+            if (__DEV__) {
+                console.log('Failed to record easter egg:', error);
+            }
+        }
+    };
+
+    const handleEasterEggModalClose = () => {
+        setShowEasterEggModal(false);
+        easterEggEvents.emit(EASTER_EGG_DISCOVERED, 'snowman_dance');
     };
 
     const animateFrosty = () => {
@@ -216,6 +257,7 @@ export const Avatar: React.FC<AvatarProps> = ({ name, userId, imageUrl, navigati
 
     if (theme.name === 'holiday') {
         return (
+            <>
             <TouchableWithoutFeedback onPress={handleTripleTap}>
                 <Animated.View 
                     style={[
@@ -281,24 +323,39 @@ export const Avatar: React.FC<AvatarProps> = ({ name, userId, imageUrl, navigati
                         <Animated.View 
                             style={{
                                 position: 'absolute',
-                                top: 0,
+                                top: hasSnowmanDanceEasterEgg ? -30 : 0,
                                 left: 0,
                                 right: 0,
                                 transform: [{ scaleY: hatScaleAnim }],
                                 transformOrigin: 'bottom center'
                             }}
                         >
-                            <Svg width={44} height={44} viewBox="0 0 44 44">
-                                {/* Top hat */}
+                            <Svg 
+                                width={44} 
+                                height={hasSnowmanDanceEasterEgg ? 74 : 44} 
+                                viewBox={hasSnowmanDanceEasterEgg ? "0 -30 44 74" : "0 0 44 44"}
+                            >
+                                {/* Top hat - extra tall if user discovered snowman_dance easter egg */}
+                                {/* Brim */}
                                 <Path d="M12 10 L32 10 L32 12 L12 12 Z" fill="#2C2C2C" />
-                                <Path d="M16 2 L28 2 L28 10 L16 10 Z" fill="#2C2C2C" />
-                                {/* Hat band */}
+                                {/* Hat body: normal is 8 units tall (2 to 10), easter egg is 40 units tall (-30 to 10) */}
+                                <Path d={hasSnowmanDanceEasterEgg ? "M16 -15 L28 -15 L28 10 L16 10 Z" : "M16 2 L28 2 L28 10 L16 10 Z"} fill="#2C2C2C" />
+                                {/* Hat band - positioned just above brim */}
                                 <Path d="M16 7 L28 7 L28 9 L16 9 Z" fill="#C41E3A" />
                             </Svg>
                         </Animated.View>
                     </View>
                 </Animated.View>
             </TouchableWithoutFeedback>
+            <InfoModal
+                visible={showEasterEggModal}
+                title="🎉 Easter Egg Found!"
+                message="You discovered the dancing snowman easter egg! You've earned a special flair ❄️ and a tall hat"
+                buttonLabel="Awesome!"
+                onClose={handleEasterEggModalClose}
+                icon="snow"
+            />
+            </>
         );
     }
 

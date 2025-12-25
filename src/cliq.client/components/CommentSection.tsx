@@ -20,6 +20,7 @@ import Username from "./Username";
 import { useTheme } from "../theme/ThemeContext";
 import { makeStyles } from "../theme/makeStyles";
 import { useAuth } from "../contexts/AuthContext";
+import { easterEggEvents, EASTER_EGG_DISCOVERED } from "../hooks/easterEggEvents";
 
 interface ThreadLineProps {
   color: string;
@@ -416,6 +417,14 @@ const CommentSection: React.FC<{
       setComments(post.comments);
     }
   }, [post]);
+
+  // Listen for easter egg discoveries and refresh to show updated flair
+  useEffect(() => {
+    const subscription = easterEggEvents.addListener(EASTER_EGG_DISCOVERED, () => {
+      loadPost();
+    });
+    return () => subscription.remove();
+  }, [loadPost]);
 
   const handleAddComment = async () => {
     if (newCommentText.trim()) {

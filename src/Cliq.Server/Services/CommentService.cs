@@ -169,7 +169,7 @@ public class CommentService : ICommentService
         var allComments = await _dbContext.Comments
             .Where(c => c.PostId == postId)
             //.Where(c => c.ParentCommentId == null) // root comments
-            .Include(c => c.User)
+            .Include(c => c.User).ThenInclude(u => u.DiscoveredEasterEggs)
             .Include(c => c.CarpoolSeats).ThenInclude(s => s.User)
             .OrderByDescending(c => c.Date)
             .ToListAsync();

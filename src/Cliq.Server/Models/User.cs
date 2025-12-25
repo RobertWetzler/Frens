@@ -21,12 +21,14 @@ public class User : IdentityUser<Guid>
     public ICollection<Friendship> FriendRequestsReceived { get; set; } = new List<Friendship>();
     public ICollection<Circle> OwnedCircles { get; set; }
     public ICollection<EfPushSubscription> PushSubscriptions { get; set; }
+    public ICollection<EasterEgg> DiscoveredEasterEggs { get; set; } = new List<EasterEgg>();
 }
 
 public class UserDto
 {
     public required Guid Id { get; set; }
     public required string Name { get; set; }
+    public List<EasterEggDto> DiscoveredEasterEggs { get; set; } = new List<EasterEggDto>();
 }
 
 public class UserProfileDto
