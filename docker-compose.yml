@@ -25,6 +25,8 @@ services:
   minio:
     image: quay.io/minio/minio
     container_name: cliq-minio
+    profiles:
+      - minio
     command: server /data --console-address ":9001"
     environment:
       - MINIO_ROOT_USER=cliq_local_key
@@ -42,6 +44,8 @@ services:
   minio-init:
     image: quay.io/minio/mc
     container_name: cliq-minio-init
+    profiles:
+      - minio
     depends_on:
       minio:
         condition: service_healthy
