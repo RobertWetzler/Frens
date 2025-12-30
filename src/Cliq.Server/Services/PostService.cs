@@ -1,6 +1,7 @@
 ﻿using AutoMapper;
 using Cliq.Server.Data;
 using Cliq.Server.Models;
+using Cliq.Server.Utilities;
 using Microsoft.EntityFrameworkCore;
 
 namespace Cliq.Server.Services;
@@ -766,6 +767,23 @@ public class PostService : IPostService
                     circleIds, 
                     user.Name, 
                     imageObjectKeys != null && imageObjectKeys.Any());
+
+                // Check for @mentions and notify mentioned friends
+                var mentionedFriendIds = await MentionParser.GetMentionedFriendIdsAsync(
+                    text, 
+                    userId, 
+                    _dbContext, 
+                    _friendshipService);
+
+                if (mentionedFriendIds.Any())
+                {
+                    await _eventNotificationService.SendPostMentionNotificationsAsync(
+                        post.Id,
+                        userId,
+                        user.Name,
+                        text,
+                        mentionedFriendIds);
+                }
             }
             catch (Exception ex)
             {

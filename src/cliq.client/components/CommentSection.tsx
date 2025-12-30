@@ -4,7 +4,6 @@ import {
   Text,
   ScrollView,
   TouchableOpacity,
-  TextInput,
   Switch,
   StyleSheet,
   SafeAreaView,
@@ -17,10 +16,12 @@ import { ApiClient } from "services/apiClient";
 import Post from "./Post";
 import Svg, { Path } from "react-native-svg";
 import Username from "./Username";
+import { MentionInput } from "./MentionInput";
 import { useTheme } from "../theme/ThemeContext";
 import { makeStyles } from "../theme/makeStyles";
 import { useAuth } from "../contexts/AuthContext";
 import { easterEggEvents, EASTER_EGG_DISCOVERED } from "../hooks/easterEggEvents";
+import { MentionText } from "./MentionText";
 
 interface ThreadLineProps {
   color: string;
@@ -265,7 +266,9 @@ const CommentTree: React.FC<CommentTreeProps> = ({
 
           {!collapsed && (
             <>
-              <Text style={styles.commentText}>{comment.text}</Text>
+              <Text style={styles.commentText}>
+                <MentionText text={comment.text || ''} style={styles.commentText} />
+              </Text>
               {carpoolSpots !== null && (
                 <View style={styles.carpoolInfoRow}>
                   <Text style={styles.carpoolInfoText}>
@@ -332,13 +335,13 @@ const CommentTree: React.FC<CommentTreeProps> = ({
                   {submitError && (
                     <Text style={styles.errorText}>{submitError}</Text>
                   )}
-                  <TextInput
-                    style={styles.replyInput}
+                  <MentionInput
                     value={replyText}
                     onChangeText={setReplyText}
                     placeholder="Type your reply..."
+                    style={styles.replyInput}
                     multiline
-                    editable={!isSubmitting}
+                    numberOfLines={3}
                   />
                   <View style={styles.replyButtons}>
                     <TouchableOpacity
@@ -601,12 +604,13 @@ const CommentSection: React.FC<{
               {submitError && (
                 <Text style={styles.errorText}>{submitError}</Text>
               )}
-              <TextInput
-                style={styles.addCommentInputActive}
-                placeholder="Add a comment..."
-                multiline
+              <MentionInput
                 value={newCommentText}
                 onChangeText={setNewCommentText}
+                placeholder="Add a comment..."
+                style={styles.addCommentInputActive}
+                multiline
+                numberOfLines={3}
                 autoFocus
               />
               <View style={styles.carpoolRow}>

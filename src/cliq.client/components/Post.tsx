@@ -13,6 +13,7 @@ import { useApi } from '../hooks/useApi';
 import DropdownMenu, { DropdownMenuItem } from './DropdownMenu';
 import ConfirmationModal from './ConfirmationModal';
 import { useSnowCollision } from '../contexts/SnowCollisionContext';
+import { MentionText } from './MentionText';
 
 interface PostProps {
   post: OptimisticPost,
@@ -379,7 +380,9 @@ const Post: React.FC<PostProps> = ({ post, navigation, isNavigable = true, anima
       </View>
       {/* Slot for specialized pre-content (e.g., Event title) */}
       {!isDeleted && renderPreContent ? (typeof renderPreContent === 'function' ? renderPreContent() : renderPreContent) : null}
-      <Text style={[styles.content, isDeleted && styles.deletedTextColor]}>{post.text}</Text>
+      <Text style={[styles.content, isDeleted && styles.deletedTextColor]}>
+        <MentionText text={post.text || ''} style={[styles.content, isDeleted && styles.deletedTextColor]} />
+      </Text>
       {/* Image grid with fullscreen viewer */}
       {!isDeleted && (
         <PostImageGrid

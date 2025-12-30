@@ -2438,6 +2438,7 @@ export class UserDto implements IUserDto {
     name?: string;
     profilePictureUrl?: string | undefined;
     discoveredEasterEggs?: EasterEggDto[];
+    userName?: string | undefined;
 
     constructor(data?: IUserDto) {
         if (data) {
@@ -2458,6 +2459,7 @@ export class UserDto implements IUserDto {
                 for (let item of _data["discoveredEasterEggs"])
                     this.discoveredEasterEggs!.push(EasterEggDto.fromJS(item));
             }
+            this.userName = _data["userName"];
         }
     }
 
@@ -2478,6 +2480,7 @@ export class UserDto implements IUserDto {
             for (let item of this.discoveredEasterEggs)
                 data["discoveredEasterEggs"].push(item.toJSON());
         }
+        data["userName"] = this.userName;
         return data;
     }
 }
@@ -2487,6 +2490,7 @@ export interface IUserDto {
     name?: string;
     profilePictureUrl?: string | undefined;
     discoveredEasterEggs?: EasterEggDto[];
+    userName?: string | undefined;
 }
 
 export class EasterEggDto implements IEasterEggDto {
@@ -4270,6 +4274,7 @@ export class UserProfileDto implements IUserProfileDto {
     id?: string;
     name?: string;
     profilePictureUrl?: string | undefined;
+    userName?: string | undefined;
     bio?: string;
     createdAt?: Date;
 
@@ -4287,6 +4292,7 @@ export class UserProfileDto implements IUserProfileDto {
             this.id = _data["id"];
             this.name = _data["name"];
             this.profilePictureUrl = _data["profilePictureUrl"];
+            this.userName = _data["userName"];
             this.bio = _data["bio"];
             this.createdAt = _data["createdAt"] ? new Date(_data["createdAt"].toString()) : <any>undefined;
         }
@@ -4304,6 +4310,7 @@ export class UserProfileDto implements IUserProfileDto {
         data["id"] = this.id;
         data["name"] = this.name;
         data["profilePictureUrl"] = this.profilePictureUrl;
+        data["userName"] = this.userName;
         data["bio"] = this.bio;
         data["createdAt"] = this.createdAt ? this.createdAt.toISOString() : <any>undefined;
         return data;
@@ -4314,6 +4321,7 @@ export interface IUserProfileDto {
     id?: string;
     name?: string;
     profilePictureUrl?: string | undefined;
+    userName?: string | undefined;
     bio?: string;
     createdAt?: Date;
 }

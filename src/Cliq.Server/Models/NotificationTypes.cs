@@ -408,6 +408,88 @@ public class NewSubscribableCircle : NotificationData
     }
 }
 
+/// <summary>
+/// Notification data for when a user is mentioned/tagged in a post
+/// </summary>
+public class PostMentionNotificationData : NotificationData
+{
+    public Guid PostId { get; set; }
+    public Guid AuthorId { get; set; }
+    public required string AuthorName { get; set; }
+    public string PostText { get; set; } = string.Empty;
+
+    public PostMentionNotificationData()
+    {
+        Type = NotificationType.PostMention;
+    }
+
+    public override string Title
+    {
+        get => $"{AuthorName}";
+        set { }
+    }
+
+    public override string Message
+    {
+        get => "mentioned you: " + (PostText.Length > 100 ? PostText[..100] + "..." : PostText);
+        set { }
+    }
+
+    public override string Metadata
+    {
+        get => new
+        {
+            Type = Type.ToString(),
+            PostId,
+            AuthorId,
+            PostText
+        }.ToJson();
+        set { }
+    }
+}
+
+/// <summary>
+/// Notification data for when a user is mentioned/tagged in a comment
+/// </summary>
+public class CommentMentionNotificationData : NotificationData
+{
+    public Guid CommentId { get; set; }
+    public Guid PostId { get; set; }
+    public Guid CommenterId { get; set; }
+    public required string CommenterName { get; set; }
+    public string CommentText { get; set; } = string.Empty;
+
+    public CommentMentionNotificationData()
+    {
+        Type = NotificationType.CommentMention;
+    }
+
+    public override string Title
+    {
+        get => $"{CommenterName}";
+        set { }
+    }
+
+    public override string Message
+    {
+        get => "mentioned you: " + (CommentText.Length > 100 ? CommentText[..100] + "..." : CommentText);
+        set { }
+    }
+
+    public override string Metadata
+    {
+        get => new
+        {
+            Type = Type.ToString(),
+            CommentId,
+            PostId,
+            CommenterId,
+            CommentText
+        }.ToJson();
+        set { }
+    }
+}
+
 public static class JsonExtensions
 {
     public static string ToJson(this object obj)

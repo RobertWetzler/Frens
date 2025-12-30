@@ -2,6 +2,7 @@
 using Cliq.Server.Data;
 using Cliq.Server.Models;
 using Cliq.Server.Services;
+using Cliq.Server.Utilities;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using Npgsql;
@@ -22,6 +23,7 @@ public class CommentService : ICommentService
     private readonly CliqDbContext _dbContext;
     private readonly IMapper _mapper;
     private readonly IEventNotificationService _eventNotificationService;
+    private readonly IFriendshipService _friendshipService;
     private readonly ILogger _logger;
     private readonly IUserActivityService _activityService;
     private readonly IObjectStorageService _storage;
@@ -29,6 +31,7 @@ public class CommentService : ICommentService
     public CommentService(CliqDbContext dbContext,
         IMapper mapper,
         IEventNotificationService eventNotificationService,
+        IFriendshipService friendshipService,
         ILogger<PostService> logger,
         IUserActivityService activityService,
         IObjectStorageService storage
@@ -37,6 +40,7 @@ public class CommentService : ICommentService
         _dbContext = dbContext;
         _mapper = mapper;
         _eventNotificationService = eventNotificationService;
+        _friendshipService = friendshipService;
         _logger = logger;
         _activityService = activityService;
         _storage = storage;
@@ -143,6 +147,24 @@ public class CommentService : ICommentService
                     replierId: comment.UserId,
                     replyText: comment.Text,
                     commenterName: commentWithUser.User!.Name);
+            }
+
+            // Check for @mentions and notify mentioned friends
+            var mentionedFriendIds = await MentionParser.GetMentionedFriendIdsAsync(
+                comment.Text,
+                comment.UserId,
+                _dbContext,
+                _friendshipService);
+
+            if (mentionedFriendIds.Any())
+            {
+                await _eventNotificationService.SendCommentMentionNotificationsAsync(
+                    comment.Id,
+                    comment.PostId,
+                    comment.UserId,
+                    commentWithUser.User!.Name,
+                    comment.Text,
+                    mentionedFriendIds);
             }
         }
         catch (Exception ex)

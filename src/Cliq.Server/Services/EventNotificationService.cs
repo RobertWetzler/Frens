@@ -19,7 +19,8 @@ public interface IEventNotificationService
     Task SendCarpoolReplyNotificationAsync(Guid postId, Guid commentId, Guid commentAuthorId, string commentText, Guid carpoolerId, string carpoolerName, bool isOptIn);
     Task SendAppAnnouncementAsync(string title, string body, string? actionUrl = null);
     Task SendNewSubscribableCircle(Guid authorId, string authorName, Guid circleId, string circleName, Guid[] recipients, Guid[] alreadyMembers);
-
+    Task SendPostMentionNotificationsAsync(Guid postId, Guid authorId, string authorName, string postText, IEnumerable<Guid> mentionedUserIds);
+    Task SendCommentMentionNotificationsAsync(Guid commentId, Guid postId, Guid commenterId, string commenterName, string commentText, IEnumerable<Guid> mentionedUserIds);
 }
 
 public class EventNotificationService : IEventNotificationService
@@ -211,5 +212,40 @@ public class EventNotificationService : IEventNotificationService
             await _notificationQueue.AddBulkAsync(_dbContext, alreadyMembers, notificationData);
 
         }
+    }
+
+    public async Task SendPostMentionNotificationsAsync(Guid postId, Guid authorId, string authorName, string postText, IEnumerable<Guid> mentionedUserIds)
+    {
+        var userIdsList = mentionedUserIds.ToList();
+        if (!userIdsList.Any())
+            return;
+
+        var notificationData = new PostMentionNotificationData
+        {
+            PostId = postId,
+            AuthorId = authorId,
+            AuthorName = authorName,
+            PostText = postText
+        };
+
+        await _notificationQueue.AddBulkAsync(_dbContext, userIdsList, notificationData);
+    }
+
+    public async Task SendCommentMentionNotificationsAsync(Guid commentId, Guid postId, Guid commenterId, string commenterName, string commentText, IEnumerable<Guid> mentionedUserIds)
+    {
+        var userIdsList = mentionedUserIds.ToList();
+        if (!userIdsList.Any())
+            return;
+
+        var notificationData = new CommentMentionNotificationData
+        {
+            CommentId = commentId,
+            PostId = postId,
+            CommenterId = commenterId,
+            CommenterName = commenterName,
+            CommentText = commentText
+        };
+
+        await _notificationQueue.AddBulkAsync(_dbContext, userIdsList, notificationData);
     }
 }

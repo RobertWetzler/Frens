@@ -3,7 +3,6 @@ import { ApiClient } from 'services/apiClient';
 import {
   View,
   Text,
-  TextInput,
   TouchableOpacity,
   KeyboardAvoidingView,
   Platform,
@@ -22,6 +21,7 @@ import * as ImagePicker from 'expo-image-picker';
 import * as FileSystem from 'expo-file-system'; // added for size lookup
 import { useFocusEffect } from '@react-navigation/native';
 import Header from 'components/Header';
+import { MentionInput } from 'components/MentionInput';
 import { useTheme } from '../theme/ThemeContext';
 import { makeStyles } from '../theme/makeStyles';
 import { feedEvents, FEED_POST_CREATED, FEED_POST_STATUS_UPDATED, OptimisticPost } from 'hooks/feedEvents';
@@ -314,15 +314,15 @@ const CreatePostScreen = ({ navigation, route }) => {
           }}
         />
 
-        <TextInput
-          style={styles.input}
-          placeholder={asEvent ? "What's this event about? (optional details)" : "What's boopping?"}
-          multiline
+        <MentionInput
           value={postContent}
           onChangeText={setPostContent}
-          autoFocus
+          placeholder={asEvent ? "What's this event about? (optional details)" : "What's boopping?"}
+          style={styles.input}
+          multiline
+          numberOfLines={6}
           maxLength={1000}
-          placeholderTextColor={theme.colors.inputPlaceholder}
+          autoFocus
         />
 
         {/* Event toggle */}

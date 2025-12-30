@@ -22,6 +22,7 @@ import CreatePostScreen from './screens/CreatePostScreen';
 import { ActivityIndicator, SafeAreaView } from 'react-native';
 import { ThemeProvider, useTheme } from './theme/ThemeContext';
 import { AuthProvider, useAuth } from 'contexts/AuthContext';
+import { MentionProvider } from 'contexts/MentionContext';
 import CreateCircleScreen from 'screens/CreateCircleScreen';
 import AddUsersToCircleScreen from 'screens/AddUsersToCircleScreen';
 import NotificationsScreen from 'screens/NotificationScreen';
@@ -434,17 +435,19 @@ export default function App() {
     <GestureHandlerRootView style={{ flex: 1 }}>
       <ThemeProvider>
         <AuthProvider>
-          <ShaderBackgroundProvider>
-            <SnowCollisionProvider>
-              {/* Wrapper View creates proper sibling relationship between shader background and MainApp,
-                  allowing z-index layering to work correctly with React Navigation's DOM structure.
-                  Needed for preventing MainApp UI from blocking background. */}
-              <View style={{ flex: 1 }}>
-                <GlobalShaderBackground />
-                <ThemedMainAppWrapper />
-              </View>
-            </SnowCollisionProvider>
-          </ShaderBackgroundProvider>
+          <MentionProvider>
+            <ShaderBackgroundProvider>
+              <SnowCollisionProvider>
+                {/* Wrapper View creates proper sibling relationship between shader background and MainApp,
+                    allowing z-index layering to work correctly with React Navigation's DOM structure.
+                    Needed for preventing MainApp UI from blocking background. */}
+                <View style={{ flex: 1 }}>
+                  <GlobalShaderBackground />
+                  <ThemedMainAppWrapper />
+                </View>
+              </SnowCollisionProvider>
+            </ShaderBackgroundProvider>
+          </MentionProvider>
         </AuthProvider>
       </ThemeProvider>
     </GestureHandlerRootView>
