@@ -1,8 +1,15 @@
-import React, { useRef, useImperativeHandle, forwardRef, useEffect } from 'react';
+import React, { useRef, useImperativeHandle, forwardRef, useEffect, useMemo } from 'react';
 import { GLView } from 'expo-gl';
 import { Dimensions, StyleSheet, Platform, View } from 'react-native'
 import { useTheme } from '../theme/ThemeContext';
 import SimpleSnowfall from './SimpleSnowfall';
+
+// Check if today is January 1st (New Year's Day)
+const isNewYearsDay = () => {
+    return true
+    const today = new Date();
+    return today.getMonth() === 0 && today.getDate() === 1;
+};
 
 // Basic vertex shader - passes texture coordinates to fragment shader
 const vertexShader = `
@@ -14,6 +21,99 @@ const vertexShader = `
     vUv = texCoord;
     gl_Position = position;
   }
+`;
+
+// Fireworks shader for New Year's Day with lava colors - OPTIMIZED
+const fireworksFragmentShader = `
+precision mediump float;
+uniform float time;
+uniform vec2 resolution;
+uniform vec3 uBgColor;
+varying vec2 vUv;
+
+// Lava colors
+const vec3 LAVA_RED = vec3(1.0, 0.2, 0.0);
+const vec3 LAVA_ORANGE = vec3(1.0, 0.5, 0.0);
+const vec3 LAVA_YELLOW = vec3(1.0, 0.8, 0.2);
+const vec3 LAVA_WHITE = vec3(1.0, 0.95, 0.8);
+
+float random(vec2 st) {
+    return fract(sin(dot(st, vec2(12.9898, 78.233))) * 43758.5453);
+}
+
+// Simplified firework - fewer particles, no trail loop
+float firework(vec2 uv, vec2 center, float seed) {
+    float t = mod(time + seed * 7.0, 3.5);
+    
+    if (t < 0.8) {
+        // Rising phase - simple trail
+        vec2 risePos = vec2(center.x, -0.6 + t * (center.y + 0.6) / 0.8);
+        float d = length(uv - risePos);
+        return smoothstep(0.025, 0.0, d) * (1.0 - t / 0.8);
+    } else if (t < 3.0) {
+        // Explosion phase - reduced to 12 particles, no inner trail loop
+        float explodeProgress = (t - 0.8) / 2.2;
+        float brightness = 0.0;
+        float particleLife = 1.0 - explodeProgress;
+        float life2 = particleLife * particleLife;
+        
+        // Only 12 particles instead of 24
+        for (float i = 0.0; i < 12.0; i++) {
+            float angle = i * 0.5236 + seed * 3.14159; // 0.5236 = 2PI/12
+            float speed = 0.25 + random(vec2(seed, i)) * 0.2;
+            
+            vec2 particlePos = center + vec2(
+                cos(angle) * speed * explodeProgress,
+                sin(angle) * speed * explodeProgress - explodeProgress * explodeProgress * 0.12
+            );
+            
+            float dist = length(uv - particlePos);
+            brightness += smoothstep(0.035, 0.0, dist) * life2;
+        }
+        
+        // Central flash
+        float flash = smoothstep(0.25, 0.0, explodeProgress) * smoothstep(0.12, 0.0, length(uv - center));
+        brightness += flash * 1.5;
+        
+        return brightness;
+    }
+    
+    return 0.0;
+}
+
+vec3 getLavaColor(float seed) {
+    float colorPhase = fract(seed * 3.7);
+    if (colorPhase < 0.33) {
+        return LAVA_RED;
+    } else if (colorPhase < 0.66) {
+        return LAVA_ORANGE;
+    } else {
+        return LAVA_YELLOW;
+    }
+}
+
+void main() {
+    vec2 uv = vUv * 2.0 - 1.0;
+    uv.x *= resolution.x / resolution.y;
+    
+    vec3 color = uBgColor * 0.25;
+    
+    // Reduced to 4 fireworks instead of 8
+    float fw1 = firework(uv, vec2(-0.4, 0.35), 0.0);
+    float fw2 = firework(uv, vec2(0.35, 0.5), 0.5);
+    float fw3 = firework(uv, vec2(0.5, 0.25), 1.0);
+    float fw4 = firework(uv, vec2(-0.25, 0.55), 1.5);
+    
+    color += getLavaColor(0.0) * fw1 * 1.4;
+    color += getLavaColor(0.5) * fw2 * 1.4;
+    color += getLavaColor(1.0) * fw3 * 1.4;
+    color += getLavaColor(1.5) * fw4 * 1.4;
+    
+    // Simple tone mapping
+    color = color / (color + 1.0);
+    
+    gl_FragColor = vec4(color, 1.0);
+}
 `;
 
 const fragmentShader = `
@@ -160,6 +260,9 @@ const ShaderBackground = forwardRef<ShaderBackgroundRef>((props, ref) => {
     console.log('ShaderBackground: Component rendering, Platform.OS:', Platform.OS);
     const { theme } = useTheme();
     
+    // Check if it's New Year's Day - use fireworks mode
+    const isFireworksMode = useMemo(() => isNewYearsDay(), []);
+    
     let gl = null;
     let program = null;
     let positionLocation = null;
@@ -238,9 +341,10 @@ const ShaderBackground = forwardRef<ShaderBackgroundRef>((props, ref) => {
         console.log('ShaderBackground: Setting up GL context', glContext);
         gl = glContext;
 
-        // Create shader program
+        // Create shader program - use fireworks shader on New Year's Day
         const vertShader = createShader(gl.VERTEX_SHADER, vertexShader);
-        const fragShader = createShader(gl.FRAGMENT_SHADER, fragmentShader);
+         const activeFragmentShader = isFireworksMode ? fireworksFragmentShader : fragmentShader;
+        const fragShader = createShader(gl.FRAGMENT_SHADER, activeFragmentShader);
 
         if (!vertShader || !fragShader) {
             console.error('ShaderBackground: Failed to create shaders');
@@ -257,17 +361,21 @@ const ShaderBackground = forwardRef<ShaderBackgroundRef>((props, ref) => {
             return;
         }
 
-        console.log('ShaderBackground: Shaders compiled and linked successfully');
+        console.log('ShaderBackground: Shaders compiled and linked successfully', isFireworksMode ? '(Fireworks Mode)' : '(Normal Mode)');
 
         // Get locations
         positionLocation = gl.getAttribLocation(program, 'position');
         texCoordLocation = gl.getAttribLocation(program, 'texCoord');
         timeLocation = gl.getUniformLocation(program, 'time');
         resolutionLocation = gl.getUniformLocation(program, 'resolution');
-    metaballRadiusLocation = gl.getUniformLocation(program, 'metaballRadius');
-    blob1Location = gl.getUniformLocation(program, 'uBlob1');
-    blob2Location = gl.getUniformLocation(program, 'uBlob2');
-    blob3Location = gl.getUniformLocation(program, 'uBlob3');
+    
+    // Only get these locations for normal mode (fireworks shader doesn't use them)
+    if (!isFireworksMode) {
+        metaballRadiusLocation = gl.getUniformLocation(program, 'metaballRadius');
+        blob1Location = gl.getUniformLocation(program, 'uBlob1');
+        blob2Location = gl.getUniformLocation(program, 'uBlob2');
+        blob3Location = gl.getUniformLocation(program, 'uBlob3');
+    }
     bgColorLocation = gl.getUniformLocation(program, 'uBgColor');
 
         // Create buffers
@@ -307,34 +415,41 @@ const ShaderBackground = forwardRef<ShaderBackgroundRef>((props, ref) => {
 
             gl.useProgram(program);
 
-                        // Set uniforms
+            // Set uniforms - common to both modes
             gl.uniform1f(timeLocation, time);
             gl.uniform2f(resolutionLocation, width, height);
-                        gl.uniform1f(metaballRadiusLocation, animationRef.current.currentRadius);
-                        // Parse hex (#RGB, #RRGGBB, #RRGGBBAA) into normalized RGB, ignoring alpha
-                        const hexToRGB = (hex) => {
-                            if (!hex) return [1,1,1];
-                            let h = hex.trim().replace('#','');
-                            if (h.length === 3) { // expand short form
-                                h = h.split('').map(c => c + c).join('');
-                            }
-                            if (h.length === 8) { // strip alpha
-                                h = h.substring(0,6);
-                            }
-                            if (h.length !== 6) return [1,1,1];
-                            const r = parseInt(h.slice(0,2),16);
-                            const g = parseInt(h.slice(2,4),16);
-                            const b = parseInt(h.slice(4,6),16);
-                            return [r/255, g/255, b/255];
-                        };
-                        const [r1,g1,b1] = hexToRGB(theme.colors.blob1);
-                        const [r2,g2,b2] = hexToRGB(theme.colors.blob2);
-                        const [r3,g3,b3] = hexToRGB(theme.colors.blob3);
-                        const [br,bg,bb] = hexToRGB(theme.colors.backgroundAlt || '#000000');
-                        gl.uniform3f(blob1Location, r1,g1,b1);
-                        gl.uniform3f(blob2Location, r2,g2,b2);
-                        gl.uniform3f(blob3Location, r3,g3,b3);
-                        gl.uniform3f(bgColorLocation, br,bg,bb);
+            
+            // Parse hex (#RGB, #RRGGBB, #RRGGBBAA) into normalized RGB, ignoring alpha
+            const hexToRGB = (hex) => {
+                if (!hex) return [1,1,1];
+                let h = hex.trim().replace('#','');
+                if (h.length === 3) { // expand short form
+                    h = h.split('').map(c => c + c).join('');
+                }
+                if (h.length === 8) { // strip alpha
+                    h = h.substring(0,6);
+                }
+                if (h.length !== 6) return [1,1,1];
+                const r = parseInt(h.slice(0,2),16);
+                const g = parseInt(h.slice(2,4),16);
+                const b = parseInt(h.slice(4,6),16);
+                return [r/255, g/255, b/255];
+            };
+            
+            // Background color is used in both modes
+            const [br,bg,bb] = hexToRGB(theme.colors.backgroundAlt || '#000000');
+            gl.uniform3f(bgColorLocation, br,bg,bb);
+            
+            // Only set metaball-specific uniforms in normal mode
+            if (!isFireworksMode) {
+                gl.uniform1f(metaballRadiusLocation, animationRef.current.currentRadius);
+                const [r1,g1,b1] = hexToRGB(theme.colors.blob1);
+                const [r2,g2,b2] = hexToRGB(theme.colors.blob2);
+                const [r3,g3,b3] = hexToRGB(theme.colors.blob3);
+                gl.uniform3f(blob1Location, r1,g1,b1);
+                gl.uniform3f(blob2Location, r2,g2,b2);
+                gl.uniform3f(blob3Location, r3,g3,b3);
+            }
 
             // Set attributes
             gl.bindBuffer(gl.ARRAY_BUFFER, positionBuffer);
@@ -361,11 +476,14 @@ const ShaderBackground = forwardRef<ShaderBackgroundRef>((props, ref) => {
                 style={styles.glView}
                 onContextCreate={setupGL}
             />
-            <SimpleSnowfall
-                count={200}
-                minSize={2}
-                maxSize={6}
-            />
+            {/* Show snowfall only when not in fireworks mode */}
+            {!isFireworksMode && (
+                <SimpleSnowfall
+                    count={200}
+                    minSize={2}
+                    maxSize={6}
+                />
+            )}
         </View>
     );
 });

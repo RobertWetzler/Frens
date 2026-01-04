@@ -147,7 +147,7 @@ export default function SignInScreen({ route, navigation }: SignInScreenProps) {
     const handleExpandBlobs = () => {
         animateToExpanded(); // Use context method
         
-        // Create parallel animations for zoom effect
+        // Create parallel animations for zoom effect (native driver)
         Animated.parallel([
             // Fade out the UI elements
             Animated.timing(fadeAnim, {
@@ -161,19 +161,22 @@ export default function SignInScreen({ route, navigation }: SignInScreenProps) {
                 duration: 1200, // Scale over 1.2 seconds
                 useNativeDriver: true,
             }),
-            // Add blur effect during zoom
+        ]).start();
+        
+        // Blur animation runs separately (web only, can't use native driver)
+        if (Platform.OS === 'web') {
             Animated.timing(blurAnim, {
                 toValue: 10, // Maximum blur
                 duration: 1000, // Blur over 1 second
-                useNativeDriver: false, // Blur can't use native driver
-            }),
-        ]).start();
+                useNativeDriver: false,
+            }).start();
+        }
     };
 
     const handleShrinkBlobs = () => {
         animateToCollapsed(); // Use context method
         
-        // Create parallel animations to reset zoom effect
+        // Create parallel animations to reset zoom effect (native driver)
         Animated.parallel([
             // Fade in the UI elements
             Animated.timing(fadeAnim, {
@@ -187,13 +190,16 @@ export default function SignInScreen({ route, navigation }: SignInScreenProps) {
                 duration: 800, // Scale back over 800ms
                 useNativeDriver: true,
             }),
-            // Remove blur effect
+        ]).start();
+        
+        // Remove blur effect separately (web only, can't use native driver)
+        if (Platform.OS === 'web') {
             Animated.timing(blurAnim, {
                 toValue: 0, // No blur
                 duration: 600, // Remove blur over 600ms
                 useNativeDriver: false,
-            }),
-        ]).start();
+            }).start();
+        }
     };
 
     // Removed CSS link injection; font now loaded via expo-font in App.tsx
@@ -280,16 +286,7 @@ export default function SignInScreen({ route, navigation }: SignInScreenProps) {
                                           extrapolate: 'clamp',
                                       }),
                                   }
-                                : {
-                                      opacity: Animated.multiply(
-                                          fadeAnim,
-                                          blurAnim.interpolate({
-                                              inputRange: [0, 10],
-                                              outputRange: [1, 0.7],
-                                              extrapolate: 'clamp',
-                                          })
-                                      ),
-                                  }),
+                                : {}),
                         },
                     ]}
                 >
