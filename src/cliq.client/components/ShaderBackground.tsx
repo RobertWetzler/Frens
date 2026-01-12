@@ -6,7 +6,6 @@ import SimpleSnowfall from './SimpleSnowfall';
 
 // Check if today is January 1st (New Year's Day)
 const isNewYearsDay = () => {
-    return true
     const today = new Date();
     return today.getMonth() === 0 && today.getDate() === 1;
 };
@@ -23,7 +22,7 @@ const vertexShader = `
   }
 `;
 
-// Fireworks shader for New Year's Day with lava colors - OPTIMIZED
+// Fireworks shader for New Year's Day - adapted from Shadertoy
 const fireworksFragmentShader = `
 precision mediump float;
 uniform float time;
@@ -31,88 +30,138 @@ uniform vec2 resolution;
 uniform vec3 uBgColor;
 varying vec2 vUv;
 
-// Lava colors
-const vec3 LAVA_RED = vec3(1.0, 0.2, 0.0);
-const vec3 LAVA_ORANGE = vec3(1.0, 0.5, 0.0);
-const vec3 LAVA_YELLOW = vec3(1.0, 0.8, 0.2);
-const vec3 LAVA_WHITE = vec3(1.0, 0.95, 0.8);
+#define SPARKS 30
+#define FIREWORKS 8.0
+#define BASE_PAUSE (FIREWORKS / 30.0)
+#define PI 3.14159265
+#define PI2 6.28318530
 
-float random(vec2 st) {
-    return fract(sin(dot(st, vec2(12.9898, 78.233))) * 43758.5453);
+float n21(vec2 n) {
+    return fract(sin(dot(n, vec2(12.9898, 4.1414))) * 43758.5453);
 }
 
-// Simplified firework - fewer particles, no trail loop
-float firework(vec2 uv, vec2 center, float seed) {
-    float t = mod(time + seed * 7.0, 3.5);
-    
-    if (t < 0.8) {
-        // Rising phase - simple trail
-        vec2 risePos = vec2(center.x, -0.6 + t * (center.y + 0.6) / 0.8);
-        float d = length(uv - risePos);
-        return smoothstep(0.025, 0.0, d) * (1.0 - t / 0.8);
-    } else if (t < 3.0) {
-        // Explosion phase - reduced to 12 particles, no inner trail loop
-        float explodeProgress = (t - 0.8) / 2.2;
-        float brightness = 0.0;
-        float particleLife = 1.0 - explodeProgress;
-        float life2 = particleLife * particleLife;
-        
-        // Only 12 particles instead of 24
-        for (float i = 0.0; i < 12.0; i++) {
-            float angle = i * 0.5236 + seed * 3.14159; // 0.5236 = 2PI/12
-            float speed = 0.25 + random(vec2(seed, i)) * 0.2;
-            
-            vec2 particlePos = center + vec2(
-                cos(angle) * speed * explodeProgress,
-                sin(angle) * speed * explodeProgress - explodeProgress * explodeProgress * 0.12
-            );
-            
-            float dist = length(uv - particlePos);
-            brightness += smoothstep(0.035, 0.0, dist) * life2;
+vec2 randomSpark(float noise) {
+    vec2 v0 = vec2((noise - 0.5) * 13.0, (fract(noise * 123.0) - 0.5) * 15.0);
+    return v0;
+}
+
+vec2 circularSpark(float i, float noiseId, float noiseSpark) {
+    noiseId = fract(noiseId * 7897654.45);
+    float a = (PI2 / float(SPARKS)) * i;
+    float speed = 10.0 * clamp(noiseId, 0.7, 1.0);
+    float x = sin(a + time * ((noiseId - 0.5) * 3.0));
+    float y = cos(a + time * (fract(noiseId * 4567.332) - 0.5) * 2.0);
+    vec2 v0 = vec2(x, y) * speed;
+    return v0;
+}
+
+vec2 rocket(vec2 start, float t) {
+    float y = t;
+    float x = sin(y * 10.0 + cos(t * 3.0)) * 0.1;
+    vec2 p = start + vec2(x, y * 8.0);
+    return p;
+}
+
+vec3 firework(vec2 uv, float index, float pauseTime) {
+    vec3 col = vec3(0.0);
+
+    float timeScale = 2.0;
+    vec2 gravity = vec2(0.0, -9.8);
+
+    float explodeTime = 0.9;
+    float rocketTime = 2.1;
+    float episodeTime = rocketTime + explodeTime + pauseTime;
+
+    float ratio = resolution.x / resolution.y;
+
+    float timeScaled = (time - pauseTime) / timeScale;
+
+    float id = floor(timeScaled / episodeTime);
+    float et = mod(timeScaled, episodeTime);
+
+    float noiseId = n21(vec2(id + 1.0, index + 1.0));
+
+    float scale = clamp(fract(noiseId * 567.53) * 30.0, 10.0, 30.0);
+    uv *= scale;
+
+    rocketTime -= (fract(noiseId * 1234.543) * 0.5);
+
+    vec2 pRocket = rocket(vec2(0.0 + ((noiseId - 0.5) * scale * ratio), 0.0 - scale / 2.0), clamp(et, 0.0, rocketTime));
+
+    if (et < rocketTime) {
+        float rd = length(uv - pRocket);
+        col += pow(0.05 / rd, 1.9) * vec3(0.9, 0.3, 0.0);
+    }
+
+    if (et > rocketTime && et < (rocketTime + explodeTime)) {
+        float burst = sign(fract(noiseId * 44432.22) - 0.6);
+        for (int i = 0; i < SPARKS; i++) {
+            vec2 center = pRocket;
+            float fi = float(i);
+            float noiseSpark = fract(n21(vec2(id * 10.0 + index * 20.0, float(i + 1))) * 332.44);
+            float t = et - rocketTime;
+            vec2 v0;
+
+            if (fract(noiseId * 3532.33) > 0.5) {
+                v0 = randomSpark(noiseSpark);
+                t -= noiseSpark * (fract(noiseId * 543.0) * 0.2);
+            } else {
+                v0 = circularSpark(fi, noiseId, noiseSpark);
+
+                if ((fract(noiseId * 973.22) - 0.5) > 0.0) {
+                    float re = mod(fi, 4.0 + 10.0 * noiseId);
+                    t -= floor(re / 2.0) * burst * 0.1;
+                } else {
+                    t -= mod(fi, 2.0) == 0.0 ? 0.0 : burst * 0.5 * clamp(noiseId, 0.3, 1.0);
+                }
+            }
+
+            vec2 s = v0 * t + (gravity * t * t) / 2.0;
+            vec2 p = center + s;
+            float d = length(uv - p);
+
+            if (t > 0.0) {
+                float fade = clamp((1.0 - t / explodeTime), 0.0, 1.0);
+                vec3 sparkColor = vec3(noiseId * 0.9, 0.5 * fract(noiseId * 456.33), 0.5 * fract(noiseId * 1456.33));
+                vec3 c = (0.05 / d) * sparkColor;
+                col += c * fade;
+            }
         }
-        
-        // Central flash
-        float flash = smoothstep(0.25, 0.0, explodeProgress) * smoothstep(0.12, 0.0, length(uv - center));
-        brightness += flash * 1.5;
-        
-        return brightness;
     }
-    
-    return 0.0;
-}
 
-vec3 getLavaColor(float seed) {
-    float colorPhase = fract(seed * 3.7);
-    if (colorPhase < 0.33) {
-        return LAVA_RED;
-    } else if (colorPhase < 0.66) {
-        return LAVA_ORANGE;
-    } else {
-        return LAVA_YELLOW;
-    }
+    return col;
 }
 
 void main() {
-    vec2 uv = vUv * 2.0 - 1.0;
+    vec2 uv = gl_FragCoord.xy / resolution.xy;
+    uv -= 0.5;
     uv.x *= resolution.x / resolution.y;
+
+    // Animated background with soft red/purple glows
+    vec2 bgUv = gl_FragCoord.xy / resolution.xy;
+    float slowTime = time * 0.3;
     
-    vec3 color = uBgColor * 0.25;
+    vec2 glow1 = vec2(0.3 + sin(slowTime * 0.7) * 0.2, 0.4 + cos(slowTime * 0.5) * 0.2);
+    vec2 glow2 = vec2(0.7 + cos(slowTime * 0.6) * 0.2, 0.6 + sin(slowTime * 0.8) * 0.2);
+    vec2 glow3 = vec2(0.5 + sin(slowTime * 0.4) * 0.3, 0.3 + cos(slowTime * 0.9) * 0.2);
     
-    // Reduced to 4 fireworks instead of 8
-    float fw1 = firework(uv, vec2(-0.4, 0.35), 0.0);
-    float fw2 = firework(uv, vec2(0.35, 0.5), 0.5);
-    float fw3 = firework(uv, vec2(0.5, 0.25), 1.0);
-    float fw4 = firework(uv, vec2(-0.25, 0.55), 1.5);
+    float g1 = 0.15 / (0.3 + length(bgUv - glow1));
+    float g2 = 0.12 / (0.3 + length(bgUv - glow2));
+    float g3 = 0.1 / (0.3 + length(bgUv - glow3));
     
-    color += getLavaColor(0.0) * fw1 * 1.4;
-    color += getLavaColor(0.5) * fw2 * 1.4;
-    color += getLavaColor(1.0) * fw3 * 1.4;
-    color += getLavaColor(1.5) * fw4 * 1.4;
-    
-    // Simple tone mapping
-    color = color / (color + 1.0);
-    
-    gl_FragColor = vec4(color, 1.0);
+    vec3 col = vec3(0.02, 0.01, 0.04);
+    col += vec3(0.4, 0.05, 0.15) * g1;
+    col += vec3(0.2, 0.05, 0.35) * g2;
+    col += vec3(0.35, 0.1, 0.25) * g3;
+
+    for (float i = 0.0; i < FIREWORKS; i += 1.0) {
+        col += firework(uv, i + 1.0, (i * BASE_PAUSE));
+    }
+
+    // Tone mapping
+    col = col / (col + 1.0);
+
+    gl_FragColor = vec4(col, 1.0);
 }
 `;
 
