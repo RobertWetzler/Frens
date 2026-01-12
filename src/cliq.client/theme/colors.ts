@@ -129,16 +129,25 @@ export const halloweenTheme: Theme = {
   }
 };
 
-const holidayTheme = lightTheme;
+const holidayTheme: Theme = {
+  ...lightTheme,
+  colors: { ...lightTheme.colors },
+  gradients: lightTheme.gradients
+    ? {
+        primary: [...lightTheme.gradients.primary],
+        accent: [...lightTheme.gradients.accent],
+      }
+    : undefined,
+};
 holidayTheme.name = 'holiday';
 holidayTheme.gradients = {
   accent: ['#56e1f4ff', '#4274fdff'],
   primary: ['#f06c6cff','#da9358ff', ],
 };
-holidayTheme.colors.card = "#ffffffa2";
-holidayTheme.colors.blob1 = '#3f70f6ff';
-holidayTheme.colors.blob2 = '#389bffff'
-holidayTheme.colors.blob3 = '#bcf2ffff';
+// holidayTheme.colors.card = "#ffffffa2";
+// holidayTheme.colors.blob1 = '#3f70f6ff';
+// holidayTheme.colors.blob2 = '#389bffff'
+// holidayTheme.colors.blob3 = '#bcf2ffff';
 
 
 // Registered themes. Keeping 'dark' pointing at halloweenTheme for backward compatibility

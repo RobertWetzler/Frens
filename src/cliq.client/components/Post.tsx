@@ -35,12 +35,16 @@ const Post: React.FC<PostProps> = ({ post, navigation, isNavigable = true, anima
   const deleteOpacity = useRef(new Animated.Value(1)).current;
   const deleteHeight = useRef(new Animated.Value(1)).current;
   const { user: currentUser } = useAuth();
+  const { theme } = useTheme();
   const [menuVisible, setMenuVisible] = useState(false);
   const [deleteModalVisible, setDeleteModalVisible] = useState(false);
   const [isAnimatingDelete, setIsAnimatingDelete] = useState(false);
   const [shouldHide, setShouldHide] = useState(false);
   const { setTopPostBoundary } = useSnowCollision();
   const postRef = useRef<View>(null);
+  
+  // Only enable snow collision computations when theme is holiday
+  const isHolidayTheme = theme.name === 'holiday';
 
   // Delete post API call (lazy - only called when user confirms delete)
   const { refetch: deletePost, isLoading: isDeleting } = useApi(
@@ -149,8 +153,11 @@ const Post: React.FC<PostProps> = ({ post, navigation, isNavigable = true, anima
     }
   }, [post]);
 
-  // Measure post position for snow collision (only if first post)
+  // Measure post position for snow collision (only if first post and holiday theme)
   useEffect(() => {
+    // Skip all snow-related computations if not holiday theme
+    if (!isHolidayTheme) return;
+    
     if (isFirstPost && postRef.current) {
       const measurePost = () => {
         postRef.current?.measure((x, y, width, height, pageX, pageY) => {
@@ -188,7 +195,7 @@ const Post: React.FC<PostProps> = ({ post, navigation, isNavigable = true, anima
       console.log('📍 Clearing post boundary (not first post)');
       setTopPostBoundary(null);
     }
-  }, [isFirstPost, shouldAnimate, animationDelay, setTopPostBoundary]);
+  }, [isFirstPost, shouldAnimate, animationDelay, setTopPostBoundary, isHolidayTheme]);
 
   // Handle delete animation
   useEffect(() => {
@@ -298,7 +305,6 @@ const Post: React.FC<PostProps> = ({ post, navigation, isNavigable = true, anima
     return date.toLocaleString('en-US', options);
   };
 
-  const { theme } = useTheme();
   const styles = useStyles();
 
   const imageCount = (post as any).imageCount ?? (post.hasImage ? 1 : 0);

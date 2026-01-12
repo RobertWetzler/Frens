@@ -52,6 +52,9 @@ const HomeScreen = ({ navigation }) => {
     const [isPilingDelayComplete, setIsPilingDelayComplete] = useState(false);
     const { theme } = useTheme();
     const styles = useStyles();
+    
+    // Only enable snow piling computations when theme is holiday
+    const isHolidayTheme = theme.name === 'holiday';
 
     // Calculate how many posts should be animated (visible on initial screen load)
     const VISIBLE_POSTS_COUNT = 7;
@@ -72,8 +75,11 @@ const HomeScreen = ({ navigation }) => {
         }
     }, [isExpanded, animateToExpanded]);
 
-    // Disable snow piling during initial animation, enable after delay
+    // Disable snow piling during initial animation, enable after delay (only for holiday theme)
     useEffect(() => {
+        // Skip all piling computations if not holiday theme
+        if (!isHolidayTheme) return;
+        
         // Start with piling disabled
         setIsPilingActive(false);
         
@@ -88,7 +94,7 @@ const HomeScreen = ({ navigation }) => {
             
             return () => clearTimeout(timer);
         }
-    }, [posts, isLoading, setIsPilingActive]);
+    }, [posts, isLoading, setIsPilingActive, isHolidayTheme]);
 
     // Mark that we've moved past first load when posts come in (only for initial load)
     useEffect(() => {
@@ -345,8 +351,8 @@ const HomeScreen = ({ navigation }) => {
                     // Update animated scroll value
                     scrollY.setValue(event.nativeEvent.contentOffset.y);
                     
-                    // Only manage piling based on scroll if initial delay is complete
-                    if (isPilingDelayComplete) {
+                    // Only manage piling based on scroll if initial delay is complete AND holiday theme
+                    if (isHolidayTheme && isPilingDelayComplete) {
                         // Check if scrolled past first post height (deactivate snow piling)
                         const scrollOffset = event.nativeEvent.contentOffset.y;
                         const threshold = firstPostHeight > 0 ? firstPostHeight / 8 : 150; // Default to 150 if not measured

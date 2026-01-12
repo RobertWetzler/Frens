@@ -305,7 +305,7 @@ export default function SignInScreen({ route, navigation }: SignInScreenProps) {
                             }
                         ]}>Giving 🦃</Text>
                     {/* )} */}
-                    <Text style={[
+                    {/* <Text style={[
                             styles.appName,
                             {
                                 fontFamily: 'Holiday',
@@ -316,7 +316,7 @@ export default function SignInScreen({ route, navigation }: SignInScreenProps) {
                                 marginTop: -10,
                                 marginBottom: 30,
                             }
-                        ]}>sleigh edition</Text>
+                        ]}>sleigh edition</Text> */}
                     <Text style={styles.subtitle}>Connect with your community</Text>
                     <View style={styles.signInContainer}>
                         <Text style={styles.signInText}>Sign in to continue</Text>

@@ -525,8 +525,8 @@ const ShaderBackground = forwardRef<ShaderBackgroundRef>((props, ref) => {
                 style={styles.glView}
                 onContextCreate={setupGL}
             />
-            {/* Show snowfall only when not in fireworks mode */}
-            {!isFireworksMode && (
+            {/* Show snowfall only when not in fireworks mode OR theme is holiday */}
+            {(!isFireworksMode && theme.name === 'holiday') && (
                 <SimpleSnowfall
                     count={200}
                     minSize={2}
