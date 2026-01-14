@@ -24,12 +24,14 @@ public class CommentService : ICommentService
     private readonly IEventNotificationService _eventNotificationService;
     private readonly ILogger _logger;
     private readonly IUserActivityService _activityService;
+    private readonly IObjectStorageService _storage;
 
     public CommentService(CliqDbContext dbContext,
         IMapper mapper,
         IEventNotificationService eventNotificationService,
         ILogger<PostService> logger,
-        IUserActivityService activityService
+        IUserActivityService activityService,
+        IObjectStorageService storage
         )
     {
         _dbContext = dbContext;
@@ -37,6 +39,7 @@ public class CommentService : ICommentService
         _eventNotificationService = eventNotificationService;
         _logger = logger;
         _activityService = activityService;
+        _storage = storage;
     }
 
     /// <summary>
@@ -189,11 +192,32 @@ public class CommentService : ICommentService
     /// </summary>
     private CommentDto MapCommentToDto(Comment comment)
     {
-        return comment.Type switch
+        var dto = comment.Type switch
         {
             CommentType.Carpool => _mapper.Map<CarpoolCommentDto>(comment),
             _ => _mapper.Map<CommentDto>(comment)
         };
+        
+        // Populate profile picture URL for comment author
+        if (dto.User != null && comment.User != null && !string.IsNullOrEmpty(comment.User.ProfilePictureKey))
+        {
+            dto.User.ProfilePictureUrl = _storage.GetProfilePictureUrl(comment.User.ProfilePictureKey);
+        }
+        
+        // For carpool comments, also populate profile pictures for riders
+        if (dto is CarpoolCommentDto carpoolDto && comment.CarpoolSeats != null)
+        {
+            foreach (var rider in carpoolDto.CarpoolRiders)
+            {
+                var seat = comment.CarpoolSeats.FirstOrDefault(s => s.UserId == rider.Id);
+                if (seat?.User != null && !string.IsNullOrEmpty(seat.User.ProfilePictureKey))
+                {
+                    rider.ProfilePictureUrl = _storage.GetProfilePictureUrl(seat.User.ProfilePictureKey);
+                }
+            }
+        }
+        
+        return dto;
     }
 
     /// <summary>

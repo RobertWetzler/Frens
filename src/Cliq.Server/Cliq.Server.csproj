@@ -42,14 +42,21 @@
 		<PackageReference Include="NSwag.MSBuild" Version="14.2.0" />
 		<PackageReference Include="Swashbuckle.AspNetCore" Version="7.1.0" />
 	</ItemGroup>
-	<!-- Determine how to resolve nswag exe command. On MacOS it should be: dotnet "/Users/robertwetzler/.nuget/packages/nswag.msbuild/14.2.0/build/../tools/Net80/dotnet-nswag.dll"
-	https://github.com/RicoSuter/NSwag/issues/2444#issuecomment-604284806
+	<!-- NSwag TypeScript Client Generation on Build -->
+	<PropertyGroup>
+		<GenerateTypeScriptClient Condition="'$(GenerateTypeScriptClient)' == ''">true</GenerateTypeScriptClient>
+	</PropertyGroup>
 	
-	<Target Name="NSwag" AfterTargets="Build">
-		<Exec EnvironmentVariables="ASPNET./bCORE_ENVIRONMENT=Development" Command="$(NSwagExe) aspnetcore2openapi /assembly:$(TargetDir)Cliq.Server.dll /output:swagger.json" />
-		<Exec Command="$(NSwagExe) openapi2tsclient /input:swagger.json /output:Scripts/MyController.ts" />
+	<Target Name="NSwag" AfterTargets="PostBuildEvent" Condition="'$(GenerateTypeScriptClient)' == 'true'">
+		<Message Text="Generating TypeScript client from Swagger..." Importance="high" />
+		<!-- Generate swagger.json from the compiled project (uses ApiExplorer, no running server needed) -->
+		<Exec Command="$(NSwagExe_Net80) aspnetcore2openapi /Project:$(MSBuildProjectFullPath) /NoBuild:true /Output:$(MSBuildProjectDirectory)/swagger.json" 
+			  WorkingDirectory="$(MSBuildProjectDirectory)"
+			  EnvironmentVariables="ASPNETCORE_ENVIRONMENT=Development" />
+		<!-- Generate TypeScript client from swagger.json -->
+		<Exec Command="$(NSwagExe_Net80) openapi2tsclient /Input:$(MSBuildProjectDirectory)/swagger.json /Output:$(MSBuildProjectDirectory)/../cliq.client/services/generated/generatedClient.ts /Template:Fetch /TypeStyle:Class /UseAbortSignal:true /OperationGenerationMode:SingleClientFromOperationId /ClassName:Client" />
+		<Message Text="TypeScript client generated successfully!" Importance="high" />
 	</Target>
-	-->
 	
 	<Target Name="BuildFrontend" BeforeTargets="Build" Condition="'$(BuildFrontendEnabled)' == 'true'">
 		<Exec Command="./build-frontend.sh" WorkingDirectory="$(MSBuildProjectDirectory)" />

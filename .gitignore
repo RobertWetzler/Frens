@@ -8,3 +8,6 @@ wwwroot
 
 # Native iOS project (ignored)
 src/cliq.client/ios/
+
+# Generated swagger.json (build artifact)
+src/Cliq.Server/swagger.json
