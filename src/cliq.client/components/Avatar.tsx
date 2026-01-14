@@ -261,7 +261,7 @@ export const Avatar: React.FC<AvatarProps> = ({ name, userId, imageUrl, navigati
         );
     }
 
-    if (theme.name === 'holiday') {
+    if (theme.name === 'holiday' || isCarlyn || isSpencer) {
         return (
             <>
             <TouchableWithoutFeedback onPress={handleTripleTap}>

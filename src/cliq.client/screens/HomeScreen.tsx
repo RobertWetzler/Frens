@@ -252,7 +252,7 @@ const HomeScreen = ({ navigation }) => {
                             )}
                             <Text style={[styles.headerTitle, theme.name === 'halloween' && { fontFamily: 'SpookyHalloween', fontWeight: '400' }]}>Frens</Text>
                             {/* <Text style={[styles.headerSubtitle, theme.name === 'halloween' && { fontFamily: 'SpookyHalloween', fontWeight: '100' }]}>spooky edition</Text> */}
-                            <Text style={[styles.headerSubtitle, { fontFamily: 'Holiday', fontSize: 20, fontWeight: '100' }]}>Sleigh edition</Text>
+                            {/* <Text style={[styles.headerSubtitle, { fontFamily: 'Holiday', fontSize: 20, fontWeight: '100' }]}>Sleigh edition</Text> */}
                         </View>
                         <NotificationBell
                             onPress={() => navigation.navigate('Notifications')}
