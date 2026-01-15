@@ -20,19 +20,22 @@ namespace Cliq.Server.Controllers
         private readonly IPostService _postService;
         private readonly IMapper _mapper;
         private readonly CliqDbContext _context;
+        private readonly IObjectStorageService _storage;
 
         public ProfileController(
             UserManager<User> userManager,
             IFriendshipService friendshipService,
             IPostService postService,
             IMapper mapper,
-            CliqDbContext context)
+            CliqDbContext context,
+            IObjectStorageService storage)
         {
             _userManager = userManager;
             _friendshipService = friendshipService;
             _postService = postService;
             _mapper = mapper;
             _context = context;
+            _storage = storage;
         }
 
         [HttpGet]
@@ -51,6 +54,12 @@ namespace Cliq.Server.Controllers
 
             // Map user to profile DTO
             var userProfile = _mapper.Map<UserProfileDto>(user);
+            
+            // Set profile picture URL if user has one
+            if (!string.IsNullOrEmpty(user.ProfilePictureKey))
+            {
+                userProfile.ProfilePictureUrl = _storage.GetProfilePictureUrl(user.ProfilePictureKey);
+            }
 
             // Initialize response
             var response = new ProfilePageResponseDto
@@ -94,6 +103,73 @@ namespace Cliq.Server.Controllers
             return Ok(response);
         }
 
+        [HttpPost("picture")]
+        [RequestSizeLimit(10_000_000)] // ~10MB limit for profile pictures
+        [Consumes("multipart/form-data")]
+        [ProducesResponseType(typeof(ProfilePictureResponseDto), StatusCodes.Status200OK)]
+        public async Task<ActionResult<ProfilePictureResponseDto>> UploadProfilePicture([FromForm] UploadProfilePictureRequest request)
+        {
+            var currentUserId = Guid.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier));
+            
+            if (request.Image == null || request.Image.Length == 0)
+            {
+                return BadRequest("No image provided");
+            }
+
+            var allowed = new[] { "image/png", "image/jpeg", "image/heic", "image/webp" };
+            if (!allowed.Contains(request.Image.ContentType))
+            {
+                return BadRequest($"Unsupported image content type: {request.Image.ContentType}");
+            }
+
+            if (request.Image.Length > 10_000_000)
+            {
+                return BadRequest("Image too large (>10MB)");
+            }
+
+            var imageProcessor = HttpContext.RequestServices.GetService<IImageProcessingService>();
+            if (imageProcessor == null)
+            {
+                return StatusCode(StatusCodes.Status500InternalServerError, "Image processing service not available");
+            }
+
+            // Process & compress the image (smaller size for profile pictures)
+            await using var originalStream = request.Image.OpenReadStream();
+            var (processedStream, outputContentType) = await imageProcessor.ProcessAsync(
+                originalStream, 
+                request.Image.ContentType, 
+                maxWidth: 512, 
+                maxHeight: 512, 
+                preferredMaxBytes: 200_000 // Target ~200KB for profile pictures
+            );
+
+            // Upload to storage
+            var key = await _storage.UploadProfilePictureAsync(currentUserId, processedStream, outputContentType);
+
+            // Update user's profile picture key in database
+            var user = await _userManager.FindByIdAsync(currentUserId.ToString());
+            if (user == null)
+            {
+                return NotFound("User not found");
+            }
+
+            user.ProfilePictureKey = key;
+            await _userManager.UpdateAsync(user);
+
+            // Return the public URL
+            var url = _storage.GetProfilePictureUrl(key);
+            return Ok(new ProfilePictureResponseDto { ProfilePictureUrl = url });
+        }
+
+        public class ProfilePictureResponseDto
+        {
+            public string ProfilePictureUrl { get; set; } = string.Empty;
+        }
+
+        public class UploadProfilePictureRequest
+        {
+            public IFormFile? Image { get; set; }
+        }
 
 
         public class ProfilePageResponseDto

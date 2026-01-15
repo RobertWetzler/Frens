@@ -62,6 +62,26 @@ public class PostService : IPostService
     _activityService = activityService;
     }
 
+    /// <summary>
+    /// Populates ProfilePictureUrl for a UserDto based on the user's ProfilePictureKey.
+    /// </summary>
+    private void PopulateProfilePictureUrl(UserDto? userDto, User? user)
+    {
+        if (userDto != null && user != null && !string.IsNullOrEmpty(user.ProfilePictureKey))
+        {
+            userDto.ProfilePictureUrl = _storage.GetProfilePictureUrl(user.ProfilePictureKey);
+        }
+    }
+
+    /// <summary>
+    /// Populates profile picture URLs for all users in a PostDto.
+    /// </summary>
+    private void PopulatePostProfilePictureUrls(PostDto dto, Post post)
+    {
+        PopulateProfilePictureUrl(dto.User, post.User);
+        // SharedWithUsers is handled separately as it may be populated from a different source
+    }
+
     public async Task<PostDto?> GetPostByIdAsync(Guid requestorId, Guid id, bool includeCommentTree = true, int maxDepth = 3, bool includeImageUrl = false, int imageUrlExpirySeconds = 60)
     {
         // First get the post with minimal data to check existence and ownership
@@ -131,6 +151,9 @@ public class PostService : IPostService
         {
             dto = _mapper.Map<PostDto>(fullPost);
         }
+        
+        // Populate profile picture URL for post author
+        PopulatePostProfilePictureUrls(dto, fullPost);
 
         if (includeCommentTree)
         {
@@ -333,6 +356,9 @@ public class PostService : IPostService
                     dto = _mapper.Map<PostDto>(pc.Post);
                 }
                 
+                // Populate profile picture URL for post author
+                PopulatePostProfilePictureUrls(dto, pc.Post);
+                
                 dto.CommentCount = pc.CommentCount;
                 dto.SharedWithCircles = circlesByPost.ContainsKey(pc.Post.Id)
                     ? circlesByPost[pc.Post.Id].Select(c => new CirclePublicDto
@@ -532,6 +558,9 @@ public class PostService : IPostService
                     dto = _mapper.Map<PostDto>(pc.Post);
                 }
                 
+                // Populate profile picture URL for post author
+                PopulatePostProfilePictureUrls(dto, pc.Post);
+                
                 dto.CommentCount = pc.CommentCount;
                 dto.SharedWithCircles = circlesByPost.ContainsKey(pc.Post.Id)
                     ? circlesByPost[pc.Post.Id].Select(c => new CirclePublicDto
@@ -628,6 +657,9 @@ public class PostService : IPostService
                 {
                     dto = _mapper.Map<PostDto>(pc.Post);
                 }
+                
+                // Populate profile picture URL for post author
+                PopulatePostProfilePictureUrls(dto, pc.Post);
                 
                 dto.CommentCount = pc.CommentCount;
                 return dto;

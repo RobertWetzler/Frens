@@ -29,6 +29,7 @@ public class CircleService : ICircleService
     private readonly IMapper _mapper;
     private readonly IEventNotificationService _eventNotificationService;
     private readonly ILogger<CircleService> _logger;
+    private readonly IObjectStorageService _storage;
 
     public CircleService(
         CliqDbContext dbContext,
@@ -36,7 +37,8 @@ public class CircleService : ICircleService
         IFriendshipService friendshipService,
         IMapper mapper,
         IEventNotificationService eventNotificationService,
-        ILogger<CircleService> logger)
+        ILogger<CircleService> logger,
+        IObjectStorageService storage)
     {
         _dbContext = dbContext;
         _commentService = commentService;
@@ -44,6 +46,7 @@ public class CircleService : ICircleService
         _mapper = mapper;
         _eventNotificationService = eventNotificationService;
         _logger = logger;
+        _storage = storage;
     }
 
     public async Task<CirclePublicDto> CreateCircleAsync(Guid creatorId, CircleCreationDto circleDto)
@@ -241,8 +244,8 @@ public class CircleService : ICircleService
                 Name = circle.Name,
                 IsShared = circle.IsShared,
                 IsOwner = false,
-                Owner = circle.Owner != null ? new UserDto { Id = circle.Owner.Id, Name = circle.Owner.Name } : null,
-                Members = circle.Members?.Select(m => new UserDto { Id = m.User?.Id ?? Guid.Empty, Name = m.User?.Name ?? "Unknown" }).ToList() ?? new List<UserDto>()
+                Owner = circle.Owner != null ? MapUserToDto(circle.Owner) : null,
+                Members = circle.Members?.Select(m => MapUserToDto(m.User)).ToList() ?? new List<UserDto>()
             });
         }
 
@@ -256,11 +259,27 @@ public class CircleService : ICircleService
                 IsShared = circle.IsShared,
                 IsOwner = true,
                 Owner = null, // Current user is the owner, no need to show this
-                Members = circle.Members?.Select(m => new UserDto { Id = m.User?.Id ?? Guid.Empty, Name = m.User?.Name ?? "Unknown" }).ToList() ?? new List<UserDto>()
+                Members = circle.Members?.Select(m => MapUserToDto(m.User)).ToList() ?? new List<UserDto>()
             });
         }
 
         return result;
+    }
+    
+    private UserDto MapUserToDto(User? user)
+    {
+        if (user == null)
+        {
+            return new UserDto { Id = Guid.Empty, Name = "Unknown" };
+        }
+        return new UserDto
+        {
+            Id = user.Id,
+            Name = user.Name,
+            ProfilePictureUrl = !string.IsNullOrEmpty(user.ProfilePictureKey) 
+                ? _storage.GetProfilePictureUrl(user.ProfilePictureKey) 
+                : null
+        };
     }
 
     public async Task DeleteCircleAsync(Guid requestorId, Guid circleId)

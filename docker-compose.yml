@@ -50,11 +50,14 @@ services:
       minio:
         condition: service_healthy
     entrypoint: ["/bin/sh","-c"]
-    # Create bucket if it doesn't exist and keep it private
+    # Create private bucket for posts and public bucket for profile pictures
     command: >
       "mc alias set local http://minio:9000 cliq_local_key cliq_local_secret_ChangeMe123 && \
        if ! mc ls local/cliq-private >/dev/null 2>&1; then mc mb local/cliq-private; fi && \
-       mc anonymous set none local/cliq-private && echo 'MinIO bucket cliq-private ready.'"
+       mc anonymous set none local/cliq-private && \
+       if ! mc ls local/cliq-public >/dev/null 2>&1; then mc mb local/cliq-public; fi && \
+       mc anonymous set download local/cliq-public && \
+       echo 'MinIO buckets ready: cliq-private (private), cliq-public (public).'"
     restart: "on-failure"
 
 volumes:

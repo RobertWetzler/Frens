@@ -7,6 +7,7 @@ import { useTheme } from '../theme/ThemeContext';
 import { makeStyles } from '../theme/makeStyles';
 import { OptimisticPost, feedEvents, FEED_POST_STATUS_UPDATED, FEED_POST_DELETED } from 'hooks/feedEvents';
 import Username from './Username';
+import Avatar from './Avatar';
 import { useAuth } from '../contexts/AuthContext';
 import { useApi } from '../hooks/useApi';
 import DropdownMenu, { DropdownMenuItem } from './DropdownMenu';
@@ -338,25 +339,42 @@ const Post: React.FC<PostProps> = ({ post, navigation, isNavigable = true, anima
         </View>
       )}
       <View style={[styles.header, isDeleted && styles.deletedContent]}>
-        <View style={styles.authorContainer}>
-          <Username
-            user={post.user}
-            navigation={navigation}
-            styles={{
-              username: isDeleted ? styles.deletedAuthor : styles.author
-            }}
-          />
-          <Text style={[styles.sharedWith, isDeleted && styles.deletedTextColor]}> to {sharedWithText}</Text>
-        </View>
-        <View style={styles.headerRight}>
-          <Text style={[styles.date, isDeleted && styles.deletedTextColor]}>{formatDate(post.date)}</Text>
-          {isPostOwner && !isDeleted && (
-            <DropdownMenu
-              visible={menuVisible}
-              onClose={() => setMenuVisible(!menuVisible)}
-              items={menuItems}
+        <View style={styles.headerTopRow}>
+          {!!post.user?.profilePictureUrl && (
+            <Avatar
+              name={post.user.name}
+              userId={post.user.id}
+              imageUrl={post.user.profilePictureUrl}
+              navigation={navigation}
+              discoveredEasterEggs={post.user.discoveredEasterEggs}
             />
           )}
+          <View style={[styles.headerContent, !!post.user?.profilePictureUrl && styles.headerContentWithAvatar]}>
+            <View style={styles.headerNameRow}>
+              <Username
+                user={post.user}
+                navigation={navigation}
+                styles={{
+                  username: isDeleted ? styles.deletedAuthor : styles.author
+                }}
+              />
+              <View style={styles.headerRight}>
+                <Text style={[styles.date, isDeleted && styles.deletedTextColor]}>{formatDate(post.date)}</Text>
+                {isPostOwner && !isDeleted && (
+                  <DropdownMenu
+                    visible={menuVisible}
+                    onClose={() => setMenuVisible(!menuVisible)}
+                    items={menuItems}
+                  />
+                )}
+              </View>
+            </View>
+            <Text style={[
+              styles.sharedWith, 
+              isDeleted && styles.deletedTextColor,
+              !!post.user?.profilePictureUrl && styles.sharedWithWithAvatar
+            ]}>to {sharedWithText}</Text>
+          </View>
         </View>
       </View>
       {/* Slot for specialized pre-content (e.g., Event title) */}
@@ -433,9 +451,23 @@ const useStyles = makeStyles(theme => ({
     elevation: 4,
   },
   header: {
+    marginBottom: 10,
+    marginTop: -5,
+  },
+  headerTopRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  headerContent: {
+    flex: 1,
+  },
+  headerContentWithAvatar: {
+    marginTop: -6,
+  },
+  headerNameRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    marginBottom: 10,
+    alignItems: 'center',
   },
   authorContainer: {
     flexDirection: 'row',
@@ -453,9 +485,13 @@ const useStyles = makeStyles(theme => ({
     color: theme.colors.textPrimary,
   },
   sharedWith: {
-    fontSize: 16,
+    fontSize: 14,
     color: theme.colors.textMuted,
     fontWeight: 'normal',
+    marginTop: 2,
+  },
+  sharedWithWithAvatar: {
+    marginTop: -6,
   },
   date: {
     color: theme.colors.textMuted,

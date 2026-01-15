@@ -15,7 +15,7 @@ export class Client {
 
     constructor(baseUrl?: string, http?: { fetch(url: RequestInfo, init?: RequestInit): Promise<Response> }) {
         this.http = http ? http : window as any;
-        this.baseUrl = baseUrl ?? "http://localhost:5188";
+        this.baseUrl = baseUrl ?? "";
     }
 
     account_Register(model: RegisterModel, signal?: AbortSignal): Promise<SignInResponseDto> {
@@ -2270,6 +2270,46 @@ export class Client {
         return Promise.resolve<ProfilePageResponseDto>(null as any);
     }
 
+    profile_UploadProfilePicture(image: FileParameter | null | undefined, signal?: AbortSignal): Promise<ProfilePictureResponseDto> {
+        let url_ = this.baseUrl + "/api/Profile/picture";
+        url_ = url_.replace(/[?&]$/, "");
+
+        const content_ = new FormData();
+        if (image !== null && image !== undefined)
+            content_.append("Image", image.data, image.fileName ? image.fileName : "Image");
+
+        let options_: RequestInit = {
+            body: content_,
+            method: "POST",
+            signal,
+            headers: {
+                "Accept": "application/json"
+            }
+        };
+
+        return this.http.fetch(url_, options_).then((_response: Response) => {
+            return this.processProfile_UploadProfilePicture(_response);
+        });
+    }
+
+    protected processProfile_UploadProfilePicture(response: Response): Promise<ProfilePictureResponseDto> {
+        const status = response.status;
+        let _headers: any = {}; if (response.headers && response.headers.forEach) { response.headers.forEach((v: any, k: any) => _headers[k] = v); };
+        if (status === 200) {
+            return response.text().then((_responseText) => {
+            let result200: any = null;
+            let resultData200 = _responseText === "" ? null : JSON.parse(_responseText, this.jsonParseReviver);
+            result200 = ProfilePictureResponseDto.fromJS(resultData200);
+            return result200;
+            });
+        } else if (status !== 200 && status !== 204) {
+            return response.text().then((_responseText) => {
+            return throwException("An unexpected server error occurred.", status, _responseText, _headers);
+            });
+        }
+        return Promise.resolve<ProfilePictureResponseDto>(null as any);
+    }
+
     testAuth_GenerateTestToken(email: string | undefined, signal?: AbortSignal): Promise<FileResponse> {
         let url_ = this.baseUrl + "/api/TestAuth/generate-test-token?";
         if (email === null)
@@ -2396,6 +2436,7 @@ export interface ISignInResponseDto {
 export class UserDto implements IUserDto {
     id?: string;
     name?: string;
+    profilePictureUrl?: string | undefined;
     discoveredEasterEggs?: EasterEggDto[];
 
     constructor(data?: IUserDto) {
@@ -2411,6 +2452,7 @@ export class UserDto implements IUserDto {
         if (_data) {
             this.id = _data["id"];
             this.name = _data["name"];
+            this.profilePictureUrl = _data["profilePictureUrl"];
             if (Array.isArray(_data["discoveredEasterEggs"])) {
                 this.discoveredEasterEggs = [] as any;
                 for (let item of _data["discoveredEasterEggs"])
@@ -2430,6 +2472,7 @@ export class UserDto implements IUserDto {
         data = typeof data === 'object' ? data : {};
         data["id"] = this.id;
         data["name"] = this.name;
+        data["profilePictureUrl"] = this.profilePictureUrl;
         if (Array.isArray(this.discoveredEasterEggs)) {
             data["discoveredEasterEggs"] = [];
             for (let item of this.discoveredEasterEggs)
@@ -2442,6 +2485,7 @@ export class UserDto implements IUserDto {
 export interface IUserDto {
     id?: string;
     name?: string;
+    profilePictureUrl?: string | undefined;
     discoveredEasterEggs?: EasterEggDto[];
 }
 
@@ -4225,6 +4269,7 @@ export interface IProfilePageResponseDto {
 export class UserProfileDto implements IUserProfileDto {
     id?: string;
     name?: string;
+    profilePictureUrl?: string | undefined;
     bio?: string;
     createdAt?: Date;
 
@@ -4241,6 +4286,7 @@ export class UserProfileDto implements IUserProfileDto {
         if (_data) {
             this.id = _data["id"];
             this.name = _data["name"];
+            this.profilePictureUrl = _data["profilePictureUrl"];
             this.bio = _data["bio"];
             this.createdAt = _data["createdAt"] ? new Date(_data["createdAt"].toString()) : <any>undefined;
         }
@@ -4257,6 +4303,7 @@ export class UserProfileDto implements IUserProfileDto {
         data = typeof data === 'object' ? data : {};
         data["id"] = this.id;
         data["name"] = this.name;
+        data["profilePictureUrl"] = this.profilePictureUrl;
         data["bio"] = this.bio;
         data["createdAt"] = this.createdAt ? this.createdAt.toISOString() : <any>undefined;
         return data;
@@ -4266,8 +4313,45 @@ export class UserProfileDto implements IUserProfileDto {
 export interface IUserProfileDto {
     id?: string;
     name?: string;
+    profilePictureUrl?: string | undefined;
     bio?: string;
     createdAt?: Date;
+}
+
+export class ProfilePictureResponseDto implements IProfilePictureResponseDto {
+    profilePictureUrl?: string;
+
+    constructor(data?: IProfilePictureResponseDto) {
+        if (data) {
+            for (var property in data) {
+                if (data.hasOwnProperty(property))
+                    (<any>this)[property] = (<any>data)[property];
+            }
+        }
+    }
+
+    init(_data?: any) {
+        if (_data) {
+            this.profilePictureUrl = _data["profilePictureUrl"];
+        }
+    }
+
+    static fromJS(data: any): ProfilePictureResponseDto {
+        data = typeof data === 'object' ? data : {};
+        let result = new ProfilePictureResponseDto();
+        result.init(data);
+        return result;
+    }
+
+    toJSON(data?: any) {
+        data = typeof data === 'object' ? data : {};
+        data["profilePictureUrl"] = this.profilePictureUrl;
+        return data;
+    }
+}
+
+export interface IProfilePictureResponseDto {
+    profilePictureUrl?: string;
 }
 
 export interface FileParameter {

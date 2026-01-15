@@ -15,6 +15,7 @@ public class User : IdentityUser<Guid>
     }
     public required string Name { get; set; }
     public string Bio { get; set; } = string.Empty;
+    public string? ProfilePictureKey { get; set; }
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
     public DateTime? LastLogin { get; set; }
     public ICollection<Friendship> FriendRequestsSent { get; set; } = new List<Friendship>();
@@ -28,6 +29,7 @@ public class UserDto
 {
     public required Guid Id { get; set; }
     public required string Name { get; set; }
+    public string? ProfilePictureUrl { get; set; }
     public List<EasterEggDto> DiscoveredEasterEggs { get; set; } = new List<EasterEggDto>();
 }
 
@@ -35,6 +37,7 @@ public class UserProfileDto
 {
     public required Guid Id { get; set; }
     public required string Name { get; set; }
+    public string? ProfilePictureUrl { get; set; }
     public string Bio { get; set; } = string.Empty;
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
 }

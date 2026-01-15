@@ -8,12 +8,16 @@ import {
     RefreshControl,
     SafeAreaView,
     Modal,
-    Pressable
+    Pressable,
+    Image,
+    Alert,
+    Platform
 } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
 import { Avatar } from '@rneui/base';
 import { Ionicons } from '@expo/vector-icons';
 import Svg, { Ellipse, Path, Circle } from 'react-native-svg';
+import * as ImagePicker from 'expo-image-picker';
 import { ApiClient } from 'services/apiClient';
 import { FriendshipDto, FriendshipStatus, FriendshipStatusDto, PostDto, ProfilePageResponseDto, UserDto, UserProfileDto, VisibleStatus } from 'services/generated/generatedClient';
 import Post from '../components/Post';
@@ -21,6 +25,9 @@ import { useAuth } from 'contexts/AuthContext';
 import { handleShareProfile } from 'utils/share';
 import NotificationBell from 'components/NotificationBell';
 import Header from 'components/Header';
+import ProfilePictureCropper from 'components/ProfilePictureCropper';
+import { CachedImage } from 'components/CachedImage';
+import { invalidateCachedImage } from 'services/imageBinaryCache';
 import { useTheme } from '../theme/ThemeContext';
 import { makeStyles } from '../theme/makeStyles';
 
@@ -83,6 +90,36 @@ const useStyles = makeStyles((theme) => ({
         fontSize: 14,
         fontWeight: '600'
     },
+    profilePictureContainer: {
+        position: 'relative',
+    },
+    profilePicture: {
+        width: 120,
+        height: 120,
+        borderRadius: 60,
+        backgroundColor: theme.colors.primary,
+    },
+    editPictureOverlay: {
+        position: 'absolute',
+        bottom: 0,
+        right: 0,
+        backgroundColor: theme.colors.primary,
+        borderRadius: 16,
+        padding: 8,
+        borderWidth: 2,
+        borderColor: theme.colors.card,
+    },
+    uploadingOverlay: {
+        position: 'absolute',
+        top: 0,
+        left: 0,
+        right: 0,
+        bottom: 0,
+        borderRadius: 60,
+        backgroundColor: 'rgba(0, 0, 0, 0.5)',
+        justifyContent: 'center',
+        alignItems: 'center',
+    },
 }));
 
 interface ProfileScreenProps {
@@ -108,6 +145,88 @@ const ProfileScreen: React.FC<ProfileScreenProps> = ({ route, navigation }) => {
     const [isLoading, setIsLoading] = useState(true);
     const [isRefreshing, setIsRefreshing] = useState(false);
     const [error, setError] = useState<string | null>(null);
+    const [isUploadingPicture, setIsUploadingPicture] = useState(false);
+    const [showCropper, setShowCropper] = useState(false);
+    const [selectedImageUri, setSelectedImageUri] = useState<string | null>(null);
+
+    const handlePickProfilePicture = async () => {
+        try {
+            const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
+            if (permission.status !== 'granted') {
+                Alert.alert('Permission Required', 'Please grant photo library access to change your profile picture.');
+                return;
+            }
+
+            const result = await ImagePicker.launchImageLibraryAsync({
+                mediaTypes: ImagePicker.MediaTypeOptions.Images,
+                allowsEditing: false, // Disable built-in editor, we'll use our custom cropper
+                quality: 1, // Keep full quality, cropper will handle compression
+            });
+
+            if (result.canceled || !result.assets || result.assets.length === 0) {
+                return;
+            }
+
+            const asset = result.assets[0];
+            // Show the cropper with the selected image
+            setSelectedImageUri(asset.uri);
+            setShowCropper(true);
+        } catch (err) {
+            console.error('Error picking profile picture:', err);
+            Alert.alert('Error', 'Failed to select image. Please try again.');
+        }
+    };
+
+    const handleCropConfirm = async (croppedImageUri: string) => {
+        setShowCropper(false);
+        setSelectedImageUri(null);
+        setIsUploadingPicture(true);
+
+        try {
+            let fileParam;
+            if (Platform.OS === 'web') {
+                // On web, fetch the URI and convert to Blob
+                const response = await fetch(croppedImageUri);
+                const blob = await response.blob();
+                fileParam = {
+                    data: blob,
+                    fileName: `profile-${Date.now()}.jpg`,
+                };
+            } else {
+                // On native, use the URI-based format
+                fileParam = {
+                    data: { uri: croppedImageUri, name: `profile-${Date.now()}.jpg`, type: 'image/jpeg' },
+                    fileName: `profile-${Date.now()}.jpg`,
+                };
+            }
+
+            const apiResponse = await ApiClient.call(c => c.profile_UploadProfilePicture(fileParam));
+            
+            // Update local state with new profile picture URL
+            if (apiResponse?.profilePictureUrl && user) {
+                // Invalidate the cached profile picture so the new one is fetched
+                // This is especially important on iOS Safari where stale images persist
+                const profileCacheKey = `profile:${userId}`;
+                invalidateCachedImage(profileCacheKey);
+                
+                const updatedUser = new UserProfileDto({
+                    ...user,
+                    profilePictureUrl: apiResponse.profilePictureUrl + '?t=' + Date.now() // Cache bust
+                });
+                setUser(updatedUser);
+            }
+        } catch (err) {
+            console.error('Error uploading profile picture:', err);
+            Alert.alert('Upload Failed', 'Failed to upload profile picture. Please try again.');
+        } finally {
+            setIsUploadingPicture(false);
+        }
+    };
+
+    const handleCropCancel = () => {
+        setShowCropper(false);
+        setSelectedImageUri(null);
+    };
 
     const fetchUserProfile = async () => {
         try {
@@ -231,14 +350,41 @@ const ProfileScreen: React.FC<ProfileScreenProps> = ({ route, navigation }) => {
             <FlatList
                 ListHeaderComponent={
                     <View style={styles.profileHeader}>
-                        <View style={styles.avatarContainer}>
-                            <Avatar
-                                rounded
-                                size="xlarge"
-                                overlayContainerStyle={{ backgroundColor: theme.colors.primary }}
-                                title={user?.name?.charAt(0).toUpperCase() || '?'}
-                            />
-                        </View>
+                        <TouchableOpacity 
+                            style={styles.avatarContainer}
+                            onPress={isOwnProfile ? handlePickProfilePicture : undefined}
+                            disabled={!isOwnProfile || isUploadingPicture}
+                            activeOpacity={isOwnProfile ? 0.7 : 1}
+                        >
+                            <View style={styles.profilePictureContainer}>
+                                {user?.profilePictureUrl ? (
+                                    <CachedImage
+                                        cacheKey={`profile:${userId}`}
+                                        signedUrl={user.profilePictureUrl}
+                                        style={styles.profilePicture}
+                                        cacheTtlMs={24 * 60 * 60 * 1000} // Cache for 24 hours
+                                        showWhileFetching="spinner"
+                                    />
+                                ) : (
+                                    <Avatar
+                                        rounded
+                                        size={120}
+                                        overlayContainerStyle={{ backgroundColor: theme.colors.primary }}
+                                        title={user?.name?.charAt(0).toUpperCase() || '?'}
+                                    />
+                                )}
+                                {isOwnProfile && (
+                                    <View style={styles.editPictureOverlay}>
+                                        <Ionicons name="camera" size={16} color={theme.colors.primaryContrast} />
+                                    </View>
+                                )}
+                                {isUploadingPicture && (
+                                    <View style={styles.uploadingOverlay}>
+                                        <ActivityIndicator size="small" color="#fff" />
+                                    </View>
+                                )}
+                            </View>
+                        </TouchableOpacity>
 
                         <Text style={styles.userName}>{user?.name || 'User'}</Text>
                         <Text style={styles.userBio}>{user?.bio || ''}</Text>
@@ -431,6 +577,16 @@ const ProfileScreen: React.FC<ProfileScreenProps> = ({ route, navigation }) => {
                     </View>
                 }
             />
+
+            {/* Profile Picture Cropper Modal */}
+            {selectedImageUri && (
+                <ProfilePictureCropper
+                    visible={showCropper}
+                    imageUri={selectedImageUri}
+                    onConfirm={handleCropConfirm}
+                    onCancel={handleCropCancel}
+                />
+            )}
         </SafeAreaView>
     );
 };

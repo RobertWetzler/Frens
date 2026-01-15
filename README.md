@@ -2,11 +2,19 @@ An awesome social media PWA for you and your friends! Join at cliq-server.fly.de
 
 ## Development
 
-1. Run the following command to the app infrastructure (ex. database) locally:
+1. Run the following command to start the app infrastructure (ex. database) locally:
 
 ```
 docker compose up -d
 ```
+
+To also start MinIO (S3-compatible object storage) for local file storage:
+
+```
+docker compose --profile minio up -d
+```
+
+This will start the database, MinIO server, and initialize the storage bucket. The MinIO console is available at http://localhost:9001.
 
 2. (Optional) Download the following extensions in VSCode:
 - C# Dev Kit by Microsoft

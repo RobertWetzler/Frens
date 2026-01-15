@@ -1,5 +1,5 @@
 import React from "react";
-import { View, Text, TouchableOpacity } from "react-native";
+import { View, Text, TouchableOpacity, StyleSheet } from "react-native";
 import Avatar from "./Avatar";
 import { UserDto } from "services/generated/generatedClient";
 
@@ -25,13 +25,14 @@ const Username: React.FC<UsernameProps> = ({
 
   return (
     <TouchableOpacity
-      style={styles.container}
+      style={[localStyles.container, styles.container]}
       onPress={() => navigation.navigate("Profile", { userId: user.id })}
     >
       {showAvatar && (
         <Avatar
           name={user.name}
           userId={user.id}
+          imageUrl={user.profilePictureUrl}
           navigation={navigation}
           discoveredEasterEggs={user.discoveredEasterEggs}
         />
@@ -43,5 +44,12 @@ const Username: React.FC<UsernameProps> = ({
     </TouchableOpacity>
   );
 };
+
+const localStyles = StyleSheet.create({
+  container: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+});
 
 export default Username;

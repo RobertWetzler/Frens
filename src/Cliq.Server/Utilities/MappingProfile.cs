@@ -25,8 +25,10 @@ public class MappingProfile : Profile
                 })))
             .ForMember(dest => dest.HasImage, opt => opt.MapFrom(src => src.ImageObjectKeys.Any()))
             .ForMember(dest => dest.ImageCount, opt => opt.MapFrom(src => src.ImageObjectKeys.Count));        
-        CreateMap<User, UserDto>();
-        CreateMap<User, UserProfileDto>();
+        CreateMap<User, UserDto>()
+            .ForMember(dest => dest.ProfilePictureUrl, opt => opt.Ignore()); // Set manually from storage service
+        CreateMap<User, UserProfileDto>()
+            .ForMember(dest => dest.ProfilePictureUrl, opt => opt.Ignore()); // Set manually from storage service
         CreateMap<EasterEgg, EasterEggDto>();
         CreateMap<Friendship, FriendshipDto>();
         CreateMap<Friendship, FriendRequestDto>();

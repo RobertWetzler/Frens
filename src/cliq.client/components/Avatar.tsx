@@ -8,6 +8,7 @@ import { ApiClient } from '../services/apiClient';
 import { easterEggEvents, EASTER_EGG_DISCOVERED } from '../hooks/easterEggEvents';
 import { DiscoverEasterEggRequest } from 'services/generated/generatedClient';
 import InfoModal from './InfoModal';
+import { CachedImage } from './CachedImage';
 
 // Create animated SVG components
 const AnimatedEllipse = Animated.createAnimatedComponent(Ellipse);
@@ -27,6 +28,11 @@ const useStyles = makeStyles((theme) => ({
         backgroundColor: theme.colors.card,
         borderRadius: 60,
         marginRight: 7,
+    },
+    cachedAvatarImage: {
+        width: 40,
+        height: 40,
+        borderRadius: 20,
     },
     pumpkinWrapper: {
         width: 44,
@@ -57,6 +63,24 @@ export const Avatar: React.FC<AvatarProps> = ({ name, userId, imageUrl, navigati
     const { theme } = useTheme();
     const styles = useStyles();
     const initial = name?.charAt(0)?.toUpperCase() || '?';
+    
+    // If user has a profile picture, show it with caching (reduces S3 usage)
+    if (imageUrl) {
+        // Use userId as cache key for profile pictures (stable identifier)
+        const cacheKey = `profile:${userId}`;
+        
+        return (
+            <View style={styles.avatarContainer}>
+                <CachedImage
+                    cacheKey={cacheKey}
+                    signedUrl={imageUrl}
+                    style={styles.cachedAvatarImage}
+                    cacheTtlMs={24 * 60 * 60 * 1000} // Cache for 24 hours
+                    showWhileFetching="none"
+                />
+            </View>
+        );
+    }
     
     // Check if user has discovered the snowman_dance easter egg
     const hasSnowmanDanceEasterEgg = discoveredEasterEggs?.some(
@@ -435,6 +459,7 @@ export const Avatar: React.FC<AvatarProps> = ({ name, userId, imageUrl, navigati
                 rounded
                 overlayContainerStyle={{ backgroundColor: theme.colors.primary }}
                 title={initial}
+                source={imageUrl ? { uri: imageUrl } : undefined}
             />
         </View>
     );

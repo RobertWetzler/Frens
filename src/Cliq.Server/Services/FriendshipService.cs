@@ -40,11 +40,13 @@ public class FriendshipService : IFriendshipService
     private readonly CliqDbContext _dbContext;
     private readonly IMapper _mapper;
     private readonly IEventNotificationService? _eventNotificationService;
+    private readonly IObjectStorageService _storage;
 
-    public FriendshipService(CliqDbContext dbContext, IMapper mapper, IEventNotificationService? eventNotificationService = null)
+    public FriendshipService(CliqDbContext dbContext, IMapper mapper, IObjectStorageService storage, IEventNotificationService? eventNotificationService = null)
     {
         _dbContext = dbContext;
         _mapper = mapper;
+        _storage = storage;
         _eventNotificationService = eventNotificationService;
     }
 
@@ -299,7 +301,19 @@ public class FriendshipService : IFriendshipService
 
         friends.AddRange(friendshipsAsAddressee.Select(f => f.Requester));
 
-        return _mapper.Map<IEnumerable<UserDto>>(friends);
+        var userDtos = _mapper.Map<IEnumerable<UserDto>>(friends).ToList();
+        
+        // Set profile picture URLs
+        foreach (var dto in userDtos)
+        {
+            var user = friends.FirstOrDefault(f => f.Id == dto.Id);
+            if (user != null && !string.IsNullOrEmpty(user.ProfilePictureKey))
+            {
+                dto.ProfilePictureUrl = _storage.GetProfilePictureUrl(user.ProfilePictureKey);
+            }
+        }
+        
+        return userDtos;
     }
 
     public async Task<bool> AreFriendsAsync(Guid userId1, Guid userId2)
