@@ -31,7 +31,6 @@ public class UserDto
     public required string Name { get; set; }
     public string? ProfilePictureUrl { get; set; }
     public List<EasterEggDto> DiscoveredEasterEggs { get; set; } = new List<EasterEggDto>();
-    public string? UserName { get; set; }
 }
 
 public class UserProfileDto
@@ -39,7 +38,6 @@ public class UserProfileDto
     public required Guid Id { get; set; }
     public required string Name { get; set; }
     public string? ProfilePictureUrl { get; set; }
-    public string? UserName { get; set; }
     public string Bio { get; set; } = string.Empty;
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
 }

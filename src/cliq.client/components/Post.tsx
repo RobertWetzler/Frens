@@ -381,7 +381,7 @@ const Post: React.FC<PostProps> = ({ post, navigation, isNavigable = true, anima
       {/* Slot for specialized pre-content (e.g., Event title) */}
       {!isDeleted && renderPreContent ? (typeof renderPreContent === 'function' ? renderPreContent() : renderPreContent) : null}
       <Text style={[styles.content, isDeleted && styles.deletedTextColor]}>
-        <MentionText text={post.text || ''} style={[styles.content, isDeleted && styles.deletedTextColor]} />
+        <MentionText text={post.text || ''} style={[styles.content, isDeleted && styles.deletedTextColor]} mentions={post.mentions} />
       </Text>
       {/* Image grid with fullscreen viewer */}
       {!isDeleted && (

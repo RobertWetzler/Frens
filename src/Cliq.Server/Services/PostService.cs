@@ -13,7 +13,7 @@ public interface IPostService
     Task<FeedDto> GetFilteredFeedForUserAsync(Guid userId, Guid[]? circleIds, int page = 1, int pageSize = 20);
     Task<List<PostDto>> GetAllPostsAsync(bool includeCommentCount = false);
     Task<IEnumerable<PostDto>> GetUserPostsAsync(Guid userId, int page = 1, int pageSize = 20);
-    Task<PostDto> CreatePostAsync(Guid userId, Guid[] circleIds, Guid[] userIds, string text, IEnumerable<string>? imageObjectKeys = null);
+    Task<PostDto> CreatePostAsync(Guid userId, Guid[] circleIds, Guid[] userIds, string text, IEnumerable<string>? imageObjectKeys = null, List<MentionDto>? mentions = null);
     Task<PostDto?> UpdatePostAsync(Guid id, Guid updatedByUserId, string newText);
     Task<bool> DeletePostAsync(Guid id, Guid deletedByUserId);
     Task<bool> PostExistsAsync(Guid id);
@@ -81,6 +81,121 @@ public class PostService : IPostService
     {
         PopulateProfilePictureUrl(dto.User, post.User);
         // SharedWithUsers is handled separately as it may be populated from a different source
+    }
+
+    /// <summary>
+    /// Gets the list of users that can be mentioned when commenting on a post.
+    /// This includes the post author (always), plus:
+    /// - For shared/public circles: all members are visible to everyone
+    /// - For private circles: only the owner can see/mention members
+    /// </summary>
+    private async Task<List<MentionableUserDto>> GetMentionableUsersForPostAsync(Guid postId, Guid viewerId)
+    {
+        var mentionableUsers = new List<MentionableUserDto>();
+        var addedUserIds = new HashSet<Guid>();
+
+        // Get the post with its author
+        var post = await _dbContext.Posts
+            .Include(p => p.User)
+            .FirstOrDefaultAsync(p => p.Id == postId);
+
+        if (post == null) return mentionableUsers;
+
+        // Always include the post author (except if viewer is the author)
+        if (post.User != null && post.UserId != viewerId)
+        {
+            mentionableUsers.Add(new MentionableUserDto
+            {
+                Id = post.User.Id,
+                Name = post.User.Name,
+                ProfilePictureUrl = !string.IsNullOrEmpty(post.User.ProfilePictureKey)
+                    ? _storage.GetProfilePictureUrl(post.User.ProfilePictureKey)
+                    : null
+            });
+            addedUserIds.Add(post.User.Id);
+        }
+
+        // Get members from shared/public circles (visible to everyone)
+        var sharedCircleMembers = await _dbContext.CirclePosts
+            .Where(cp => cp.PostId == postId)
+            .Join(_dbContext.Circles, cp => cp.CircleId, c => c.Id, (cp, c) => c)
+            .Where(c => c.IsShared) // Only shared/public circles
+            .SelectMany(c => c.Members.Select(m => m.User))
+            .Where(u => u != null && u.Id != viewerId)
+            .Select(u => new { u!.Id, u.Name, u.ProfilePictureKey })
+            .Distinct()
+            .ToListAsync();
+
+        foreach (var member in sharedCircleMembers)
+        {
+            if (!addedUserIds.Contains(member.Id))
+            {
+                mentionableUsers.Add(new MentionableUserDto
+                {
+                    Id = member.Id,
+                    Name = member.Name,
+                    ProfilePictureUrl = !string.IsNullOrEmpty(member.ProfilePictureKey)
+                        ? _storage.GetProfilePictureUrl(member.ProfilePictureKey)
+                        : null
+                });
+                addedUserIds.Add(member.Id);
+            }
+        }
+
+        // Get members from private circles where the viewer is the owner
+        // (only the owner can see members of their private circles)
+        var privateCircleMembers = await _dbContext.CirclePosts
+            .Where(cp => cp.PostId == postId)
+            .Join(_dbContext.Circles, cp => cp.CircleId, c => c.Id, (cp, c) => c)
+            .Where(c => !c.IsShared && c.OwnerId == viewerId) // Private circles owned by viewer
+            .SelectMany(c => c.Members.Select(m => m.User))
+            .Where(u => u != null && u.Id != viewerId)
+            .Select(u => new { u!.Id, u.Name, u.ProfilePictureKey })
+            .Distinct()
+            .ToListAsync();
+
+        foreach (var member in privateCircleMembers)
+        {
+            if (!addedUserIds.Contains(member.Id))
+            {
+                mentionableUsers.Add(new MentionableUserDto
+                {
+                    Id = member.Id,
+                    Name = member.Name,
+                    ProfilePictureUrl = !string.IsNullOrEmpty(member.ProfilePictureKey)
+                        ? _storage.GetProfilePictureUrl(member.ProfilePictureKey)
+                        : null
+                });
+                addedUserIds.Add(member.Id);
+            }
+        }
+
+        // Include circle owners for shared circles (not private - those are owned by viewer already)
+        var circleOwners = await _dbContext.CirclePosts
+            .Where(cp => cp.PostId == postId)
+            .Join(_dbContext.Circles, cp => cp.CircleId, c => c.Id, (cp, c) => c)
+            .Where(c => c.IsShared && c.Owner != null && c.OwnerId != viewerId)
+            .Select(c => new { c.Owner!.Id, c.Owner.Name, c.Owner.ProfilePictureKey })
+            .Distinct()
+            .ToListAsync();
+
+        foreach (var owner in circleOwners)
+        {
+            if (!addedUserIds.Contains(owner.Id))
+            {
+                mentionableUsers.Add(new MentionableUserDto
+                {
+                    Id = owner.Id,
+                    Name = owner.Name,
+                    ProfilePictureUrl = !string.IsNullOrEmpty(owner.ProfilePictureKey)
+                        ? _storage.GetProfilePictureUrl(owner.ProfilePictureKey)
+                        : null
+                });
+                addedUserIds.Add(owner.Id);
+            }
+        }
+
+        return mentionableUsers;
     }
 
     public async Task<PostDto?> GetPostByIdAsync(Guid requestorId, Guid id, bool includeCommentTree = true, int maxDepth = 3, bool includeImageUrl = false, int imageUrlExpirySeconds = 60)
@@ -160,6 +275,9 @@ public class PostService : IPostService
         {
             dto.Comments = (await _commentService.GetAllCommentsForPostAsync(id)).ToList();
         }
+
+        // Populate mentionable users for comment dropdowns
+        dto.MentionableUsers = await GetMentionableUsersForPostAsync(id, requestorId);
 
         // Optionally attach short-lived image URL
     if (includeImageUrl && fullPost?.ImageObjectKeys.Any() == true)
@@ -697,7 +815,7 @@ public class PostService : IPostService
         }
     }
 
-    public async Task<PostDto> CreatePostAsync(Guid userId, Guid[] circleIds, Guid[] userIds, string text, IEnumerable<string>? imageObjectKeys = null)
+    public async Task<PostDto> CreatePostAsync(Guid userId, Guid[] circleIds, Guid[] userIds, string text, IEnumerable<string>? imageObjectKeys = null, List<MentionDto>? mentions = null)
     {
         var user = await this._dbContext.Users.FirstOrDefaultAsync(u => u.Id == userId);
         if (user == null)
@@ -706,6 +824,18 @@ public class PostService : IPostService
         }
 
         await ValidateAuthorizationToPostAsync(_dbContext, circleIds, userIds, userId);
+
+        // Validate mentions if provided
+        var validatedMentions = new List<MentionDto>();
+        if (mentions != null && mentions.Any())
+        {
+            validatedMentions = await MentionParser.ValidateMentionsAsync(
+                text,
+                mentions,
+                userId,
+                _dbContext,
+                _friendshipService);
+        }
 
         // Use explicit transaction to ensure atomicity
         using var transaction = await _dbContext.Database.BeginTransactionAsync();
@@ -717,7 +847,8 @@ public class PostService : IPostService
                 UserId = userId,
                 Text = text,
                 Date = DateTime.UtcNow,
-                ImageObjectKeys = imageObjectKeys?.ToList() ?? new List<string>()
+                ImageObjectKeys = imageObjectKeys?.ToList() ?? new List<string>(),
+                Mentions = validatedMentions
             };
 
             var entry = await _dbContext.Posts.AddAsync(post);
@@ -760,29 +891,27 @@ public class PostService : IPostService
             // The actual push notification sending happens asynchronously via background worker
             try
             {
+                // Get mentioned user IDs to exclude from regular post notifications
+                var mentionedUserIds = MentionParser.GetMentionedUserIds(validatedMentions);
+                
                 await _eventNotificationService.SendNewPostNotificationAsync(
                     post.Id, 
                     userId, 
                     text, 
                     circleIds, 
                     user.Name, 
-                    imageObjectKeys != null && imageObjectKeys.Any());
+                    imageObjectKeys != null && imageObjectKeys.Any(),
+                    excludeUserIds: mentionedUserIds);
 
-                // Check for @mentions and notify mentioned friends
-                var mentionedFriendIds = await MentionParser.GetMentionedFriendIdsAsync(
-                    text, 
-                    userId, 
-                    _dbContext, 
-                    _friendshipService);
-
-                if (mentionedFriendIds.Any())
+                // Send mention notifications for validated mentions
+                if (mentionedUserIds.Any())
                 {
                     await _eventNotificationService.SendPostMentionNotificationsAsync(
                         post.Id,
                         userId,
                         user.Name,
                         text,
-                        mentionedFriendIds);
+                        mentionedUserIds);
                 }
             }
             catch (Exception ex)
@@ -804,6 +933,7 @@ public class PostService : IPostService
             var dto = this._mapper.Map<PostDto>(entry.Entity);
             dto.HasImage = post.ImageObjectKeys.Any();
             dto.ImageCount = post.ImageObjectKeys.Count;
+            dto.Mentions = validatedMentions;
             return dto;
         }
         catch (Exception ex)

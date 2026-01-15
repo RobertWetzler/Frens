@@ -595,24 +595,18 @@ export class Client {
         return Promise.resolve<FileResponse>(null as any);
     }
 
-    comment_PostComment(text: string | undefined, postId: string | undefined, parentCommentid: string | null | undefined, signal?: AbortSignal): Promise<CommentDto> {
-        let url_ = this.baseUrl + "/api/Comment?";
-        if (text === null)
-            throw new Error("The parameter 'text' cannot be null.");
-        else if (text !== undefined)
-            url_ += "text=" + encodeURIComponent("" + text) + "&";
-        if (postId === null)
-            throw new Error("The parameter 'postId' cannot be null.");
-        else if (postId !== undefined)
-            url_ += "postId=" + encodeURIComponent("" + postId) + "&";
-        if (parentCommentid !== undefined && parentCommentid !== null)
-            url_ += "parentCommentid=" + encodeURIComponent("" + parentCommentid) + "&";
+    comment_PostComment(body: CreateCommentRequestDto, signal?: AbortSignal): Promise<CommentDto> {
+        let url_ = this.baseUrl + "/api/Comment";
         url_ = url_.replace(/[?&]$/, "");
 
+        const content_ = JSON.stringify(body);
+
         let options_: RequestInit = {
+            body: content_,
             method: "POST",
             signal,
             headers: {
+                "Content-Type": "application/json",
                 "Accept": "application/json"
             }
         };
@@ -640,28 +634,18 @@ export class Client {
         return Promise.resolve<CommentDto>(null as any);
     }
 
-    comment_PostCarpoolComment(text: string | undefined, postId: string | undefined, spots: number | undefined, parentCommentId: string | null | undefined, signal?: AbortSignal): Promise<CommentDto> {
-        let url_ = this.baseUrl + "/api/Comment/carpool?";
-        if (text === null)
-            throw new Error("The parameter 'text' cannot be null.");
-        else if (text !== undefined)
-            url_ += "text=" + encodeURIComponent("" + text) + "&";
-        if (postId === null)
-            throw new Error("The parameter 'postId' cannot be null.");
-        else if (postId !== undefined)
-            url_ += "postId=" + encodeURIComponent("" + postId) + "&";
-        if (spots === null)
-            throw new Error("The parameter 'spots' cannot be null.");
-        else if (spots !== undefined)
-            url_ += "spots=" + encodeURIComponent("" + spots) + "&";
-        if (parentCommentId !== undefined && parentCommentId !== null)
-            url_ += "parentCommentId=" + encodeURIComponent("" + parentCommentId) + "&";
+    comment_PostCarpoolComment(body: CreateCarpoolCommentRequestDto, signal?: AbortSignal): Promise<CommentDto> {
+        let url_ = this.baseUrl + "/api/Comment/carpool";
         url_ = url_.replace(/[?&]$/, "");
 
+        const content_ = JSON.stringify(body);
+
         let options_: RequestInit = {
+            body: content_,
             method: "POST",
             signal,
             headers: {
+                "Content-Type": "application/json",
                 "Accept": "application/json"
             }
         };
@@ -2187,7 +2171,7 @@ export class Client {
         return Promise.resolve<FeedDto>(null as any);
     }
 
-    post_CreatePost(text: string | null | undefined, circleIds: string[] | null | undefined, userIds: string[] | null | undefined, images: FileParameter[] | null | undefined, signal?: AbortSignal): Promise<PostDto> {
+    post_CreatePost(text: string | null | undefined, circleIds: string[] | null | undefined, userIds: string[] | null | undefined, images: FileParameter[] | null | undefined, mentionsJson: string | null | undefined, signal?: AbortSignal): Promise<PostDto> {
         let url_ = this.baseUrl + "/api/Post";
         url_ = url_.replace(/[?&]$/, "");
 
@@ -2200,6 +2184,8 @@ export class Client {
             userIds.forEach(item_ => content_.append("UserIds", item_.toString()));
         if (images !== null && images !== undefined)
             images.forEach(item_ => content_.append("Images", item_.data, item_.fileName ? item_.fileName : "Images") );
+        if (mentionsJson !== null && mentionsJson !== undefined)
+            content_.append("MentionsJson", mentionsJson.toString());
 
         let options_: RequestInit = {
             body: content_,
@@ -2438,7 +2424,6 @@ export class UserDto implements IUserDto {
     name?: string;
     profilePictureUrl?: string | undefined;
     discoveredEasterEggs?: EasterEggDto[];
-    userName?: string | undefined;
 
     constructor(data?: IUserDto) {
         if (data) {
@@ -2459,7 +2444,6 @@ export class UserDto implements IUserDto {
                 for (let item of _data["discoveredEasterEggs"])
                     this.discoveredEasterEggs!.push(EasterEggDto.fromJS(item));
             }
-            this.userName = _data["userName"];
         }
     }
 
@@ -2480,7 +2464,6 @@ export class UserDto implements IUserDto {
             for (let item of this.discoveredEasterEggs)
                 data["discoveredEasterEggs"].push(item.toJSON());
         }
-        data["userName"] = this.userName;
         return data;
     }
 }
@@ -2490,7 +2473,6 @@ export interface IUserDto {
     name?: string;
     profilePictureUrl?: string | undefined;
     discoveredEasterEggs?: EasterEggDto[];
-    userName?: string | undefined;
 }
 
 export class EasterEggDto implements IEasterEggDto {
@@ -2627,6 +2609,7 @@ export class CirclePublicDto implements ICirclePublicDto {
     isShared?: boolean;
     isSubscribable?: boolean;
     isOwner?: boolean;
+    mentionableUsers?: MentionableUserDto[];
 
     constructor(data?: ICirclePublicDto) {
         if (data) {
@@ -2644,6 +2627,11 @@ export class CirclePublicDto implements ICirclePublicDto {
             this.isShared = _data["isShared"];
             this.isSubscribable = _data["isSubscribable"];
             this.isOwner = _data["isOwner"];
+            if (Array.isArray(_data["mentionableUsers"])) {
+                this.mentionableUsers = [] as any;
+                for (let item of _data["mentionableUsers"])
+                    this.mentionableUsers!.push(MentionableUserDto.fromJS(item));
+            }
         }
     }
 
@@ -2661,6 +2649,11 @@ export class CirclePublicDto implements ICirclePublicDto {
         data["isShared"] = this.isShared;
         data["isSubscribable"] = this.isSubscribable;
         data["isOwner"] = this.isOwner;
+        if (Array.isArray(this.mentionableUsers)) {
+            data["mentionableUsers"] = [];
+            for (let item of this.mentionableUsers)
+                data["mentionableUsers"].push(item.toJSON());
+        }
         return data;
     }
 }
@@ -2671,6 +2664,51 @@ export interface ICirclePublicDto {
     isShared?: boolean;
     isSubscribable?: boolean;
     isOwner?: boolean;
+    mentionableUsers?: MentionableUserDto[];
+}
+
+export class MentionableUserDto implements IMentionableUserDto {
+    id?: string;
+    name?: string;
+    profilePictureUrl?: string | undefined;
+
+    constructor(data?: IMentionableUserDto) {
+        if (data) {
+            for (var property in data) {
+                if (data.hasOwnProperty(property))
+                    (<any>this)[property] = (<any>data)[property];
+            }
+        }
+    }
+
+    init(_data?: any) {
+        if (_data) {
+            this.id = _data["id"];
+            this.name = _data["name"];
+            this.profilePictureUrl = _data["profilePictureUrl"];
+        }
+    }
+
+    static fromJS(data: any): MentionableUserDto {
+        data = typeof data === 'object' ? data : {};
+        let result = new MentionableUserDto();
+        result.init(data);
+        return result;
+    }
+
+    toJSON(data?: any) {
+        data = typeof data === 'object' ? data : {};
+        data["id"] = this.id;
+        data["name"] = this.name;
+        data["profilePictureUrl"] = this.profilePictureUrl;
+        return data;
+    }
+}
+
+export interface IMentionableUserDto {
+    id?: string;
+    name?: string;
+    profilePictureUrl?: string | undefined;
 }
 
 export class CircleWithMembersDto implements ICircleWithMembersDto {
@@ -2890,6 +2928,7 @@ export class CommentDto implements ICommentDto {
     date?: Date;
     text?: string;
     user?: UserDto;
+    mentions?: MentionDto[];
     replies?: CommentDto[] | undefined;
 
     protected _discriminator: string;
@@ -2910,6 +2949,11 @@ export class CommentDto implements ICommentDto {
             this.date = _data["date"] ? new Date(_data["date"].toString()) : <any>undefined;
             this.text = _data["text"];
             this.user = _data["user"] ? UserDto.fromJS(_data["user"]) : <any>undefined;
+            if (Array.isArray(_data["mentions"])) {
+                this.mentions = [] as any;
+                for (let item of _data["mentions"])
+                    this.mentions!.push(MentionDto.fromJS(item));
+            }
             if (Array.isArray(_data["replies"])) {
                 this.replies = [] as any;
                 for (let item of _data["replies"])
@@ -2937,6 +2981,11 @@ export class CommentDto implements ICommentDto {
         data["date"] = this.date ? this.date.toISOString() : <any>undefined;
         data["text"] = this.text;
         data["user"] = this.user ? this.user.toJSON() : <any>undefined;
+        if (Array.isArray(this.mentions)) {
+            data["mentions"] = [];
+            for (let item of this.mentions)
+                data["mentions"].push(item.toJSON());
+        }
         if (Array.isArray(this.replies)) {
             data["replies"] = [];
             for (let item of this.replies)
@@ -2951,7 +3000,56 @@ export interface ICommentDto {
     date?: Date;
     text?: string;
     user?: UserDto;
+    mentions?: MentionDto[];
     replies?: CommentDto[] | undefined;
+}
+
+export class MentionDto implements IMentionDto {
+    userId?: string;
+    name?: string;
+    start?: number;
+    end?: number;
+
+    constructor(data?: IMentionDto) {
+        if (data) {
+            for (var property in data) {
+                if (data.hasOwnProperty(property))
+                    (<any>this)[property] = (<any>data)[property];
+            }
+        }
+    }
+
+    init(_data?: any) {
+        if (_data) {
+            this.userId = _data["userId"];
+            this.name = _data["name"];
+            this.start = _data["start"];
+            this.end = _data["end"];
+        }
+    }
+
+    static fromJS(data: any): MentionDto {
+        data = typeof data === 'object' ? data : {};
+        let result = new MentionDto();
+        result.init(data);
+        return result;
+    }
+
+    toJSON(data?: any) {
+        data = typeof data === 'object' ? data : {};
+        data["userId"] = this.userId;
+        data["name"] = this.name;
+        data["start"] = this.start;
+        data["end"] = this.end;
+        return data;
+    }
+}
+
+export interface IMentionDto {
+    userId?: string;
+    name?: string;
+    start?: number;
+    end?: number;
 }
 
 export class CarpoolCommentDto extends CommentDto implements ICarpoolCommentDto {
@@ -2998,6 +3096,122 @@ export class CarpoolCommentDto extends CommentDto implements ICarpoolCommentDto 
 export interface ICarpoolCommentDto extends ICommentDto {
     carpoolSpots?: number | undefined;
     carpoolRiders?: UserDto[];
+}
+
+export class CreateCommentRequestDto implements ICreateCommentRequestDto {
+    text?: string;
+    postId?: string;
+    parentCommentId?: string | undefined;
+    mentions?: MentionDto[] | undefined;
+
+    constructor(data?: ICreateCommentRequestDto) {
+        if (data) {
+            for (var property in data) {
+                if (data.hasOwnProperty(property))
+                    (<any>this)[property] = (<any>data)[property];
+            }
+        }
+    }
+
+    init(_data?: any) {
+        if (_data) {
+            this.text = _data["text"];
+            this.postId = _data["postId"];
+            this.parentCommentId = _data["parentCommentId"];
+            if (Array.isArray(_data["mentions"])) {
+                this.mentions = [] as any;
+                for (let item of _data["mentions"])
+                    this.mentions!.push(MentionDto.fromJS(item));
+            }
+        }
+    }
+
+    static fromJS(data: any): CreateCommentRequestDto {
+        data = typeof data === 'object' ? data : {};
+        let result = new CreateCommentRequestDto();
+        result.init(data);
+        return result;
+    }
+
+    toJSON(data?: any) {
+        data = typeof data === 'object' ? data : {};
+        data["text"] = this.text;
+        data["postId"] = this.postId;
+        data["parentCommentId"] = this.parentCommentId;
+        if (Array.isArray(this.mentions)) {
+            data["mentions"] = [];
+            for (let item of this.mentions)
+                data["mentions"].push(item.toJSON());
+        }
+        return data;
+    }
+}
+
+export interface ICreateCommentRequestDto {
+    text?: string;
+    postId?: string;
+    parentCommentId?: string | undefined;
+    mentions?: MentionDto[] | undefined;
+}
+
+export class CreateCarpoolCommentRequestDto implements ICreateCarpoolCommentRequestDto {
+    text?: string;
+    postId?: string;
+    spots?: number;
+    parentCommentId?: string | undefined;
+    mentions?: MentionDto[] | undefined;
+
+    constructor(data?: ICreateCarpoolCommentRequestDto) {
+        if (data) {
+            for (var property in data) {
+                if (data.hasOwnProperty(property))
+                    (<any>this)[property] = (<any>data)[property];
+            }
+        }
+    }
+
+    init(_data?: any) {
+        if (_data) {
+            this.text = _data["text"];
+            this.postId = _data["postId"];
+            this.spots = _data["spots"];
+            this.parentCommentId = _data["parentCommentId"];
+            if (Array.isArray(_data["mentions"])) {
+                this.mentions = [] as any;
+                for (let item of _data["mentions"])
+                    this.mentions!.push(MentionDto.fromJS(item));
+            }
+        }
+    }
+
+    static fromJS(data: any): CreateCarpoolCommentRequestDto {
+        data = typeof data === 'object' ? data : {};
+        let result = new CreateCarpoolCommentRequestDto();
+        result.init(data);
+        return result;
+    }
+
+    toJSON(data?: any) {
+        data = typeof data === 'object' ? data : {};
+        data["text"] = this.text;
+        data["postId"] = this.postId;
+        data["spots"] = this.spots;
+        data["parentCommentId"] = this.parentCommentId;
+        if (Array.isArray(this.mentions)) {
+            data["mentions"] = [];
+            for (let item of this.mentions)
+                data["mentions"].push(item.toJSON());
+        }
+        return data;
+    }
+}
+
+export interface ICreateCarpoolCommentRequestDto {
+    text?: string;
+    postId?: string;
+    spots?: number;
+    parentCommentId?: string | undefined;
+    mentions?: MentionDto[] | undefined;
 }
 
 export class DiscoverEasterEggRequest implements IDiscoverEasterEggRequest {
@@ -3050,6 +3264,8 @@ export class PostDto implements IPostDto {
     hasImage?: boolean;
     imageCount?: number;
     imageUrl?: string | undefined;
+    mentions?: MentionDto[];
+    mentionableUsers?: MentionableUserDto[];
 
     protected _discriminator: string;
 
@@ -3090,6 +3306,16 @@ export class PostDto implements IPostDto {
             this.hasImage = _data["hasImage"];
             this.imageCount = _data["imageCount"];
             this.imageUrl = _data["imageUrl"];
+            if (Array.isArray(_data["mentions"])) {
+                this.mentions = [] as any;
+                for (let item of _data["mentions"])
+                    this.mentions!.push(MentionDto.fromJS(item));
+            }
+            if (Array.isArray(_data["mentionableUsers"])) {
+                this.mentionableUsers = [] as any;
+                for (let item of _data["mentionableUsers"])
+                    this.mentionableUsers!.push(MentionableUserDto.fromJS(item));
+            }
         }
     }
 
@@ -3133,6 +3359,16 @@ export class PostDto implements IPostDto {
         data["hasImage"] = this.hasImage;
         data["imageCount"] = this.imageCount;
         data["imageUrl"] = this.imageUrl;
+        if (Array.isArray(this.mentions)) {
+            data["mentions"] = [];
+            for (let item of this.mentions)
+                data["mentions"].push(item.toJSON());
+        }
+        if (Array.isArray(this.mentionableUsers)) {
+            data["mentionableUsers"] = [];
+            for (let item of this.mentionableUsers)
+                data["mentionableUsers"].push(item.toJSON());
+        }
         return data;
     }
 }
@@ -3151,6 +3387,8 @@ export interface IPostDto {
     hasImage?: boolean;
     imageCount?: number;
     imageUrl?: string | undefined;
+    mentions?: MentionDto[];
+    mentionableUsers?: MentionableUserDto[];
 }
 
 export class EventDto extends PostDto implements IEventDto {
@@ -4274,7 +4512,6 @@ export class UserProfileDto implements IUserProfileDto {
     id?: string;
     name?: string;
     profilePictureUrl?: string | undefined;
-    userName?: string | undefined;
     bio?: string;
     createdAt?: Date;
 
@@ -4292,7 +4529,6 @@ export class UserProfileDto implements IUserProfileDto {
             this.id = _data["id"];
             this.name = _data["name"];
             this.profilePictureUrl = _data["profilePictureUrl"];
-            this.userName = _data["userName"];
             this.bio = _data["bio"];
             this.createdAt = _data["createdAt"] ? new Date(_data["createdAt"].toString()) : <any>undefined;
         }
@@ -4310,7 +4546,6 @@ export class UserProfileDto implements IUserProfileDto {
         data["id"] = this.id;
         data["name"] = this.name;
         data["profilePictureUrl"] = this.profilePictureUrl;
-        data["userName"] = this.userName;
         data["bio"] = this.bio;
         data["createdAt"] = this.createdAt ? this.createdAt.toISOString() : <any>undefined;
         return data;
@@ -4321,7 +4556,6 @@ export interface IUserProfileDto {
     id?: string;
     name?: string;
     profilePictureUrl?: string | undefined;
-    userName?: string | undefined;
     bio?: string;
     createdAt?: Date;
 }

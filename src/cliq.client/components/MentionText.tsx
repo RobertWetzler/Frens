@@ -1,73 +1,107 @@
-import React, { useEffect, useState } from 'react';
+import React from 'react';
 import { Text, Linking } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
-import { ApiClient } from '../services/apiClient';
-import { UserDto } from '../services/generated/generatedClient';
+import { MentionDto } from '../services/generated/generatedClient';
 
 interface MentionTextProps {
   text: string;
   style?: any;
+  mentions?: MentionDto[];
 }
 
-export const MentionText: React.FC<MentionTextProps> = ({ text, style }) => {
+type TextPart = {
+  type: 'text' | 'mention' | 'link';
+  content: string;
+  key: string;
+  userId?: string;
+};
+
+export const MentionText: React.FC<MentionTextProps> = ({ text, style, mentions = [] }) => {
   const navigation = useNavigation<any>();
-  const [friends, setFriends] = useState<UserDto[]>([]);
 
-  useEffect(() => {
-    loadFriends();
-  }, []);
-
-  const loadFriends = async () => {
-    try {
-      const friendsList = await ApiClient.call(c => c.frenship_GetFriends());
-      setFriends(friendsList as UserDto[]);
-    } catch (error) {
-      // Silent fail
+  // Parse text and split into segments with mentions (from data) and links (detected)
+  const parseText = (inputText: string): TextPart[] => {
+    // Sort mentions by start position
+    const sortedMentions = [...mentions].sort((a, b) => a.start - b.end);
+    
+    // First, find all URLs in the text
+    const urlRegex = /(https?:\/\/[^\s]+)|(www\.[^\s]+)/g;
+    const urls: { start: number; end: number; content: string }[] = [];
+    let urlMatch;
+    while ((urlMatch = urlRegex.exec(inputText)) !== null) {
+      urls.push({
+        start: urlMatch.index,
+        end: urlMatch.index + urlMatch[0].length,
+        content: urlMatch[0],
+      });
     }
-  };
 
-  // Parse text and split into segments with mentions and links
-  const parseText = (inputText: string) => {
-    // Combined regex: mentions OR URLs
-    // Mention: @ followed by a name (starting with uppercase)
-    // URL: http(s):// or www. followed by non-space characters
-    const combinedRegex = /(@[A-Z](?:[a-zA-Z0-9._-]|\s+[A-Z])*?)(?=\s+[a-z]|$|[.,!?;:])|(https?:\/\/[^\s]+)|(www\.[^\s]+)/g;
-    const parts: { type: 'text' | 'mention' | 'link'; content: string; key: string }[] = [];
+    // Combine mentions and URLs into a single list of "special" segments
+    const segments: { type: 'mention' | 'link'; start: number; end: number; content: string; userId?: string }[] = [];
+    
+    // Add mentions (they include the @ symbol in text, so start is at @)
+    for (const mention of sortedMentions) {
+      segments.push({
+        type: 'mention',
+        start: mention.start,
+        end: mention.end,
+        content: mention.name,
+        userId: mention.userId,
+      });
+    }
+    
+    // Add URLs that don't overlap with mentions
+    for (const url of urls) {
+      const overlapsWithMention = segments.some(
+        s => s.type === 'mention' && url.start < s.end && url.end > s.start
+      );
+      if (!overlapsWithMention) {
+        segments.push({
+          type: 'link',
+          start: url.start,
+          end: url.end,
+          content: url.content,
+        });
+      }
+    }
+
+    // Sort all segments by start position
+    segments.sort((a, b) => a.start - b.start);
+
+    // Build the parts array
+    const parts: TextPart[] = [];
     let lastIndex = 0;
-    let match;
 
-    while ((match = combinedRegex.exec(inputText)) !== null) {
-      // Add text before the match
-      if (match.index > lastIndex) {
+    for (const segment of segments) {
+      // Add text before this segment
+      if (segment.start > lastIndex) {
         parts.push({
           type: 'text',
-          content: inputText.substring(lastIndex, match.index),
+          content: inputText.substring(lastIndex, segment.start),
           key: `text-${lastIndex}`,
         });
       }
 
-      if (match[1]) {
-        // It's a mention (group 1)
-        const mentionName = match[1].substring(1); // Remove @
+      if (segment.type === 'mention') {
+        // The text from start to end should be "@Name"
         parts.push({
           type: 'mention',
-          content: mentionName,
-          key: `mention-${match.index}`,
+          content: segment.content,
+          key: `mention-${segment.start}`,
+          userId: segment.userId,
         });
-      } else if (match[2] || match[3]) {
-        // It's a URL (group 2 for http(s):// or group 3 for www.)
-        const url = match[2] || match[3];
+      } else {
         parts.push({
           type: 'link',
-          content: url,
-          key: `link-${match.index}`,
+          content: segment.content,
+          key: `link-${segment.start}`,
         });
       }
 
-      lastIndex = match.index + match[0].length;
+      lastIndex = segment.end;
     }
 
-    // Add remaining text after last mention
+    // Add remaining text after last segment
     if (lastIndex < inputText.length) {
       parts.push({
         type: 'text',
@@ -76,17 +110,12 @@ export const MentionText: React.FC<MentionTextProps> = ({ text, style }) => {
       });
     }
 
-    return parts.length > 0 ? parts : [{ type: 'text' as const, content: inputText, key: 'text-0' }];
+    return parts.length > 0 ? parts : [{ type: 'text', content: inputText, key: 'text-0' }];
   };
 
-  const handleMentionPress = (displayName: string) => {
-    // Find user by display name in friends list
-    const user = friends.find(f => 
-      f.name.toLowerCase() === displayName.toLowerCase()
-    );
-
-    if (user) {
-      navigation.navigate('Profile', { userId: user.id });
+  const handleMentionPress = (userId: string | undefined) => {
+    if (userId) {
+      navigation.navigate('Profile', { userId });
     }
   };
 
@@ -104,12 +133,12 @@ export const MentionText: React.FC<MentionTextProps> = ({ text, style }) => {
 
   return (
     <>
-      {parts.map((part, index) => {
+      {parts.map((part) => {
         if (part.type === 'mention') {
           return (
             <Text 
               key={part.key} 
-              onPress={() => handleMentionPress(part.content)}
+              onPress={() => handleMentionPress(part.userId)}
               style={[style, { color: '#60A5FA' }]}
             >
               @{part.content}

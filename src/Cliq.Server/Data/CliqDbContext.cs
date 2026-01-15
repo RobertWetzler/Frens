@@ -214,6 +214,35 @@ public class CliqDbContext : IdentityDbContext<User, CliqRole, Guid>
             .HasColumnName("image_object_keys")
             .HasColumnType("jsonb");
 
+        // Store mentions as jsonb for Post
+        var mentionsConverter = new ValueConverter<List<MentionDto>, string>(
+            v => JsonSerializer.Serialize(v ?? new List<MentionDto>(), new JsonSerializerOptions()),
+            v => string.IsNullOrWhiteSpace(v) ? new List<MentionDto>() : (JsonSerializer.Deserialize<List<MentionDto>>(v, new JsonSerializerOptions()) ?? new List<MentionDto>()));
+
+        var mentionsComparer = new ValueComparer<List<MentionDto>>(
+            (l1, l2) => JsonSerializer.Serialize(l1 ?? new List<MentionDto>(), new JsonSerializerOptions()) == JsonSerializer.Serialize(l2 ?? new List<MentionDto>(), new JsonSerializerOptions()),
+            l => (l ?? new List<MentionDto>()).Aggregate(0, (a, v) => HashCode.Combine(a, v.UserId.GetHashCode())),
+            l => (l ?? new List<MentionDto>()).ToList());
+
+        modelBuilder.Entity<Post>()
+            .Property(p => p.Mentions)
+            .HasConversion(mentionsConverter)
+            .Metadata.SetValueComparer(mentionsComparer);
+        modelBuilder.Entity<Post>()
+            .Property(p => p.Mentions)
+            .HasColumnName("mentions")
+            .HasColumnType("jsonb");
+
+        // Store mentions as jsonb for Comment
+        modelBuilder.Entity<Comment>()
+            .Property(c => c.Mentions)
+            .HasConversion(mentionsConverter)
+            .Metadata.SetValueComparer(mentionsComparer);
+        modelBuilder.Entity<Comment>()
+            .Property(c => c.Mentions)
+            .HasColumnName("mentions")
+            .HasColumnType("jsonb");
+
         modelBuilder.Entity<Circle>()
             .HasIndex(c => c.OwnerId);    // For admin tools
 

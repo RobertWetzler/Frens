@@ -10,7 +10,7 @@ import {
   ActivityIndicator,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
-import { CommentDto } from "services/generated/generatedClient";
+import { CommentDto, MentionDto, MentionableUserDto, CreateCommentRequestDto, CreateCarpoolCommentRequestDto } from "services/generated/generatedClient";
 import { usePost } from "hooks/usePosts";
 import { ApiClient } from "services/apiClient";
 import Post from "./Post";
@@ -133,10 +133,11 @@ interface CommentTreeProps {
   comment: CommentDto;
   depth: number;
   onAddReply: (
-    text,
+    text: string,
     parentCommentId: string | undefined,
     isCarpool?: boolean,
-    spots?: number
+    spots?: number,
+    mentions?: MentionDto[]
   ) => Promise<CommentDto>;
   onToggleCarpool?: (commentId: string, joined: boolean) => void;
   isSubmitting: boolean;
@@ -145,6 +146,7 @@ interface CommentTreeProps {
   onHeightMeasure?: (height: number) => void;
   navigation?: any;
   styles: ReturnType<typeof useCommentStyles>;
+  mentionableUsers?: MentionableUserDto[];
 }
 
 const CommentTree: React.FC<CommentTreeProps> = ({
@@ -158,9 +160,11 @@ const CommentTree: React.FC<CommentTreeProps> = ({
   onHeightMeasure,
   navigation,
   styles,
+  mentionableUsers = [],
 }) => {
   const [collapsed, setCollapsed] = useState(false);
   const [replyText, setReplyText] = useState("");
+  const [replyMentions, setReplyMentions] = useState<MentionDto[]>([]);
   const [isReplying, setIsReplying] = useState(false);
   const [isCarpoolReply, setIsCarpoolReply] = useState(false);
   const [carpoolReplySpots, setCarpoolReplySpots] = useState("1");
@@ -187,8 +191,9 @@ const CommentTree: React.FC<CommentTreeProps> = ({
     if (replyText.trim()) {
       try {
         const spots = parseInt(carpoolReplySpots || "1", 10) || 1;
-        await onAddReply(replyText.trim(), comment.id, isCarpoolReply, spots);
+        await onAddReply(replyText.trim(), comment.id, isCarpoolReply, spots, replyMentions);
         setReplyText("");
+        setReplyMentions([]);
         setIsReplying(false);
         setIsCarpoolReply(false);
         setCarpoolReplySpots("1");
@@ -267,7 +272,7 @@ const CommentTree: React.FC<CommentTreeProps> = ({
           {!collapsed && (
             <>
               <Text style={styles.commentText}>
-                <MentionText text={comment.text || ''} style={styles.commentText} />
+                <MentionText text={comment.text || ''} style={styles.commentText} mentions={comment.mentions} />
               </Text>
               {carpoolSpots !== null && (
                 <View style={styles.carpoolInfoRow}>
@@ -342,6 +347,8 @@ const CommentTree: React.FC<CommentTreeProps> = ({
                     style={styles.replyInput}
                     multiline
                     numberOfLines={3}
+                    mentionableUsers={mentionableUsers}
+                    onMentionsChange={setReplyMentions}
                   />
                   <View style={styles.replyButtons}>
                     <TouchableOpacity
@@ -385,6 +392,7 @@ const CommentTree: React.FC<CommentTreeProps> = ({
                       }
                       navigation={navigation}
                       styles={styles}
+                      mentionableUsers={mentionableUsers}
                     />
                   ))}
                 </View>
@@ -407,6 +415,7 @@ const CommentSection: React.FC<{
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [newCommentText, setNewCommentText] = useState("");
+  const [newCommentMentions, setNewCommentMentions] = useState<MentionDto[]>([]);
   const [isAddingComment, setIsAddingComment] = useState(false);
   const [isCarpoolNewComment, setIsCarpoolNewComment] = useState(false);
   const [carpoolNewCommentSpots, setCarpoolNewCommentSpots] = useState("");
@@ -437,9 +446,11 @@ const CommentSection: React.FC<{
           newCommentText.trim(),
           undefined,
           isCarpoolNewComment,
-          spots
+          spots,
+          newCommentMentions
         );
         setNewCommentText("");
+        setNewCommentMentions([]);
         setIsAddingComment(false);
         setIsCarpoolNewComment(false);
         setCarpoolNewCommentSpots("");
@@ -451,10 +462,11 @@ const CommentSection: React.FC<{
   };
 
   const addReply = async (
-    text,
+    text: string,
     parentCommentId: string | undefined,
     isCarpool?: boolean,
-    spots?: number
+    spots?: number,
+    mentions?: MentionDto[]
   ) => {
     setIsSubmitting(true);
     setSubmitError(null);
@@ -462,26 +474,26 @@ const CommentSection: React.FC<{
     try {
       let response: CommentDto;
       if (isCarpool) {
-        // call server carpool endpoint directly (generated client doesn't include this method)
-        response = await ApiClient.call(async (c) => {
-          const base = (c as any).baseUrl as string;
-          const http = (c as any).http as any;
-          const url = `${base}/api/Comment/carpool?text=${encodeURIComponent(
-            text
-          )}&postId=${encodeURIComponent(postId)}&spots=${encodeURIComponent(
-            (spots || 1).toString()
-          )}${parentCommentId ? `&parentCommentId=${encodeURIComponent(parentCommentId)}` : ""}`;
-          const res = await http.fetch(url, { method: "POST", headers: { Accept: "application/json" } });
-          if (!res.ok) {
-            const txt = await res.text();
-            throw new Error(txt || "Failed to post carpool comment");
-          }
-          const json = await res.json();
-          return CommentDto.fromJS(json);
-        });
+        // Use the new carpool comment API with JSON body
+        response = await ApiClient.call((c) =>
+          c.comment_PostCarpoolComment(new CreateCarpoolCommentRequestDto({
+            text,
+            postId,
+            spots: spots || 1,
+            parentCommentId: parentCommentId,
+            mentions: mentions,
+          }))
+        );
       } else {
-        // Regular comment
-        response = await ApiClient.call((c) => c.comment_PostComment(text, postId, parentCommentId));
+        // Regular comment with JSON body
+        response = await ApiClient.call((c) =>
+          c.comment_PostComment(new CreateCommentRequestDto({
+            text,
+            postId,
+            parentCommentId: parentCommentId,
+            mentions: mentions,
+          }))
+        );
       }
 
       // If the API call was successful, update the UI with the returned comment
@@ -612,6 +624,8 @@ const CommentSection: React.FC<{
                 multiline
                 numberOfLines={3}
                 autoFocus
+                mentionableUsers={post.mentionableUsers}
+                onMentionsChange={setNewCommentMentions}
               />
               <View style={styles.carpoolRow}>
                 <View style={styles.carpoolToggleRow}>
@@ -696,7 +710,7 @@ const CommentSection: React.FC<{
                 isLastInBranch={index === comments.length - 1}
                 navigation={navigation}
                 styles={styles}
-                // Only measure the last child's height
+                mentionableUsers={post.mentionableUsers}
               />
             ))}
           </View>
