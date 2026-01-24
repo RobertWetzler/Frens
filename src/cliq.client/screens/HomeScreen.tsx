@@ -5,6 +5,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import Post from '../components/Post';
+import SubscribableCirclesCard from '../components/SubscribableCirclesCard';
 import getEnvVars from 'env'
 import { useFilteredFeed } from 'hooks/usePosts';
 import { useAuth } from 'contexts/AuthContext';
@@ -27,6 +28,7 @@ const HomeScreen = ({ navigation }) => {
     const {
         posts,
         circles,
+        availableSubscribableCircles,
         notificationCount,
         isLoading,
         isRefreshing,
@@ -284,24 +286,54 @@ const HomeScreen = ({ navigation }) => {
 
                     if (isEvent) {
                         return (
-                            <Event
-                                event={item as EventDto}
-                                navigation={navigation}
-                                shouldAnimate={shouldAnimate}
-                                animationDelay={animationDelay}
-                            />
+                            <>
+                                <Event
+                                    event={item as EventDto}
+                                    navigation={navigation}
+                                    shouldAnimate={shouldAnimate}
+                                    animationDelay={animationDelay}
+                                />
+                                {/* Show subscribable circles card after the second post (index 1), or after first if only 1-2 posts */}
+                                {availableSubscribableCircles && availableSubscribableCircles.length > 0 && 
+                                 ((posts && posts.length >= 2 && index === 1) || (posts && posts.length < 2 && index === posts.length - 1)) && (
+                                    <SubscribableCirclesCard
+                                        circles={availableSubscribableCircles}
+                                        shouldAnimate={shouldAnimate}
+                                        animationDelay={animationDelay + 150}
+                                        onCircleSubscribed={(circleId) => {
+                                            // Refresh feed after subscribing to get new posts from that circle
+                                            loadFeed();
+                                        }}
+                                    />
+                                )}
+                            </>
                         );
                     }
 
                     return (
-                        <Post
-                            post={item}
-                            navigation={navigation}
-                            shouldAnimate={shouldAnimate}
-                            animationDelay={animationDelay}
-                            isFirstPost={index === 0}
-                            onFirstPostLayout={index === 0 ? setFirstPostHeight : undefined}
-                        />
+                        <>
+                            <Post
+                                post={item}
+                                navigation={navigation}
+                                shouldAnimate={shouldAnimate}
+                                animationDelay={animationDelay}
+                                isFirstPost={index === 0}
+                                onFirstPostLayout={index === 0 ? setFirstPostHeight : undefined}
+                            />
+                            {/* Show subscribable circles card after the second post (index 1), or after first if only 1-2 posts */}
+                            {availableSubscribableCircles && availableSubscribableCircles.length > 0 && 
+                             ((posts && posts.length >= 2 && index === 1) || (posts && posts.length < 2 && index === posts.length - 1)) && (
+                                <SubscribableCirclesCard
+                                    circles={availableSubscribableCircles}
+                                    shouldAnimate={shouldAnimate}
+                                    animationDelay={animationDelay + 150}
+                                    onCircleSubscribed={(circleId) => {
+                                        // Refresh feed after subscribing to get new posts from that circle
+                                        loadFeed();
+                                    }}
+                                />
+                            )}
+                        </>
                     );
                 }}
                 keyExtractor={(item) => item.id}
