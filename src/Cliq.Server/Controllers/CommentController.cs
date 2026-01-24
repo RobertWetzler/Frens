@@ -1,4 +1,5 @@
 ﻿using System.ComponentModel.DataAnnotations;
+using System.Text.Json;
 using Cliq.Server.Models;
 using Cliq.Server.Services;
 using Cliq.Utilities;
@@ -19,7 +20,7 @@ public class CommentController : ControllerBase
 
     // TODO: validate user has permissions to view post
     [HttpPost]
-    public async Task<ActionResult<CommentDto>> PostComment(string text, Guid postId, Guid? parentCommentid = null)
+    public async Task<ActionResult<CommentDto>> PostComment([FromBody] CreateCommentRequestDto body)
     {
         var id = this.HttpContext.User.Identity;
         var idClaim = this.HttpContext.User.Claims.FirstOrDefault(c => c.Type == "http://schemas.xmlsoap.org/ws/2005/05/identity/claims/nameidentifier");
@@ -29,10 +30,11 @@ public class CommentController : ControllerBase
         }
 
         var request = new CreateCommentRequest(
-            Text: text,
+            Text: body.Text,
             UserId: new Guid(idClaim.Value),
-            PostId: postId,
-            ParentCommentId: parentCommentid
+            PostId: body.PostId,
+            ParentCommentId: body.ParentCommentId,
+            Mentions: body.Mentions
         );
 
         var comment = await _commentService.CreateCommentAsync(request);
@@ -45,7 +47,7 @@ public class CommentController : ControllerBase
 
     // Create a carpool comment (special comment that allows users to claim seats)
     [HttpPost("carpool")]
-    public async Task<ActionResult<CommentDto>> PostCarpoolComment(string text, Guid postId, [Range(1, int.MaxValue, ErrorMessage = "Spots must be 1 or greater")] int spots, Guid? parentCommentId = null)
+    public async Task<ActionResult<CommentDto>> PostCarpoolComment([FromBody] CreateCarpoolCommentRequestDto body)
     {
         var idClaim = this.HttpContext.User.Claims.FirstOrDefault(c => c.Type == "http://schemas.xmlsoap.org/ws/2005/05/identity/claims/nameidentifier");
         if (idClaim == null)
@@ -54,11 +56,12 @@ public class CommentController : ControllerBase
         }
 
         var request = new CreateCarpoolCommentRequest(
-            Text: text,
+            Text: body.Text,
             UserId: new Guid(idClaim.Value),
-            PostId: postId,
-            Spots: spots,
-            ParentCommentId: parentCommentId
+            PostId: body.PostId,
+            Spots: body.Spots,
+            ParentCommentId: body.ParentCommentId,
+            Mentions: body.Mentions
         );
 
         var comment = await _commentService.CreateCommentAsync(request);

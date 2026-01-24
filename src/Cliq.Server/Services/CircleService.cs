@@ -12,6 +12,7 @@ public interface ICircleService
     Task<CirclePublicDto> CreateCircleAsync(Guid creatorId, CircleCreationDto circleDto);
     Task<IEnumerable<CirclePublicDto>> GetUserOwnedCirclesAsync(Guid userId);
     Task<IEnumerable<CirclePublicDto>> GetUserMemberCirclesAsync(Guid userId);
+    Task<IEnumerable<CirclePublicDto>> GetUserCirclesWithMentionableUsersAsync(Guid userId);
     Task<IEnumerable<CircleWithMembersDto>> GetUserCirclesWithMembersAsync(Guid userId);
     Task DeleteCircleAsync(Guid requestorId, Guid circleId);
     Task FollowCircle(Guid userId, Guid circleId, Guid? notificationId);
@@ -209,6 +210,89 @@ public class CircleService : ICircleService
         // Combine both lists and remove duplicates
         // TODO: might  e bug if member circles returns 
         return _mapper.Map<IEnumerable<CirclePublicDto>>(memberCircles).Union(ownedCirclesMapped, new CircleIdComparer());
+    }
+
+    /// <summary>
+    /// Gets all circles the user can post to, including mentionable users for each circle.
+    /// For owned circles: members can be mentioned.
+    /// For member circles (shared): the owner can be mentioned.
+    /// </summary>
+    public async Task<IEnumerable<CirclePublicDto>> GetUserCirclesWithMentionableUsersAsync(Guid userId)
+    {
+        if (await _dbContext.Users.FirstOrDefaultAsync(u => u.Id == userId) == null)
+        {
+            throw new BadHttpRequestException($"Cannot get circles for invalid user {userId}");
+        }
+
+        var result = new List<CirclePublicDto>();
+
+        // Get circles where user is a member (through CircleMembership) - only shared circles
+        var memberCircles = await _dbContext.Circles
+            .Where(c => c.Members.Any(m => m.UserId == userId) && c.IsShared && c.OwnerId != userId)
+            .Include(c => c.Owner)
+            .ToListAsync();
+
+        // Get circles where user is the owner
+        var ownedCircles = await _dbContext.Circles
+            .Where(c => c.OwnerId == userId)
+            .Include(c => c.Members)
+                .ThenInclude(m => m.User)
+            .ToListAsync();
+
+        // Map member circles - can mention the owner
+        foreach (var circle in memberCircles)
+        {
+            var mentionableUsers = new List<MentionableUserDto>();
+            if (circle.Owner != null)
+            {
+                mentionableUsers.Add(new MentionableUserDto
+                {
+                    Id = circle.Owner.Id,
+                    Name = circle.Owner.Name,
+                    ProfilePictureUrl = !string.IsNullOrEmpty(circle.Owner.ProfilePictureKey)
+                        ? _storage.GetProfilePictureUrl(circle.Owner.ProfilePictureKey)
+                        : null
+                });
+            }
+
+            result.Add(new CirclePublicDto
+            {
+                Id = circle.Id,
+                Name = circle.Name,
+                IsShared = circle.IsShared,
+                IsSubscribable = circle.IsSubscribable,
+                IsOwner = false,
+                MentionableUsers = mentionableUsers
+            });
+        }
+
+        // Map owned circles - can mention all members
+        foreach (var circle in ownedCircles)
+        {
+            var mentionableUsers = circle.Members?
+                .Where(m => m.User != null)
+                .Select(m => new MentionableUserDto
+                {
+                    Id = m.User!.Id,
+                    Name = m.User.Name,
+                    ProfilePictureUrl = !string.IsNullOrEmpty(m.User.ProfilePictureKey)
+                        ? _storage.GetProfilePictureUrl(m.User.ProfilePictureKey)
+                        : null
+                })
+                .ToList() ?? new List<MentionableUserDto>();
+
+            result.Add(new CirclePublicDto
+            {
+                Id = circle.Id,
+                Name = circle.Name,
+                IsShared = circle.IsShared,
+                IsSubscribable = circle.IsSubscribable,
+                IsOwner = true,
+                MentionableUsers = mentionableUsers
+            });
+        }
+
+        return result;
     }
 
     public async Task<IEnumerable<CircleWithMembersDto>> GetUserCirclesWithMembersAsync(Guid userId)

@@ -3,7 +3,6 @@ import { ApiClient } from 'services/apiClient';
 import {
   View,
   Text,
-  TextInput,
   TouchableOpacity,
   KeyboardAvoidingView,
   Platform,
@@ -17,11 +16,12 @@ import DateTimePicker from '@react-native-community/datetimepicker';
 import { Ionicons } from '@expo/vector-icons';
 import { useCreatePostData } from 'hooks/useCircle';
 import ShaderBackground from 'components/ShaderBackground';
-import { CreateEventDto } from 'services/generated/generatedClient';
+import { CreateEventDto, MentionDto, MentionableUserDto } from 'services/generated/generatedClient';
 import * as ImagePicker from 'expo-image-picker';
 import * as FileSystem from 'expo-file-system'; // added for size lookup
 import { useFocusEffect } from '@react-navigation/native';
 import Header from 'components/Header';
+import { MentionInput } from 'components/MentionInput';
 import { useTheme } from '../theme/ThemeContext';
 import { makeStyles } from '../theme/makeStyles';
 import { feedEvents, FEED_POST_CREATED, FEED_POST_STATUS_UPDATED, OptimisticPost } from 'hooks/feedEvents';
@@ -33,6 +33,7 @@ const CreatePostScreen = ({ navigation, route }) => {
   const [postContent, setPostContent] = useState('');
   const [selectedCircleIds, setSelectedCircleIds] = useState([]);
   const [selectedUserIds, setSelectedUserIds] = useState([]);
+  const [mentions, setMentions] = useState<MentionDto[]>([]);
   const [asEvent, setAsEvent] = useState(false);
   const [images, setImages] = useState<Array<{ uri: string; fileName: string; type: string; size?: number; webFile?: File }>>([]); // added size
   const [eventTitle, setEventTitle] = useState('');
@@ -47,6 +48,22 @@ const CreatePostScreen = ({ navigation, route }) => {
   const [showStartTimePicker, setShowStartTimePicker] = useState(false);
   const [showEndDatePicker, setShowEndDatePicker] = useState(false);
   const [showEndTimePicker, setShowEndTimePicker] = useState(false);
+
+  // Compute mentionable users from selected circles
+  const mentionableUsers = useMemo<MentionableUserDto[]>(() => {
+    const userMap = new Map<string, MentionableUserDto>();
+    for (const circleId of selectedCircleIds) {
+      const circle = circles.find(c => c.id === circleId);
+      if (circle?.mentionableUsers) {
+        for (const user of circle.mentionableUsers) {
+          if (!userMap.has(user.id)) {
+            userMap.set(user.id, user);
+          }
+        }
+      }
+    }
+    return Array.from(userMap.values());
+  }, [selectedCircleIds, circles]);
 
   // For refreshing data when this screen is navigated to
   useFocusEffect(
@@ -258,10 +275,12 @@ const CreatePostScreen = ({ navigation, route }) => {
     const capturedCircleIds = [...selectedCircleIds];
     const capturedUserIds = [...selectedUserIds];
     const capturedImages = [...images];
+    const capturedMentions = [...mentions];
     setPostContent('');
     setSelectedCircleIds([]);
     setSelectedUserIds([]);
     setImages([]);
+    setMentions([]);
     setIsSubmitting(false);
     navigation.goBack();
 
@@ -271,8 +290,9 @@ const CreatePostScreen = ({ navigation, route }) => {
         data: Platform.OS === 'web' ? (img.webFile as any) : { uri: img.uri, name: img.fileName, type: img.type },
         fileName: img.fileName,
       }));
+      const mentionsJson = capturedMentions.length > 0 ? JSON.stringify(capturedMentions) : null;
       const response = await ApiClient.call(c =>
-        c.post_CreatePost(capturedContent, capturedCircleIds, capturedUserIds, fileParams)
+        c.post_CreatePost(capturedContent, capturedCircleIds, capturedUserIds, fileParams, mentionsJson)
       );
       console.log('Post created:', response);
       // Update optimistic post with actual response
@@ -314,15 +334,17 @@ const CreatePostScreen = ({ navigation, route }) => {
           }}
         />
 
-        <TextInput
-          style={styles.input}
-          placeholder={asEvent ? "What's this event about? (optional details)" : "What's boopping?"}
-          multiline
+        <MentionInput
           value={postContent}
           onChangeText={setPostContent}
-          autoFocus
+          placeholder={asEvent ? "What's this event about? (optional details)" : "What's boopping?"}
+          style={styles.input}
+          multiline
+          numberOfLines={6}
           maxLength={1000}
-          placeholderTextColor={theme.colors.inputPlaceholder}
+          autoFocus
+          mentionableUsers={mentionableUsers}
+          onMentionsChange={setMentions}
         />
 
         {/* Event toggle */}

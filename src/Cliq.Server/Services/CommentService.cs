@@ -2,6 +2,7 @@
 using Cliq.Server.Data;
 using Cliq.Server.Models;
 using Cliq.Server.Services;
+using Cliq.Server.Utilities;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using Npgsql;
@@ -22,6 +23,7 @@ public class CommentService : ICommentService
     private readonly CliqDbContext _dbContext;
     private readonly IMapper _mapper;
     private readonly IEventNotificationService _eventNotificationService;
+    private readonly IFriendshipService _friendshipService;
     private readonly ILogger _logger;
     private readonly IUserActivityService _activityService;
     private readonly IObjectStorageService _storage;
@@ -29,6 +31,7 @@ public class CommentService : ICommentService
     public CommentService(CliqDbContext dbContext,
         IMapper mapper,
         IEventNotificationService eventNotificationService,
+        IFriendshipService friendshipService,
         ILogger<PostService> logger,
         IUserActivityService activityService,
         IObjectStorageService storage
@@ -37,6 +40,7 @@ public class CommentService : ICommentService
         _dbContext = dbContext;
         _mapper = mapper;
         _eventNotificationService = eventNotificationService;
+        _friendshipService = friendshipService;
         _logger = logger;
         _activityService = activityService;
         _storage = storage;
@@ -63,7 +67,19 @@ public class CommentService : ICommentService
                 ?? throw new ArgumentException("Parent comment not found or doesn't belong to specified post");
         }
 
-        // 3. Build the comment entity
+        // 3. Validate mentions if provided
+        var validatedMentions = new List<MentionDto>();
+        if (request.Mentions != null && request.Mentions.Any())
+        {
+            validatedMentions = await MentionParser.ValidateMentionsAsync(
+                request.Text,
+                request.Mentions,
+                request.UserId,
+                _dbContext,
+                _friendshipService);
+        }
+
+        // 4. Build the comment entity
         var comment = new Comment
         {
             Id = Guid.NewGuid(),
@@ -71,13 +87,14 @@ public class CommentService : ICommentService
             UserId = request.UserId,
             PostId = request.PostId,
             ParentCommentId = request.ParentCommentId,
-            Date = DateTime.UtcNow
+            Date = DateTime.UtcNow,
+            Mentions = validatedMentions
         };
 
-        // 4. Apply type-specific properties (carpool spots, etc.)
+        // 5. Apply type-specific properties (carpool spots, etc.)
         request.ApplyTo(comment);
 
-        // 5. Persist the comment
+        // 6. Persist the comment
         CommentDto result;
         Comment commentWithUser;
         try
@@ -92,6 +109,7 @@ public class CommentService : ICommentService
                 .FirstAsync(c => c.Id == comment.Id);
 
             result = MapCommentToDto(commentWithUser);
+            result.Mentions = validatedMentions;
         }
         catch (DbUpdateException ex) when (ex.InnerException is PostgresException pgEx &&
                                          pgEx.SqlState == PostgresErrorCodes.ForeignKeyViolation)
@@ -99,10 +117,10 @@ public class CommentService : ICommentService
             throw new ArgumentException("Parent post not found");
         }
 
-        // 6. Send notifications (all comment types get notifications)
-        await SendCommentNotificationsAsync(comment, commentWithUser, parentPost, parentComment);
+        // 7. Send notifications (all comment types get notifications)
+        await SendCommentNotificationsAsync(comment, commentWithUser, parentPost, parentComment, validatedMentions);
 
-        // 7. Record user activity for DAU/WAU/MAU tracking (fire-and-forget)
+        // 8. Record user activity for DAU/WAU/MAU tracking (fire-and-forget)
         _ = Task.Run(async () => await _activityService.RecordActivityAsync(request.UserId, UserActivityType.CommentCreated));
 
         return result;
@@ -116,11 +134,15 @@ public class CommentService : ICommentService
         Comment comment,
         Comment commentWithUser,
         Post parentPost,
-        Comment? parentComment)
+        Comment? parentComment,
+        List<MentionDto> validatedMentions)
     {
         try
         {
-            // Notify post author (if not commenting on own post)
+            // Get mentioned user IDs to exclude from regular notifications
+            var mentionedUserIds = MentionParser.GetMentionedUserIds(validatedMentions);
+            
+            // Notify post author (if not commenting on own post and not mentioned)
             if (parentPost.UserId != comment.UserId && commentWithUser.User != null)
             {
                 await _eventNotificationService.SendNewCommentNotificationAsync(
@@ -129,10 +151,11 @@ public class CommentService : ICommentService
                     postAuthorId: parentPost.UserId,
                     commenterId: comment.UserId,
                     commentText: comment.Text,
-                    commenterName: commentWithUser.User.Name);
+                    commenterName: commentWithUser.User.Name,
+                    excludeUserIds: mentionedUserIds);
             }
             // TODO Dont notify post author if they are also the parent comment author
-            // Notify parent comment author if this is a reply (and not replying to own comment)
+            // Notify parent comment author if this is a reply (and not replying to own comment, and not mentioned)
             if (parentComment?.User != null && parentComment.User.Id != comment.UserId)
             {
                 await _eventNotificationService.SendCommentReplyNotificationAsync(
@@ -142,7 +165,20 @@ public class CommentService : ICommentService
                     parentCommentAuthorId: parentComment.User.Id,
                     replierId: comment.UserId,
                     replyText: comment.Text,
-                    commenterName: commentWithUser.User!.Name);
+                    commenterName: commentWithUser.User!.Name,
+                    excludeUserIds: mentionedUserIds);
+            }
+
+            // Send mention notifications for validated mentions
+            if (mentionedUserIds.Any())
+            {
+                await _eventNotificationService.SendCommentMentionNotificationsAsync(
+                    comment.Id,
+                    comment.PostId,
+                    comment.UserId,
+                    commentWithUser.User!.Name,
+                    comment.Text,
+                    mentionedUserIds);
             }
         }
         catch (Exception ex)

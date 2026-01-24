@@ -19,6 +19,9 @@ public class Comment
     // If this comment is a carpool announcement, optional number of spots
     public int? CarpoolSpots { get; set; }
 
+    // Mentions stored as JSON - contains userId, name, start, end positions
+    public List<MentionDto> Mentions { get; set; } = new();
+
     public User User { get; set; } = null!;
     public Post? Post { get; set; }  // Navigation property for post parent
     public Comment? ParentComment { get; set; }  // Navigation property for comment parent
@@ -40,6 +43,9 @@ public class CommentDto
 
     // User info
     public required UserDto User { get; set; }
+
+    // Mentions in the comment text with user IDs and positions
+    public List<MentionDto> Mentions { get; set; } = new List<MentionDto>();
 
     // Optional list of replies - can be null if replies aren't loaded
     public List<CommentDto>? Replies { get; set; } = new List<CommentDto>();
@@ -76,7 +82,8 @@ public record CreateCommentRequest(
     string Text,
     Guid UserId,
     Guid PostId,
-    Guid? ParentCommentId = null
+    Guid? ParentCommentId = null,
+    List<MentionDto>? Mentions = null
 )
 {
     /// <summary>
@@ -98,8 +105,9 @@ public record CreateCarpoolCommentRequest(
     Guid UserId,
     Guid PostId,
     int Spots,
-    Guid? ParentCommentId = null
-) : CreateCommentRequest(Text, UserId, PostId, ParentCommentId)
+    Guid? ParentCommentId = null,
+    List<MentionDto>? Mentions = null
+) : CreateCommentRequest(Text, UserId, PostId, ParentCommentId, Mentions)
 {
     public override CommentType CommentType => CommentType.Carpool;
 
@@ -108,4 +116,27 @@ public record CreateCarpoolCommentRequest(
         base.ApplyTo(comment);
         comment.CarpoolSpots = Spots;
     }
+}
+
+/// <summary>
+/// Request DTO for creating a comment via API (JSON body)
+/// </summary>
+public class CreateCommentRequestDto
+{
+    public required string Text { get; set; }
+    public required Guid PostId { get; set; }
+    public Guid? ParentCommentId { get; set; }
+    public List<MentionDto>? Mentions { get; set; }
+}
+
+/// <summary>
+/// Request DTO for creating a carpool comment via API (JSON body)
+/// </summary>
+public class CreateCarpoolCommentRequestDto
+{
+    public required string Text { get; set; }
+    public required Guid PostId { get; set; }
+    public int Spots { get; set; } = 1;
+    public Guid? ParentCommentId { get; set; }
+    public List<MentionDto>? Mentions { get; set; }
 }

@@ -21,6 +21,8 @@ public class Post
     // Not exposed directly; clients receive only counts / booleans and must request
     // presigned URLs per image index via a dedicated endpoint.
     public List<string> ImageObjectKeys { get; set; } = new();
+    // Mentions stored as JSON - contains userId, name, start, end positions
+    public List<MentionDto> Mentions { get; set; } = new();
     public User User { get; set; } = null!;
     public ICollection<Comment> Comments { get; set; } = new List<Comment>();
     public ICollection<CirclePost> SharedWithCircles { get; set; } = new List<CirclePost>();
@@ -70,6 +72,10 @@ public class PostDto
     public int ImageCount { get; set; } = 0;
     // Optional short‑lived URL for a specific image index when explicitly requested.
     public string? ImageUrl { get; set; }
+    // Mentions in the post text with user IDs and positions
+    public List<MentionDto> Mentions { get; set; } = new List<MentionDto>();
+    // Users that the viewer can mention in comments (populated based on visibility rules)
+    public List<MentionableUserDto> MentionableUsers { get; set; } = new List<MentionableUserDto>();
 }
 
 // Separate request type for multipart form submissions including optional image
@@ -80,6 +86,11 @@ public class CreatePostWithImageRequest
     public Guid[] UserIds { get; set; } = Array.Empty<Guid>();
     // Multiple images supported; ordering preserved as received.
     public List<IFormFile>? Images { get; set; }
+    /// <summary>
+    /// JSON string containing array of mentions. Format: [{"userId": "...", "name": "...", "start": 0, "end": 5}]
+    /// Parsed on the server side.
+    /// </summary>
+    public string? MentionsJson { get; set; }
 }
 
 public class PostImageUrlDto

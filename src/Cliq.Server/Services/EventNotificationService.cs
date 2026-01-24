@@ -12,14 +12,15 @@ public interface IEventNotificationService
 {
     Task SendFriendRequestNotificationAsync(Guid requesterId, Guid addresseeId, Guid friendshipId, string requesterName);
     Task SendFriendRequestAcceptedNotificationAsync(Guid accepterId, Guid requesterId, string requesterName);
-    Task SendNewPostNotificationAsync(Guid postId, Guid authorId, string postText, IEnumerable<Guid> circleIds, string authorName, bool hasImage);
+    Task SendNewPostNotificationAsync(Guid postId, Guid authorId, string postText, IEnumerable<Guid> circleIds, string authorName, bool hasImage, IEnumerable<Guid>? excludeUserIds = null);
     Task SendNewEventNotificationAsync(Guid eventId, Guid authorId, string title, IEnumerable<Guid> circleIds, string authorName);
-    Task SendNewCommentNotificationAsync(Guid commentId, Guid postId, Guid postAuthorId, Guid commenterId, string commentText, string commenterName);
-    Task SendCommentReplyNotificationAsync(Guid replyId, Guid postId, Guid parentCommentId, Guid parentCommentAuthorId, Guid replierId, string replyText, string commenterName);
+    Task SendNewCommentNotificationAsync(Guid commentId, Guid postId, Guid postAuthorId, Guid commenterId, string commentText, string commenterName, IEnumerable<Guid>? excludeUserIds = null);
+    Task SendCommentReplyNotificationAsync(Guid replyId, Guid postId, Guid parentCommentId, Guid parentCommentAuthorId, Guid replierId, string replyText, string commenterName, IEnumerable<Guid>? excludeUserIds = null);
     Task SendCarpoolReplyNotificationAsync(Guid postId, Guid commentId, Guid commentAuthorId, string commentText, Guid carpoolerId, string carpoolerName, bool isOptIn);
     Task SendAppAnnouncementAsync(string title, string body, string? actionUrl = null);
     Task SendNewSubscribableCircle(Guid authorId, string authorName, Guid circleId, string circleName, Guid[] recipients, Guid[] alreadyMembers);
-
+    Task SendPostMentionNotificationsAsync(Guid postId, Guid authorId, string authorName, string postText, IEnumerable<Guid> mentionedUserIds);
+    Task SendCommentMentionNotificationsAsync(Guid commentId, Guid postId, Guid commenterId, string commenterName, string commentText, IEnumerable<Guid> mentionedUserIds);
 }
 
 public class EventNotificationService : IEventNotificationService
@@ -56,13 +57,15 @@ public class EventNotificationService : IEventNotificationService
         await _notificationQueue.AddAsync(requesterId, notificationData);
     }
 
-    public async Task SendNewPostNotificationAsync(Guid postId, Guid authorId, string postText, IEnumerable<Guid> circleIds, string authorName, bool hasImage)
+    public async Task SendNewPostNotificationAsync(Guid postId, Guid authorId, string postText, IEnumerable<Guid> circleIds, string authorName, bool hasImage, IEnumerable<Guid>? excludeUserIds = null)
     {
         var circleIdsList = circleIds.ToList();
+        var excludeSet = excludeUserIds?.ToHashSet() ?? new HashSet<Guid>();
+        excludeSet.Add(authorId); // Always exclude the author
 
-        // Get all circle members excluding the author
+        // Get all circle members excluding the author and mentioned users
         var recipientUserIds = await _dbContext.CircleMemberships
-            .Where(cm => circleIdsList.Contains(cm.CircleId) && cm.UserId != authorId)
+            .Where(cm => circleIdsList.Contains(cm.CircleId) && !excludeSet.Contains(cm.UserId))
             .Select(cm => cm.UserId)
             .Distinct()
             .ToListAsync();
@@ -107,10 +110,13 @@ public class EventNotificationService : IEventNotificationService
         }
     }
 
-    public async Task SendNewCommentNotificationAsync(Guid commentId, Guid postId, Guid postAuthorId, Guid commenterId, string commentText, string commenterName)
+    public async Task SendNewCommentNotificationAsync(Guid commentId, Guid postId, Guid postAuthorId, Guid commenterId, string commentText, string commenterName, IEnumerable<Guid>? excludeUserIds = null)
     {
         // Don't notify if commenting on own post
         if (postAuthorId == commenterId) return;
+        
+        // Don't notify if post author was mentioned (they'll get a mention notification instead)
+        if (excludeUserIds?.Contains(postAuthorId) == true) return;
 
         var notificationData = new NewCommentNotificationData
         {
@@ -124,10 +130,13 @@ public class EventNotificationService : IEventNotificationService
         await _notificationQueue.AddAsync(postAuthorId, notificationData);
     }
 
-    public async Task SendCommentReplyNotificationAsync(Guid replyId, Guid postId, Guid parentCommentId, Guid parentCommentAuthorId, Guid replierId, string replyText, string replierName)
+    public async Task SendCommentReplyNotificationAsync(Guid replyId, Guid postId, Guid parentCommentId, Guid parentCommentAuthorId, Guid replierId, string replyText, string replierName, IEnumerable<Guid>? excludeUserIds = null)
     {
         // Don't notify if replying to own comment
         if (parentCommentAuthorId == replierId) return;
+        
+        // Don't notify if parent comment author was mentioned (they'll get a mention notification instead)
+        if (excludeUserIds?.Contains(parentCommentAuthorId) == true) return;
 
         var notificationData = new CommentReplyNotificationData
         {
@@ -211,5 +220,40 @@ public class EventNotificationService : IEventNotificationService
             await _notificationQueue.AddBulkAsync(_dbContext, alreadyMembers, notificationData);
 
         }
+    }
+
+    public async Task SendPostMentionNotificationsAsync(Guid postId, Guid authorId, string authorName, string postText, IEnumerable<Guid> mentionedUserIds)
+    {
+        var userIdsList = mentionedUserIds.ToList();
+        if (!userIdsList.Any())
+            return;
+
+        var notificationData = new PostMentionNotificationData
+        {
+            PostId = postId,
+            AuthorId = authorId,
+            AuthorName = authorName,
+            PostText = postText
+        };
+
+        await _notificationQueue.AddBulkAsync(_dbContext, userIdsList, notificationData);
+    }
+
+    public async Task SendCommentMentionNotificationsAsync(Guid commentId, Guid postId, Guid commenterId, string commenterName, string commentText, IEnumerable<Guid> mentionedUserIds)
+    {
+        var userIdsList = mentionedUserIds.ToList();
+        if (!userIdsList.Any())
+            return;
+
+        var notificationData = new CommentMentionNotificationData
+        {
+            CommentId = commentId,
+            PostId = postId,
+            CommenterId = commenterId,
+            CommenterName = commenterName,
+            CommentText = commentText
+        };
+
+        await _notificationQueue.AddBulkAsync(_dbContext, userIdsList, notificationData);
     }
 }

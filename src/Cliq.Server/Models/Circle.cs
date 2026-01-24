@@ -47,6 +47,11 @@ public class CirclePublicDto
     public bool IsShared { get; set; }
     public bool IsSubscribable { get; set; }
     public bool IsOwner {get; set; } = false;
+    /// <summary>
+    /// Users that can be mentioned when posting to this circle.
+    /// For owned circles: all members. For member circles: the owner.
+    /// </summary>
+    public List<MentionableUserDto> MentionableUsers { get; set; } = new();
 }
 
 public class CircleWithMembersDto

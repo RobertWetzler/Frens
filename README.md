@@ -30,4 +30,4 @@ This will start the database, MinIO server, and initialize the storage bucket. T
 
 7. Navigate to http://localhost:8081
 
-8. Log in with username robert@example.com and password TestPassword123!
+8. Log in with username robert@gmail.com and password TestPassword123!

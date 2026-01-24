@@ -3,6 +3,7 @@ using Cliq.Server.Services;
 using Cliq.Utilities;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using System.Text.Json;
 
 namespace Cliq.Server.Controllers;
 
@@ -21,7 +22,7 @@ public class PostController : ControllerBase
         _friendshipService = friendshipService;
     }
 
-    // Get all data needed for the create post screen (circles and friends)
+    // Get all data needed for the create post screen (circles with mentionable users, and friends)
     [HttpGet("create-post-data")]
     [ProducesResponseType(typeof(CreatePostDataDto), StatusCodes.Status200OK)]
     public async Task<ActionResult<CreatePostDataDto>> GetCreatePostData()
@@ -31,7 +32,8 @@ public class PostController : ControllerBase
             return Unauthorized();
         }
 
-        var circles = await _circleService.GetUserMemberCirclesAsync(userId);
+        // Get circles with mentionable users populated for each circle
+        var circles = await _circleService.GetUserCirclesWithMentionableUsersAsync(userId);
         var friends = await _friendshipService.GetFriendsAsync(userId);
 
         return Ok(new CreatePostDataDto
@@ -227,9 +229,38 @@ public class PostController : ControllerBase
                 imageKeys.Add(key);
             }
         }
-        var createdPost = await _postService.CreatePostAsync(new Guid(idClaim.Value), request.CircleIds ?? Array.Empty<Guid>(), request.UserIds ?? Array.Empty<Guid>(), request.Text, imageKeys);
+        var createdPost = await _postService.CreatePostAsync(
+            new Guid(idClaim.Value), 
+            request.CircleIds ?? Array.Empty<Guid>(), 
+            request.UserIds ?? Array.Empty<Guid>(), 
+            request.Text, 
+            imageKeys,
+            ParseMentionsJson(request.MentionsJson));
         return CreatedAtAction(nameof(GetPost), new { id = createdPost.Id }, createdPost);
     }
+
+    /// <summary>
+    /// Parses the mentions JSON string from the form request.
+    /// </summary>
+    private static List<MentionDto>? ParseMentionsJson(string? mentionsJson)
+    {
+        if (string.IsNullOrWhiteSpace(mentionsJson))
+            return null;
+
+        try
+        {
+            return JsonSerializer.Deserialize<List<MentionDto>>(mentionsJson, new JsonSerializerOptions
+            {
+                PropertyNameCaseInsensitive = true
+            });
+        }
+        catch (JsonException)
+        {
+            // Invalid JSON, return null to skip mentions
+            return null;
+        }
+    }
+
     // TODO: Authorize userId matches that of postId
     [HttpPut("{id}")]
     public async Task<IActionResult> UpdatePost(Guid id, string newText)
