@@ -513,36 +513,46 @@ public class PostService : IPostService
             var notificationCount = notifications.friendRequests.Count() + notifications.notifications.Count();
             var userCircles = await _circleService.GetUserMemberCirclesAsync(userId);
             
-            // Get subscribable circles from friends that the user is not a member of
-            var friends = await _friendshipService.GetFriendsAsync(userId);
-            var friendIds = friends.Select(f => f.Id).ToList();
+            // Only fetch recommended content on first page to improve performance
+            var availableSubscribableCircles = new List<SubscribableCircleDto>();
+            var recommendedFriends = new List<RecommendedFriendDto>();
             
-            // Get user's current circle memberships to exclude circles they're already in
-            var userCircleIds = await _dbContext.CircleMemberships
-                .Where(cm => cm.UserId == userId)
-                .Select(cm => cm.CircleId)
-                .ToListAsync();
-            
-            // Get subscribable circles from friends where user is not a member
-            var availableSubscribableCircles = await _dbContext.Circles
-                .Where(c => c.IsSubscribable && 
-                           friendIds.Contains(c.OwnerId) && 
-                           !userCircleIds.Contains(c.Id))
-                .Include(c => c.Owner)
-                .Select(c => new SubscribableCircleDto
-                {
-                    Id = c.Id,
-                    Name = c.Name,
-                    Owner = new UserDto
+            if (page == 1)
+            {
+                // Get subscribable circles from friends that the user is not a member of
+                var friends = await _friendshipService.GetFriendsAsync(userId);
+                var friendIds = friends.Select(f => f.Id).ToList();
+                
+                // Get user's current circle memberships to exclude circles they're already in
+                var userCircleIds = await _dbContext.CircleMemberships
+                    .Where(cm => cm.UserId == userId)
+                    .Select(cm => cm.CircleId)
+                    .ToListAsync();
+                
+                // Get subscribable circles from friends where user is not a member
+                availableSubscribableCircles = await _dbContext.Circles
+                    .Where(c => c.IsSubscribable && 
+                               friendIds.Contains(c.OwnerId) && 
+                               !userCircleIds.Contains(c.Id))
+                    .Include(c => c.Owner)
+                    .Select(c => new SubscribableCircleDto
                     {
-                        Id = c.Owner!.Id,
-                        Name = c.Owner.Name,
-                        ProfilePictureUrl = !string.IsNullOrEmpty(c.Owner.ProfilePictureKey)
-                            ? _storage.GetProfilePictureUrl(c.Owner.ProfilePictureKey)
-                            : null
-                    }
-                })
-                .ToListAsync();
+                        Id = c.Id,
+                        Name = c.Name,
+                        Owner = new UserDto
+                        {
+                            Id = c.Owner!.Id,
+                            Name = c.Owner.Name,
+                            ProfilePictureUrl = !string.IsNullOrEmpty(c.Owner.ProfilePictureKey)
+                                ? _storage.GetProfilePictureUrl(c.Owner.ProfilePictureKey)
+                                : null
+                        }
+                    })
+                    .ToListAsync();
+                
+                // Get recommended friends based on mutual connections (single optimized query)
+                recommendedFriends = await _friendshipService.GetRecommendedFriendsRawSqlAsync(userId, limit: 5, minimumMutualFriends: 2);
+            }
             
             // Increment custom metrics for home feed loads
             _metricsService.IncrementHomeFeedLoads();
@@ -555,7 +565,8 @@ public class PostService : IPostService
                 Posts = posts,
                 NotificationCount = notificationCount,
                 UserCircles = userCircles.ToList(),
-                AvailableSubscribableCircles = availableSubscribableCircles
+                AvailableSubscribableCircles = availableSubscribableCircles,
+                RecommendedFriends = recommendedFriends
             };
         }
         catch (Exception ex)
@@ -747,43 +758,54 @@ public class PostService : IPostService
             var notificationCount = await _friendshipService.GetFriendRequestsCountAsync(userId);
             var userCircles = await _circleService.GetUserMemberCirclesAsync(userId);
             
-            // Get subscribable circles from friends that the user is not a member of
-            var friends = await _friendshipService.GetFriendsAsync(userId);
-            var friendIds = friends.Select(f => f.Id).ToList();
+            // Only fetch recommended content on first page to improve performance
+            var availableSubscribableCircles = new List<SubscribableCircleDto>();
+            var recommendedFriends = new List<RecommendedFriendDto>();
             
-            // Get user's current circle memberships to exclude circles they're already in
-            var userCircleIds = await _dbContext.CircleMemberships
-                .Where(cm => cm.UserId == userId)
-                .Select(cm => cm.CircleId)
-                .ToListAsync();
-            
-            // Get subscribable circles from friends where user is not a member
-            var availableSubscribableCircles = await _dbContext.Circles
-                .Where(c => c.IsSubscribable && 
-                           friendIds.Contains(c.OwnerId) && 
-                           !userCircleIds.Contains(c.Id))
-                .Include(c => c.Owner)
-                .Select(c => new SubscribableCircleDto
-                {
-                    Id = c.Id,
-                    Name = c.Name,
-                    Owner = new UserDto
+            if (page == 1)
+            {
+                // Get subscribable circles from friends that the user is not a member of
+                var friends = await _friendshipService.GetFriendsAsync(userId);
+                var friendIds = friends.Select(f => f.Id).ToList();
+                
+                // Get user's current circle memberships to exclude circles they're already in
+                var userCircleIds = await _dbContext.CircleMemberships
+                    .Where(cm => cm.UserId == userId)
+                    .Select(cm => cm.CircleId)
+                    .ToListAsync();
+                
+                // Get subscribable circles from friends where user is not a member
+                availableSubscribableCircles = await _dbContext.Circles
+                    .Where(c => c.IsSubscribable && 
+                               friendIds.Contains(c.OwnerId) && 
+                               !userCircleIds.Contains(c.Id))
+                    .Include(c => c.Owner)
+                    .Select(c => new SubscribableCircleDto
                     {
-                        Id = c.Owner!.Id,
-                        Name = c.Owner.Name,
-                        ProfilePictureUrl = !string.IsNullOrEmpty(c.Owner.ProfilePictureKey)
-                            ? _storage.GetProfilePictureUrl(c.Owner.ProfilePictureKey)
-                            : null
-                    }
-                })
-                .ToListAsync();
+                        Id = c.Id,
+                        Name = c.Name,
+                        Owner = new UserDto
+                        {
+                            Id = c.Owner!.Id,
+                            Name = c.Owner.Name,
+                            ProfilePictureUrl = !string.IsNullOrEmpty(c.Owner.ProfilePictureKey)
+                                ? _storage.GetProfilePictureUrl(c.Owner.ProfilePictureKey)
+                                : null
+                        }
+                    })
+                    .ToListAsync();
+                
+                // Get recommended friends based on mutual connections (single optimized query)
+                recommendedFriends = await _friendshipService.GetRecommendedFriendsRawSqlAsync(userId, limit: 5, minimumMutualFriends: 2);
+            }
             
             return new FeedDto
             {
                 Posts = posts,
                 NotificationCount = notificationCount,
                 UserCircles = userCircles.ToList(),
-                AvailableSubscribableCircles = availableSubscribableCircles
+                AvailableSubscribableCircles = availableSubscribableCircles,
+                RecommendedFriends = recommendedFriends
             };
         }
         catch (Exception ex)

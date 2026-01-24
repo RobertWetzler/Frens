@@ -33,6 +33,18 @@ public interface IFriendshipService
     Task<bool> AreFriendsAsync(Guid userId1, Guid userId2);
     Task<Friendship?> GetFriendshipByUserIdsAsync(Guid userId1, Guid userId2);
     Task<FriendshipStatusDto> GetFriendshipStatusAsync(Guid currentUserId, Guid targetUserId);
+    /// <summary>
+    /// Gets recommended friends based on mutual connections.
+    /// Returns users who share the most friends with the given user,
+    /// excluding existing friends and pending requests.
+    /// </summary>
+    Task<List<RecommendedFriendDto>> GetRecommendedFriendsAsync(Guid userId, int limit = 5, int minimumMutualFriends = 2);
+    
+    /// <summary>
+    /// Gets recommended friends using a single raw SQL query.
+    /// This is an alternative implementation for performance comparison.
+    /// </summary>
+    Task<List<RecommendedFriendDto>> GetRecommendedFriendsRawSqlAsync(Guid userId, int limit = 5, int minimumMutualFriends = 2);
 }
 
 public class FriendshipService : IFriendshipService
@@ -398,6 +410,194 @@ public class FriendshipService : IFriendshipService
         {
             Status = VisibleStatus.None
         };
+    }
+
+    /// <summary>
+    /// Gets recommended friends based on mutual connections using four queries.
+    /// 
+    /// Algorithm:
+    /// 1. Get all user's current friends
+    /// 2. Get all friendships involving those friends (friends-of-friends)
+    /// 3. Filter out: self, existing friends, pending requests
+    /// 4. Group by potential friend and count distinct mutual connections
+    /// 5. Return top N sorted by mutual friend count
+    /// 
+    /// Complexity: O(F × A) where F = friend count, A = avg friends per friend
+    /// Database: 2 queries - one for aggregation, one for user details
+    /// </summary>
+    public async Task<List<RecommendedFriendDto>> GetRecommendedFriendsAsync(Guid userId, int limit = 5, int minimumMutualFriends = 2)
+    {
+        // Step 1: Get my friend IDs (materialized to avoid complex subquery translation issues)
+        var myFriendIds = await _dbContext.Friendships
+            .Where(f => f.Status == FriendshipStatus.Accepted &&
+                       (f.RequesterId == userId || f.AddresseeId == userId))
+            .Select(f => f.RequesterId == userId ? f.AddresseeId : f.RequesterId)
+            .ToListAsync();
+        
+        if (!myFriendIds.Any())
+            return new List<RecommendedFriendDto>();
+        
+        // Step 2: Get users to exclude (self + friends + pending requests)
+        var pendingUserIds = await _dbContext.Friendships
+            .Where(f => f.Status == FriendshipStatus.Pending &&
+                       (f.RequesterId == userId || f.AddresseeId == userId))
+            .Select(f => f.RequesterId == userId ? f.AddresseeId : f.RequesterId)
+            .ToListAsync();
+        
+        var excludedUserIds = myFriendIds
+            .Concat(pendingUserIds)
+            .Append(userId)
+            .ToHashSet();
+        
+        // Step 3: Get friends-of-friends data
+        // Query friendships where either party is one of my friends
+        var fofData = await _dbContext.Friendships
+            .Where(f => f.Status == FriendshipStatus.Accepted &&
+                       (myFriendIds.Contains(f.RequesterId) || myFriendIds.Contains(f.AddresseeId)))
+            .Select(f => new
+            {
+                f.RequesterId,
+                f.AddresseeId
+            })
+            .ToListAsync();
+        
+        // Step 4: Process in memory to extract FoF relationships
+        // For each friendship, determine who is my friend and who is the FoF
+        var friendsOfFriends = fofData
+            .Select(f => 
+            {
+                bool requesterIsMyFriend = myFriendIds.Contains(f.RequesterId);
+                return new
+                {
+                    FoFId = requesterIsMyFriend ? f.AddresseeId : f.RequesterId,
+                    ViaFriendId = requesterIsMyFriend ? f.RequesterId : f.AddresseeId
+                };
+            })
+            .Where(x => !excludedUserIds.Contains(x.FoFId))
+            .ToList();
+        
+        // Step 5: Group by FoF, count distinct mutual friends, filter and sort
+        var recommendations = friendsOfFriends
+            .GroupBy(x => x.FoFId)
+            .Select(g => new
+            {
+                UserId = g.Key,
+                MutualFriendCount = g.Select(x => x.ViaFriendId).Distinct().Count()
+            })
+            .Where(x => x.MutualFriendCount >= minimumMutualFriends)
+            .OrderByDescending(x => x.MutualFriendCount)
+            .Take(limit)
+            .ToList();
+        
+        if (!recommendations.Any())
+            return new List<RecommendedFriendDto>();
+        
+        // Step 6: Fetch user details for the recommendations
+        var userIds = recommendations.Select(r => r.UserId).ToList();
+        var users = await _dbContext.Users
+            .Where(u => userIds.Contains(u.Id))
+            .Select(u => new { u.Id, u.Name, u.ProfilePictureKey })
+            .ToDictionaryAsync(u => u.Id);
+        
+        return recommendations
+            .Where(r => users.ContainsKey(r.UserId))
+            .Select(r => new RecommendedFriendDto
+            {
+                User = new UserDto
+                {
+                    Id = r.UserId,
+                    Name = users[r.UserId].Name,
+                    ProfilePictureUrl = !string.IsNullOrEmpty(users[r.UserId].ProfilePictureKey)
+                        ? _storage.GetProfilePictureUrl(users[r.UserId].ProfilePictureKey)
+                        : null
+                },
+                MutualFriendCount = r.MutualFriendCount
+            })
+            .OrderByDescending(r => r.MutualFriendCount)
+            .ToList();
+    }
+    
+    public async Task<List<RecommendedFriendDto>> GetRecommendedFriendsRawSqlAsync(
+        Guid userId, 
+        int limit = 5, 
+        int minimumMutualFriends = 2)
+    {
+        // Raw SQL implementation using CTEs for a single database call
+        var sql = @"
+            WITH my_friends AS (
+                -- Get all users the current user is friends with (accepted status = 1)
+                SELECT 
+                    CASE WHEN ""RequesterId"" = @userId THEN ""AddresseeId"" ELSE ""RequesterId"" END AS friend_id
+                FROM ""Friendships""
+                WHERE (""RequesterId"" = @userId OR ""AddresseeId"" = @userId)
+                  AND ""Status"" = 1
+            ),
+            excluded_users AS (
+                -- Users we should NOT recommend:
+                -- 1. The current user themselves
+                -- 2. Users already friends with current user
+                -- 3. Users with any pending/rejected/blocked relationship with current user
+                SELECT @userId AS user_id
+                UNION
+                SELECT friend_id FROM my_friends
+                UNION
+                SELECT 
+                    CASE WHEN ""RequesterId"" = @userId THEN ""AddresseeId"" ELSE ""RequesterId"" END
+                FROM ""Friendships""
+                WHERE (""RequesterId"" = @userId OR ""AddresseeId"" = @userId)
+                  AND ""Status"" != 1
+            ),
+            friends_of_friends AS (
+                -- Get friends of my friends, excluding users in excluded_users
+                SELECT 
+                    CASE WHEN f.""RequesterId"" = mf.friend_id THEN f.""AddresseeId"" ELSE f.""RequesterId"" END AS fof_id,
+                    mf.friend_id AS via_friend_id
+                FROM ""Friendships"" f
+                INNER JOIN my_friends mf ON (f.""RequesterId"" = mf.friend_id OR f.""AddresseeId"" = mf.friend_id)
+                WHERE f.""Status"" = 1
+                  AND CASE WHEN f.""RequesterId"" = mf.friend_id THEN f.""AddresseeId"" ELSE f.""RequesterId"" END NOT IN (SELECT user_id FROM excluded_users)
+            )
+            SELECT 
+                fof.fof_id AS ""Id"",
+                u.""Name"",
+                u.""ProfilePictureKey"",
+                COUNT(DISTINCT fof.via_friend_id) AS ""MutualFriendCount""
+            FROM friends_of_friends fof
+            INNER JOIN ""AspNetUsers"" u ON u.""Id"" = fof.fof_id
+            GROUP BY fof.fof_id, u.""Name"", u.""ProfilePictureKey""
+            HAVING COUNT(DISTINCT fof.via_friend_id) >= @minimumMutualFriends
+            ORDER BY COUNT(DISTINCT fof.via_friend_id) DESC
+            LIMIT @limit";
+        
+        var results = await _dbContext.Database
+            .SqlQueryRaw<RawRecommendedFriendResult>(
+                sql,
+                new Npgsql.NpgsqlParameter("@userId", userId),
+                new Npgsql.NpgsqlParameter("@minimumMutualFriends", minimumMutualFriends),
+                new Npgsql.NpgsqlParameter("@limit", limit))
+            .ToListAsync();
+        
+        return results.Select(r => new RecommendedFriendDto
+        {
+            User = new UserDto
+            {
+                Id = r.Id,
+                Name = r.Name,
+                ProfilePictureUrl = !string.IsNullOrEmpty(r.ProfilePictureKey)
+                    ? _storage.GetProfilePictureUrl(r.ProfilePictureKey)
+                    : null
+            },
+            MutualFriendCount = r.MutualFriendCount
+        }).ToList();
+    }
+    
+    // Helper class for raw SQL query result mapping
+    private class RawRecommendedFriendResult
+    {
+        public Guid Id { get; set; }
+        public string Name { get; set; } = "";
+        public string? ProfilePictureKey { get; set; }
+        public int MutualFriendCount { get; set; }
     }
 }
 

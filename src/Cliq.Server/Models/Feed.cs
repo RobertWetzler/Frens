@@ -9,4 +9,9 @@ public class FeedDto
     /// Circles created by friends that are available for subscription (IsSubscribable=true and user is not a member)
     /// </summary>
     public List<SubscribableCircleDto> AvailableSubscribableCircles { get; set; } = new List<SubscribableCircleDto>();
+    /// <summary>
+    /// Users recommended as potential friends based on mutual connections.
+    /// These are people who share friends with you but are not yet connected.
+    /// </summary>
+    public List<RecommendedFriendDto> RecommendedFriends { get; set; } = new List<RecommendedFriendDto>();
 }
