@@ -179,13 +179,15 @@ public class CircleServiceTests : IClassFixture<DatabaseFixture>
         var mockFriendshipService = new Mock<IFriendshipService>();
         var mockEventNotificationService = new Mock<IEventNotificationService>();
         
+        var mockStorageService = new Mock<IObjectStorageService>();
         return new CircleService(
             context,
             _mockCommentService.Object,
             mockFriendshipService.Object,
             _mapper,
             mockEventNotificationService.Object,
-            _mockLogger.Object);
+            _mockLogger.Object,
+            mockStorageService.Object);
     }
 
     [Fact]

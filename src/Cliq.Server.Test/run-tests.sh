@@ -19,8 +19,9 @@ done
 echo "✅ Database is ready"
 
 # Run the tests and capture exit code
+# Disable NSwag TypeScript client generation during test builds
 echo "🧪 Running tests..."
-dotnet test
+dotnet test -p:GenerateTypeScriptClient=false
 TEST_EXIT_CODE=$?
 
 # Always clean up regardless of test outcome

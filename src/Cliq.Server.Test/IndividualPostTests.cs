@@ -166,8 +166,8 @@ public class IndividualPostTests : IClassFixture<DatabaseFixture>
     {
         var context = _fixture.CreateContext();
         var commentService = _mockCommentService.Object;
-        var friendshipService = new FriendshipService(context, _mapper, _mockEventNotificationService.Object);
-        var circleService = new CircleService(context, commentService, friendshipService, _mapper, _mockEventNotificationService.Object, _mockCircleLogger.Object);
+        var friendshipService = new FriendshipService(context, _mapper, _mockStorageService.Object, _mockEventNotificationService.Object);
+        var circleService = new CircleService(context, commentService, friendshipService, _mapper, _mockEventNotificationService.Object, _mockCircleLogger.Object, _mockStorageService.Object);
         var mockNotificationService = new Mock<INotificationService>();
         // Setup mock to return empty notifications
         mockNotificationService.Setup(x => x.GetNotifications(It.IsAny<Guid>()))
