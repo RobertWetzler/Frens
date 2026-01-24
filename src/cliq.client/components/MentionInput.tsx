@@ -60,6 +60,15 @@ export const MentionInput: React.FC<MentionInputProps> = ({
     valueRef.current = value;
   }, [value]);
 
+  // Clean up dropdown when component unmounts (e.g., navigating away)
+  useEffect(() => {
+    return () => {
+      hideDropdown();
+    };
+    // hideDropdown is stable (memoized in context), safe to omit from deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   // Update parent when mentions change
   useEffect(() => {
     onMentionsChange?.(mentions);
@@ -142,7 +151,7 @@ export const MentionInput: React.FC<MentionInputProps> = ({
     if (containerRef.current && users.length > 0) {
       containerRef.current.measureInWindow((x, y, width, height) => {
         showDropdown({
-          friends: users.map(u => ({ id: u.id, name: u.name || '' })) as any,
+          users: users,
           onSelect: handleSelectUser,
           position: {
             top: y + height,
@@ -160,7 +169,7 @@ export const MentionInput: React.FC<MentionInputProps> = ({
   };
 
   // Handle user selection from dropdown
-  const handleSelectUser = (user: any) => {
+  const handleSelectUser = (user: MentionableUserDto) => {
     // Use refs to get current values (avoids stale closure)
     const currentMentionStart = mentionStartRef.current;
     const currentCursorPosition = cursorPositionRef.current;

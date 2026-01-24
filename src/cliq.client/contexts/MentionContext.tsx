@@ -1,12 +1,12 @@
-import React, { createContext, useContext, useState, ReactNode } from 'react';
+import React, { createContext, useContext, useState, ReactNode, useCallback, useMemo } from 'react';
 import { View, FlatList, TouchableOpacity, Text, StyleSheet } from 'react-native';
-import { Avatar } from '@rneui/base';
-import { UserDto } from '../services/generated/generatedClient';
+import { MentionableUserDto } from '../services/generated/generatedClient';
 import { useTheme } from '../theme/ThemeContext';
+import { Avatar } from '../components/Avatar';
 
 interface MentionDropdownData {
-  friends: UserDto[];
-  onSelect: (friend: UserDto) => void;
+  users: MentionableUserDto[];
+  onSelect: (user: MentionableUserDto) => void;
   position: { top: number; left: number; width: number };
 }
 
@@ -29,40 +29,43 @@ export const MentionProvider: React.FC<{ children: ReactNode }> = ({ children })
   const [dropdownData, setDropdownData] = useState<MentionDropdownData | null>(null);
   const { theme } = useTheme();
 
-  const showDropdown = (data: MentionDropdownData) => {
+  const showDropdown = useCallback((data: MentionDropdownData) => {
     setDropdownData(data);
-  };
+  }, []);
 
-  const hideDropdown = () => {
+  const hideDropdown = useCallback(() => {
     setDropdownData(null);
-  };
+  }, []);
 
-  const handleSelectFriend = (friend: UserDto) => {
+  const contextValue = useMemo(() => ({ showDropdown, hideDropdown }), [showDropdown, hideDropdown]);
+
+  const handleSelectUser = useCallback((user: MentionableUserDto) => {
     if (dropdownData) {
-      dropdownData.onSelect(friend);
-      hideDropdown();
+      dropdownData.onSelect(user);
+      setDropdownData(null);
     }
-  };
+  }, [dropdownData]);
 
-  const renderFriendItem = ({ item }: { item: UserDto }) => (
+  const renderUserItem = ({ item }: { item: MentionableUserDto }) => (
     <TouchableOpacity
-      style={[styles.friendItem, { backgroundColor: theme.colors.card }]}
-      onPress={() => handleSelectFriend(item)}
+      style={[styles.userItem, { backgroundColor: theme.colors.card }]}
+      onPress={() => handleSelectUser(item)}
     >
       <Avatar
-        rounded
-        size="small"
-        overlayContainerStyle={{ backgroundColor: theme.colors.accent }}
-        title={item.name?.charAt(0).toUpperCase() || '?'}
+        name={item.name || '?'}
+        userId={item.id}
+        imageUrl={item.profilePictureUrl ?? undefined}
+        simple
+        size={32}
       />
-      <Text style={[styles.friendName, { color: theme.colors.textPrimary }]}>
+      <Text style={[styles.userName, { color: theme.colors.textPrimary }]}>
         {item.name}
       </Text>
     </TouchableOpacity>
   );
 
   return (
-    <MentionContext.Provider value={{ showDropdown, hideDropdown }}>
+    <MentionContext.Provider value={contextValue}>
       {children}
       {dropdownData && (
         <View
@@ -87,8 +90,8 @@ export const MentionProvider: React.FC<{ children: ReactNode }> = ({ children })
             pointerEvents="auto"
           >
             <FlatList
-              data={dropdownData.friends}
-              renderItem={renderFriendItem}
+              data={dropdownData.users}
+              renderItem={renderUserItem}
               keyExtractor={item => item.id}
               keyboardShouldPersistTaps="handled"
               showsVerticalScrollIndicator={false}
@@ -117,14 +120,14 @@ const styles = StyleSheet.create({
     shadowRadius: 8,
     elevation: 8,
   },
-  friendItem: {
+  userItem: {
     flexDirection: 'row',
     alignItems: 'center',
     padding: 12,
     borderBottomWidth: 1,
     borderBottomColor: 'rgba(0,0,0,0.05)',
   },
-  friendName: {
+  userName: {
     marginLeft: 12,
     fontSize: 16,
     fontWeight: '500',

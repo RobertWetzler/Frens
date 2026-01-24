@@ -20,6 +20,10 @@ interface AvatarProps {
     imageUrl?: string;
     navigation?: any;
     discoveredEasterEggs?: { easterEggId?: string }[];
+    /** When true, renders a minimal avatar without animations, easter eggs, or theming */
+    simple?: boolean;
+    /** Custom size in pixels (only applies when simple=true) */
+    size?: number;
 }
 
 const useStyles = makeStyles((theme) => ({
@@ -59,10 +63,64 @@ const useStyles = makeStyles((theme) => ({
     // Additional style tokens could be added here
 }));
 
-export const Avatar: React.FC<AvatarProps> = ({ name, userId, imageUrl, navigation, discoveredEasterEggs }) => {
+export const Avatar: React.FC<AvatarProps> = ({ name, userId, imageUrl, navigation, discoveredEasterEggs, simple = false, size = 40 }) => {
     const { theme } = useTheme();
     const styles = useStyles();
     const initial = name?.charAt(0)?.toUpperCase() || '?';
+    
+    // Simple mode: minimal avatar without animations, easter eggs, or theming
+    if (simple) {
+        if (imageUrl) {
+            const cacheKey = `profile:${userId}`;
+            return (
+                <View style={{ 
+                    overflow: 'hidden',
+                    width: size, 
+                    height: size, 
+                    borderRadius: size / 2 
+                }}>
+                    <CachedImage
+                        cacheKey={cacheKey}
+                        signedUrl={imageUrl}
+                        style={{ 
+                            width: size, 
+                            height: size, 
+                            borderRadius: size / 2,
+                            resizeMode: 'cover' as any,
+                        }}
+                        cacheTtlMs={24 * 60 * 60 * 1000}
+                        showWhileFetching="none"
+                    />
+                </View>
+            );
+        }
+        
+        // Fallback to initial
+        return (
+            <View
+                style={{
+                    overflow: 'hidden',
+                    justifyContent: 'center',
+                    alignItems: 'center',
+                    width: size,
+                    height: size,
+                    borderRadius: size / 2,
+                    backgroundColor: theme.colors.accent,
+                }}
+            >
+                <Text
+                    style={{
+                        fontSize: size * 0.45,
+                        fontWeight: '700',
+                        textAlign: 'center',
+                        color: theme.colors.primaryContrast,
+                    }}
+                >
+                    {initial}
+                </Text>
+            </View>
+        );
+    }
     
     // If user has a profile picture, show it with caching (reduces S3 usage)
     if (imageUrl) {
