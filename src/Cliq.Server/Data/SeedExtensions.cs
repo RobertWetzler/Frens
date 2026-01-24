@@ -122,15 +122,33 @@ public static class SeedExtensions
         await AddFriendshipsAsync(db, robert, [anya, mira], FriendshipStatus.Pending);
 
         // Create circles
-        var climbingCircle = await CreateCircleAsync(db, "Climbing Crew", false, robert, new[] { devon, spencer });
-        var hikingCircle = await CreateCircleAsync(db, "Hiking Buddies", true, robert, new[] { sierra, jacob });
-        await CreateCircleAsync(db, "Hiking Buddies", true, robert, new[] { sierra, jacob });
-        await CreateCircleAsync(db, "Hiking Buddies", true, robert, new[] { sierra, jacob });
-        await CreateCircleAsync(db, "Hiking Buddies", true, robert, new[] { sierra, jacob });
-        await CreateCircleAsync(db, "Hiking Buddies", true, robert, new[] { sierra, jacob });
-        await CreateCircleAsync(db, "Hiking Buddies", true, robert, new[] { sierra, jacob });
-        var familyCircle = await CreateCircleAsync(db, "Family", false, robert, new[] { howard, elana, daltin, carolyn });
-        var sierraFriends = await CreateCircleAsync(db, "Sierra's Friends", true, sierra, new[] { anya, mira, robert });
+        var climbingCircle = await CreateCircleAsync(db, "Climbing Crew", false, false, robert, new[] { devon, spencer });
+        var hikingCircle = await CreateCircleAsync(db, "Hiking Buddies", true, false, robert, new[] { sierra, jacob });
+        await CreateCircleAsync(db, "Hiking Buddies", true, false, robert, new[] { sierra, jacob });
+        await CreateCircleAsync(db, "Hiking Buddies", true, false, robert, new[] { sierra, jacob });
+        await CreateCircleAsync(db, "Hiking Buddies", true, false, robert, new[] { sierra, jacob });
+        await CreateCircleAsync(db, "Hiking Buddies", true, false, robert, new[] { sierra, jacob });
+        await CreateCircleAsync(db, "Hiking Buddies", true, false, robert, new[] { sierra, jacob });
+        var familyCircle = await CreateCircleAsync(db, "Family", false, false, robert, new[] { howard, elana, daltin, carolyn });
+        var sierraFriends = await CreateCircleAsync(db, "Sierra's Friends", true, false, sierra, new[] { anya, mira, robert });
+
+        // Create subscribable circles (available for friends to subscribe to)
+        // Devon's subscribable circles - Robert is friends with Devon but not a member yet
+        await CreateCircleAsync(db, "Bouldering Updates", true, true, devon, new[] { spencer, jacob });
+        await CreateCircleAsync(db, "Gym Sessions", false, true, devon, Array.Empty<User>());
+        
+        // Spencer's subscribable circles - Robert is friends with Spencer but not a member yet
+        await CreateCircleAsync(db, "Photography Adventures", true, true, spencer, new[] { devon });
+        await CreateCircleAsync(db, "Book Club", false, true, spencer, Array.Empty<User>());
+        
+        // Jacob's subscribable circle - Robert is friends with Jacob but not a member yet
+        await CreateCircleAsync(db, "Music Jams", true, true, jacob, new[] { devon });
+        
+        // Howard's subscribable circle - Robert is friends with Howard but not a member yet
+        await CreateCircleAsync(db, "Dad Jokes", false, true, howard, new[] { carolyn });
+        
+        // Sierra's subscribable circle - Robert IS already a member, so this should NOT appear in available list
+        await CreateCircleAsync(db, "Travel Plans", true, true, sierra, new[] { robert, anya });
 
         // Create posts
         var post1 = await CreatePostAsync(db, robert, "Planning a climbing trip this weekend!", DateTime.UtcNow.AddHours(-10), new[] { climbingCircle });
@@ -210,13 +228,14 @@ public static class SeedExtensions
         await db.SaveChangesAsync();
     }
 
-    private static async Task<Circle> CreateCircleAsync(CliqDbContext db, string name, bool isShared, User owner, User[] members)
+    private static async Task<Circle> CreateCircleAsync(CliqDbContext db, string name, bool isShared, bool isSubscribable, User owner, User[] members)
     {
         var circle = new Circle
         {
             Id = Guid.NewGuid(),
             Name = name,
             IsShared = isShared,
+            IsSubscribable = isSubscribable,
             OwnerId = owner.Id
         };
 

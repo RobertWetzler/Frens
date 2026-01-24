@@ -72,3 +72,13 @@ public class CircleCreationDto
     public bool IsSubscribable { get; set; } = false;
     public Guid[] UserIdsToAdd { get; set; } = Array.Empty<Guid>();
 }
+
+/// <summary>
+/// DTO for circles available for subscription (created by friends with IsSubscribable=true)
+/// </summary>
+public class SubscribableCircleDto
+{
+    public Guid Id { get; set; }
+    public required string Name { get; set; }
+    public required UserDto Owner { get; set; }
+}

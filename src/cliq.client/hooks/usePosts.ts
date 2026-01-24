@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
-import { FeedDto, PostDto, CirclePublicDto } from '../services/generated/generatedClient';
+import { FeedDto, PostDto, CirclePublicDto, SubscribableCircleDto } from '../services/generated/generatedClient';
 import { ApiClient } from 'services/apiClient';
 import { feedEvents, FEED_POST_CREATED, FEED_POST_STATUS_UPDATED, FEED_POST_DELETED, OptimisticPost } from './feedEvents';
 
@@ -105,6 +105,7 @@ export function useFilteredFeed() {
     const [posts, setPosts] = useState<OptimisticPost[]>([]);
     const [notificationCount, setNotificationCount] = useState<number>(0);
     const [circles, setCircles] = useState<CirclePublicDto[]>([]);
+    const [availableSubscribableCircles, setAvailableSubscribableCircles] = useState<SubscribableCircleDto[]>([]);
     // Global "initial" loading. Only shows on first load for nicer UX.
     const [isLoading, setIsLoading] = useState(true);
     // Pull-to-refresh state (does not block scroll or show global spinner)
@@ -166,6 +167,7 @@ export function useFilteredFeed() {
             const incomingPosts = feedResponse.posts || [];
             setNotificationCount(feedResponse.notificationCount || 0);
             setCircles(feedResponse.userCircles || []);
+            setAvailableSubscribableCircles(feedResponse.availableSubscribableCircles || []);
             setError(null);
             setHasMore(incomingPosts.length === FEED_PAGE_SIZE);
             setPage(pageToLoad);
@@ -358,6 +360,7 @@ export function useFilteredFeed() {
     return {
         posts,
         circles,
+        availableSubscribableCircles,
         notificationCount,
         isLoading: isLoading && isInitialLoad, // Only show loading spinner on initial load
         isRefreshing,

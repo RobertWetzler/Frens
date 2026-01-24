@@ -4376,6 +4376,7 @@ export class FeedDto implements IFeedDto {
     posts?: PostDto[];
     notificationCount?: number;
     userCircles?: CirclePublicDto[];
+    availableSubscribableCircles?: SubscribableCircleDto[];
 
     constructor(data?: IFeedDto) {
         if (data) {
@@ -4398,6 +4399,11 @@ export class FeedDto implements IFeedDto {
                 this.userCircles = [] as any;
                 for (let item of _data["userCircles"])
                     this.userCircles!.push(CirclePublicDto.fromJS(item));
+            }
+            if (Array.isArray(_data["availableSubscribableCircles"])) {
+                this.availableSubscribableCircles = [] as any;
+                for (let item of _data["availableSubscribableCircles"])
+                    this.availableSubscribableCircles!.push(SubscribableCircleDto.fromJS(item));
             }
         }
     }
@@ -4422,6 +4428,11 @@ export class FeedDto implements IFeedDto {
             for (let item of this.userCircles)
                 data["userCircles"].push(item.toJSON());
         }
+        if (Array.isArray(this.availableSubscribableCircles)) {
+            data["availableSubscribableCircles"] = [];
+            for (let item of this.availableSubscribableCircles)
+                data["availableSubscribableCircles"].push(item.toJSON());
+        }
         return data;
     }
 }
@@ -4430,6 +4441,51 @@ export interface IFeedDto {
     posts?: PostDto[];
     notificationCount?: number;
     userCircles?: CirclePublicDto[];
+    availableSubscribableCircles?: SubscribableCircleDto[];
+}
+
+export class SubscribableCircleDto implements ISubscribableCircleDto {
+    id?: string;
+    name?: string;
+    owner?: UserDto;
+
+    constructor(data?: ISubscribableCircleDto) {
+        if (data) {
+            for (var property in data) {
+                if (data.hasOwnProperty(property))
+                    (<any>this)[property] = (<any>data)[property];
+            }
+        }
+    }
+
+    init(_data?: any) {
+        if (_data) {
+            this.id = _data["id"];
+            this.name = _data["name"];
+            this.owner = _data["owner"] ? UserDto.fromJS(_data["owner"]) : <any>undefined;
+        }
+    }
+
+    static fromJS(data: any): SubscribableCircleDto {
+        data = typeof data === 'object' ? data : {};
+        let result = new SubscribableCircleDto();
+        result.init(data);
+        return result;
+    }
+
+    toJSON(data?: any) {
+        data = typeof data === 'object' ? data : {};
+        data["id"] = this.id;
+        data["name"] = this.name;
+        data["owner"] = this.owner ? this.owner.toJSON() : <any>undefined;
+        return data;
+    }
+}
+
+export interface ISubscribableCircleDto {
+    id?: string;
+    name?: string;
+    owner?: UserDto;
 }
 
 export class ProfilePageResponseDto implements IProfilePageResponseDto {
