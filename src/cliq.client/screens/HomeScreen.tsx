@@ -6,6 +6,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import Post from '../components/Post';
 import SubscribableCirclesCard from '../components/SubscribableCirclesCard';
+import RecommendedFriendsCard from '../components/RecommendedFriendsCard';
 import getEnvVars from 'env'
 import { useFilteredFeed } from 'hooks/usePosts';
 import { useAuth } from 'contexts/AuthContext';
@@ -29,6 +30,7 @@ const HomeScreen = ({ navigation }) => {
         posts,
         circles,
         availableSubscribableCircles,
+        recommendedFriends,
         notificationCount,
         isLoading,
         isRefreshing,
@@ -302,7 +304,19 @@ const HomeScreen = ({ navigation }) => {
                                         animationDelay={animationDelay + 150}
                                         onCircleSubscribed={(circleId) => {
                                             // Refresh feed after subscribing to get new posts from that circle
-                                            loadFeed();
+                                            // loadFeed();
+                                        }}
+                                    />
+                                )}
+                                {/* Show recommended friends card after subscribable circles (or after second post if no circles) */}
+                                {recommendedFriends && recommendedFriends.length > 0 && 
+                                 ((posts && posts.length >= 2 && index === 1) || (posts && posts.length < 2 && index === posts.length - 1)) && (
+                                    <RecommendedFriendsCard
+                                        friends={recommendedFriends}
+                                        shouldAnimate={shouldAnimate}
+                                        animationDelay={animationDelay + (availableSubscribableCircles?.length > 0 ? 300 : 150)}
+                                        onFriendRequestSent={(userId) => {
+                                            // Optionally refresh feed after sending friend request
                                         }}
                                     />
                                 )}
@@ -330,6 +344,18 @@ const HomeScreen = ({ navigation }) => {
                                     onCircleSubscribed={(circleId) => {
                                         // Refresh feed after subscribing to get new posts from that circle
                                         loadFeed();
+                                    }}
+                                />
+                            )}
+                            {/* Show recommended friends card after subscribable circles (or after second post if no circles) */}
+                            {recommendedFriends && recommendedFriends.length > 0 && 
+                             ((posts && posts.length >= 2 && index === 1) || (posts && posts.length < 2 && index === posts.length - 1)) && (
+                                <RecommendedFriendsCard
+                                    friends={recommendedFriends}
+                                    shouldAnimate={shouldAnimate}
+                                    animationDelay={animationDelay + (availableSubscribableCircles?.length > 0 ? 300 : 150)}
+                                    onFriendRequestSent={(userId) => {
+                                        // Optionally refresh feed after sending friend request
                                     }}
                                 />
                             )}

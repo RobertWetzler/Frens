@@ -83,7 +83,45 @@ public static class SeedExtensions
             new User("lauren@example.com") { Name = "Lauren Topolosky", Email = "lauren@example.com" },
             new User("barbara@example.com") { Name = "Barbara Topolosky", Email = "barbara@example.com" },
             new User("elana@example.com") { Name = "Elana Loomis", Email = "elana@example.com" },
-            new User("daltin@example.com") { Name = "Daltin Loomis", Email = "daltin@example.com" }
+            new User("daltin@example.com") { Name = "Daltin Loomis", Email = "daltin@example.com" },
+            
+            // Friends-of-friends (NOT directly connected to Robert) for testing recommended friends
+            // These users have varying numbers of mutual friends with Robert
+            new User("marcus@example.com") { 
+                Name = "Marcus Chen", 
+                Email = "marcus@example.com",
+                Bio = "Rock climbing enthusiast 🧗"
+            },
+            new User("olivia@example.com") { 
+                Name = "Olivia Rodriguez", 
+                Email = "olivia@example.com",
+                Bio = "Adventure seeker | Photographer"
+            },
+            new User("noah@example.com") { 
+                Name = "Noah Kim", 
+                Email = "noah@example.com",
+                Bio = "Software engineer by day, hiker by weekend"
+            },
+            new User("emma@example.com") { 
+                Name = "Emma Thompson", 
+                Email = "emma@example.com",
+                Bio = "Living life one trail at a time"
+            },
+            new User("liam@example.com") { 
+                Name = "Liam O'Connor", 
+                Email = "liam@example.com",
+                Bio = "Music & mountains"
+            },
+            new User("sophia@example.com") { 
+                Name = "Sophia Patel", 
+                Email = "sophia@example.com",
+                Bio = "Yoga instructor | Nature lover"
+            },
+            new User("james@example.com") { 
+                Name = "James Wilson", 
+                Email = "james@example.com",
+                Bio = "Just here for the vibes"
+            }
         };
 
         foreach (var user in additionalUsers)
@@ -111,12 +149,45 @@ public static class SeedExtensions
         var barbara = GetUser(users, "barbara@example.com");
         var elana = GetUser(users, "elana@example.com");
         var daltin = GetUser(users, "daltin@example.com");
+        
+        // Friends-of-friends (for recommended friends testing)
+        var marcus = GetUser(users, "marcus@example.com");   // Will have 5 mutual friends with Robert
+        var olivia = GetUser(users, "olivia@example.com");   // Will have 4 mutual friends with Robert
+        var noah = GetUser(users, "noah@example.com");       // Will have 3 mutual friends with Robert
+        var emma = GetUser(users, "emma@example.com");       // Will have 2 mutual friends with Robert
+        var liam = GetUser(users, "liam@example.com");       // Will have 2 mutual friends with Robert
+        var sophia = GetUser(users, "sophia@example.com");   // Will have 1 mutual friend with Robert (below threshold)
+        var james = GetUser(users, "james@example.com");     // Will have 1 mutual friend with Robert (below threshold)
 
         // Add friendships
         await AddFriendshipsAsync(db, robert, new[] { sierra, spencer, devon, jacob, howard, carolyn, eliza, lauren, barbara, elana, daltin, carlyn });
         await AddFriendshipsAsync(db, sierra, new[] { anya, mira });
         await AddFriendshipsAsync(db, spencer, new[] { devon, sierra });
         await AddFriendshipsAsync(db, devon, new[] { jacob });
+        
+        // ===== Friends-of-Friends Connections =====
+        // These create the mutual friend relationships for recommended friends testing
+        
+        // Marcus: 5 mutual friends with Robert (sierra, spencer, devon, jacob, howard)
+        await AddFriendshipsAsync(db, marcus, new[] { sierra, spencer, devon, jacob, howard });
+        
+        // Olivia: 4 mutual friends with Robert (sierra, spencer, devon, carolyn)
+        await AddFriendshipsAsync(db, olivia, new[] { sierra, spencer, devon, carolyn });
+        
+        // Noah: 3 mutual friends with Robert (spencer, devon, jacob)
+        await AddFriendshipsAsync(db, noah, new[] { spencer, devon, jacob });
+        
+        // Emma: 2 mutual friends with Robert (sierra, carlyn)
+        await AddFriendshipsAsync(db, emma, new[] { sierra, carlyn });
+        
+        // Liam: 2 mutual friends with Robert (jacob, howard)
+        await AddFriendshipsAsync(db, liam, new[] { jacob, howard });
+        
+        // Sophia: 1 mutual friend with Robert (sierra) - below default threshold of 2
+        await AddFriendshipsAsync(db, sophia, new[] { sierra });
+        
+        // James: 1 mutual friend with Robert (devon) - below default threshold of 2
+        await AddFriendshipsAsync(db, james, new[] { devon });
 
         // Add some outstanding friend requests
         await AddFriendshipsAsync(db, robert, [anya, mira], FriendshipStatus.Pending);

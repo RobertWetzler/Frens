@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
-import { FeedDto, PostDto, CirclePublicDto, SubscribableCircleDto } from '../services/generated/generatedClient';
+import { FeedDto, PostDto, CirclePublicDto, SubscribableCircleDto, RecommendedFriendDto } from '../services/generated/generatedClient';
 import { ApiClient } from 'services/apiClient';
 import { feedEvents, FEED_POST_CREATED, FEED_POST_STATUS_UPDATED, FEED_POST_DELETED, OptimisticPost } from './feedEvents';
 
@@ -106,6 +106,7 @@ export function useFilteredFeed() {
     const [notificationCount, setNotificationCount] = useState<number>(0);
     const [circles, setCircles] = useState<CirclePublicDto[]>([]);
     const [availableSubscribableCircles, setAvailableSubscribableCircles] = useState<SubscribableCircleDto[]>([]);
+    const [recommendedFriends, setRecommendedFriends] = useState<RecommendedFriendDto[]>([]);
     // Global "initial" loading. Only shows on first load for nicer UX.
     const [isLoading, setIsLoading] = useState(true);
     // Pull-to-refresh state (does not block scroll or show global spinner)
@@ -168,6 +169,10 @@ export function useFilteredFeed() {
             setNotificationCount(feedResponse.notificationCount || 0);
             setCircles(feedResponse.userCircles || []);
             setAvailableSubscribableCircles(feedResponse.availableSubscribableCircles || []);
+            // Only update recommended friends on page 1 (they're only returned on first page)
+            if (pageToLoad === 1) {
+                setRecommendedFriends(feedResponse.recommendedFriends || []);
+            }
             setError(null);
             setHasMore(incomingPosts.length === FEED_PAGE_SIZE);
             setPage(pageToLoad);
@@ -361,6 +366,7 @@ export function useFilteredFeed() {
         posts,
         circles,
         availableSubscribableCircles,
+        recommendedFriends,
         notificationCount,
         isLoading: isLoading && isInitialLoad, // Only show loading spinner on initial load
         isRefreshing,

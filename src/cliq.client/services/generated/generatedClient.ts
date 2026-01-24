@@ -4501,9 +4501,7 @@ export interface ISubscribableCircleDto {
 }
 
 export class RecommendedFriendDto implements IRecommendedFriendDto {
-    id?: string;
-    name?: string;
-    profilePictureUrl?: string | undefined;
+    user?: UserDto;
     mutualFriendCount?: number;
 
     constructor(data?: IRecommendedFriendDto) {
@@ -4517,9 +4515,7 @@ export class RecommendedFriendDto implements IRecommendedFriendDto {
 
     init(_data?: any) {
         if (_data) {
-            this.id = _data["id"];
-            this.name = _data["name"];
-            this.profilePictureUrl = _data["profilePictureUrl"];
+            this.user = _data["user"] ? UserDto.fromJS(_data["user"]) : <any>undefined;
             this.mutualFriendCount = _data["mutualFriendCount"];
         }
     }
@@ -4533,18 +4529,14 @@ export class RecommendedFriendDto implements IRecommendedFriendDto {
 
     toJSON(data?: any) {
         data = typeof data === 'object' ? data : {};
-        data["id"] = this.id;
-        data["name"] = this.name;
-        data["profilePictureUrl"] = this.profilePictureUrl;
+        data["user"] = this.user ? this.user.toJSON() : <any>undefined;
         data["mutualFriendCount"] = this.mutualFriendCount;
         return data;
     }
 }
 
 export interface IRecommendedFriendDto {
-    id?: string;
-    name?: string;
-    profilePictureUrl?: string | undefined;
+    user?: UserDto;
     mutualFriendCount?: number;
 }
 
