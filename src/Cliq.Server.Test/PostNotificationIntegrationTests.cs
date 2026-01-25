@@ -76,9 +76,9 @@ public class PostNotificationIntegrationTests : IClassFixture<DatabaseFixture>
         var queueService = new PushNotificationQueueService(scopeFactory, silentDbContextFactory);
         var eventNotificationService = new EventNotificationService(queueService, context);
 
-        var friendshipService = new FriendshipService(context, _mapper, eventNotificationService);
-        var commentService = new CommentService(context, _mapper, eventNotificationService, mockPostLogger.Object, mockActivityService.Object);
-        var circleService = new CircleService(context, commentService, friendshipService, _mapper, eventNotificationService, mockCircleLogger.Object);
+        var friendshipService = new FriendshipService(context, _mapper, mockStorageService.Object, eventNotificationService);
+        var commentService = new CommentService(context, _mapper, eventNotificationService, friendshipService, mockPostLogger.Object, mockActivityService.Object, mockStorageService.Object);
+        var circleService = new CircleService(context, commentService, friendshipService, _mapper, eventNotificationService, mockCircleLogger.Object, mockStorageService.Object);
         var notificationService = new NotificationService(friendshipService, context, _mapper);
 
         var postService = new PostService(

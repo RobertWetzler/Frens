@@ -69,3 +69,20 @@ public enum VisibleStatus
     Blocked,
     BlockedBy
 }
+
+/// <summary>
+/// Represents a recommended friend based on mutual connections.
+/// Used on the home feed to suggest new people to connect with.
+/// </summary>
+public class RecommendedFriendDto
+{
+    /// <summary>
+    /// The user being recommended.
+    /// </summary>
+    public required UserDto User { get; set; }
+    
+    /// <summary>
+    /// Number of friends you have in common with this person.
+    /// </summary>
+    public int MutualFriendCount { get; set; }
+}

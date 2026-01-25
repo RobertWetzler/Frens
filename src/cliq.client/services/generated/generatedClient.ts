@@ -4377,6 +4377,7 @@ export class FeedDto implements IFeedDto {
     notificationCount?: number;
     userCircles?: CirclePublicDto[];
     availableSubscribableCircles?: SubscribableCircleDto[];
+    recommendedFriends?: RecommendedFriendDto[];
 
     constructor(data?: IFeedDto) {
         if (data) {
@@ -4404,6 +4405,11 @@ export class FeedDto implements IFeedDto {
                 this.availableSubscribableCircles = [] as any;
                 for (let item of _data["availableSubscribableCircles"])
                     this.availableSubscribableCircles!.push(SubscribableCircleDto.fromJS(item));
+            }
+            if (Array.isArray(_data["recommendedFriends"])) {
+                this.recommendedFriends = [] as any;
+                for (let item of _data["recommendedFriends"])
+                    this.recommendedFriends!.push(RecommendedFriendDto.fromJS(item));
             }
         }
     }
@@ -4433,6 +4439,11 @@ export class FeedDto implements IFeedDto {
             for (let item of this.availableSubscribableCircles)
                 data["availableSubscribableCircles"].push(item.toJSON());
         }
+        if (Array.isArray(this.recommendedFriends)) {
+            data["recommendedFriends"] = [];
+            for (let item of this.recommendedFriends)
+                data["recommendedFriends"].push(item.toJSON());
+        }
         return data;
     }
 }
@@ -4442,6 +4453,7 @@ export interface IFeedDto {
     notificationCount?: number;
     userCircles?: CirclePublicDto[];
     availableSubscribableCircles?: SubscribableCircleDto[];
+    recommendedFriends?: RecommendedFriendDto[];
 }
 
 export class SubscribableCircleDto implements ISubscribableCircleDto {
@@ -4486,6 +4498,46 @@ export interface ISubscribableCircleDto {
     id?: string;
     name?: string;
     owner?: UserDto;
+}
+
+export class RecommendedFriendDto implements IRecommendedFriendDto {
+    user?: UserDto;
+    mutualFriendCount?: number;
+
+    constructor(data?: IRecommendedFriendDto) {
+        if (data) {
+            for (var property in data) {
+                if (data.hasOwnProperty(property))
+                    (<any>this)[property] = (<any>data)[property];
+            }
+        }
+    }
+
+    init(_data?: any) {
+        if (_data) {
+            this.user = _data["user"] ? UserDto.fromJS(_data["user"]) : <any>undefined;
+            this.mutualFriendCount = _data["mutualFriendCount"];
+        }
+    }
+
+    static fromJS(data: any): RecommendedFriendDto {
+        data = typeof data === 'object' ? data : {};
+        let result = new RecommendedFriendDto();
+        result.init(data);
+        return result;
+    }
+
+    toJSON(data?: any) {
+        data = typeof data === 'object' ? data : {};
+        data["user"] = this.user ? this.user.toJSON() : <any>undefined;
+        data["mutualFriendCount"] = this.mutualFriendCount;
+        return data;
+    }
+}
+
+export interface IRecommendedFriendDto {
+    user?: UserDto;
+    mutualFriendCount?: number;
 }
 
 export class ProfilePageResponseDto implements IProfilePageResponseDto {
