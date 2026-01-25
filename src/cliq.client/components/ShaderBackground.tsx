@@ -1,8 +1,24 @@
-import React, { useRef, useImperativeHandle, forwardRef, useEffect, useMemo } from 'react';
+import React, { useRef, useImperativeHandle, forwardRef, useEffect, useMemo, useState } from 'react';
 import { GLView } from 'expo-gl';
 import { Dimensions, StyleSheet, Platform, View } from 'react-native'
 import { useTheme } from '../theme/ThemeContext';
 import SimpleSnowfall from './SimpleSnowfall';
+
+// Check if WebGL is supported in the current browser
+const checkWebGLSupport = (): boolean => {
+    if (Platform.OS !== 'web') {
+        return true; // Native platforms use different rendering, assume supported
+    }
+    
+    try {
+        const canvas = document.createElement('canvas');
+        const gl = canvas.getContext('webgl') || canvas.getContext('experimental-webgl');
+        return gl !== null;
+    } catch (e) {
+        console.warn('WebGL support check failed:', e);
+        return false;
+    }
+};
 
 // Check if today is January 1st (New Year's Day)
 const isNewYearsDay = () => {
@@ -312,6 +328,15 @@ const ShaderBackground = forwardRef<ShaderBackgroundRef>((props, ref) => {
     // Check if it's New Year's Day - use fireworks mode
     const isFireworksMode = useMemo(() => isNewYearsDay(), []);
     
+    // Check WebGL support on mount
+    const [webGLSupported, setWebGLSupported] = useState<boolean | null>(null);
+    
+    useEffect(() => {
+        const supported = checkWebGLSupport();
+        console.log('ShaderBackground: WebGL supported:', supported);
+        setWebGLSupported(supported);
+    }, []);
+    
     let gl = null;
     let program = null;
     let positionLocation = null;
@@ -519,6 +544,36 @@ const ShaderBackground = forwardRef<ShaderBackgroundRef>((props, ref) => {
         render();
     };
 
+    // Still loading WebGL support check
+    if (webGLSupported === null) {
+        return (
+            <View style={[styles.container, { backgroundColor: theme.colors.background }]} />
+        );
+    }
+
+    // WebGL not supported - render a static gradient fallback
+    if (!webGLSupported) {
+        console.log('ShaderBackground: Rendering fallback (WebGL not supported)');
+        return (
+            <View style={styles.container}>
+                <View style={[styles.fallbackBackground, { backgroundColor: theme.colors.background }]}>
+                    {/* Gradient-like effect using overlapping views */}
+                    <View style={[styles.fallbackBlob, styles.fallbackBlob1, { backgroundColor: theme.colors.blob1 }]} />
+                    <View style={[styles.fallbackBlob, styles.fallbackBlob2, { backgroundColor: theme.colors.blob2 }]} />
+                    <View style={[styles.fallbackBlob, styles.fallbackBlob3, { backgroundColor: theme.colors.blob3 }]} />
+                </View>
+                {/* Show snowfall only when not in fireworks mode OR theme is holiday */}
+                {(!isFireworksMode && theme.name === 'holiday') && (
+                    <SimpleSnowfall
+                        count={200}
+                        minSize={2}
+                        maxSize={6}
+                    />
+                )}
+            </View>
+        );
+    }
+
     return (
         <View style={styles.container}>
             <GLView
@@ -546,7 +601,34 @@ const styles = StyleSheet.create({
     glView: {
         ...StyleSheet.absoluteFillObject,
         backgroundColor: 'transparent',
-    }
+    },
+    fallbackBackground: {
+        ...StyleSheet.absoluteFillObject,
+        overflow: 'hidden',
+    },
+    fallbackBlob: {
+        position: 'absolute',
+        borderRadius: 9999,
+        opacity: 0.4,
+    },
+    fallbackBlob1: {
+        width: '80%',
+        height: '60%',
+        top: '-10%',
+        left: '-20%',
+    },
+    fallbackBlob2: {
+        width: '70%',
+        height: '50%',
+        bottom: '-10%',
+        right: '-15%',
+    },
+    fallbackBlob3: {
+        width: '60%',
+        height: '40%',
+        top: '30%',
+        left: '30%',
+    },
 });
 
 export default ShaderBackground;
