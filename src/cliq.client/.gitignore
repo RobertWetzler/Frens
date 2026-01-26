@@ -36,3 +36,9 @@ yarn-error.*
 
 # Generated local dev IP file
 dev-ip.generated.js
+
+# Playwright
+/test-results/
+/playwright-report/
+/blob-report/
+/playwright/.cache/
