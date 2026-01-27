@@ -8,6 +8,7 @@ import {
   StyleSheet,
   SafeAreaView,
   ActivityIndicator,
+  TextInput,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { CommentDto, MentionDto, MentionableUserDto, CreateCommentRequestDto, CreateCarpoolCommentRequestDto } from "services/generated/generatedClient";
