@@ -28,6 +28,7 @@ public abstract class NotificationData
     public virtual string Title { get; set; }
     public virtual string Message { get; set; }
     public virtual string Metadata { get; set; }
+    public virtual string? Navigate => null;
 }
 
 /// <summary>
@@ -66,6 +67,8 @@ public class FriendRequestNotificationData : NotificationData
         }.ToJson();
         set { }
     }
+
+    public override string? Navigate => "/notifications";
 }
 
 /// <summary>
@@ -102,6 +105,8 @@ public class FriendRequestAcceptedNotificationData : NotificationData
         }.ToJson();
         set { }
     }
+
+    public override string? Navigate => "/notifications";
 }
 
 /// <summary>
@@ -146,6 +151,8 @@ public class NewPostNotificationData : NotificationData
         }.ToJson();
         set { }
     }
+
+    public override string? Navigate => $"/post/{PostId}";
 }
 
 public class NewEventNotificationData : NotificationData
@@ -186,6 +193,8 @@ public class NewEventNotificationData : NotificationData
         }.ToJson();
         set { }
     }
+
+    public override string? Navigate => "/calendar";
 }
 
 /// <summary>
@@ -228,6 +237,8 @@ public class NewCommentNotificationData : NotificationData
         }.ToJson();
         set { }
     }
+
+    public override string? Navigate => $"/post/{PostId}";
 }
 
 /// <summary>
@@ -272,6 +283,8 @@ public class CommentReplyNotificationData : NotificationData
         }.ToJson();
         set { }
     }
+
+    public override string? Navigate => $"/post/{PostId}";
 }
 
 /// <summary>
@@ -314,6 +327,8 @@ public class CarpoolReplyNotificationData : NotificationData
         }.ToJson();
         set { }
     }
+
+    public override string? Navigate => $"/post/{PostId}";
 }
 
 /// <summary>
@@ -353,6 +368,8 @@ public class AppAnnouncementNotificationData : NotificationData
         }.ToJson();
         set { }
     }
+
+    public override string? Navigate => ActionUrl ?? "/";
 }
 
 /// <summary>
@@ -406,6 +423,8 @@ public class NewSubscribableCircle : NotificationData
         }.ToJson();
         set { }
     }
+
+    public override string? Navigate => "/circles";
 }
 
 /// <summary>
@@ -446,6 +465,8 @@ public class PostMentionNotificationData : NotificationData
         }.ToJson();
         set { }
     }
+
+    public override string? Navigate => $"/post/{PostId}";
 }
 
 /// <summary>
@@ -488,6 +509,8 @@ public class CommentMentionNotificationData : NotificationData
         }.ToJson();
         set { }
     }
+
+    public override string? Navigate => $"/post/{PostId}";
 }
 
 public static class JsonExtensions
