@@ -117,7 +117,11 @@ internal class PushNotificationsDequeuer : BackgroundService
             {
                 title = notification.Title,
                 body = notification.Message,
-                navigate = notification.Navigate ?? "https://cliq-server.fly.dev",
+                navigate = notification.Navigate ?? "/",
+                data = new
+                {
+                    url = notification.Navigate ?? "/"
+                },
                 app_badge = notification.AppBadge ?? 0,
             }
         };

@@ -28,3 +28,26 @@ self.addEventListener('fetch', (event) => {
     )
   );
 });
+
+self.addEventListener('notificationclick', (event) => {
+  event.notification.close();
+  const navigateTarget =
+    event.notification?.data?.url ||
+    event.notification?.data?.navigate ||
+    event.notification?.navigate ||
+    '/';
+
+  const destination = new URL(navigateTarget, self.location.origin).href;
+
+  event.waitUntil(
+    self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then((clientList) => {
+      for (const client of clientList) {
+        if ('focus' in client) {
+          client.navigate(destination);
+          return client.focus();
+        }
+      }
+      return self.clients.openWindow(destination);
+    })
+  );
+});

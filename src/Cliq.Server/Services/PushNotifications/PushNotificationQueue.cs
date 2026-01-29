@@ -62,6 +62,7 @@ public class PushNotificationQueueService : IPushNotificationQueueService
                 Title = notificationData.Title,
                 Message = notificationData.Message,
                 Metadata = notificationData.Metadata,
+                Navigate = notificationData.Navigate,
                 CreatedAt = DateTime.UtcNow,
             };
 
@@ -121,6 +122,7 @@ public class PushNotificationQueueService : IPushNotificationQueueService
             Title = notificationData.Title,
             Message = notificationData.Message,
             Metadata = notificationData.Metadata,
+            Navigate = notificationData.Navigate,
             CreatedAt = DateTime.UtcNow,
         }).ToList();
 
