@@ -68,7 +68,7 @@ public class FriendRequestNotificationData : NotificationData
         set { }
     }
 
-    public override string? Navigate => "/notifications";
+    public override string? Navigate => $"/profile/{RequesterId}";
 }
 
 /// <summary>
@@ -106,7 +106,7 @@ public class FriendRequestAcceptedNotificationData : NotificationData
         set { }
     }
 
-    public override string? Navigate => "/notifications";
+    public override string? Navigate => $"/profile/{AccepterId}";
 }
 
 /// <summary>
@@ -194,7 +194,7 @@ public class NewEventNotificationData : NotificationData
         set { }
     }
 
-    public override string? Navigate => "/calendar";
+    public override string? Navigate => $"/post/{EventId}";
 }
 
 /// <summary>
