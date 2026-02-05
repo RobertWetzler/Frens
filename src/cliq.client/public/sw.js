@@ -31,13 +31,13 @@ self.addEventListener('fetch', (event) => {
 
 self.addEventListener('notificationclick', (event) => {
   event.notification.close();
-  const navigateTarget =
-    event.notification?.data?.url ||
-    event.notification?.data?.navigate ||
-    event.notification?.navigate ||
-    '/';
-
-  const destination = new URL(navigateTarget, self.location.origin).href;
+  const navigateTarget = event.notification?.data?.url || '/';
+  let destination = self.location.origin;
+  try {
+    destination = new URL(navigateTarget, self.location.origin).href;
+  } catch (error) {
+    console.warn('Failed to parse notification deep link, falling back to home.', error);
+  }
 
   event.waitUntil(
     self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then((clientList) => {
