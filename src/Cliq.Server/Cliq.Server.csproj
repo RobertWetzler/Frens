@@ -5,10 +5,23 @@
 		<Nullable>enable</Nullable>
 		<ImplicitUsings>enable</ImplicitUsings>
 		<SpaRoot>..\cliq.client</SpaRoot>
-		<SpaProxyLaunchCommand>npm run start-with-ip-gen</SpaProxyLaunchCommand>
-		<SpaProxyServerUrl>http://localhost:8081</SpaProxyServerUrl>
+		<SpaProxyLaunchCommand>npm run start-ssl</SpaProxyLaunchCommand>
+		<!-- Overwritten at build time by DetectLanIp target below -->
+		<SpaProxyServerUrl>https://localhost:8443</SpaProxyServerUrl>
 		<BuildFrontendEnabled>false</BuildFrontendEnabled>
 	</PropertyGroup>
+
+	<!-- Detect LAN IP at build time so the SPA proxy redirects to the machine's IP, not localhost -->
+	<Target Name="DetectLanIp" BeforeTargets="WriteSpaConfigurationToDisk" Condition="'$(Configuration)' == 'Debug'">
+		<Exec Command="ipconfig getifaddr en0 2>/dev/null || ipconfig getifaddr en1 2>/dev/null || echo localhost"
+		      ConsoleToMsBuild="true" StandardOutputImportance="low" IgnoreExitCode="true">
+			<Output TaskParameter="ConsoleOutput" PropertyName="_LanIp" />
+		</Exec>
+		<PropertyGroup>
+			<SpaProxyServerUrl Condition="'$(_LanIp)' != '' and '$(_LanIp)' != 'localhost'">https://$(_LanIp):8443</SpaProxyServerUrl>
+		</PropertyGroup>
+		<Message Importance="high" Text="SPA Proxy URL set to $(SpaProxyServerUrl)" />
+	</Target>
 
 	<ItemGroup>
 		<PackageReference Include="AutoMapper.Extensions.Microsoft.DependencyInjection" Version="12.0.1" />

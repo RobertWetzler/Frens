@@ -4,6 +4,7 @@
   "main": "expo/AppEntry.js",
   "scripts": {
     "start-with-ip-gen": "node scripts/gen-dev-ip.js && npx expo start",
+    "start-ssl": "node scripts/start-dev-ssl.js",
     "start": "npx expo start",
     "dev": "node scripts/gen-dev-ip.js && npx expo start",
     "android": "npm run dev -- --android",
@@ -52,6 +53,7 @@
   },
   "devDependencies": {
     "@babel/core": "^7.20.0",
+    "local-ssl-proxy": "^2.0.5",
     "supabase": "^2.2.1"
   },
   "private": true
