@@ -1,7 +1,7 @@
 import 'react-native-gesture-handler';
 import React, { useEffect, useState, useRef } from 'react';
 import * as Font from 'expo-font';
-import { LinkingOptions, NavigationContainer } from '@react-navigation/native';
+import { LinkingOptions, NavigationContainer, createNavigationContainerRef } from '@react-navigation/native';
 import { createStackNavigator } from '@react-navigation/stack';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { Ionicons } from '@expo/vector-icons';
@@ -55,6 +55,7 @@ type TabParamList = {
 
 const Stack = createStackNavigator<RootStackParamList>();
 const Tab = createBottomTabNavigator<TabParamList>();
+const navigationRef = createNavigationContainerRef<RootStackParamList>();
 
 // Configure linking using expo-linking
 const prefix = Linking.createURL('/');
@@ -180,6 +181,32 @@ const MainApp = () => {
   // Register service worker
   useServiceWorker();
 
+  // Listen for deep-link messages from the service worker (notification taps)
+  useEffect(() => {
+    if (Platform.OS !== 'web') return;
+    const handler = (event: MessageEvent) => {
+      if (event.data?.type === 'NOTIFICATION_CLICK' && event.data.url) {
+        const path = event.data.url; // e.g. "/post/abc-123"
+        // Match /post/:postId
+        const postMatch = path.match(/^\/post\/(.+)$/);
+        if (postMatch && navigationRef.isReady()) {
+          navigationRef.navigate('Comments', { postId: postMatch[1] });
+          return;
+        }
+        // Match /profile/:userId
+        const profileMatch = path.match(/^\/profile\/(.+)$/);
+        if (profileMatch && navigationRef.isReady()) {
+          navigationRef.navigate('Profile', { userId: profileMatch[1] });
+          return;
+        }
+        // Fallback: let Linking handle it
+        Linking.openURL(new URL(path, window.location.origin).href).catch(() => {});
+      }
+    };
+    navigator.serviceWorker?.addEventListener('message', handler);
+    return () => navigator.serviceWorker?.removeEventListener('message', handler);
+  }, []);
+
   useEffect(() => {
     enableImageBinaryCacheDebug(true);
     const interval = setInterval(() => {
@@ -290,6 +317,7 @@ const MainApp = () => {
   return (
     <View style={styles.mainAppContainer}>
       <NavigationContainer 
+        ref={navigationRef}
         linking={linking}
         theme={{
           dark: theme.isDark,
