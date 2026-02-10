@@ -11,3 +11,6 @@ src/cliq.client/ios/
 
 # Generated swagger.json (build artifact)
 src/Cliq.Server/swagger.json
+
+# Dev certificates (self-signed, generated locally)
+src/Cliq.Server/certs/

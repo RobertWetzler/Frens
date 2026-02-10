@@ -31,6 +31,19 @@
   "ASPNETCORE_HOSTINGSTARTUPASSEMBLIES": "Microsoft.AspNetCore.SpaProxy"
       }
     },
+    "https-lan": {
+      "commandName": "Project",
+      "dotnetRunMessages": true,
+      "launchBrowser": true,
+      "launchUrl": "swagger",
+      "applicationUrl": "https://0.0.0.0:7188;http://0.0.0.0:5188",
+      "environmentVariables": {
+        "ASPNETCORE_ENVIRONMENT": "Development",
+        "ASPNETCORE_HOSTINGSTARTUPASSEMBLIES": "Microsoft.AspNetCore.SpaProxy",
+        "ASPNETCORE_Kestrel__Certificates__Default__Path": "./certs/dev-lan-cert.pfx",
+        "ASPNETCORE_Kestrel__Certificates__Default__Password": ""
+      }
+    },
     "IIS Express": {
       "commandName": "IISExpress",
       "launchBrowser": true,
