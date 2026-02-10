@@ -66,6 +66,15 @@ export const useAddNotifications = (
       if (!isSupported) return;
 
       try {
+        // If the browser already has notification permission granted, the user
+        // has subscribed before. This covers cross-domain migration (e.g.
+        // cliq-server.fly.dev → frenssocial.com) where getSubscription()
+        // returns null on the new origin but permission persists.
+        if (typeof Notification !== 'undefined' && Notification.permission === 'granted') {
+          setHasExistingSubscription(true);
+          return;
+        }
+
         const pm = (window as any).pushManager as any | undefined;
         if (!pm) return;
 
