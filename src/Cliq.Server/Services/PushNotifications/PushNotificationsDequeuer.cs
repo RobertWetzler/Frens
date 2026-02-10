@@ -117,6 +117,7 @@ internal class PushNotificationsDequeuer : BackgroundService
             {
                 title = notification.Title,
                 body = notification.Message,
+                navigate = notification.Navigate ?? "/",
                 data = new
                 {
                     url = notification.Navigate ?? "/"
