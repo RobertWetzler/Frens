@@ -2,12 +2,8 @@ import { useState, useEffect } from 'react';
 import { NotificationDto, NotificationFeedDto } from '../services/generated/generatedClient';
 import { ApiClient } from 'services/apiClient';
 
-interface NotificationTarget {
-    screen: 'Comments' | 'Profile';
-    params: Record<string, string>;
-}
 
-interface IEnrichedNotification { metadata: any; fromId: string; fromName: string; createdAt; kind: 'circle'; }
+interface IEnrichedNotification { metadata: any; fromId: string; fromName: string; createdAt }
 class NewSubscribableCircle implements IEnrichedNotification {
     id: string;
     fromId: string;
@@ -17,7 +13,6 @@ class NewSubscribableCircle implements IEnrichedNotification {
     isAlreadyMember: boolean;
     metadata: any;
     createdAt: any;
-    kind: 'circle' = 'circle';
     constructor(id, fromid, fromName, circleId, circleName, isAlreadyMember, createdAt, metadata) {
         this.id = id
         this.fromId = fromid
@@ -30,91 +25,78 @@ class NewSubscribableCircle implements IEnrichedNotification {
     }
 }
 
-interface GenericNotification {
-    kind: 'generic';
-    id: string;
-    type: string;
-    title: string;
-    message: string;
-    createdAt: any;
-    metadata: any;
-    target?: NotificationTarget;
-}
+// class NewComment implements IEnrichedNotification {
+//   fromId: string;
+//   fromName: string;
+//   commentId: string;
+//   postId: string;
+//   commentText: string;
+//   metadata: any;
 
-const resolveTarget = (type: string, metadata: any): NotificationTarget | undefined => {
-    switch (type) {
-        case 'FriendRequestAccepted':
-            return metadata?.AccepterId ? { screen: 'Profile', params: { userId: metadata.AccepterId } } : undefined;
-        case 'NewPost':
-        case 'NewComment':
-        case 'CommentReply':
-        case 'CarpoolReply':
-        case 'PostMention':
-        case 'CommentMention':
-            return metadata?.PostId ? { screen: 'Comments', params: { postId: metadata.PostId } } : undefined;
-        case 'NewEvent':
-            return metadata?.EventId ? { screen: 'Comments', params: { postId: metadata.EventId } } : undefined;
-        default:
-            return undefined;
-    }
-};
+//   constructor(fromid, fromName, commentId, postId, commentText, metadata)
+//   {
+//     this.fromId = fromid
+//     this.fromName = fromName
+//     this.commentId = commentId
+//     this.postId = postId
+//     this.commentText = commentText
+//     this.metadata = metadata
+//   }
+// }
 
-const parseNotification = (notification: NotificationDto): (NewSubscribableCircle | GenericNotification) | null => {
-    if (!notification.metadata) return null;
-    let metadata: any;
-    try {
-        metadata = JSON.parse(notification.metadata);
-    } catch {
-        return null;
-    }
-    const type = metadata?.Type;
-    if (!type) return null;
-    if (type === 'FriendRequest') {
-        return null;
-    }
-    if (type === 'NewSubscribableCircle' || type === 'NewSubscribableCircleNoFollow') {
-        return new NewSubscribableCircle(
-            notification.id,
-            metadata["AuthorId"],
-            metadata["AuthorName"],
-            metadata["CircleId"],
-            metadata["CircleName"],
-            metadata["IsAlreadyMember"],
-            notification.createdAt,
-            metadata
-        );
-    }
-
-    return {
-        kind: 'generic',
-        id: notification.id,
-        type,
-        title: notification.title,
-        message: notification.message,
-        createdAt: notification.createdAt,
-        metadata,
-        target: resolveTarget(type, metadata)
-    };
-};
 
 // TODO: Make a generic hook for API calls.
 export function useNotificationFeed() {
     const [notificationFeed, setNotificationFeed] = useState<NotificationFeedDto>();
-    const [processedNotifications, setProcessedNotifications] = useState<(NewSubscribableCircle | GenericNotification)[]>([]);
+    const [processedNotifications, setProcessedNotifications] = useState<NewSubscribableCircle[]>();
+    // const [combinedNotificationFeed, setCombinedNotificationFeed] = useState<(NewSubscribableCircle[]>();
     const [isLoading, setIsLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
 
     const loadNotifications = async () => {
         try {
             setIsLoading(true);
+            console.log("getting notifications")
             const notifications = await ApiClient.call(c => c.notification_GetNotifications());
+            console.log("setting notif feed")
             setNotificationFeed(notifications);
-            const parsed = notifications.notifications
-                .map(parseNotification)
-                .filter((item): item is (NewSubscribableCircle | GenericNotification) => item !== null);
-            setProcessedNotifications(parsed);
+            const processedNotifications = notifications.notifications.map((n) => {
+                console.log("processing notif")
+                let metadata = JSON.parse(n.metadata)
+                if (metadata["Type"] == "NewSubscribableCircle") {
+                    console.log("Returning newsubcircle notif")
+                    return new NewSubscribableCircle(
+                        n.id,
+                        metadata["AuthorId"],
+                        metadata["AuthorName"],
+                        metadata["CircleId"],
+                        metadata["CircleName"],
+                        metadata["IsAlreadyMember"],
+                        n.createdAt,
+                        metadata)
+                }
+                console.log("Not returning newsubcircle notif")
+                // Can only add new notifs once we update their metadata to have the right values. Set all existing to "already read" so they dont get loaded
+                // if (metadata["Type"] == "NewComment")
+                // {
+                //   return new NewComment(
+                //     metadata["CommenterId"],
+                //     metadata["CommenterName"],
+                //     metadata["CommentId"],
+                //     metadata["PostId"],
+                //     metadata["CommentTexxt"],
+                //     metadata
+                //   )
+                // }
+            }
+            );
+            setProcessedNotifications(processedNotifications);
+
+            // Make combined feed
+            
             setError(null);
         } catch (err) {
+            console.log("Failed to load notifications with err " + err)
             setError('Failed to load notifications');
             setNotificationFeed(null);
         } finally {

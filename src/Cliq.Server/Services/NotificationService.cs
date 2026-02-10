@@ -35,6 +35,8 @@ public class NotificationService : INotificationService
             .OrderByDescending(n => n.CreatedAt)
             .ToListAsync();
 
+        // SUPER FREAKING HACKY, filter using JSONB or derive these subscribable circles from the circleservice directly
+        notifications = notifications.FindAll(n => n.Metadata != null && n.Metadata.Contains("NewSubscribableCircle"));
         var notificationDtos = _mapper.Map<IEnumerable<NotificationDto>>(notifications);
 
         return new NotificationFeedDto

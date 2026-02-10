@@ -3,14 +3,14 @@ import { View, Text, SafeAreaView, TouchableOpacity, FlatList, ActivityIndicator
 import { Ionicons } from '@expo/vector-icons';
 import { Avatar } from '@rneui/base';
 import { useNotificationFeed } from 'hooks/useNotifications';
-import { FollowCircleRequest, FriendRequestDto } from 'services/generated/generatedClient';
+import { FollowCircleRequest, FriendRequestDto, NotificationDto, NotificationFeedDto } from 'services/generated/generatedClient';
 import { ApiClient } from 'services/apiClient';
 import { useTheme } from '../theme/ThemeContext';
 import { makeStyles } from '../theme/makeStyles';
 
 interface NotificationsScreenProps { navigation: any; }
 
-interface IEnrichedNotification { metadata: any; fromId: string; fromName: string; createdAt; kind: 'circle'; }
+interface IEnrichedNotification { metadata: any; fromId: string; fromName: string; createdAt}
 class NewSubscribableCircle implements IEnrichedNotification {
   id: string;
   fromId: string;
@@ -20,7 +20,6 @@ class NewSubscribableCircle implements IEnrichedNotification {
   isAlreadyMember: boolean;
   metadata: any;
   createdAt: any;
-  kind: 'circle' = 'circle';
   constructor(id, fromid, fromName, circleId, circleName, isAlreadyMember, createdAt, metadata)
   {
     this.id = id
@@ -34,17 +33,24 @@ class NewSubscribableCircle implements IEnrichedNotification {
   }
 }
 
-interface GenericNotification {
-  kind: 'generic';
-  id: string;
-  title: string;
-  message: string;
-  createdAt: any;
-  target?: {
-    screen: 'Comments' | 'Profile';
-    params: Record<string, string>;
-  };
-}
+// class NewComment implements IEnrichedNotification {
+//   fromId: string;
+//   fromName: string;
+//   commentId: string;
+//   postId: string;
+//   commentText: string;
+//   metadata: any;
+
+//   constructor(fromid, fromName, commentId, postId, commentText, metadata)
+//   {
+//     this.fromId = fromid
+//     this.fromName = fromName
+//     this.commentId = commentId
+//     this.postId = postId
+//     this.commentText = commentText
+//     this.metadata = metadata
+//   }
+// }
 
 const NotificationsScreen: React.FC<NotificationsScreenProps> = ({ navigation }) => {
   const { notificationFeed: notificationFeed, processedNotifications: processedNotifications, isLoading, error, loadNotifications: loadNotificationFeed } = useNotificationFeed();
@@ -88,23 +94,21 @@ const NotificationsScreen: React.FC<NotificationsScreenProps> = ({ navigation })
     if (!a.createdAt || !b.createdAt) return 0; return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
   }) || [];
 
-  const sortedCombinedFeed: (FriendRequestDto | NewSubscribableCircle | GenericNotification)[] = (processedNotifications as (NewSubscribableCircle | GenericNotification)[] || [])
+  // const sortedCombinedFeed: (FriendRequestDto | NewSubscribableCircle)[] = [];
+  // sortedCombinedFeed.concat(processedNotifications);
+  // sortedCombinedFeed.concat(notificationFeed.friendRequests);
+  // sortedCombinedFeed.sort((a, b) => {
+  //   if (!a.createdAt || !b.createdAt) return 0; return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+  // }) || [];
+
+  const sortedCombinedFeed: (FriendRequestDto | NewSubscribableCircle)[] = (processedNotifications as (NewSubscribableCircle | FriendRequestDto)[] || [])
                                                                             .concat(notificationFeed?.friendRequests || [])
                                                                             .sort((a,b) => {if (!a.createdAt || !b.createdAt) return 0; return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(); })
                                                                             || [];
+  console.log("Sorted combined feed: ", sortedCombinedFeed)
+  console.log("First instance ofs", sortedCombinedFeed[0] instanceof NewSubscribableCircle, sortedCombinedFeed[0] instanceof FriendRequestDto, typeof sortedCombinedFeed[0], typeof sortedCombinedFeed[1])
+  console.log("First instance ofs", sortedCombinedFeed[1] instanceof NewSubscribableCircle, sortedCombinedFeed[1] instanceof FriendRequestDto, typeof sortedCombinedFeed[1], typeof sortedCombinedFeed[1])
 
-  const isFriendRequest = (item: FriendRequestDto | NewSubscribableCircle | GenericNotification): item is FriendRequestDto => {
-    return typeof (item as FriendRequestDto)?.requesterId === 'string' && !!(item as FriendRequestDto)?.requester;
-  };
-
-  const isCircleNotification = (item: FriendRequestDto | NewSubscribableCircle | GenericNotification): item is NewSubscribableCircle => {
-    return (item as NewSubscribableCircle)?.kind === 'circle';
-  };
-
-  const handleNotificationPress = (item: GenericNotification) => {
-    if (!item.target) return;
-    navigation.navigate(item.target.screen, item.target.params);
-  };
 
   const renderFriendRequest = ({ item }: { item: FriendRequestDto }) => (
     <View style={styles.notificationItem}>
@@ -129,32 +133,15 @@ const NotificationsScreen: React.FC<NotificationsScreenProps> = ({ navigation })
     </View>
   );
 
-  const renderGenericNotification = ({ item }: { item: GenericNotification }) => (
-    <TouchableOpacity
-      onPress={() => handleNotificationPress(item)}
-      style={styles.notificationItem}
-      disabled={!item.target}
-    >
-      <View style={styles.notificationContent}>
-        <View style={styles.notificationText}>
-          <Text style={styles.userName}>{item.title}</Text>
-          <Text style={styles.actionText}> {item.message}</Text>
-        </View>
-        <Text style={styles.timeText}>{item.createdAt ? formatDate(new Date(item.createdAt)) : ''}</Text>
-      </View>
-    </TouchableOpacity>
-  );
-
-  const renderNotifications = ({ item }: { item: (FriendRequestDto | NewSubscribableCircle | GenericNotification) }) => (
-    <View>
-      {isFriendRequest(item) ? (
+  const renderNotifications = ({ item }: { item: (FriendRequestDto | NewSubscribableCircle) }) => (
+      <View>
+      {/* For some reason, checking in reverse order doesnt work. item isinstanceof NewSubscribableCircle is always false (prototype never gets set?) */}
+      { item instanceof FriendRequestDto  ? (
         renderFriendRequest({item})
-      ) : isCircleNotification(item) ? (
-        renderNewSubscribableCircle({item})
       ) : (
-        renderGenericNotification({item})
+        renderNewSubscribableCircle({item})
       )}
-    </View>)
+      </View>)
     ;
 
 
