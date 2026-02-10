@@ -14,12 +14,7 @@
         "kind": "build",
         "isDefault": true
       }
-    }
-  ]
-}
-{
-  "version": "2.0.0",
-  "tasks": [
+    },
     {
       "label": "NSwag: Generate TypeScript Client",
       "type": "shell",
@@ -28,6 +23,37 @@
         "cwd": "${workspaceFolder}/src/Cliq.Server"
       },
       "problemMatcher": []
+    },
+    {
+      "label": "gen-dev-cert",
+      "type": "shell",
+      "command": "${workspaceFolder}/scripts/gen-dev-cert.sh",
+      "problemMatcher": [],
+      "presentation": {
+        "echo": true,
+        "reveal": "silent",
+        "focus": false,
+        "panel": "shared"
+      }
+    },
+    {
+      "label": "gen-dev-ip-https",
+      "type": "shell",
+      "command": "DEV_FORCE_HTTPS=1 node ${workspaceFolder}/src/cliq.client/scripts/gen-dev-ip.js",
+      "problemMatcher": [],
+      "presentation": {
+        "echo": true,
+        "reveal": "silent",
+        "focus": false,
+        "panel": "shared"
+      }
+    },
+    {
+      "label": "gen-cert-and-build",
+      "dependsOn": ["gen-dev-cert", "gen-dev-ip-https", "build Cliq.Server"],
+      "dependsOrder": "sequence",
+      "problemMatcher": [],
+      "group": "build"
     }
   ]
 }

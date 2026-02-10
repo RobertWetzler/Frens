@@ -1,84 +1,94 @@
 {
   "version": "0.2.0",
-    "configurations": [
-        {
-            "name": "Launch Cliq.Server (project)",
-            "type": "coreclr",
-            "request": "launch",
-            "preLaunchTask": "build Cliq.Server",
-            "program": "${workspaceFolder}/src/Cliq.Server/bin/Debug/net9.0/Cliq.Server.dll",
-            "args": [],
-            "cwd": "${workspaceFolder}/src/Cliq.Server",
-            "stopAtEntry": false,
-            "env": {
-                "ASPNETCORE_ENVIRONMENT": "Development"
-            },
-            "console": "integratedTerminal"
-        },
-        {
-            "name": "Launch Cliq.Server (dotnet run)",
-            "type": "coreclr",
-            "request": "launch",
-            "preLaunchTask": "build Cliq.Server",
-            "program": "dotnet",
-            "args": [
-                "run",
-                "--project",
-                "${workspaceFolder}/src/Cliq.Server/Cliq.Server.csproj"
-            ],
-            "cwd": "${workspaceFolder}",
-            "stopAtEntry": false,
-            "env": {
-                "ASPNETCORE_ENVIRONMENT": "Development"
-            },
-            "console": "integratedTerminal"
+  "configurations": [
+    {
+      "name": "Launch Cliq.Server (project)",
+      "type": "coreclr",
+      "request": "launch",
+      "preLaunchTask": "build Cliq.Server",
+      "program": "${workspaceFolder}/src/Cliq.Server/bin/Debug/net9.0/Cliq.Server.dll",
+      "args": [],
+      "cwd": "${workspaceFolder}/src/Cliq.Server",
+      "stopAtEntry": false,
+      "env": {
+        "ASPNETCORE_ENVIRONMENT": "Development"
+      },
+      "console": "integratedTerminal"
+    },
+    {
+      "name": "Launch Cliq.Server (dotnet run)",
+      "type": "coreclr",
+      "request": "launch",
+      "preLaunchTask": "build Cliq.Server",
+      "program": "dotnet",
+      "args": [
+        "run",
+        "--project",
+        "${workspaceFolder}/src/Cliq.Server/Cliq.Server.csproj"
+      ],
+      "cwd": "${workspaceFolder}",
+      "stopAtEntry": false,
+      "env": {
+        "ASPNETCORE_ENVIRONMENT": "Development"
+      },
+      "console": "integratedTerminal"
+    },
+    {
+      "name": "C#: Cliq.Server Debug",
+      "type": "dotnet",
+      "request": "launch",
+      "projectPath": "${workspaceFolder}/src/Cliq.Server/Cliq.Server.csproj",
+      "justMyCode": false,
+      "requireExactSource": false,
+      "suppressJITOptimizations": true,
+      "enableStepFiltering": false,
+      "env": {
+        "DOTNET_EnableSourceLink": "1"
+      },
+      "symbolOptions": {
+        "searchMicrosoftSymbolServer": true,
+        "searchNuGetOrgSymbolServer": true,
+        "cachePath": "/Users/robertwetzler/.dotnet/symbolcache",
+        "moduleFilter": {
+          "mode": "loadAllButExcluded",
+          "excludedModules": []
         }
-    ]
-}
-{
-    "version": "0.2.0",
-    "configurations": [
-        {
-            "name": "C#: Cliq.Server Debug",
-            "type": "dotnet",
-            "request": "launch",
-            "projectPath": "${workspaceFolder}/src/Cliq.Server/Cliq.Server.csproj",
-            "justMyCode": false,
-            "requireExactSource": false,
-            "suppressJITOptimizations": true,
-            "enableStepFiltering": false,
-            "env": {
-                "DOTNET_EnableSourceLink": "1"
-            },
-            "symbolOptions": {
-                "searchMicrosoftSymbolServer": true,
-                "searchNuGetOrgSymbolServer": true,
-                "cachePath": "/Users/robertwetzler/.dotnet/symbolcache",
-                "moduleFilter": {
-                    "mode": "loadAllButExcluded",
-                    "excludedModules": []
-                }
-            },
-            "sourceLinkOptions": {
-                "*": {
-                    "enabled": true
-                }
-            }
+      },
+      "sourceLinkOptions": {
+        "*": {
+          "enabled": true
         }
-        ,
-        {
-            "name": "C#: Cliq.Server (no rebuild)",
-            "type": "coreclr",
-            "request": "launch",
-            // Launch prebuilt assembly directly; ensure you've built once so DLL exists.
-            "program": "${workspaceFolder}/src/Cliq.Server/bin/Debug/net8.0/Cliq.Server.dll",
-            "cwd": "${workspaceFolder}/src/Cliq.Server",
-            "env": {
-                "ASPNETCORE_ENVIRONMENT": "Development"
-            },
-            "console": "integratedTerminal",
-            "stopAtEntry": false,
-            "justMyCode": false
-        }
-    ]
+      }
+    },
+    {
+      "name": "C#: Cliq.Server (no rebuild)",
+      "type": "coreclr",
+      "request": "launch",
+      "program": "${workspaceFolder}/src/Cliq.Server/bin/Debug/net9.0/Cliq.Server.dll",
+      "cwd": "${workspaceFolder}/src/Cliq.Server",
+      "env": {
+        "ASPNETCORE_ENVIRONMENT": "Development"
+      },
+      "console": "integratedTerminal",
+      "stopAtEntry": false,
+      "justMyCode": false
+    },
+    {
+      "name": "🔒 HTTPS LAN (with cert)",
+      "type": "coreclr",
+      "request": "launch",
+      "preLaunchTask": "gen-cert-and-build",
+      "program": "${workspaceFolder}/src/Cliq.Server/bin/Debug/net9.0/Cliq.Server.dll",
+      "args": [],
+      "cwd": "${workspaceFolder}/src/Cliq.Server",
+      "stopAtEntry": false,
+      "env": {
+        "ASPNETCORE_ENVIRONMENT": "Development",
+        "ASPNETCORE_URLS": "https://0.0.0.0:7188;http://0.0.0.0:5188",
+        "ASPNETCORE_Kestrel__Certificates__Default__Path": "${workspaceFolder}/src/Cliq.Server/certs/dev-lan-cert.pfx",
+        "ASPNETCORE_Kestrel__Certificates__Default__Password": ""
+      },
+      "console": "integratedTerminal"
+    }
+  ]
 }
