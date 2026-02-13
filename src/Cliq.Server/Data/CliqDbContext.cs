@@ -26,6 +26,12 @@ public class CliqDbContext : IdentityDbContext<User, CliqRole, Guid>
     public DbSet<UserActivity> UserActivities { get; set; }
     public DbSet<CarpoolSeat> CarpoolSeats { get; set; }
     public DbSet<EasterEgg> EasterEggs { get; set; }
+    
+    // Interests - topic-based sharing that flows through the social graph
+    public DbSet<Interest> Interests { get; set; }
+    public DbSet<InterestSubscription> InterestSubscriptions { get; set; }
+    public DbSet<InterestPost> InterestPosts { get; set; }
+    public DbSet<InterestAnnouncement> InterestAnnouncements { get; set; }
 
     public CliqDbContext(
             DbContextOptions<CliqDbContext> options,
@@ -445,6 +451,105 @@ public class CliqDbContext : IdentityDbContext<User, CliqRole, Guid>
                   .WithMany()
                   .HasForeignKey(a => a.UserId)
                   .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        // ========== Interest ==========
+        modelBuilder.Entity<Interest>(entity =>
+        {
+            entity.HasKey(i => i.Id);
+
+            entity.Property(i => i.Name)
+                .IsRequired()
+                .HasMaxLength(100);
+
+            entity.Property(i => i.DisplayName)
+                .IsRequired()
+                .HasMaxLength(100);
+
+            entity.Property(i => i.CreatedAt)
+                .HasDefaultValueSql("NOW()");
+
+            // Unique constraint on normalized name - interests are globally unique
+            entity.HasIndex(i => i.Name).IsUnique();
+
+            entity.HasOne(i => i.CreatedByUser)
+                .WithMany()
+                .HasForeignKey(i => i.CreatedByUserId)
+                .OnDelete(DeleteBehavior.SetNull);
+        });
+
+        // ========== InterestSubscription ==========
+        modelBuilder.Entity<InterestSubscription>(entity =>
+        {
+            entity.HasKey(s => new { s.InterestId, s.UserId });
+
+            entity.Property(s => s.SubscribedAt)
+                .HasDefaultValueSql("NOW()");
+
+            entity.Property(s => s.IncludeFriendsOfFriends)
+                .HasDefaultValue(false);
+
+            entity.HasIndex(s => s.UserId); // For "my interests" queries
+            entity.HasIndex(s => s.InterestId); // For subscriber count
+
+            entity.HasOne(s => s.Interest)
+                .WithMany(i => i.Subscribers)
+                .HasForeignKey(s => s.InterestId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            entity.HasOne(s => s.User)
+                .WithMany()
+                .HasForeignKey(s => s.UserId)
+                .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        // ========== InterestPost ==========
+        modelBuilder.Entity<InterestPost>(entity =>
+        {
+            entity.HasKey(ip => new { ip.InterestId, ip.PostId });
+
+            entity.Property(ip => ip.SharedAt)
+                .HasDefaultValueSql("NOW()");
+
+            entity.Property(ip => ip.WasAnnounced)
+                .HasDefaultValue(false);
+
+            entity.HasIndex(ip => ip.InterestId); // For posts in an interest
+            entity.HasIndex(ip => ip.PostId);     // For interests on a post
+
+            entity.HasOne(ip => ip.Interest)
+                .WithMany(i => i.Posts)
+                .HasForeignKey(ip => ip.InterestId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            entity.HasOne(ip => ip.Post)
+                .WithMany(p => p.SharedWithInterests)
+                .HasForeignKey(ip => ip.PostId)
+                .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        // ========== InterestAnnouncement ==========
+        modelBuilder.Entity<InterestAnnouncement>(entity =>
+        {
+            entity.HasKey(a => a.Id);
+
+            entity.Property(a => a.AnnouncedAt)
+                .HasDefaultValueSql("NOW()");
+
+            // Index for rate-limiting queries (check recent announcements by user)
+            entity.HasIndex(a => new { a.UserId, a.AnnouncedAt });
+            // Unique constraint - user can only announce each interest once
+            entity.HasIndex(a => new { a.UserId, a.InterestId }).IsUnique();
+
+            entity.HasOne(a => a.User)
+                .WithMany()
+                .HasForeignKey(a => a.UserId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            entity.HasOne(a => a.Interest)
+                .WithMany()
+                .HasForeignKey(a => a.InterestId)
+                .OnDelete(DeleteBehavior.Cascade);
         });
     }
 }

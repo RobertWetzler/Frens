@@ -278,6 +278,64 @@ public static class SeedExtensions
                 new C(robert, "Just bring yourself!")),
             new C(robert, "Looking forward to it!")
         ]);
+
+        // ===== Interests =====
+        // Create interests that flow through the social graph
+        var climbing = await CreateInterestAsync(db, "climbing", "Climbing", devon);
+        var hiking = await CreateInterestAsync(db, "hiking", "Hiking", sierra);
+        var recipes = await CreateInterestAsync(db, "recipes", "Recipes", carolyn);
+        var photography = await CreateInterestAsync(db, "photography", "Photography", spencer);
+        var boardgames = await CreateInterestAsync(db, "boardgames", "Board Games", jacob);
+        var seattle = await CreateInterestAsync(db, "seattle", "Seattle", robert);
+        var hellokitty = await CreateInterestAsync(db, "hellokitty", "HelloKitty", sierra);
+
+        // Subscribe users to interests
+        // Climbing: popular among the friend group — Robert, Devon, Spencer, Jacob, Marcus all follow
+        await SubscribeToInterestAsync(db, climbing, new[] { robert, devon, spencer, jacob, marcus });
+
+        // Hiking: Sierra started it, several friends followed along
+        await SubscribeToInterestAsync(db, hiking, new[] { sierra, robert, jacob, olivia, emma });
+
+        // Recipes: Carolyn started it, spread to some family/friends
+        await SubscribeToInterestAsync(db, recipes, new[] { carolyn, howard, sierra, elana });
+
+        // Photography: Spencer started it, a couple friends picked it up
+        await SubscribeToInterestAsync(db, photography, new[] { spencer, devon, olivia });
+
+        // Board Games: Jacob started, couple friends joined
+        await SubscribeToInterestAsync(db, boardgames, new[] { jacob, devon, robert });
+
+        // Seattle: Robert started, friends opted in
+        await SubscribeToInterestAsync(db, seattle, new[] { robert, sierra, spencer, devon, jacob });
+
+        // HelloKitty: Sierra uses it, nobody else yet — good for testing "announce" flow
+        await SubscribeToInterestAsync(db, hellokitty, new[] { sierra });
+
+        // Create posts shared to interests (some also shared to circles)
+        // Devon posts about climbing to both the circle AND the interest
+        await CreatePostWithInterestsAsync(db, devon, "Just sent my first V8! 🎉", DateTime.UtcNow.AddHours(-1.5), new[] { climbingCircle }, new[] { climbing });
+
+        // Spencer posts to the climbing interest only (no circle)
+        await CreatePostWithInterestsAsync(db, spencer, "New climbing shoes review — the Scarpa Instinct VS is a game changer", DateTime.UtcNow.AddHours(-2.5), Array.Empty<Circle>(), new[] { climbing });
+
+        // Sierra posts about hiking via interest
+        await CreatePostWithInterestsAsync(db, sierra, "Golden hour at Rattlesnake Ledge 🌅", DateTime.UtcNow.AddHours(-3.5), Array.Empty<Circle>(), new[] { hiking, photography });
+
+        // Robert posts to seattle interest
+        await CreatePostWithInterestsAsync(db, robert, "Best ramen spots in Capitol Hill — thread 🍜", DateTime.UtcNow.AddHours(-4.5), Array.Empty<Circle>(), new[] { seattle, recipes });
+
+        // Carolyn posts a recipe via interest
+        await CreatePostWithInterestsAsync(db, carolyn, "Grandma's chocolate chip cookie recipe — finally perfected it!", DateTime.UtcNow.AddHours(-5.5), new[] { familyCircle }, new[] { recipes });
+
+        // Jacob posts about board games
+        await CreatePostWithInterestsAsync(db, jacob, "Wingspan is the best board game ever made, fight me", DateTime.UtcNow.AddHours(-6.5), Array.Empty<Circle>(), new[] { boardgames });
+
+        // Devon posts to photography (interest flows to him from Spencer)
+        await CreatePostWithInterestsAsync(db, devon, "Caught the sunrise from Camp Muir ⛰️📸", DateTime.UtcNow.AddHours(-7.5), Array.Empty<Circle>(), new[] { photography, hiking });
+
+        // Sierra posts to HelloKitty — none of Robert's friends follow it yet,
+        // so Robert wouldn't see this unless he follows the interest
+        await CreatePostWithInterestsAsync(db, sierra, "New Hello Kitty x Nike collab dropping next week 🎀", DateTime.UtcNow.AddHours(-8.5), Array.Empty<Circle>(), new[] { hellokitty });
     }
 
     private static User GetUser(List<User> users, string email)
@@ -425,6 +483,76 @@ public static class SeedExtensions
         return @event;
     }
 
+
+    private static async Task<Interest> CreateInterestAsync(CliqDbContext db, string name, string displayName, User createdBy)
+    {
+        var interest = new Interest
+        {
+            Id = Guid.NewGuid(),
+            Name = name,
+            DisplayName = displayName,
+            CreatedAt = DateTime.UtcNow,
+            CreatedByUserId = createdBy.Id
+        };
+
+        await db.Interests.AddAsync(interest);
+        await db.SaveChangesAsync();
+
+        return interest;
+    }
+
+    private static async Task SubscribeToInterestAsync(CliqDbContext db, Interest interest, User[] users)
+    {
+        var subscriptions = users.Select(user => new InterestSubscription
+        {
+            InterestId = interest.Id,
+            UserId = user.Id,
+            SubscribedAt = DateTime.UtcNow
+        }).ToList();
+
+        await db.InterestSubscriptions.AddRangeAsync(subscriptions);
+        await db.SaveChangesAsync();
+    }
+
+    private static async Task<Post> CreatePostWithInterestsAsync(CliqDbContext db, User author, string text, DateTime date, Circle[] circles, Interest[] interests)
+    {
+        var post = new Post
+        {
+            Id = Guid.NewGuid(),
+            UserId = author.Id,
+            Text = text,
+            Date = date
+        };
+
+        await db.Posts.AddAsync(post);
+        await db.SaveChangesAsync();
+
+        if (circles.Length > 0)
+        {
+            var circlePosts = circles.Select(circle => new CirclePost
+            {
+                CircleId = circle.Id,
+                PostId = post.Id,
+                SharedAt = date
+            }).ToList();
+            await db.CirclePosts.AddRangeAsync(circlePosts);
+        }
+
+        if (interests.Length > 0)
+        {
+            var interestPosts = interests.Select(interest => new InterestPost
+            {
+                InterestId = interest.Id,
+                PostId = post.Id,
+                SharedAt = date
+            }).ToList();
+            await db.InterestPosts.AddRangeAsync(interestPosts);
+        }
+
+        await db.SaveChangesAsync();
+
+        return post;
+    }
 
     private record C(User U, string T, params C[] Replies);
 

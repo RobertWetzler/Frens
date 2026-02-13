@@ -14,12 +14,14 @@ public class PostController : ControllerBase
     private readonly IPostService _postService;
     private readonly ICircleService _circleService;
     private readonly IFriendshipService _friendshipService;
+    private readonly IInterestService _interestService;
 
-    public PostController(IPostService postService, ICircleService circleService, IFriendshipService friendshipService)
+    public PostController(IPostService postService, ICircleService circleService, IFriendshipService friendshipService, IInterestService interestService)
     {
         _postService = postService;
         _circleService = circleService;
         _friendshipService = friendshipService;
+        _interestService = interestService;
     }
 
     // Get all data needed for the create post screen (circles with mentionable users, and friends)
@@ -35,11 +37,15 @@ public class PostController : ControllerBase
         // Get circles with mentionable users populated for each circle
         var circles = await _circleService.GetUserCirclesWithMentionableUsersAsync(userId);
         var friends = await _friendshipService.GetFriendsAsync(userId);
+        var followedInterests = await _interestService.GetUserFollowedInterestsPublicAsync(userId);
+        var suggestedInterests = await _interestService.GetSuggestedInterestsForPostAsync(userId);
 
         return Ok(new CreatePostDataDto
         {
             Circles = circles.ToList(),
-            Friends = friends.ToList()
+            Friends = friends.ToList(),
+            FollowedInterests = followedInterests,
+            SuggestedInterests = suggestedInterests
         });
     }
 
@@ -235,7 +241,9 @@ public class PostController : ControllerBase
             request.UserIds ?? Array.Empty<Guid>(), 
             request.Text, 
             imageKeys,
-            ParseMentionsJson(request.MentionsJson));
+            ParseMentionsJson(request.MentionsJson),
+            request.InterestNames,
+            request.AnnounceNewInterests);
         return CreatedAtAction(nameof(GetPost), new { id = createdPost.Id }, createdPost);
     }
 

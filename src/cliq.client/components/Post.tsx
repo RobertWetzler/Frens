@@ -288,6 +288,16 @@ const Post: React.FC<PostProps> = ({ post, navigation, isNavigable = true, anima
     }
   }
 
+  // Append interest tags (only shows interests the viewer follows, filtered by backend)
+  if (post.sharedWithInterests && post.sharedWithInterests.length > 0) {
+    const interestNames = post.sharedWithInterests.map(i => `#${i.displayName}`).join(", ");
+    if (sharedWithText === "you") {
+      sharedWithText = interestNames;
+    } else {
+      sharedWithText = `${sharedWithText}, ${interestNames}`;
+    }
+  }
+
   const formatDate = (date: Date) => {
     const now = new Date();
     const isCurrentYear = now.getFullYear() === date.getFullYear();

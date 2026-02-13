@@ -14,7 +14,7 @@ Opt-in Circles
 - Feed updates
     - Choose circles user is subscribed to.
     - Display circle created, with "Follow" button
-    - Display available circles (wishlist)
+    - Display available circles (done)
 - View of opt-in circle (wishlist)
     - From owner: number of members in it
     - Description
