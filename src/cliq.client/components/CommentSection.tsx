@@ -206,7 +206,7 @@ const CommentTree: React.FC<CommentTreeProps> = ({
 
   // Use for debugging thread lines
   //const lineColor = depth === 0 ? '#1DA1F2' : ['#FF4500', '#9370DB', '#4CBB17', '#FF8C00', '#1E90FF'][depth % 5];
-  const lineColor = theme.colors.primary;
+  const lineColor = theme.isDark ? theme.colors.primary : '#b9eafb'; // muted grey-blue thread lines
   const hasReplies = comment.replies && comment.replies.length > 0;
   const carpoolSpots = comment.carpoolSpots ?? null;
   const carpoolRiders = comment.carpoolRiders ?? [];
