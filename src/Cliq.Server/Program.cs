@@ -152,6 +152,7 @@ builder.Services.AddCircleServices();
 builder.Services.AddCommentServices();
 builder.Services.AddFriendshipServices();
 builder.Services.AddEventServices();
+builder.Services.AddInterestServices();
 builder.Services.AddNotificationServices(builder.Configuration);
 builder.Services.AddScoped<IEventNotificationService, EventNotificationService>();
 // Backblaze S3-compatible storage registration (private bucket)

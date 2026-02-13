@@ -27,6 +27,7 @@ public class Post
     public ICollection<Comment> Comments { get; set; } = new List<Comment>();
     public ICollection<CirclePost> SharedWithCircles { get; set; } = new List<CirclePost>();
     public ICollection<IndividualPost> SharedWithUsers { get; set; } = new List<IndividualPost>();
+    public ICollection<InterestPost> SharedWithInterests { get; set; } = new List<InterestPost>();
 }
 
 public class CirclePost
@@ -76,6 +77,8 @@ public class PostDto
     public List<MentionDto> Mentions { get; set; } = new List<MentionDto>();
     // Users that the viewer can mention in comments (populated based on visibility rules)
     public List<MentionableUserDto> MentionableUsers { get; set; } = new List<MentionableUserDto>();
+    // Interests this post was shared to
+    public List<InterestPublicDto> SharedWithInterests { get; set; } = new List<InterestPublicDto>();
 }
 
 // Separate request type for multipart form submissions including optional image
@@ -84,6 +87,16 @@ public class CreatePostWithImageRequest
     public string Text { get; set; } = string.Empty;
     public Guid[] CircleIds { get; set; } = Array.Empty<Guid>();
     public Guid[] UserIds { get; set; } = Array.Empty<Guid>();
+    /// <summary>
+    /// Interest names to share this post to. Names will be normalized.
+    /// New interests are created automatically if they don't exist.
+    /// </summary>
+    public string[] InterestNames { get; set; } = Array.Empty<string>();
+    /// <summary>
+    /// If true and posting to a new interest that none of your friends follow,
+    /// announce the interest to all friends. Rate-limited.
+    /// </summary>
+    public bool AnnounceNewInterests { get; set; } = false;
     // Multiple images supported; ordering preserved as received.
     public List<IFormFile>? Images { get; set; }
     /// <summary>
@@ -117,4 +130,12 @@ public class CreatePostDataDto
 {
     public List<CirclePublicDto> Circles { get; set; } = new();
     public List<UserDto> Friends { get; set; } = new();
+    /// <summary>
+    /// Interests the user currently follows.
+    /// </summary>
+    public List<InterestPublicDto> FollowedInterests { get; set; } = new();
+    /// <summary>
+    /// Suggested interests based on what friends are using.
+    /// </summary>
+    public List<InterestSuggestionDto> SuggestedInterests { get; set; } = new();
 }

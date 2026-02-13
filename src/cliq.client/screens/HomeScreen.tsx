@@ -7,6 +7,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import Post from '../components/Post';
 import SubscribableCirclesCard from '../components/SubscribableCirclesCard';
 import RecommendedFriendsCard from '../components/RecommendedFriendsCard';
+import SuggestedInterestsCard from '../components/SuggestedInterestsCard';
 import getEnvVars from 'env'
 import { useFilteredFeed } from 'hooks/usePosts';
 import { useAuth } from 'contexts/AuthContext';
@@ -31,6 +32,7 @@ const HomeScreen = ({ navigation }) => {
         circles,
         availableSubscribableCircles,
         recommendedFriends,
+        suggestedInterests,
         notificationCount,
         isLoading,
         isRefreshing,
@@ -320,6 +322,19 @@ const HomeScreen = ({ navigation }) => {
                                         }}
                                     />
                                 )}
+                                {/* Show suggested interests card */}
+                                {suggestedInterests && suggestedInterests.length > 0 && 
+                                 ((posts && posts.length >= 2 && index === 1) || (posts && posts.length < 2 && index === posts.length - 1)) && (
+                                    <SuggestedInterestsCard
+                                        interests={suggestedInterests}
+                                        shouldAnimate={shouldAnimate}
+                                        animationDelay={animationDelay + (availableSubscribableCircles?.length > 0 ? 450 : (recommendedFriends?.length > 0 ? 300 : 150))}
+                                        onInterestFollowed={(interestName) => {
+                                            // Refresh feed after following to get posts from that interest
+                                            loadFeed();
+                                        }}
+                                    />
+                                )}
                             </>
                         );
                     }
@@ -356,6 +371,19 @@ const HomeScreen = ({ navigation }) => {
                                     animationDelay={animationDelay + (availableSubscribableCircles?.length > 0 ? 300 : 150)}
                                     onFriendRequestSent={(userId) => {
                                         // Optionally refresh feed after sending friend request
+                                    }}
+                                />
+                            )}
+                            {/* Show suggested interests card */}
+                            {suggestedInterests && suggestedInterests.length > 0 && 
+                             ((posts && posts.length >= 2 && index === 1) || (posts && posts.length < 2 && index === posts.length - 1)) && (
+                                <SuggestedInterestsCard
+                                    interests={suggestedInterests}
+                                    shouldAnimate={shouldAnimate}
+                                    animationDelay={animationDelay + (availableSubscribableCircles?.length > 0 ? 450 : (recommendedFriends?.length > 0 ? 300 : 150))}
+                                    onInterestFollowed={(interestName) => {
+                                        // Refresh feed after following to get posts from that interest
+                                        loadFeed();
                                     }}
                                 />
                             )}

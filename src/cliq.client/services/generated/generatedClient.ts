@@ -1668,6 +1668,307 @@ export class Client {
         return Promise.resolve<boolean>(null as any);
     }
 
+    interest_SearchInterests(q: string | undefined, limit: number | undefined, signal?: AbortSignal): Promise<InterestSuggestionDto[]> {
+        let url_ = this.baseUrl + "/api/Interest/search?";
+        if (q === null)
+            throw new Error("The parameter 'q' cannot be null.");
+        else if (q !== undefined)
+            url_ += "q=" + encodeURIComponent("" + q) + "&";
+        if (limit === null)
+            throw new Error("The parameter 'limit' cannot be null.");
+        else if (limit !== undefined)
+            url_ += "limit=" + encodeURIComponent("" + limit) + "&";
+        url_ = url_.replace(/[?&]$/, "");
+
+        let options_: RequestInit = {
+            method: "GET",
+            signal,
+            headers: {
+                "Accept": "application/json"
+            }
+        };
+
+        return this.http.fetch(url_, options_).then((_response: Response) => {
+            return this.processInterest_SearchInterests(_response);
+        });
+    }
+
+    protected processInterest_SearchInterests(response: Response): Promise<InterestSuggestionDto[]> {
+        const status = response.status;
+        let _headers: any = {}; if (response.headers && response.headers.forEach) { response.headers.forEach((v: any, k: any) => _headers[k] = v); };
+        if (status === 200) {
+            return response.text().then((_responseText) => {
+            let result200: any = null;
+            let resultData200 = _responseText === "" ? null : JSON.parse(_responseText, this.jsonParseReviver);
+            if (Array.isArray(resultData200)) {
+                result200 = [] as any;
+                for (let item of resultData200)
+                    result200!.push(InterestSuggestionDto.fromJS(item));
+            }
+            else {
+                result200 = <any>null;
+            }
+            return result200;
+            });
+        } else if (status !== 200 && status !== 204) {
+            return response.text().then((_responseText) => {
+            return throwException("An unexpected server error occurred.", status, _responseText, _headers);
+            });
+        }
+        return Promise.resolve<InterestSuggestionDto[]>(null as any);
+    }
+
+    interest_GetPopularInterests(limit: number | undefined, signal?: AbortSignal): Promise<InterestSuggestionDto[]> {
+        let url_ = this.baseUrl + "/api/Interest/popular?";
+        if (limit === null)
+            throw new Error("The parameter 'limit' cannot be null.");
+        else if (limit !== undefined)
+            url_ += "limit=" + encodeURIComponent("" + limit) + "&";
+        url_ = url_.replace(/[?&]$/, "");
+
+        let options_: RequestInit = {
+            method: "GET",
+            signal,
+            headers: {
+                "Accept": "application/json"
+            }
+        };
+
+        return this.http.fetch(url_, options_).then((_response: Response) => {
+            return this.processInterest_GetPopularInterests(_response);
+        });
+    }
+
+    protected processInterest_GetPopularInterests(response: Response): Promise<InterestSuggestionDto[]> {
+        const status = response.status;
+        let _headers: any = {}; if (response.headers && response.headers.forEach) { response.headers.forEach((v: any, k: any) => _headers[k] = v); };
+        if (status === 200) {
+            return response.text().then((_responseText) => {
+            let result200: any = null;
+            let resultData200 = _responseText === "" ? null : JSON.parse(_responseText, this.jsonParseReviver);
+            if (Array.isArray(resultData200)) {
+                result200 = [] as any;
+                for (let item of resultData200)
+                    result200!.push(InterestSuggestionDto.fromJS(item));
+            }
+            else {
+                result200 = <any>null;
+            }
+            return result200;
+            });
+        } else if (status !== 200 && status !== 204) {
+            return response.text().then((_responseText) => {
+            return throwException("An unexpected server error occurred.", status, _responseText, _headers);
+            });
+        }
+        return Promise.resolve<InterestSuggestionDto[]>(null as any);
+    }
+
+    interest_GetMyInterests(signal?: AbortSignal): Promise<InterestDto[]> {
+        let url_ = this.baseUrl + "/api/Interest/mine";
+        url_ = url_.replace(/[?&]$/, "");
+
+        let options_: RequestInit = {
+            method: "GET",
+            signal,
+            headers: {
+                "Accept": "application/json"
+            }
+        };
+
+        return this.http.fetch(url_, options_).then((_response: Response) => {
+            return this.processInterest_GetMyInterests(_response);
+        });
+    }
+
+    protected processInterest_GetMyInterests(response: Response): Promise<InterestDto[]> {
+        const status = response.status;
+        let _headers: any = {}; if (response.headers && response.headers.forEach) { response.headers.forEach((v: any, k: any) => _headers[k] = v); };
+        if (status === 200) {
+            return response.text().then((_responseText) => {
+            let result200: any = null;
+            let resultData200 = _responseText === "" ? null : JSON.parse(_responseText, this.jsonParseReviver);
+            if (Array.isArray(resultData200)) {
+                result200 = [] as any;
+                for (let item of resultData200)
+                    result200!.push(InterestDto.fromJS(item));
+            }
+            else {
+                result200 = <any>null;
+            }
+            return result200;
+            });
+        } else if (status !== 200 && status !== 204) {
+            return response.text().then((_responseText) => {
+            return throwException("An unexpected server error occurred.", status, _responseText, _headers);
+            });
+        }
+        return Promise.resolve<InterestDto[]>(null as any);
+    }
+
+    interest_GetUserInterests(targetUserId: string, signal?: AbortSignal): Promise<InterestPublicDto[]> {
+        let url_ = this.baseUrl + "/api/Interest/user/{targetUserId}";
+        if (targetUserId === undefined || targetUserId === null)
+            throw new Error("The parameter 'targetUserId' must be defined.");
+        url_ = url_.replace("{targetUserId}", encodeURIComponent("" + targetUserId));
+        url_ = url_.replace(/[?&]$/, "");
+
+        let options_: RequestInit = {
+            method: "GET",
+            signal,
+            headers: {
+                "Accept": "application/json"
+            }
+        };
+
+        return this.http.fetch(url_, options_).then((_response: Response) => {
+            return this.processInterest_GetUserInterests(_response);
+        });
+    }
+
+    protected processInterest_GetUserInterests(response: Response): Promise<InterestPublicDto[]> {
+        const status = response.status;
+        let _headers: any = {}; if (response.headers && response.headers.forEach) { response.headers.forEach((v: any, k: any) => _headers[k] = v); };
+        if (status === 200) {
+            return response.text().then((_responseText) => {
+            let result200: any = null;
+            let resultData200 = _responseText === "" ? null : JSON.parse(_responseText, this.jsonParseReviver);
+            if (Array.isArray(resultData200)) {
+                result200 = [] as any;
+                for (let item of resultData200)
+                    result200!.push(InterestPublicDto.fromJS(item));
+            }
+            else {
+                result200 = <any>null;
+            }
+            return result200;
+            });
+        } else if (status !== 200 && status !== 204) {
+            return response.text().then((_responseText) => {
+            return throwException("An unexpected server error occurred.", status, _responseText, _headers);
+            });
+        }
+        return Promise.resolve<InterestPublicDto[]>(null as any);
+    }
+
+    interest_FollowInterest(interestName: string, request: FollowInterestRequest | undefined, signal?: AbortSignal): Promise<InterestDto> {
+        let url_ = this.baseUrl + "/api/Interest/{interestName}/follow";
+        if (interestName === undefined || interestName === null)
+            throw new Error("The parameter 'interestName' must be defined.");
+        url_ = url_.replace("{interestName}", encodeURIComponent("" + interestName));
+        url_ = url_.replace(/[?&]$/, "");
+
+        const content_ = JSON.stringify(request);
+
+        let options_: RequestInit = {
+            body: content_,
+            method: "POST",
+            signal,
+            headers: {
+                "Content-Type": "application/json",
+                "Accept": "application/json"
+            }
+        };
+
+        return this.http.fetch(url_, options_).then((_response: Response) => {
+            return this.processInterest_FollowInterest(_response);
+        });
+    }
+
+    protected processInterest_FollowInterest(response: Response): Promise<InterestDto> {
+        const status = response.status;
+        let _headers: any = {}; if (response.headers && response.headers.forEach) { response.headers.forEach((v: any, k: any) => _headers[k] = v); };
+        if (status === 200) {
+            return response.text().then((_responseText) => {
+            let result200: any = null;
+            let resultData200 = _responseText === "" ? null : JSON.parse(_responseText, this.jsonParseReviver);
+            result200 = InterestDto.fromJS(resultData200);
+            return result200;
+            });
+        } else if (status !== 200 && status !== 204) {
+            return response.text().then((_responseText) => {
+            return throwException("An unexpected server error occurred.", status, _responseText, _headers);
+            });
+        }
+        return Promise.resolve<InterestDto>(null as any);
+    }
+
+    interest_UnfollowInterest(interestName: string, signal?: AbortSignal): Promise<void> {
+        let url_ = this.baseUrl + "/api/Interest/{interestName}/follow";
+        if (interestName === undefined || interestName === null)
+            throw new Error("The parameter 'interestName' must be defined.");
+        url_ = url_.replace("{interestName}", encodeURIComponent("" + interestName));
+        url_ = url_.replace(/[?&]$/, "");
+
+        let options_: RequestInit = {
+            method: "DELETE",
+            signal,
+            headers: {
+            }
+        };
+
+        return this.http.fetch(url_, options_).then((_response: Response) => {
+            return this.processInterest_UnfollowInterest(_response);
+        });
+    }
+
+    protected processInterest_UnfollowInterest(response: Response): Promise<void> {
+        const status = response.status;
+        let _headers: any = {}; if (response.headers && response.headers.forEach) { response.headers.forEach((v: any, k: any) => _headers[k] = v); };
+        if (status === 204) {
+            return response.text().then((_responseText) => {
+            return;
+            });
+        } else if (status !== 200 && status !== 204) {
+            return response.text().then((_responseText) => {
+            return throwException("An unexpected server error occurred.", status, _responseText, _headers);
+            });
+        }
+        return Promise.resolve<void>(null as any);
+    }
+
+    interest_UpdateInterestSettings(interestName: string, settings: UpdateInterestSettingsRequest, signal?: AbortSignal): Promise<InterestDto> {
+        let url_ = this.baseUrl + "/api/Interest/{interestName}/settings";
+        if (interestName === undefined || interestName === null)
+            throw new Error("The parameter 'interestName' must be defined.");
+        url_ = url_.replace("{interestName}", encodeURIComponent("" + interestName));
+        url_ = url_.replace(/[?&]$/, "");
+
+        const content_ = JSON.stringify(settings);
+
+        let options_: RequestInit = {
+            body: content_,
+            method: "PATCH",
+            signal,
+            headers: {
+                "Content-Type": "application/json",
+                "Accept": "application/json"
+            }
+        };
+
+        return this.http.fetch(url_, options_).then((_response: Response) => {
+            return this.processInterest_UpdateInterestSettings(_response);
+        });
+    }
+
+    protected processInterest_UpdateInterestSettings(response: Response): Promise<InterestDto> {
+        const status = response.status;
+        let _headers: any = {}; if (response.headers && response.headers.forEach) { response.headers.forEach((v: any, k: any) => _headers[k] = v); };
+        if (status === 200) {
+            return response.text().then((_responseText) => {
+            let result200: any = null;
+            let resultData200 = _responseText === "" ? null : JSON.parse(_responseText, this.jsonParseReviver);
+            result200 = InterestDto.fromJS(resultData200);
+            return result200;
+            });
+        } else if (status !== 200 && status !== 204) {
+            return response.text().then((_responseText) => {
+            return throwException("An unexpected server error occurred.", status, _responseText, _headers);
+            });
+        }
+        return Promise.resolve<InterestDto>(null as any);
+    }
+
     notification_GetNotifications(signal?: AbortSignal): Promise<NotificationFeedDto> {
         let url_ = this.baseUrl + "/api/Notification";
         url_ = url_.replace(/[?&]$/, "");
@@ -2171,7 +2472,7 @@ export class Client {
         return Promise.resolve<FeedDto>(null as any);
     }
 
-    post_CreatePost(text: string | null | undefined, circleIds: string[] | null | undefined, userIds: string[] | null | undefined, images: FileParameter[] | null | undefined, mentionsJson: string | null | undefined, signal?: AbortSignal): Promise<PostDto> {
+    post_CreatePost(text: string | null | undefined, circleIds: string[] | null | undefined, userIds: string[] | null | undefined, interestNames: string[] | null | undefined, announceNewInterests: boolean | undefined, images: FileParameter[] | null | undefined, mentionsJson: string | null | undefined, signal?: AbortSignal): Promise<PostDto> {
         let url_ = this.baseUrl + "/api/Post";
         url_ = url_.replace(/[?&]$/, "");
 
@@ -2182,6 +2483,12 @@ export class Client {
             circleIds.forEach(item_ => content_.append("CircleIds", item_.toString()));
         if (userIds !== null && userIds !== undefined)
             userIds.forEach(item_ => content_.append("UserIds", item_.toString()));
+        if (interestNames !== null && interestNames !== undefined)
+            interestNames.forEach(item_ => content_.append("InterestNames", item_.toString()));
+        if (announceNewInterests === null || announceNewInterests === undefined)
+            throw new Error("The parameter 'announceNewInterests' cannot be null.");
+        else
+            content_.append("AnnounceNewInterests", announceNewInterests.toString());
         if (images !== null && images !== undefined)
             images.forEach(item_ => content_.append("Images", item_.data, item_.fileName ? item_.fileName : "Images") );
         if (mentionsJson !== null && mentionsJson !== undefined)
@@ -3266,6 +3573,7 @@ export class PostDto implements IPostDto {
     imageUrl?: string | undefined;
     mentions?: MentionDto[];
     mentionableUsers?: MentionableUserDto[];
+    sharedWithInterests?: InterestPublicDto[];
 
     protected _discriminator: string;
 
@@ -3315,6 +3623,11 @@ export class PostDto implements IPostDto {
                 this.mentionableUsers = [] as any;
                 for (let item of _data["mentionableUsers"])
                     this.mentionableUsers!.push(MentionableUserDto.fromJS(item));
+            }
+            if (Array.isArray(_data["sharedWithInterests"])) {
+                this.sharedWithInterests = [] as any;
+                for (let item of _data["sharedWithInterests"])
+                    this.sharedWithInterests!.push(InterestPublicDto.fromJS(item));
             }
         }
     }
@@ -3369,6 +3682,11 @@ export class PostDto implements IPostDto {
             for (let item of this.mentionableUsers)
                 data["mentionableUsers"].push(item.toJSON());
         }
+        if (Array.isArray(this.sharedWithInterests)) {
+            data["sharedWithInterests"] = [];
+            for (let item of this.sharedWithInterests)
+                data["sharedWithInterests"].push(item.toJSON());
+        }
         return data;
     }
 }
@@ -3389,6 +3707,7 @@ export interface IPostDto {
     imageUrl?: string | undefined;
     mentions?: MentionDto[];
     mentionableUsers?: MentionableUserDto[];
+    sharedWithInterests?: InterestPublicDto[];
 }
 
 export class EventDto extends PostDto implements IEventDto {
@@ -3550,6 +3869,50 @@ export interface IEventRsvpDto {
     responseDate?: Date;
     notes?: string | undefined;
     user?: UserDto;
+}
+
+export class InterestPublicDto implements IInterestPublicDto {
+    id?: string;
+    name?: string;
+    displayName?: string;
+
+    constructor(data?: IInterestPublicDto) {
+        if (data) {
+            for (var property in data) {
+                if (data.hasOwnProperty(property))
+                    (<any>this)[property] = (<any>data)[property];
+            }
+        }
+    }
+
+    init(_data?: any) {
+        if (_data) {
+            this.id = _data["id"];
+            this.name = _data["name"];
+            this.displayName = _data["displayName"];
+        }
+    }
+
+    static fromJS(data: any): InterestPublicDto {
+        data = typeof data === 'object' ? data : {};
+        let result = new InterestPublicDto();
+        result.init(data);
+        return result;
+    }
+
+    toJSON(data?: any) {
+        data = typeof data === 'object' ? data : {};
+        data["id"] = this.id;
+        data["name"] = this.name;
+        data["displayName"] = this.displayName;
+        return data;
+    }
+}
+
+export interface IInterestPublicDto {
+    id?: string;
+    name?: string;
+    displayName?: string;
 }
 
 export class MyEventsResponse implements IMyEventsResponse {
@@ -3920,6 +4283,182 @@ export enum VisibleStatus {
     BlockedBy = "BlockedBy",
 }
 
+export class InterestSuggestionDto implements IInterestSuggestionDto {
+    id?: string;
+    name?: string;
+    displayName?: string;
+    friendsUsingCount?: number;
+
+    constructor(data?: IInterestSuggestionDto) {
+        if (data) {
+            for (var property in data) {
+                if (data.hasOwnProperty(property))
+                    (<any>this)[property] = (<any>data)[property];
+            }
+        }
+    }
+
+    init(_data?: any) {
+        if (_data) {
+            this.id = _data["id"];
+            this.name = _data["name"];
+            this.displayName = _data["displayName"];
+            this.friendsUsingCount = _data["friendsUsingCount"];
+        }
+    }
+
+    static fromJS(data: any): InterestSuggestionDto {
+        data = typeof data === 'object' ? data : {};
+        let result = new InterestSuggestionDto();
+        result.init(data);
+        return result;
+    }
+
+    toJSON(data?: any) {
+        data = typeof data === 'object' ? data : {};
+        data["id"] = this.id;
+        data["name"] = this.name;
+        data["displayName"] = this.displayName;
+        data["friendsUsingCount"] = this.friendsUsingCount;
+        return data;
+    }
+}
+
+export interface IInterestSuggestionDto {
+    id?: string;
+    name?: string;
+    displayName?: string;
+    friendsUsingCount?: number;
+}
+
+export class InterestDto implements IInterestDto {
+    id?: string;
+    name?: string;
+    displayName?: string;
+    friendsFollowingCount?: number;
+    isFollowing?: boolean;
+    includeFriendsOfFriends?: boolean;
+
+    constructor(data?: IInterestDto) {
+        if (data) {
+            for (var property in data) {
+                if (data.hasOwnProperty(property))
+                    (<any>this)[property] = (<any>data)[property];
+            }
+        }
+    }
+
+    init(_data?: any) {
+        if (_data) {
+            this.id = _data["id"];
+            this.name = _data["name"];
+            this.displayName = _data["displayName"];
+            this.friendsFollowingCount = _data["friendsFollowingCount"];
+            this.isFollowing = _data["isFollowing"];
+            this.includeFriendsOfFriends = _data["includeFriendsOfFriends"];
+        }
+    }
+
+    static fromJS(data: any): InterestDto {
+        data = typeof data === 'object' ? data : {};
+        let result = new InterestDto();
+        result.init(data);
+        return result;
+    }
+
+    toJSON(data?: any) {
+        data = typeof data === 'object' ? data : {};
+        data["id"] = this.id;
+        data["name"] = this.name;
+        data["displayName"] = this.displayName;
+        data["friendsFollowingCount"] = this.friendsFollowingCount;
+        data["isFollowing"] = this.isFollowing;
+        data["includeFriendsOfFriends"] = this.includeFriendsOfFriends;
+        return data;
+    }
+}
+
+export interface IInterestDto {
+    id?: string;
+    name?: string;
+    displayName?: string;
+    friendsFollowingCount?: number;
+    isFollowing?: boolean;
+    includeFriendsOfFriends?: boolean;
+}
+
+export class FollowInterestRequest implements IFollowInterestRequest {
+    displayName?: string | undefined;
+
+    constructor(data?: IFollowInterestRequest) {
+        if (data) {
+            for (var property in data) {
+                if (data.hasOwnProperty(property))
+                    (<any>this)[property] = (<any>data)[property];
+            }
+        }
+    }
+
+    init(_data?: any) {
+        if (_data) {
+            this.displayName = _data["displayName"];
+        }
+    }
+
+    static fromJS(data: any): FollowInterestRequest {
+        data = typeof data === 'object' ? data : {};
+        let result = new FollowInterestRequest();
+        result.init(data);
+        return result;
+    }
+
+    toJSON(data?: any) {
+        data = typeof data === 'object' ? data : {};
+        data["displayName"] = this.displayName;
+        return data;
+    }
+}
+
+export interface IFollowInterestRequest {
+    displayName?: string | undefined;
+}
+
+export class UpdateInterestSettingsRequest implements IUpdateInterestSettingsRequest {
+    includeFriendsOfFriends?: boolean;
+
+    constructor(data?: IUpdateInterestSettingsRequest) {
+        if (data) {
+            for (var property in data) {
+                if (data.hasOwnProperty(property))
+                    (<any>this)[property] = (<any>data)[property];
+            }
+        }
+    }
+
+    init(_data?: any) {
+        if (_data) {
+            this.includeFriendsOfFriends = _data["includeFriendsOfFriends"];
+        }
+    }
+
+    static fromJS(data: any): UpdateInterestSettingsRequest {
+        data = typeof data === 'object' ? data : {};
+        let result = new UpdateInterestSettingsRequest();
+        result.init(data);
+        return result;
+    }
+
+    toJSON(data?: any) {
+        data = typeof data === 'object' ? data : {};
+        data["includeFriendsOfFriends"] = this.includeFriendsOfFriends;
+        return data;
+    }
+}
+
+export interface IUpdateInterestSettingsRequest {
+    includeFriendsOfFriends?: boolean;
+}
+
 export class NotificationFeedDto implements INotificationFeedDto {
     friendRequests?: FriendRequestDto[];
     notifications?: NotificationDto[];
@@ -4187,6 +4726,8 @@ export interface IAppAnnouncementRequest {
 export class CreatePostDataDto implements ICreatePostDataDto {
     circles?: CirclePublicDto[];
     friends?: UserDto[];
+    followedInterests?: InterestPublicDto[];
+    suggestedInterests?: InterestSuggestionDto[];
 
     constructor(data?: ICreatePostDataDto) {
         if (data) {
@@ -4208,6 +4749,16 @@ export class CreatePostDataDto implements ICreatePostDataDto {
                 this.friends = [] as any;
                 for (let item of _data["friends"])
                     this.friends!.push(UserDto.fromJS(item));
+            }
+            if (Array.isArray(_data["followedInterests"])) {
+                this.followedInterests = [] as any;
+                for (let item of _data["followedInterests"])
+                    this.followedInterests!.push(InterestPublicDto.fromJS(item));
+            }
+            if (Array.isArray(_data["suggestedInterests"])) {
+                this.suggestedInterests = [] as any;
+                for (let item of _data["suggestedInterests"])
+                    this.suggestedInterests!.push(InterestSuggestionDto.fromJS(item));
             }
         }
     }
@@ -4231,6 +4782,16 @@ export class CreatePostDataDto implements ICreatePostDataDto {
             for (let item of this.friends)
                 data["friends"].push(item.toJSON());
         }
+        if (Array.isArray(this.followedInterests)) {
+            data["followedInterests"] = [];
+            for (let item of this.followedInterests)
+                data["followedInterests"].push(item.toJSON());
+        }
+        if (Array.isArray(this.suggestedInterests)) {
+            data["suggestedInterests"] = [];
+            for (let item of this.suggestedInterests)
+                data["suggestedInterests"].push(item.toJSON());
+        }
         return data;
     }
 }
@@ -4238,6 +4799,8 @@ export class CreatePostDataDto implements ICreatePostDataDto {
 export interface ICreatePostDataDto {
     circles?: CirclePublicDto[];
     friends?: UserDto[];
+    followedInterests?: InterestPublicDto[];
+    suggestedInterests?: InterestSuggestionDto[];
 }
 
 export class PostImageUrlDto implements IPostImageUrlDto {
@@ -4378,6 +4941,7 @@ export class FeedDto implements IFeedDto {
     userCircles?: CirclePublicDto[];
     availableSubscribableCircles?: SubscribableCircleDto[];
     recommendedFriends?: RecommendedFriendDto[];
+    suggestedInterests?: InterestSuggestionDto[];
 
     constructor(data?: IFeedDto) {
         if (data) {
@@ -4410,6 +4974,11 @@ export class FeedDto implements IFeedDto {
                 this.recommendedFriends = [] as any;
                 for (let item of _data["recommendedFriends"])
                     this.recommendedFriends!.push(RecommendedFriendDto.fromJS(item));
+            }
+            if (Array.isArray(_data["suggestedInterests"])) {
+                this.suggestedInterests = [] as any;
+                for (let item of _data["suggestedInterests"])
+                    this.suggestedInterests!.push(InterestSuggestionDto.fromJS(item));
             }
         }
     }
@@ -4444,6 +5013,11 @@ export class FeedDto implements IFeedDto {
             for (let item of this.recommendedFriends)
                 data["recommendedFriends"].push(item.toJSON());
         }
+        if (Array.isArray(this.suggestedInterests)) {
+            data["suggestedInterests"] = [];
+            for (let item of this.suggestedInterests)
+                data["suggestedInterests"].push(item.toJSON());
+        }
         return data;
     }
 }
@@ -4454,6 +5028,7 @@ export interface IFeedDto {
     userCircles?: CirclePublicDto[];
     availableSubscribableCircles?: SubscribableCircleDto[];
     recommendedFriends?: RecommendedFriendDto[];
+    suggestedInterests?: InterestSuggestionDto[];
 }
 
 export class SubscribableCircleDto implements ISubscribableCircleDto {
