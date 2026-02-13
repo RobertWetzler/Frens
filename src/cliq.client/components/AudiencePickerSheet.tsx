@@ -146,8 +146,8 @@ const AudiencePickerSheet: React.FC<AudiencePickerSheetProps> = ({
 
   const tabs: { key: TabKey; label: string; icon: string; count: number }[] = [
     { key: 'circles', label: 'Circles', icon: 'people-outline', count: selectedCircleIds.length },
-    { key: 'friends', label: 'Friends', icon: 'person-outline', count: selectedUserIds.length },
     { key: 'interests', label: 'Interests', icon: 'sparkles-outline', count: selectedInterestNames.length },
+    { key: 'friends', label: 'Friends', icon: 'person-outline', count: selectedUserIds.length },
   ];
 
   const toggleCircleExpanded = (circleId: string) => {
