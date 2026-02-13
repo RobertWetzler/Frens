@@ -60,45 +60,62 @@ export const useAddNotifications = (
     }
   }, []);
 
-  // Check for existing subscription and permission state
+  // On every app load, refresh the push subscription when permission is
+  // granted. Calling subscribe() is idempotent — it returns the existing
+  // subscription if the token hasn't changed, or a fresh one if it rotated.
+  // Sending the (possibly unchanged) endpoint to the server on each load
+  // ensures the DB always has the current token and cleans up stale ones,
+  // eliminating the window between token rotation and user opening the app.
   useEffect(() => {
-    const checkExistingSubscription = async () => {
+    const refreshSubscription = async () => {
       if (!isSupported) return;
 
       try {
-        // If the browser already has notification permission granted, the user
-        // has subscribed before. This covers cross-domain migration (e.g.
-        // cliq-server.fly.dev → frenssocial.com) where getSubscription()
-        // returns null on the new origin but permission persists.
-        if (typeof Notification !== 'undefined' && Notification.permission === 'granted') {
-          setHasExistingSubscription(true);
-          return;
-        }
-
         const pm = (window as any).pushManager as any | undefined;
         if (!pm) return;
 
-        const [permissionState, existingSubscription] = await Promise.all([
-          pm.permissionState(),
-          pm.getSubscription()
-        ]);
+        const permissionState = await pm.permissionState();
 
-        if (permissionState === 'granted' && existingSubscription?.endpoint) {
-          setHasExistingSubscription(true);
-          setSubscription(existingSubscription);
-        }
-        else {
+        // Check Notification.permission as a fallback (covers Safari DWP
+        // where permissionState may differ from Notification.permission)
+        const hasPermission =
+          permissionState === 'granted' ||
+          (typeof Notification !== 'undefined' && Notification.permission === 'granted');
+
+        if (!hasPermission) {
+          // No permission — show the subscribe banner
           setHasExistingSubscription(false);
           setSubscription(null);
+          return;
         }
+
+        // Permission granted — always call subscribe() to get the current
+        // (or refreshed) subscription. This is a no-op if the token is
+        // still valid, and creates a new one if it rotated/expired.
+        console.log('[useAddNotifications] Refreshing push subscription');
+        const sub = await pm.subscribe({
+          userVisibleOnly: true,
+          applicationServerKey: options.applicationServerKey,
+        });
+        const p256dh = btoa(String.fromCharCode(...new Uint8Array(sub.getKey('p256dh'))));
+        const auth = btoa(String.fromCharCode(...new Uint8Array(sub.getKey('auth'))));
+        await ApiClient.call(c =>
+          c.notification_StoreSubscription(new PushSubscriptionDto({
+            endpoint: sub.endpoint,
+            p256DH: p256dh,
+            auth: auth,
+          })));
+        console.log('[useAddNotifications] Subscription refreshed:', sub.endpoint);
+        setHasExistingSubscription(true);
+        setSubscription(sub);
       } catch (err) {
-        console.warn('Failed to check existing subscription:', err);
+        console.warn('Failed to refresh subscription:', err);
         setHasExistingSubscription(false);
       }
     };
 
-    checkExistingSubscription();
-  }, [isSupported]);
+    refreshSubscription();
+  }, [isSupported, options.applicationServerKey]);
 
   const subscribe = useCallback(async (): Promise<PushSubscription | null> => {
     if (!isSupported) {

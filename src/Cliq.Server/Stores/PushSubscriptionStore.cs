@@ -27,15 +27,49 @@ public class PushSubscriptionStore : IPushSubscriptionStore
             throw new ArgumentNullException(nameof(subscription));
         }
 
-        var subscriptionToAdd = new EfPushSubscription
+        // Check if this exact endpoint already exists
+        var existing = await _dbContext.PushSubscriptions
+            .FirstOrDefaultAsync(s => s.Endpoint == subscription.Endpoint);
+
+        if (existing != null)
         {
-            Endpoint = subscription.Endpoint,
-            P256DH = subscription.P256DH,
-            Auth = subscription.Auth,
-            UserId = userId, // Store user ID as string
-            CreatedAt = DateTime.UtcNow
-        };
-        _dbContext.PushSubscriptions.Add(subscriptionToAdd);
+            // Update keys in case they changed, and reassign to the current user
+            existing.P256DH = subscription.P256DH;
+            existing.Auth = subscription.Auth;
+            existing.UserId = userId;
+            existing.CreatedAt = DateTime.UtcNow;
+        }
+        else
+        {
+            var subscriptionToAdd = new EfPushSubscription
+            {
+                Endpoint = subscription.Endpoint,
+                P256DH = subscription.P256DH,
+                Auth = subscription.Auth,
+                UserId = userId,
+                CreatedAt = DateTime.UtcNow
+            };
+            _dbContext.PushSubscriptions.Add(subscriptionToAdd);
+        }
+
+        // Remove stale subscriptions for this user (different endpoint).
+        // This prevents accumulation of dead endpoints that cause perpetual
+        // delivery failures against APNs.
+        var staleSubscriptions = await _dbContext.PushSubscriptions
+            .Where(s => s.UserId == userId && s.Endpoint != subscription.Endpoint)
+            .ToListAsync();
+
+        if (staleSubscriptions.Any())
+        {
+            // Delete related notification deliveries first to avoid FK violations
+            var staleIds = staleSubscriptions.Select(s => s.Id).ToList();
+            var relatedDeliveries = await _dbContext.Set<NotificationDelivery>()
+                .Where(d => staleIds.Contains(d.SubscriptionId))
+                .ToListAsync();
+            _dbContext.RemoveRange(relatedDeliveries);
+            _dbContext.PushSubscriptions.RemoveRange(staleSubscriptions);
+        }
+
         await _dbContext.SaveChangesAsync();
     }
 
@@ -51,6 +85,12 @@ public class PushSubscriptionStore : IPushSubscriptionStore
 
         if (subscription != null)
         {
+            // Delete related notification deliveries first to avoid FK constraint violation
+            var relatedDeliveries = await _dbContext.Set<NotificationDelivery>()
+                .Where(d => d.SubscriptionId == subscription.Id)
+                .ToListAsync();
+            _dbContext.RemoveRange(relatedDeliveries);
+
             _dbContext.PushSubscriptions.Remove(subscription);
             await _dbContext.SaveChangesAsync();
         }
