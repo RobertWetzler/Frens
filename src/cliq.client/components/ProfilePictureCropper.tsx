@@ -207,35 +207,65 @@ export const ProfilePictureCropper: React.FC<ProfilePictureCropperProps> = ({
     // Load image dimensions
     useEffect(() => {
         if (imageUri && visible) {
-            Image.getSize(
-                imageUri,
-                (width, height) => {
-                    // Calculate initial scale to fit image properly
+            if (Platform.OS === 'web') {
+                // Use native HTML Image to get dimensions — RNW's Image.getSize
+                // can fail silently on blob: URIs in Safari, leaving imageLoaded=false.
+                const img = new window.Image();
+                img.onload = () => {
+                    const width = img.naturalWidth;
+                    const height = img.naturalHeight;
                     const aspectRatio = width / height;
                     let displayWidth: number;
                     let displayHeight: number;
-                    
-                    // Ensure image fills the crop circle initially
+
                     if (aspectRatio > 1) {
-                        // Landscape: height should be at least CROP_SIZE
                         displayHeight = CROP_SIZE;
                         displayWidth = CROP_SIZE * aspectRatio;
                     } else {
-                        // Portrait: width should be at least CROP_SIZE
                         displayWidth = CROP_SIZE;
                         displayHeight = CROP_SIZE / aspectRatio;
                     }
-                    
+
                     setImageSize({ width: displayWidth, height: displayHeight });
                     setImageLoaded(true);
-                },
-                (error) => {
-                    console.error('Error loading image dimensions:', error);
-                    // Fallback to square
+                };
+                img.onerror = () => {
+                    console.error('Error loading image dimensions (web)');
                     setImageSize({ width: CROP_SIZE, height: CROP_SIZE });
                     setImageLoaded(true);
-                }
-            );
+                };
+                img.src = imageUri;
+            } else {
+                Image.getSize(
+                    imageUri,
+                    (width, height) => {
+                        // Calculate initial scale to fit image properly
+                        const aspectRatio = width / height;
+                        let displayWidth: number;
+                        let displayHeight: number;
+                        
+                        // Ensure image fills the crop circle initially
+                        if (aspectRatio > 1) {
+                            // Landscape: height should be at least CROP_SIZE
+                            displayHeight = CROP_SIZE;
+                            displayWidth = CROP_SIZE * aspectRatio;
+                        } else {
+                            // Portrait: width should be at least CROP_SIZE
+                            displayWidth = CROP_SIZE;
+                            displayHeight = CROP_SIZE / aspectRatio;
+                        }
+                        
+                        setImageSize({ width: displayWidth, height: displayHeight });
+                        setImageLoaded(true);
+                    },
+                    (error) => {
+                        console.error('Error loading image dimensions:', error);
+                        // Fallback to square
+                        setImageSize({ width: CROP_SIZE, height: CROP_SIZE });
+                        setImageLoaded(true);
+                    }
+                );
+            }
         }
     }, [imageUri, visible]);
 

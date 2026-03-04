@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { Image, ActivityIndicator, View, ImageProps } from 'react-native';
+import { Image, ActivityIndicator, View, ImageProps, Platform, StyleSheet } from 'react-native';
 import { getCachedImageDataUri, invalidateCachedImage, getImageBinaryCacheStats, peekCachedDataUri } from 'services/imageBinaryCache';
 
 interface CachedImageProps extends Omit<ImageProps, 'source'> {
@@ -12,6 +12,19 @@ interface CachedImageProps extends Omit<ImageProps, 'source'> {
   showWhileFetching?: 'spinner' | 'none';
   onResolved?: (uri: string, fromCache: boolean) => void; // notify parent when final cache URI ready
 }
+
+/**
+ * Map React Native resizeMode values to CSS object-fit.
+ * RNW's Image uses background-image on a <div> which older Safari
+ * fails to paint for blob:/data: URIs. A native <img> with object-fit
+ * works universally.
+ */
+const resizeModeToCss: Record<string, string> = {
+  cover: 'cover',
+  contain: 'contain',
+  stretch: 'fill',
+  center: 'none',
+};
 
 export const CachedImage: React.FC<CachedImageProps> = ({ cacheKey, signedUrl, ttlMs, cacheTtlMs, forceRefreshToken, style, onExpired, showWhileFetching = 'spinner', onResolved, ...rest }) => {
   const [uri, setUri] = useState<string | undefined>(undefined);
@@ -55,6 +68,43 @@ export const CachedImage: React.FC<CachedImageProps> = ({ cacheKey, signedUrl, t
     return <View style={style} />;
   }
 
+  // On web, use a native <img> element instead of RNW's Image component.
+  // RNW renders <Image> as a <div> with background-image CSS, which older
+  // Safari fails to paint for blob: / data: URIs. A real <img> works everywhere.
+  if (Platform.OS === 'web') {
+    const flatStyle: any = StyleSheet.flatten(style) || {};
+    // Determine objectFit from the resizeMode prop or from style (Avatar passes it in style)
+    const rm: string = (rest as any).resizeMode || flatStyle.resizeMode || 'cover';
+    const objectFit = resizeModeToCss[rm] || 'cover';
+
+    // Strip RN-only keys that are not valid CSS
+    const { resizeMode: _rm, tintColor: _tc, overlayColor: _oc, ...cssStyle } = flatStyle;
+
+    const imgStyle: React.CSSProperties = {
+      ...(cssStyle as React.CSSProperties),
+      objectFit: objectFit as React.CSSProperties['objectFit'],
+      display: 'block',
+    };
+
+    return React.createElement('img', {
+      src: uri,
+      style: imgStyle,
+      draggable: false,
+      loading: 'eager' as const,
+      onError: () => {
+        invalidateCachedImage(cacheKey);
+        onExpired?.();
+        // eslint-disable-next-line no-console
+        console.warn('[CachedImage] onError (web img)', cacheKey, uri?.slice(0, 40));
+      },
+      onLoad: () => {
+        // eslint-disable-next-line no-console
+        console.log('[CachedImage] onLoad (web img)', cacheKey);
+      },
+    });
+  }
+
+  // Native path – keep RN <Image> as-is
   return (
     <Image
       {...rest}

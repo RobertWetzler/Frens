@@ -427,8 +427,15 @@ const CreatePostScreen = ({ navigation, route }) => {
               showsHorizontalScrollIndicator={false}
               renderItem={({ item, index }) => (
                 <View style={styles.thumbWrapper}>
-                  {/* @ts-ignore: React Native web + native image */}
-                  <Image source={{ uri: item.uri }} style={styles.thumbImage} />
+                  {/* Use native <img> on web to avoid Safari background-image rendering issues */}
+                  {Platform.OS === 'web'
+                    ? React.createElement('img', {
+                        src: item.uri,
+                        style: { width: '100%', height: '100%', objectFit: 'cover', display: 'block' } as React.CSSProperties,
+                        draggable: false,
+                      })
+                    : <Image source={{ uri: item.uri }} style={styles.thumbImage} />
+                  }
                   {/* X remove button on top */}
                   <TouchableOpacity
                     onPress={() => setImages(prev => prev.filter((_, i) => i !== index))}
