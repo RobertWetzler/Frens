@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState, useCallback } from 'react';
-import { View, Text, TouchableOpacity, Image, ActivityIndicator, Modal, Animated, PanResponder, Dimensions } from 'react-native';
+import { View, Text, TouchableOpacity, Image, ActivityIndicator, Modal, Animated, PanResponder, Dimensions, Platform, StyleSheet } from 'react-native';
 import { PostImageIndexedUrlDto, PostImagesUrlDto } from 'services/generated/generatedClient';
 import { getSignedImageUrl, primeSignedImageUrl, invalidateSignedImageUrl, peekSignedImageUrl, hasValidSignedImageUrl } from 'services/imageUrlCache';
 import { CachedImage } from './CachedImage';
@@ -301,9 +301,16 @@ export const PostImageGrid: React.FC<PostImageGridProps> = ({
 
   // Render a local optimistic image thumbnail
   const renderLocalThumb = (img: { uri: string; fileName: string }, index: number, style: any, showOverlay?: string) => {
+    const thumbImageElement = Platform.OS === 'web'
+      ? React.createElement('img', {
+          src: img.uri,
+          style: { width: '100%', height: '100%', objectFit: 'cover' as const, display: 'block' } as React.CSSProperties,
+          draggable: false,
+        })
+      : <Image source={{ uri: img.uri }} style={styles.thumbImage} resizeMode="cover" />;
     return (
       <TouchableOpacity key={index} style={[styles.thumbCommon, style]} activeOpacity={0.9} onPress={() => openFullScreen(index)}>
-        <Image source={{ uri: img.uri }} style={styles.thumbImage} resizeMode="cover" />
+        {thumbImageElement}
         {showOverlay && (
           <View style={styles.moreOverlay}><Text style={styles.moreOverlayText}>{showOverlay}</Text></View>
         )}
@@ -409,7 +416,13 @@ export const PostImageGrid: React.FC<PostImageGridProps> = ({
 
     let imageSource;
     if (isOptimistic && localImages) {
-      imageSource = <Image source={{ uri: localImages[fullScreenIndex]?.uri }} style={styles.fullScreenImage} resizeMode="contain" />;
+      imageSource = Platform.OS === 'web'
+        ? React.createElement('img', {
+            src: localImages[fullScreenIndex]?.uri,
+            style: { width: '100%', height: '100%', objectFit: 'contain' as const, display: 'block' } as React.CSSProperties,
+            draggable: false,
+          })
+        : <Image source={{ uri: localImages[fullScreenIndex]?.uri }} style={styles.fullScreenImage} resizeMode="contain" />;
     } else {
       const signed = signedUrls[fullScreenIndex];
       const renderUrl = loadedUrls[fullScreenIndex];
