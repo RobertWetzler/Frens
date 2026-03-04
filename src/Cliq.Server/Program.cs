@@ -248,22 +248,23 @@ builder.Services.AddOpenApiDocument(options =>
     // Bearer security requirement to all operations except those with [AllowAnonymous].
     options.OperationProcessors.Add(new Cliq.Server.Utilities.Swagger.GlobalAuthOperationProcessor());
 });
-if (builder.Environment.IsDevelopment())
+builder.Services.AddCors(options =>
 {
-    builder.Services.AddCors(options =>
-    {
-        // Single permissive policy for development only
-        options.AddPolicy("DevAll",
-            policy => policy
-                .SetIsOriginAllowed(_ => true)
-                .AllowAnyHeader()
-                .AllowAnyMethod());
-    });
-}
-else
-{
-    Console.WriteLine("Cors is Disabled!");
-}
+    // Permissive policy for development only
+    options.AddPolicy("DevAll",
+        policy => policy
+            .SetIsOriginAllowed(_ => true)
+            .AllowAnyHeader()
+            .AllowAnyMethod());
+
+    // Production policy for known origins
+    options.AddPolicy("Production",
+        policy => policy
+            .WithOrigins("https://frenssocial.com", "https://www.frenssocial.com")
+            .AllowAnyHeader()
+            .AllowAnyMethod()
+            .AllowCredentials());
+});
 
 builder.Logging.ClearProviders();
 builder.Logging.AddConsole();
@@ -382,15 +383,13 @@ app.UseStaticFiles();
 
 
 
-// TODO Figure out correct CORS for mobile app
 if (app.Environment.IsDevelopment())
 {
     app.UseCors("DevAll");
 }
 else
 {
-    // Production policy placeholder (previously ExpoApp). Adjust when adding real prod origins.
-    app.UseCors("ExpoApp");
+    app.UseCors("Production");
 }
 // Configure the HTTP request pipeline.
 if (app.Environment.IsDevelopment())
