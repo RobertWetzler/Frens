@@ -594,14 +594,13 @@ public class PostService : IPostService
             }
             else
             {
-                // Filter by specific circles (still include posts created by user and shared directly with user)
+                // Filter by specific circles — only return posts that are shared with the selected circle(s)
+                // and the user is a member of those circles
                 baseQuery = _dbContext.Posts
                     .Where(p => 
-                        p.UserId == userId ||
                         p.SharedWithCircles.Any(cp =>
                             circleIds.Contains(cp.CircleId) &&
-                            cp.Circle != null && cp.Circle.Members.Any(m => m.UserId == userId)) ||
-                        p.SharedWithUsers.Any(ip => ip.UserId == userId));
+                            cp.Circle != null && cp.Circle.Members.Any(m => m.UserId == userId)));
             }
 
             // Step 1: Get post IDs for pagination

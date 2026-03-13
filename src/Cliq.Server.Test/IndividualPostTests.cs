@@ -504,10 +504,10 @@ public class IndividualPostTests : IClassFixture<DatabaseFixture>
         // Act - Filter feed to just the circle
         var feed = await postService.GetFilteredFeedForUserAsync(_user2Id, new[] { circleId });
 
-        // Assert - Should see both posts (filtered feed still includes direct posts)
-        Assert.Equal(2, feed.Posts.Count);
+        // Assert - Should only see the circle post (filtered feed excludes direct/non-circle posts)
+        Assert.Single(feed.Posts);
         Assert.Contains(feed.Posts, p => p.Text == "Circle post");
-        Assert.Contains(feed.Posts, p => p.Text == "Direct post");
+        Assert.DoesNotContain(feed.Posts, p => p.Text == "Direct post");
     }
 
     [Fact]
