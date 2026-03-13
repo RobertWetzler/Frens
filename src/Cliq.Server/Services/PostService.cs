@@ -986,6 +986,7 @@ public class PostService : IPostService
                     circleIds, 
                     user.Name, 
                     imageObjectKeys != null && imageObjectKeys.Any(),
+                    directUserIds: userIds,
                     excludeUserIds: mentionedUserIds);
 
                 // Send mention notifications for validated mentions

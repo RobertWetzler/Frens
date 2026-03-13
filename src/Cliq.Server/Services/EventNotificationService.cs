@@ -12,7 +12,7 @@ public interface IEventNotificationService
 {
     Task SendFriendRequestNotificationAsync(Guid requesterId, Guid addresseeId, Guid friendshipId, string requesterName);
     Task SendFriendRequestAcceptedNotificationAsync(Guid accepterId, Guid requesterId, string requesterName);
-    Task SendNewPostNotificationAsync(Guid postId, Guid authorId, string postText, IEnumerable<Guid> circleIds, string authorName, bool hasImage, IEnumerable<Guid>? excludeUserIds = null);
+    Task SendNewPostNotificationAsync(Guid postId, Guid authorId, string postText, IEnumerable<Guid> circleIds, string authorName, bool hasImage, IEnumerable<Guid>? directUserIds = null, IEnumerable<Guid>? excludeUserIds = null);
     Task SendNewEventNotificationAsync(Guid eventId, Guid authorId, string title, IEnumerable<Guid> circleIds, string authorName);
     Task SendNewCommentNotificationAsync(Guid commentId, Guid postId, Guid postAuthorId, Guid commenterId, string commentText, string commenterName, IEnumerable<Guid>? excludeUserIds = null);
     Task SendCommentReplyNotificationAsync(Guid replyId, Guid postId, Guid parentCommentId, Guid parentCommentAuthorId, Guid replierId, string replyText, string commenterName, IEnumerable<Guid>? excludeUserIds = null);
@@ -57,7 +57,7 @@ public class EventNotificationService : IEventNotificationService
         await _notificationQueue.AddAsync(requesterId, notificationData);
     }
 
-    public async Task SendNewPostNotificationAsync(Guid postId, Guid authorId, string postText, IEnumerable<Guid> circleIds, string authorName, bool hasImage, IEnumerable<Guid>? excludeUserIds = null)
+    public async Task SendNewPostNotificationAsync(Guid postId, Guid authorId, string postText, IEnumerable<Guid> circleIds, string authorName, bool hasImage, IEnumerable<Guid>? directUserIds = null, IEnumerable<Guid>? excludeUserIds = null)
     {
         var circleIdsList = circleIds.ToList();
         var excludeSet = excludeUserIds?.ToHashSet() ?? new HashSet<Guid>();
@@ -69,6 +69,19 @@ public class EventNotificationService : IEventNotificationService
             .Select(cm => cm.UserId)
             .Distinct()
             .ToListAsync();
+
+        // Also include users the post was shared with directly
+        if (directUserIds != null)
+        {
+            var existingRecipients = recipientUserIds.ToHashSet();
+            foreach (var directUserId in directUserIds)
+            {
+                if (!excludeSet.Contains(directUserId) && !existingRecipients.Contains(directUserId))
+                {
+                    recipientUserIds.Add(directUserId);
+                }
+            }
+        }
 
         if (recipientUserIds.Count != 0)
         {
