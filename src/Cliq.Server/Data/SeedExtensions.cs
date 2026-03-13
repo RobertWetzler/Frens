@@ -121,7 +121,21 @@ public static class SeedExtensions
                 Name = "James Wilson", 
                 Email = "james@example.com",
                 Bio = "Just here for the vibes"
-            }
+            },
+
+            // Extra users for pending friend request testing (notification screen scrollability)
+            new User("alex@example.com") { Name = "Alex Rivera", Email = "alex@example.com", Bio = "Coffee addict ☕" },
+            new User("taylor@example.com") { Name = "Taylor Swift-Fan", Email = "taylor@example.com", Bio = "Not the real one" },
+            new User("jordan@example.com") { Name = "Jordan Lee", Email = "jordan@example.com", Bio = "Basketball & code" },
+            new User("casey@example.com") { Name = "Casey Morgan", Email = "casey@example.com", Bio = "Traveler 🌍" },
+            new User("riley@example.com") { Name = "Riley Zhang", Email = "riley@example.com", Bio = "Foodie & chef" },
+            new User("sam@example.com") { Name = "Sam Nakamura", Email = "sam@example.com", Bio = "Board game nerd 🎲" },
+            new User("drew@example.com") { Name = "Drew Patterson", Email = "drew@example.com", Bio = "Runner 🏃" },
+            new User("quinn@example.com") { Name = "Quinn Harper", Email = "quinn@example.com", Bio = "Bookworm 📚" },
+            new User("avery@example.com") { Name = "Avery Brooks", Email = "avery@example.com", Bio = "Dog parent 🐕" },
+            new User("reese@example.com") { Name = "Reese Andersen", Email = "reese@example.com", Bio = "Surfer dude 🏄" },
+            new User("hayden@example.com") { Name = "Hayden Clarke", Email = "hayden@example.com", Bio = "Cyclist 🚴" },
+            new User("finley@example.com") { Name = "Finley Grant", Email = "finley@example.com", Bio = "Plant parent 🌱" }
         };
 
         foreach (var user in additionalUsers)
@@ -189,8 +203,22 @@ public static class SeedExtensions
         // James: 1 mutual friend with Robert (devon) - below default threshold of 2
         await AddFriendshipsAsync(db, james, new[] { devon });
 
-        // Add some outstanding friend requests
-        await AddFriendshipsAsync(db, robert, [anya, mira], FriendshipStatus.Pending);
+        // Extra users for pending friend requests (notification screen scrollability)
+        var alex = GetUser(users, "alex@example.com");
+        var taylor = GetUser(users, "taylor@example.com");
+        var jordan = GetUser(users, "jordan@example.com");
+        var casey = GetUser(users, "casey@example.com");
+        var riley = GetUser(users, "riley@example.com");
+        var sam = GetUser(users, "sam@example.com");
+        var drew = GetUser(users, "drew@example.com");
+        var quinn = GetUser(users, "quinn@example.com");
+        var avery = GetUser(users, "avery@example.com");
+        var reese = GetUser(users, "reese@example.com");
+        var hayden = GetUser(users, "hayden@example.com");
+        var finley = GetUser(users, "finley@example.com");
+
+        // Add some outstanding friend requests (enough to make notification screen scrollable)
+        await AddFriendshipsAsync(db, robert, [anya, mira, alex, taylor, jordan, casey, riley, sam, drew, quinn, avery, reese, hayden, finley], FriendshipStatus.Pending);
 
         // Create circles
         var climbingCircle = await CreateCircleAsync(db, "Climbing Crew", false, false, robert, new[] { devon, spencer });

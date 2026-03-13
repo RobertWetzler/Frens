@@ -210,7 +210,7 @@ const NotificationsScreen: React.FC<NotificationsScreenProps> = ({ navigation })
         <View style={styles.placeholder} />
       </View>
       {sortedFriendRequests.length + sortedNotifications.length > 0 ? (
-          <View>
+          <View style={{ flex: 1 }}>
             {/* <FlatList data={sortedFriendRequests} renderItem={renderFriendRequest} keyExtractor={i => i.id} style={styles.list} showsVerticalScrollIndicator={false} /> */}
             <FlatList data={sortedCombinedFeed} renderItem={renderNotifications} keyExtractor={i => i.id} style={styles.list} showsVerticalScrollIndicator={false} />
           </View>

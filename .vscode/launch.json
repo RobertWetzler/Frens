@@ -13,7 +13,12 @@
       "env": {
         "ASPNETCORE_ENVIRONMENT": "Development"
       },
-      "console": "integratedTerminal"
+      "console": "integratedTerminal",
+      "serverReadyAction": {
+        "action": "openExternally",
+        "pattern": "\\bNow listening on:\\s+https?://\\S+:([0-9]+)",
+        "uriFormat": "http://localhost:%s"
+      }
     },
     {
       "name": "Launch Cliq.Server (dotnet run)",
@@ -31,7 +36,12 @@
       "env": {
         "ASPNETCORE_ENVIRONMENT": "Development"
       },
-      "console": "integratedTerminal"
+      "console": "integratedTerminal",
+      "serverReadyAction": {
+        "action": "openExternally",
+        "pattern": "\\bNow listening on:\\s+https?://\\S+:([0-9]+)",
+        "uriFormat": "http://localhost:%s"
+      }
     },
     {
       "name": "C#: Cliq.Server Debug",
@@ -71,7 +81,12 @@
       },
       "console": "integratedTerminal",
       "stopAtEntry": false,
-      "justMyCode": false
+      "justMyCode": false,
+      "serverReadyAction": {
+        "action": "openExternally",
+        "pattern": "\\bNow listening on:\\s+https?://\\S+:([0-9]+)",
+        "uriFormat": "http://localhost:%s"
+      }
     },
     {
       "name": "🔒 HTTPS LAN (with cert)",
@@ -88,7 +103,12 @@
         "ASPNETCORE_Kestrel__Certificates__Default__Path": "${workspaceFolder}/src/Cliq.Server/certs/dev-lan-cert.pfx",
         "ASPNETCORE_Kestrel__Certificates__Default__Password": ""
       },
-      "console": "integratedTerminal"
+      "console": "integratedTerminal",
+      "serverReadyAction": {
+        "action": "openExternally",
+        "pattern": "\\bNow listening on:\\s+https?://\\S+:([0-9]+)",
+        "uriFormat": "https://localhost:%s"
+      }
     }
   ]
 }
