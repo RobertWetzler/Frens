@@ -125,7 +125,10 @@ const DiscoverCard: React.FC<DiscoverCardProps> = ({
                         showsHorizontalScrollIndicator={false}
                         contentContainerStyle={styles.scrollContent}
                     >
-                        {visibleInterests.map((interest) => (
+                        {visibleInterests.map((interest) => {
+                            const followers = (interest as any).friendFollowers ?? [];
+                            const previewFollowers = followers.slice(0, 3);
+                            return (
                             <View key={interest.id} style={styles.item}>
                                 <View style={styles.itemInfo}>
                                     <View style={styles.hashtagBadge}>
@@ -135,9 +138,20 @@ const DiscoverCard: React.FC<DiscoverCardProps> = ({
                                         <Text style={styles.itemName} numberOfLines={1}>
                                             {interest.displayName}
                                         </Text>
-                                        <Text style={styles.itemSubtext} numberOfLines={1}>
-                                            {interest.friendsUsingCount} {interest.friendsUsingCount === 1 ? 'friend is active' : 'friends are active'}
-                                        </Text>
+                                        <View style={styles.subtitleRow}>
+                                            {previewFollowers.length > 0 && (
+                                                <View style={styles.stackedAvatars}>
+                                                    {previewFollowers.map((f: any, idx: number) => (
+                                                        <View key={f.id} style={[styles.stackedAvatar, { marginLeft: idx > 0 ? -6 : 0, zIndex: 3 - idx }]}>
+                                                            <Avatar name={f.name || '?'} userId={f.id || ''} imageUrl={f.profilePictureUrl || undefined} simple size={16} />
+                                                        </View>
+                                                    ))}
+                                                </View>
+                                            )}
+                                            <Text style={[styles.itemSubtext, previewFollowers.length > 0 && { marginLeft: 4 }]} numberOfLines={1}>
+                                                {interest.friendsUsingCount} {interest.friendsUsingCount === 1 ? 'friend' : 'friends'}
+                                            </Text>
+                                        </View>
                                     </View>
                                 </View>
                                 <TouchableOpacity
@@ -158,7 +172,8 @@ const DiscoverCard: React.FC<DiscoverCardProps> = ({
                                     )}
                                 </TouchableOpacity>
                             </View>
-                        ))}
+                            );
+                        })}
                     </ScrollView>
                 </View>
             )}
@@ -310,6 +325,21 @@ const useStyles = makeStyles((theme) => ({
         fontSize: 12,
         color: theme.colors.textMuted,
         marginTop: 2,
+    },
+    subtitleRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        marginTop: 2,
+    },
+    stackedAvatars: {
+        flexDirection: 'row',
+        alignItems: 'center',
+    },
+    stackedAvatar: {
+        borderRadius: 8,
+        borderWidth: 1.5,
+        borderColor: theme.colors.backgroundAlt,
+        overflow: 'hidden',
     },
     actionButton: {
         flexDirection: 'row',

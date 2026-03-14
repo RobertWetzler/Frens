@@ -78,6 +78,7 @@ const AudiencePickerSheet: React.FC<AudiencePickerSheetProps> = ({
   const [newInterestName, setNewInterestName] = useState('');
   const [isCreatingInterest, setIsCreatingInterest] = useState(false);
   const [expandedCircleIds, setExpandedCircleIds] = useState<Set<string>>(new Set());
+  const [showInterestInfo, setShowInterestInfo] = useState(true);
   const createInterestInputRef = useRef<TextInput>(null);
   const searchInputRef = useRef<TextInput>(null);
   const slideAnim = useRef(new Animated.Value(0)).current;
@@ -204,7 +205,12 @@ const AudiencePickerSheet: React.FC<AudiencePickerSheetProps> = ({
               <Text style={[styles.itemLabel, isSelected && styles.itemLabelSelected]} numberOfLines={1}>
                 {item.name}
               </Text>
-              <View style={styles.interestSubtitleRow}>
+              <TouchableOpacity
+                style={styles.interestSubtitleRow}
+                onPress={() => memberCount > 0 ? toggleCircleExpanded(item.id!) : undefined}
+                activeOpacity={memberCount > 0 ? 0.7 : 1}
+                disabled={memberCount === 0}
+              >
                 {memberCount > 0 && (
                   <View style={styles.stackedAvatars}>
                     {(item.mentionableUsers ?? []).slice(0, 3).map((u, idx) => (
@@ -219,7 +225,15 @@ const AudiencePickerSheet: React.FC<AudiencePickerSheetProps> = ({
                   {item.isShared ? ' · Shared' : ''}
                   {item.isSubscribable ? ' · Subscribable' : ''}
                 </Text>
-              </View>
+                {memberCount > 0 && (
+                  <Ionicons
+                    name={isExpanded ? 'chevron-up' : 'chevron-down'}
+                    size={14}
+                    color={isSelected ? theme.colors.primaryContrast : theme.colors.textMuted}
+                    style={{ marginLeft: 2 }}
+                  />
+                )}
+              </TouchableOpacity>
             </View>
             <Ionicons
               name={isSelected ? 'checkmark-circle' : 'ellipse-outline'}
@@ -227,19 +241,6 @@ const AudiencePickerSheet: React.FC<AudiencePickerSheetProps> = ({
               color={isSelected ? theme.colors.primaryContrast : theme.colors.separator}
             />
           </TouchableOpacity>
-          {memberCount > 0 && (
-            <TouchableOpacity
-              style={[styles.expandToggle, isSelected && styles.expandToggleSelected]}
-              onPress={() => toggleCircleExpanded(item.id!)}
-              hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-            >
-              <Ionicons
-                name={isExpanded ? 'chevron-up' : 'chevron-down'}
-                size={16}
-                color={isSelected ? theme.colors.primaryContrast : theme.colors.textMuted}
-              />
-            </TouchableOpacity>
-          )}
         </View>
         {isExpanded && memberCount > 0 && (
           <View style={styles.memberList}>
@@ -315,31 +316,39 @@ const AudiencePickerSheet: React.FC<AudiencePickerSheetProps> = ({
               <Text style={[styles.itemLabel, isSelected && styles.itemLabelSelected]} numberOfLines={1}>
                 {item.displayName}
               </Text>
-              <View style={styles.interestSubtitleRow}>
-                {followerCount > 0 ? (
-                  <>
-                    <View style={styles.stackedAvatars}>
-                      {previewFollowers.map((f, idx) => (
-                        <View key={f.id} style={[styles.stackedAvatar, isSelected && styles.stackedAvatarSelected, { marginLeft: idx > 0 ? -8 : 0, zIndex: 3 - idx }]}>
-                          <Avatar name={f.name || '?'} userId={f.id || ''} imageUrl={f.profilePictureUrl || undefined} simple size={18} />
-                        </View>
-                      ))}
-                    </View>
-                    <Text style={[styles.itemSubtitle, isSelected && styles.itemSubtitleSelected, { marginLeft: 4 }]} numberOfLines={1}>
-                      {followerCount} {followerCount === 1 ? 'friend follows' : 'friends follow'}
-                      {extraCount > 0 ? '' : ''}
+              {(followerCount > 0 || (item.friendsCount != null && item.friendsCount > 0)) && (
+                <TouchableOpacity
+                  style={styles.interestSubtitleRow}
+                  onPress={() => followerCount > 0 ? toggleInterestExpanded(item.id) : undefined}
+                  activeOpacity={followerCount > 0 ? 0.7 : 1}
+                  disabled={followerCount === 0}
+                >
+                  {followerCount > 0 ? (
+                    <>
+                      <View style={styles.stackedAvatars}>
+                        {previewFollowers.map((f, idx) => (
+                          <View key={f.id} style={[styles.stackedAvatar, isSelected && styles.stackedAvatarSelected, { marginLeft: idx > 0 ? -8 : 0, zIndex: 3 - idx }]}>
+                            <Avatar name={f.name || '?'} userId={f.id || ''} imageUrl={f.profilePictureUrl || undefined} simple size={18} />
+                          </View>
+                        ))}
+                      </View>
+                      <Text style={[styles.itemSubtitle, isSelected && styles.itemSubtitleSelected, { marginLeft: 4 }]} numberOfLines={1}>
+                        {followerCount} {followerCount === 1 ? 'friend follows' : 'friends follow'}
+                      </Text>
+                      <Ionicons
+                        name={isExpanded ? 'chevron-up' : 'chevron-down'}
+                        size={14}
+                        color={isSelected ? theme.colors.primaryContrast : theme.colors.textMuted}
+                        style={{ marginLeft: 2 }}
+                      />
+                    </>
+                  ) : item.friendsCount != null && item.friendsCount > 0 ? (
+                    <Text style={[styles.itemSubtitle, isSelected && styles.itemSubtitleSelected]} numberOfLines={1}>
+                      {item.friendsCount} {item.friendsCount === 1 ? 'friend posts here' : 'friends post here'}
                     </Text>
-                  </>
-                ) : item.friendsCount != null ? (
-                  <Text style={[styles.itemSubtitle, isSelected && styles.itemSubtitleSelected]} numberOfLines={1}>
-                    {item.friendsCount} {item.friendsCount === 1 ? 'friend posts here' : 'friends post here'}
-                  </Text>
-                ) : item.isFollowed ? (
-                  <Text style={[styles.itemSubtitle, isSelected && styles.itemSubtitleSelected]} numberOfLines={1}>
-                    Following
-                  </Text>
-                ) : null}
-              </View>
+                  ) : null}
+                </TouchableOpacity>
+              )}
             </View>
             <Ionicons
               name={isSelected ? 'checkmark-circle' : 'ellipse-outline'}
@@ -347,19 +356,6 @@ const AudiencePickerSheet: React.FC<AudiencePickerSheetProps> = ({
               color={isSelected ? theme.colors.primaryContrast : theme.colors.separator}
             />
           </TouchableOpacity>
-          {followerCount > 0 && (
-            <TouchableOpacity
-              style={[styles.expandToggle, isSelected && styles.expandToggleSelected]}
-              onPress={() => toggleInterestExpanded(item.id)}
-              hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-            >
-              <Ionicons
-                name={isExpanded ? 'chevron-up' : 'chevron-down'}
-                size={16}
-                color={isSelected ? theme.colors.primaryContrast : theme.colors.textMuted}
-              />
-            </TouchableOpacity>
-          )}
         </View>
         {isExpanded && followerCount > 0 && (
           <View style={styles.memberList}>
@@ -427,7 +423,7 @@ const AudiencePickerSheet: React.FC<AudiencePickerSheetProps> = ({
             <TextInput
               ref={searchInputRef}
               style={styles.searchInput}
-              placeholder="Search circles, friends, #interests..."
+              placeholder="Search..."
               placeholderTextColor={theme.colors.inputPlaceholder}
               value={searchQuery}
               onChangeText={setSearchQuery}
@@ -484,14 +480,12 @@ const AudiencePickerSheet: React.FC<AudiencePickerSheetProps> = ({
                 keyboardShouldPersistTaps="handled"
                 ListHeaderComponent={
                   <TouchableOpacity
-                    style={styles.createButton}
+                    style={styles.createButtonCompact}
                     onPress={onCreateCircle}
                     activeOpacity={0.7}
                   >
-                    <View style={styles.createButtonIcon}>
-                      <Ionicons name="add" size={18} color={theme.colors.primary} />
-                    </View>
-                    <Text style={styles.createButtonText}>Create New Circle</Text>
+                    <Ionicons name="add" size={16} color={theme.colors.primary} />
+                    <Text style={styles.createButtonCompactText}>New Circle</Text>
                   </TouchableOpacity>
                 }
                 ListEmptyComponent={
@@ -529,14 +523,19 @@ const AudiencePickerSheet: React.FC<AudiencePickerSheetProps> = ({
                 keyboardShouldPersistTaps="handled"
                 ListHeaderComponent={
                   <View>
-                    <View style={styles.interestInfoBox}>
-                      {/* <Ionicons name="sparkles" size={16} color={theme.colors.accent} /> */}
-                      <Text style={styles.interestInfoText}>
-                        Anyone can post to an interest — only your direct friends who follow it will see your posts.
-                      </Text>
-                    </View>
+                    {showInterestInfo && (
+                      <View style={styles.interestInfoBox}>
+                        <Ionicons name="information-circle-outline" size={16} color={theme.colors.accent} />
+                        <Text style={styles.interestInfoText}>
+                          Anyone can post to an interest — only your direct friends who follow it will see your posts.
+                        </Text>
+                        <TouchableOpacity onPress={() => setShowInterestInfo(false)} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+                          <Ionicons name="close" size={16} color={theme.colors.accent} />
+                        </TouchableOpacity>
+                      </View>
+                    )}
                     <TouchableOpacity
-                      style={styles.createButton}
+                      style={styles.createButtonCompact}
                       onPress={() => {
                         setNewInterestName('');
                         setShowCreateInterest(true);
@@ -544,10 +543,8 @@ const AudiencePickerSheet: React.FC<AudiencePickerSheetProps> = ({
                       }}
                       activeOpacity={0.7}
                     >
-                      <View style={styles.createButtonIcon}>
-                        <Ionicons name="add" size={18} color={theme.colors.primary} />
-                      </View>
-                      <Text style={styles.createButtonText}>Create New Interest</Text>
+                      <Ionicons name="add" size={16} color={theme.colors.primary} />
+                      <Text style={styles.createButtonCompactText}>New Interest</Text>
                     </TouchableOpacity>
                   </View>
                 }
@@ -915,6 +912,24 @@ const useStyles = makeStyles((theme) => ({
     fontWeight: '500',
     color: theme.colors.primary,
     marginLeft: 10,
+  },
+  createButtonCompact: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    alignSelf: 'flex-start',
+    paddingVertical: 6,
+    paddingHorizontal: 12,
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: theme.colors.primary + '40',
+    borderStyle: 'dashed',
+    gap: 4,
+    marginBottom: 6,
+  },
+  createButtonCompactText: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: theme.colors.primary,
   },
   newInterestItem: {
     borderWidth: 1,

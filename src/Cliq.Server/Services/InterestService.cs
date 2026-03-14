@@ -521,9 +521,7 @@ public class InterestService : IInterestService
             .Select(s => s.InterestId)
             .ToListAsync();
 
-        // Find interests that multiple friends post to, but the user doesn't follow yet
-        // Prioritize by recency of friend posts, then by number of friends posting
-        return await _dbContext.InterestPosts
+        var suggestions = await _dbContext.InterestPosts
             .Where(ip => friendIds.Contains(ip.Post!.UserId))
             .Where(ip => !userInterestIds.Contains(ip.InterestId))
             .GroupBy(ip => ip.InterestId)
@@ -545,6 +543,33 @@ public class InterestService : IInterestService
                 FriendsUsingCount = g.FriendPostCount
             })
             .ToListAsync();
+
+        // Populate friend followers for the feed discover card
+        var suggestedIds = suggestions.Select(s => s.Id).ToList();
+        var friendFollowersByInterest = await _dbContext.InterestSubscriptions
+            .Where(s => suggestedIds.Contains(s.InterestId) && friendIds.Contains(s.UserId))
+            .Include(s => s.User)
+            .GroupBy(s => s.InterestId)
+            .Select(g => new
+            {
+                InterestId = g.Key,
+                Friends = g.Select(s => new MentionableUserDto
+                {
+                    Id = s.UserId,
+                    Name = s.User!.Name,
+                    ProfilePictureUrl = null
+                }).ToList()
+            })
+            .ToDictionaryAsync(g => g.InterestId, g => g.Friends);
+
+        foreach (var suggestion in suggestions)
+        {
+            suggestion.FriendFollowers = friendFollowersByInterest.TryGetValue(suggestion.Id, out var followers)
+                ? followers
+                : new List<MentionableUserDto>();
+        }
+
+        return suggestions;
     }
 
     /// <summary>
