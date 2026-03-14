@@ -16,6 +16,7 @@ interface HeaderProps {
   showBackButton?: boolean;
   backButtonIcon?: keyof typeof Ionicons.glyphMap;
   titleAlign?: 'left' | 'center';
+  transparent?: boolean;
 }
 
 const Header: React.FC<HeaderProps> = ({
@@ -25,12 +26,13 @@ const Header: React.FC<HeaderProps> = ({
   rightActions,
   showBackButton = true,
   backButtonIcon = 'arrow-back',
-  titleAlign = 'center'
+  titleAlign = 'center',
+  transparent = false,
 }) => {
   const { theme } = useTheme();
   const styles = useStyles();
   return (
-    <View style={styles.header}>
+    <View style={[styles.header, transparent && styles.headerTransparent]}>
       {showBackButton && onBackPress ? (
         <TouchableOpacity style={styles.backButton} onPress={onBackPress}>
           <Ionicons name={backButtonIcon} size={24} color={theme.colors.primary} />
@@ -74,6 +76,10 @@ const useStyles = makeStyles((theme) => ({
     borderBottomWidth: 1,
     borderBottomColor: theme.colors.separator,
     backgroundColor: theme.colors.card,
+  },
+  headerTransparent: {
+    backgroundColor: 'rgba(255,255,255,0.7)',
+    borderBottomColor: theme.colors.separator + '40',
   },
   backButton: {
     padding: 8,

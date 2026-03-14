@@ -27,6 +27,7 @@ import { useTheme } from '../theme/ThemeContext';
 import { makeStyles } from '../theme/makeStyles';
 import { feedEvents, FEED_POST_CREATED, FEED_POST_STATUS_UPDATED, OptimisticPost } from 'hooks/feedEvents';
 import AudiencePickerSheet from 'components/AudiencePickerSheet';
+import Avatar from 'components/Avatar';
 
 
 const CreatePostScreen = ({ navigation, route }) => {
@@ -52,6 +53,7 @@ const CreatePostScreen = ({ navigation, route }) => {
   const [showStartTimePicker, setShowStartTimePicker] = useState(false);
   const [showEndDatePicker, setShowEndDatePicker] = useState(false);
   const [showEndTimePicker, setShowEndTimePicker] = useState(false);
+  const [showReachList, setShowReachList] = useState(false);
 
   // Compute mentionable users from selected circles
   const mentionableUsers = useMemo<MentionableUserDto[]>(() => {
@@ -69,11 +71,11 @@ const CreatePostScreen = ({ navigation, route }) => {
     return Array.from(userMap.values());
   }, [selectedCircleIds, circles]);
 
-  // For refreshing data when this screen is navigated to
+  // Refresh data every time this screen gains focus (e.g. after posting, interests may have changed)
   useFocusEffect(
     React.useCallback(() => {
+      loadData();
       if (route.params?.refresh) {
-        loadData();
         navigation.setParams({ refresh: undefined });
       }
     }, [route.params?.refresh])
@@ -107,7 +109,7 @@ const CreatePostScreen = ({ navigation, route }) => {
     });
   };
 
-  const hasAudience = selectedCircleIds.length > 0 || selectedUserIds.length > 0;
+  const hasAudience = selectedCircleIds.length > 0 || selectedUserIds.length > 0 || selectedInterests.length > 0;
 
   const isPostValid = () => {
     return (postContent.trim() || images.length > 0) && hasAudience;
@@ -123,6 +125,56 @@ const CreatePostScreen = ({ navigation, route }) => {
     if (!hasAudience) return false;
     return true;
   }, [asEvent, eventTitle, startDate, startTime, endDate, endTime, hasAudience]);
+
+  // Compute unique friends reached across all selected circles, interests, and direct friends
+  const reachSummary = useMemo(() => {
+    const reachedMap = new Map<string, { name: string; profilePictureUrl?: string }>();
+
+    // From circles: add all mentionable users
+    for (const circleId of selectedCircleIds) {
+      const circle = circles.find(c => c.id === circleId);
+      if (circle?.mentionableUsers) {
+        for (const user of circle.mentionableUsers) {
+          if (user.id && !reachedMap.has(user.id)) {
+            reachedMap.set(user.id, { name: user.name || '?', profilePictureUrl: user.profilePictureUrl || undefined });
+          }
+        }
+      }
+    }
+
+    // From direct friends
+    for (const userId of selectedUserIds) {
+      if (!reachedMap.has(userId)) {
+        const friend = friends.find(f => f.id === userId);
+        reachedMap.set(userId, { name: friend?.name || '?', profilePictureUrl: friend?.profilePictureUrl || undefined });
+      }
+    }
+
+    // From interests: add friend followers
+    for (const interest of selectedInterests) {
+      // Check followed interests
+      const followed = followedInterests.find(i => i.name === interest.name);
+      const followers = (followed as any)?.friendFollowers ?? [];
+      for (const f of followers) {
+        if (f.id && !reachedMap.has(f.id)) {
+          reachedMap.set(f.id, { name: f.name || '?', profilePictureUrl: f.profilePictureUrl || undefined });
+        }
+      }
+      // Check suggested interests
+      const suggested = suggestedInterests.find(i => i.name === interest.name);
+      const sugFollowers = (suggested as any)?.friendFollowers ?? [];
+      for (const f of sugFollowers) {
+        if (f.id && !reachedMap.has(f.id)) {
+          reachedMap.set(f.id, { name: f.name || '?', profilePictureUrl: f.profilePictureUrl || undefined });
+        }
+      }
+    }
+
+    return Array.from(reachedMap.entries()).map(([id, info]) => ({
+      id,
+      ...info,
+    }));
+  }, [selectedCircleIds, selectedUserIds, selectedInterests, circles, friends, followedInterests, suggestedInterests]);
 
   // Render loading state (after hooks)
   if (isLoading) {
@@ -379,6 +431,7 @@ const CreatePostScreen = ({ navigation, route }) => {
           title={asEvent ? 'Create Event' : 'Create Post'}
           onBackPress={() => navigation.goBack()}
           backButtonIcon="close"
+          transparent
           rightButton={{
             label: asEvent ? 'Create' : 'Post',
             onPress: handleSubmit,
@@ -391,6 +444,7 @@ const CreatePostScreen = ({ navigation, route }) => {
           contentContainerStyle={styles.scrollContent}
           keyboardShouldPersistTaps="handled"
         >
+         <View style={styles.formCard}>
           {/* Text input */}
           <MentionInput
             value={postContent}
@@ -686,7 +740,7 @@ const CreatePostScreen = ({ navigation, route }) => {
           {/* ─── Audience section ─── */}
           <View style={styles.audienceSection}>
             <View style={styles.audienceLabelRow}>
-              <Ionicons name="send-outline" size={16} color={theme.colors.textSecondary} />
+              <Ionicons name="people-outline" size={16} color={theme.colors.textSecondary} />
               <Text style={styles.audienceLabel}>To</Text>
             </View>
 
@@ -726,13 +780,64 @@ const CreatePostScreen = ({ navigation, route }) => {
               </TouchableOpacity>
             </View>
 
+            {/* Reach summary */}
+            {reachSummary.length > 0 && (
+              <View>
+                <TouchableOpacity
+                  style={styles.reachSummary}
+                  onPress={() => setShowReachList(prev => !prev)}
+                  activeOpacity={0.7}
+                >
+                  <View style={styles.reachAvatars}>
+                    {reachSummary.slice(0, 5).map((person, idx) => (
+                      <View key={person.id} style={[styles.reachAvatar, { marginLeft: idx > 0 ? -6 : 0, zIndex: 5 - idx }]}>
+                        <Avatar
+                          name={person.name}
+                          userId={person.id}
+                          imageUrl={person.profilePictureUrl}
+                          simple
+                          size={22}
+                        />
+                      </View>
+                    ))}
+                  </View>
+                  <Text style={styles.reachText}>
+                    Reaching {reachSummary.length} {reachSummary.length === 1 ? 'friend' : 'friends'}
+                  </Text>
+                  <Ionicons
+                    name={showReachList ? 'chevron-up' : 'chevron-down'}
+                    size={16}
+                    color={theme.colors.textMuted}
+                    style={{ marginLeft: 4 }}
+                  />
+                </TouchableOpacity>
+                {showReachList && (
+                  <View style={styles.reachList}>
+                    {reachSummary.map(person => (
+                      <View key={person.id} style={styles.reachListRow}>
+                        <Avatar
+                          name={person.name}
+                          userId={person.id}
+                          imageUrl={person.profilePictureUrl}
+                          simple
+                          size={24}
+                        />
+                        <Text style={styles.reachListName} numberOfLines={1}>{person.name}</Text>
+                      </View>
+                    ))}
+                  </View>
+                )}
+              </View>
+            )}
+
             {/* Validation warning */}
             {!hasAudience && (
               <Text style={styles.audienceWarning}>
-                Select at least one circle or friend to share with
+                Select at least one circle, friend, or interest to share with
               </Text>
             )}
           </View>
+         </View>
         </ScrollView>
       </KeyboardAvoidingView>
 
@@ -760,7 +865,7 @@ const CreatePostScreen = ({ navigation, route }) => {
 const useStyles = makeStyles((theme) => ({
   container: {
     flex: 1,
-    backgroundColor: theme.colors.backgroundAlt,
+    backgroundColor: 'transparent',
   },
   errorText: {
     color: theme.colors.danger,
@@ -775,33 +880,43 @@ const useStyles = makeStyles((theme) => ({
   },
   scrollContent: {
     paddingBottom: 40,
+    paddingHorizontal: 12,
+    paddingTop: 8,
+  },
+  formCard: {
+    backgroundColor: 'rgba(255,255,255,0.85)',
+    borderRadius: 18,
+    overflow: 'hidden',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.5)',
   },
   input: {
     padding: 20,
     fontSize: 18,
     textAlignVertical: 'top',
     minHeight: 120,
-    backgroundColor: theme.colors.card,
+    backgroundColor: 'transparent',
     color: theme.colors.textPrimary,
-    borderWidth: 1,
-    borderColor: theme.colors.inputBorder,
-    borderRadius: 12,
+    borderWidth: 0,
+    borderRadius: 0,
   },
   toolbar: {
     flexDirection: 'row',
     paddingHorizontal: 15,
     paddingVertical: 8,
     gap: 8,
+    borderTopWidth: 1,
+    borderTopColor: theme.colors.separator + '40',
   },
   toolbarButton: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: theme.colors.card,
+    backgroundColor: 'rgba(255,255,255,0.6)',
     paddingVertical: 8,
     paddingHorizontal: 14,
     borderRadius: 20,
     borderWidth: 1,
-    borderColor: theme.colors.inputBorder,
+    borderColor: theme.colors.separator + '40',
     gap: 6,
   },
   toolbarButtonActive: {
@@ -858,13 +973,13 @@ const useStyles = makeStyles((theme) => ({
     marginBottom: 6,
   },
   inputField: {
-    backgroundColor: theme.colors.card,
+    backgroundColor: 'rgba(255,255,255,0.5)',
     borderRadius: 10,
     paddingVertical: 10,
     paddingHorizontal: 12,
     fontSize: 16,
     borderWidth: 1,
-    borderColor: theme.colors.inputBorder,
+    borderColor: theme.colors.separator + '40',
     color: theme.colors.textPrimary,
   },
   inputButton: {
@@ -884,13 +999,11 @@ const useStyles = makeStyles((theme) => ({
     fontSize: 13,
   },
   audienceSection: {
-    marginHorizontal: 15,
-    marginTop: 12,
+    marginTop: 4,
     padding: 14,
-    backgroundColor: theme.colors.card,
-    borderRadius: 14,
-    borderWidth: 1,
-    borderColor: theme.colors.inputBorder,
+    backgroundColor: 'transparent',
+    borderTopWidth: 1,
+    borderTopColor: theme.colors.separator + '40',
   },
   audienceLabelRow: {
     flexDirection: 'row',
@@ -958,6 +1071,47 @@ const useStyles = makeStyles((theme) => ({
     color: theme.colors.textMuted,
     fontStyle: 'italic',
     marginTop: 8,
+  },
+  reachSummary: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginTop: 8,
+    paddingVertical: 4,
+  },
+  reachAvatars: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginRight: 8,
+  },
+  reachAvatar: {
+    borderRadius: 11,
+    borderWidth: 1.5,
+    borderColor: 'rgba(255,255,255,0.85)',
+    overflow: 'hidden',
+  },
+  reachText: {
+    fontSize: 13,
+    color: theme.colors.textSecondary,
+    fontWeight: '500',
+  },
+  reachList: {
+    backgroundColor: 'rgba(255,255,255,0.5)',
+    borderRadius: 10,
+    paddingVertical: 6,
+    paddingHorizontal: 12,
+    marginTop: 6,
+    gap: 2,
+  },
+  reachListRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 4,
+    gap: 8,
+  },
+  reachListName: {
+    fontSize: 13,
+    color: theme.colors.textSecondary,
+    flex: 1,
   },
 }));
 

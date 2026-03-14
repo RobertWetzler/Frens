@@ -28,6 +28,13 @@
       input, textarea, select, button {
         font-size: 16px;
       }
+      /* Remove browser focus outlines — React Native handles focus styling */
+      input, textarea, select, button, [tabindex], a, div[role] {
+        outline: none;
+      }
+      *:focus {
+        outline: none;
+      }
     </style>
     
     <!-- Manifest and favicon -->

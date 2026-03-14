@@ -3875,6 +3875,7 @@ export class InterestPublicDto implements IInterestPublicDto {
     id?: string;
     name?: string;
     displayName?: string;
+    friendFollowers?: MentionableUserDto[] | undefined;
 
     constructor(data?: IInterestPublicDto) {
         if (data) {
@@ -3890,6 +3891,11 @@ export class InterestPublicDto implements IInterestPublicDto {
             this.id = _data["id"];
             this.name = _data["name"];
             this.displayName = _data["displayName"];
+            if (Array.isArray(_data["friendFollowers"])) {
+                this.friendFollowers = [] as any;
+                for (let item of _data["friendFollowers"])
+                    this.friendFollowers!.push(MentionableUserDto.fromJS(item));
+            }
         }
     }
 
@@ -3905,6 +3911,11 @@ export class InterestPublicDto implements IInterestPublicDto {
         data["id"] = this.id;
         data["name"] = this.name;
         data["displayName"] = this.displayName;
+        if (Array.isArray(this.friendFollowers)) {
+            data["friendFollowers"] = [];
+            for (let item of this.friendFollowers)
+                data["friendFollowers"].push(item.toJSON());
+        }
         return data;
     }
 }
@@ -3913,6 +3924,7 @@ export interface IInterestPublicDto {
     id?: string;
     name?: string;
     displayName?: string;
+    friendFollowers?: MentionableUserDto[] | undefined;
 }
 
 export class MyEventsResponse implements IMyEventsResponse {
@@ -4288,6 +4300,7 @@ export class InterestSuggestionDto implements IInterestSuggestionDto {
     name?: string;
     displayName?: string;
     friendsUsingCount?: number;
+    friendFollowers?: MentionableUserDto[];
 
     constructor(data?: IInterestSuggestionDto) {
         if (data) {
@@ -4304,6 +4317,11 @@ export class InterestSuggestionDto implements IInterestSuggestionDto {
             this.name = _data["name"];
             this.displayName = _data["displayName"];
             this.friendsUsingCount = _data["friendsUsingCount"];
+            if (Array.isArray(_data["friendFollowers"])) {
+                this.friendFollowers = [] as any;
+                for (let item of _data["friendFollowers"])
+                    this.friendFollowers!.push(MentionableUserDto.fromJS(item));
+            }
         }
     }
 
@@ -4320,6 +4338,11 @@ export class InterestSuggestionDto implements IInterestSuggestionDto {
         data["name"] = this.name;
         data["displayName"] = this.displayName;
         data["friendsUsingCount"] = this.friendsUsingCount;
+        if (Array.isArray(this.friendFollowers)) {
+            data["friendFollowers"] = [];
+            for (let item of this.friendFollowers)
+                data["friendFollowers"].push(item.toJSON());
+        }
         return data;
     }
 }
@@ -4329,6 +4352,7 @@ export interface IInterestSuggestionDto {
     name?: string;
     displayName?: string;
     friendsUsingCount?: number;
+    friendFollowers?: MentionableUserDto[];
 }
 
 export class InterestDto implements IInterestDto {

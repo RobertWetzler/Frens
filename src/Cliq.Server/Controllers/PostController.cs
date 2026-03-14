@@ -37,7 +37,7 @@ public class PostController : ControllerBase
         // Get circles with mentionable users populated for each circle
         var circles = await _circleService.GetUserCirclesWithMentionableUsersAsync(userId);
         var friends = await _friendshipService.GetFriendsAsync(userId);
-        var followedInterests = await _interestService.GetUserFollowedInterestsPublicAsync(userId);
+        var followedInterests = await _interestService.GetUserFollowedInterestsWithFriendsAsync(userId);
         var suggestedInterests = await _interestService.GetSuggestedInterestsForPostAsync(userId);
 
         return Ok(new CreatePostDataDto

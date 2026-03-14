@@ -167,6 +167,10 @@ public class InterestSuggestionDto
     /// Number of the current user's friends using this interest.
     /// </summary>
     public int FriendsUsingCount { get; set; }
+    /// <summary>
+    /// Friends who follow this interest (for audience preview in create-post).
+    /// </summary>
+    public List<MentionableUserDto> FriendFollowers { get; set; } = new();
 }
 
 /// <summary>
@@ -196,4 +200,8 @@ public class InterestPublicDto
     public Guid Id { get; set; }
     public required string Name { get; set; }
     public required string DisplayName { get; set; }
+    /// <summary>
+    /// Friends who follow this interest (populated for create-post screen, null on feed posts).
+    /// </summary>
+    public List<MentionableUserDto>? FriendFollowers { get; set; }
 }

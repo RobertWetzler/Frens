@@ -555,22 +555,28 @@ public class PostService : IPostService
                     .Select(cm => cm.CircleId)
                     .ToListAsync();
                 
-                // Get subscribable circles from friends where user is not a member
+                // Get subscribable circles from friends, sorted by most recent post activity
                 availableSubscribableCircles = await _dbContext.Circles
                     .Where(c => c.IsSubscribable && 
                                friendIds.Contains(c.OwnerId) && 
                                !userCircleIds.Contains(c.Id))
                     .Include(c => c.Owner)
-                    .Select(c => new SubscribableCircleDto
+                    .Select(c => new 
                     {
-                        Id = c.Id,
-                        Name = c.Name,
+                        Circle = c,
+                        LatestPost = c.Posts.Max(cp => (DateTime?)cp.SharedAt)
+                    })
+                    .OrderByDescending(x => x.LatestPost)
+                    .Select(x => new SubscribableCircleDto
+                    {
+                        Id = x.Circle.Id,
+                        Name = x.Circle.Name,
                         Owner = new UserDto
                         {
-                            Id = c.Owner!.Id,
-                            Name = c.Owner.Name,
-                            ProfilePictureUrl = !string.IsNullOrEmpty(c.Owner.ProfilePictureKey)
-                                ? _storage.GetProfilePictureUrl(c.Owner.ProfilePictureKey)
+                            Id = x.Circle.Owner!.Id,
+                            Name = x.Circle.Owner.Name,
+                            ProfilePictureUrl = !string.IsNullOrEmpty(x.Circle.Owner.ProfilePictureKey)
+                                ? _storage.GetProfilePictureUrl(x.Circle.Owner.ProfilePictureKey)
                                 : null
                         }
                     })
@@ -824,22 +830,28 @@ public class PostService : IPostService
                     .Select(cm => cm.CircleId)
                     .ToListAsync();
                 
-                // Get subscribable circles from friends where user is not a member
+                // Get subscribable circles from friends, sorted by most recent post activity
                 availableSubscribableCircles = await _dbContext.Circles
                     .Where(c => c.IsSubscribable && 
                                friendIds.Contains(c.OwnerId) && 
                                !userCircleIds.Contains(c.Id))
                     .Include(c => c.Owner)
-                    .Select(c => new SubscribableCircleDto
+                    .Select(c => new 
                     {
-                        Id = c.Id,
-                        Name = c.Name,
+                        Circle = c,
+                        LatestPost = c.Posts.Max(cp => (DateTime?)cp.SharedAt)
+                    })
+                    .OrderByDescending(x => x.LatestPost)
+                    .Select(x => new SubscribableCircleDto
+                    {
+                        Id = x.Circle.Id,
+                        Name = x.Circle.Name,
                         Owner = new UserDto
                         {
-                            Id = c.Owner!.Id,
-                            Name = c.Owner.Name,
-                            ProfilePictureUrl = !string.IsNullOrEmpty(c.Owner.ProfilePictureKey)
-                                ? _storage.GetProfilePictureUrl(c.Owner.ProfilePictureKey)
+                            Id = x.Circle.Owner!.Id,
+                            Name = x.Circle.Owner.Name,
+                            ProfilePictureUrl = !string.IsNullOrEmpty(x.Circle.Owner.ProfilePictureKey)
+                                ? _storage.GetProfilePictureUrl(x.Circle.Owner.ProfilePictureKey)
                                 : null
                         }
                     })

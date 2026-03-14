@@ -61,6 +61,10 @@ public interface IInterestService
     /// Get the user's followed interests as InterestPublicDto (lightweight, for create-post data).
     /// </summary>
     Task<List<InterestPublicDto>> GetUserFollowedInterestsPublicAsync(Guid userId);
+    /// <summary>
+    /// Gets followed interests with friend follower info for the create-post screen.
+    /// </summary>
+    Task<List<InterestPublicDto>> GetUserFollowedInterestsWithFriendsAsync(Guid userId);
 
     /// <summary>
     /// Get suggested interests for the create-post screen based on friends' usage.
@@ -368,6 +372,53 @@ public class InterestService : IInterestService
             .ToListAsync();
     }
 
+    public async Task<List<InterestPublicDto>> GetUserFollowedInterestsWithFriendsAsync(Guid userId)
+    {
+        var friendIds = await GetFriendIdsAsync(userId);
+        var userInterestIds = await _dbContext.InterestSubscriptions
+            .Where(s => s.UserId == userId)
+            .Select(s => s.InterestId)
+            .ToListAsync();
+
+        // Get friend followers for each of the user's interests
+        var friendFollowersByInterest = await _dbContext.InterestSubscriptions
+            .Where(s => userInterestIds.Contains(s.InterestId) && friendIds.Contains(s.UserId))
+            .Include(s => s.User)
+            .GroupBy(s => s.InterestId)
+            .Select(g => new
+            {
+                InterestId = g.Key,
+                Friends = g.Select(s => new MentionableUserDto
+                {
+                    Id = s.UserId,
+                    Name = s.User!.Name,
+                    ProfilePictureUrl = null // Avatar component handles fallback
+                }).ToList()
+            })
+            .ToDictionaryAsync(g => g.InterestId, g => g.Friends);
+
+        var interests = await _dbContext.InterestSubscriptions
+            .Where(s => s.UserId == userId)
+            .Include(s => s.Interest)
+            .Select(s => new InterestPublicDto
+            {
+                Id = s.Interest!.Id,
+                Name = s.Interest.Name,
+                DisplayName = s.Interest.DisplayName
+            })
+            .OrderBy(i => i.DisplayName)
+            .ToListAsync();
+
+        foreach (var interest in interests)
+        {
+            interest.FriendFollowers = friendFollowersByInterest.TryGetValue(interest.Id, out var followers)
+                ? followers
+                : new List<MentionableUserDto>();
+        }
+
+        return interests;
+    }
+
     public async Task<List<InterestSuggestionDto>> GetSuggestedInterestsForPostAsync(Guid userId, int limit = 10)
     {
         var friendIds = await GetFriendIdsAsync(userId);
@@ -378,7 +429,7 @@ public class InterestService : IInterestService
             .Select(s => s.InterestId)
             .ToListAsync();
 
-        return await _dbContext.InterestSubscriptions
+        var suggestions = await _dbContext.InterestSubscriptions
             .Where(s => friendIds.Contains(s.UserId) && !userInterestIds.Contains(s.InterestId))
             .GroupBy(s => s.InterestId)
             .Select(g => new
@@ -396,6 +447,33 @@ public class InterestService : IInterestService
                 FriendsUsingCount = g.FriendsUsingCount
             })
             .ToListAsync();
+
+        // Populate friend followers for each suggested interest
+        var suggestedInterestIds = suggestions.Select(s => s.Id).ToList();
+        var friendFollowersByInterest = await _dbContext.InterestSubscriptions
+            .Where(s => suggestedInterestIds.Contains(s.InterestId) && friendIds.Contains(s.UserId))
+            .Include(s => s.User)
+            .GroupBy(s => s.InterestId)
+            .Select(g => new
+            {
+                InterestId = g.Key,
+                Friends = g.Select(s => new MentionableUserDto
+                {
+                    Id = s.UserId,
+                    Name = s.User!.Name,
+                    ProfilePictureUrl = null
+                }).ToList()
+            })
+            .ToDictionaryAsync(g => g.InterestId, g => g.Friends);
+
+        foreach (var suggestion in suggestions)
+        {
+            suggestion.FriendFollowers = friendFollowersByInterest.TryGetValue(suggestion.Id, out var followers)
+                ? followers
+                : new List<MentionableUserDto>();
+        }
+
+        return suggestions;
     }
 
     public async Task<Dictionary<Guid, List<InterestPublicDto>>> GetInterestsForPostsAsync(IEnumerable<Guid> postIds, IEnumerable<Guid>? viewerFollowedInterestIds = null)
@@ -444,6 +522,7 @@ public class InterestService : IInterestService
             .ToListAsync();
 
         // Find interests that multiple friends post to, but the user doesn't follow yet
+        // Prioritize by recency of friend posts, then by number of friends posting
         return await _dbContext.InterestPosts
             .Where(ip => friendIds.Contains(ip.Post!.UserId))
             .Where(ip => !userInterestIds.Contains(ip.InterestId))
@@ -451,10 +530,12 @@ public class InterestService : IInterestService
             .Select(g => new
             {
                 InterestId = g.Key,
-                FriendPostCount = g.Select(ip => ip.Post!.UserId).Distinct().Count()
+                FriendPostCount = g.Select(ip => ip.Post!.UserId).Distinct().Count(),
+                MostRecentPost = g.Max(ip => ip.SharedAt)
             })
             .Where(g => g.FriendPostCount >= 2) // At least 2 friends post to it
-            .OrderByDescending(g => g.FriendPostCount)
+            .OrderByDescending(g => g.MostRecentPost)
+            .ThenByDescending(g => g.FriendPostCount)
             .Take(limit)
             .Join(_dbContext.Interests, g => g.InterestId, i => i.Id, (g, i) => new InterestSuggestionDto
             {

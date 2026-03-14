@@ -5,6 +5,7 @@ import {
   TextInput,
   TouchableOpacity,
   FlatList,
+  SectionList,
   Modal,
   SafeAreaView,
   KeyboardAvoidingView,
@@ -13,7 +14,7 @@ import {
   ActivityIndicator,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { CirclePublicDto, UserDto, InterestPublicDto, InterestSuggestionDto } from 'services/generated/generatedClient';
+import { CirclePublicDto, UserDto, InterestPublicDto, InterestSuggestionDto, MentionableUserDto } from 'services/generated/generatedClient';
 import Avatar from './Avatar';
 import { useTheme } from '../theme/ThemeContext';
 import { makeStyles } from '../theme/makeStyles';
@@ -72,7 +73,7 @@ const AudiencePickerSheet: React.FC<AudiencePickerSheetProps> = ({
   const { theme } = useTheme();
   const styles = useStyles();
   const [searchQuery, setSearchQuery] = useState('');
-  const [activeTab, setActiveTab] = useState<TabKey>('circles');
+  const [activeTab, setActiveTab] = useState<TabKey>('interests');
   const [showCreateInterest, setShowCreateInterest] = useState(false);
   const [newInterestName, setNewInterestName] = useState('');
   const [isCreatingInterest, setIsCreatingInterest] = useState(false);
@@ -102,8 +103,8 @@ const AudiencePickerSheet: React.FC<AudiencePickerSheetProps> = ({
 
   // Build flat items for the active tab, filtered by search
   const filteredCircles = useMemo(() => {
-    if (!query) return circles;
-    return circles.filter(c => c.name?.toLowerCase().includes(query));
+    const filtered = !query ? circles : circles.filter(c => c.name?.toLowerCase().includes(query));
+    return [...filtered].sort((a, b) => (a.name ?? '').localeCompare(b.name ?? ''));
   }, [circles, query]);
 
   const filteredFriends = useMemo(() => {
@@ -113,13 +114,13 @@ const AudiencePickerSheet: React.FC<AudiencePickerSheetProps> = ({
 
   // Merge followed + suggested interests, deduplicated, filtered
   const allInterests = useMemo(() => {
-    const map = new Map<string, { id: string; name: string; displayName: string; friendsCount?: number; isFollowed: boolean }>();
+    const map = new Map<string, { id: string; name: string; displayName: string; friendsCount?: number; isFollowed: boolean; friendFollowers?: MentionableUserDto[] }>();
     for (const i of followedInterests) {
-      map.set(i.name!, { id: i.id!, name: i.name!, displayName: i.displayName!, isFollowed: true });
+      map.set(i.name!, { id: i.id!, name: i.name!, displayName: i.displayName!, isFollowed: true, friendFollowers: (i as any).friendFollowers ?? [] });
     }
     for (const i of suggestedInterests) {
       if (!map.has(i.name!)) {
-        map.set(i.name!, { id: i.id!, name: i.name!, displayName: i.displayName!, friendsCount: i.friendsUsingCount, isFollowed: false });
+        map.set(i.name!, { id: i.id!, name: i.name!, displayName: i.displayName!, friendsCount: i.friendsUsingCount, isFollowed: false, friendFollowers: (i as any).friendFollowers ?? [] });
       }
     }
     return Array.from(map.values());
@@ -131,6 +132,27 @@ const AudiencePickerSheet: React.FC<AudiencePickerSheetProps> = ({
       i.displayName.toLowerCase().includes(query) || i.name.toLowerCase().includes(query)
     );
   }, [allInterests, query]);
+
+  // Split interests into followed and suggested sections for the SectionList
+  const interestSections = useMemo(() => {
+    const followed = filteredInterests.filter(i => i.isFollowed).sort((a, b) => a.displayName.localeCompare(b.displayName));
+    const suggested = filteredInterests.filter(i => !i.isFollowed).sort((a, b) => a.displayName.localeCompare(b.displayName));
+    const sections: { title: string; data: typeof filteredInterests }[] = [];
+    if (followed.length > 0) sections.push({ title: 'Your Interests', data: followed });
+    if (suggested.length > 0) sections.push({ title: 'Suggested Interests', data: suggested });
+    return sections;
+  }, [filteredInterests]);
+
+  const [expandedInterestIds, setExpandedInterestIds] = useState<Set<string>>(new Set());
+
+  const toggleInterestExpanded = (interestId: string) => {
+    setExpandedInterestIds(prev => {
+      const next = new Set(prev);
+      if (next.has(interestId)) next.delete(interestId);
+      else next.add(interestId);
+      return next;
+    });
+  };
 
   // Cross-tab search: if searching, show match counts on other tabs
   const crossTabCounts = useMemo(() => {
@@ -145,8 +167,8 @@ const AudiencePickerSheet: React.FC<AudiencePickerSheetProps> = ({
   const totalSelected = selectedCircleIds.length + selectedUserIds.length + selectedInterestNames.length;
 
   const tabs: { key: TabKey; label: string; icon: string; count: number }[] = [
-    { key: 'circles', label: 'Circles', icon: 'people-outline', count: selectedCircleIds.length },
     { key: 'interests', label: 'Interests', icon: 'sparkles-outline', count: selectedInterestNames.length },
+    { key: 'circles', label: 'Circles', icon: 'people-outline', count: selectedCircleIds.length },
     { key: 'friends', label: 'Friends', icon: 'person-outline', count: selectedUserIds.length },
   ];
 
@@ -182,11 +204,22 @@ const AudiencePickerSheet: React.FC<AudiencePickerSheetProps> = ({
               <Text style={[styles.itemLabel, isSelected && styles.itemLabelSelected]} numberOfLines={1}>
                 {item.name}
               </Text>
-              <Text style={[styles.itemSubtitle, isSelected && styles.itemSubtitleSelected]} numberOfLines={1}>
-                {memberCount} {memberCount === 1 ? 'member' : 'members'}
-                {item.isShared ? ' · Shared' : ''}
-                {item.isSubscribable ? ' · Subscribable' : ''}
-              </Text>
+              <View style={styles.interestSubtitleRow}>
+                {memberCount > 0 && (
+                  <View style={styles.stackedAvatars}>
+                    {(item.mentionableUsers ?? []).slice(0, 3).map((u, idx) => (
+                      <View key={u.id} style={[styles.stackedAvatar, isSelected && styles.stackedAvatarSelected, { marginLeft: idx > 0 ? -8 : 0, zIndex: 3 - idx }]}>
+                        <Avatar name={u.name || '?'} userId={u.id || ''} imageUrl={u.profilePictureUrl || undefined} simple size={18} />
+                      </View>
+                    ))}
+                  </View>
+                )}
+                <Text style={[styles.itemSubtitle, isSelected && styles.itemSubtitleSelected, memberCount > 0 && { marginLeft: 4 }]} numberOfLines={1}>
+                  {memberCount} {memberCount === 1 ? 'member' : 'members'}
+                  {item.isShared ? ' · Shared' : ''}
+                  {item.isSubscribable ? ' · Subscribable' : ''}
+                </Text>
+              </View>
             </View>
             <Ionicons
               name={isSelected ? 'checkmark-circle' : 'ellipse-outline'}
@@ -261,36 +294,90 @@ const AudiencePickerSheet: React.FC<AudiencePickerSheetProps> = ({
 
   const renderInterestItem = ({ item }: { item: typeof allInterests[0] }) => {
     const isSelected = selectedInterestNames.includes(item.name);
+    const isExpanded = expandedInterestIds.has(item.id);
+    const followers = item.friendFollowers ?? [];
+    const followerCount = followers.length;
+    const previewFollowers = followers.slice(0, 3);
+    const extraCount = followerCount - 3;
+
     return (
-      <TouchableOpacity
-        style={[styles.listItem, isSelected && styles.listItemSelected]}
-        onPress={() => onToggleInterest(item.name, item.displayName)}
-        activeOpacity={0.7}
-      >
-        <View style={[styles.itemIcon, isSelected && styles.itemIconSelected, styles.hashtagIcon]}>
-          <Text style={[styles.hashtagText, isSelected && styles.hashtagTextSelected]}>#</Text>
-        </View>
-        <View style={styles.itemContent}>
-          <Text style={[styles.itemLabel, isSelected && styles.itemLabelSelected]} numberOfLines={1}>
-            {item.displayName}
-          </Text>
-          {item.friendsCount != null && (
-            <Text style={[styles.itemSubtitle, isSelected && styles.itemSubtitleSelected]} numberOfLines={1}>
-              {item.friendsCount} {item.friendsCount === 1 ? 'friend posts here' : 'friends post here'}
-            </Text>
+      <View style={styles.circleItemWrapper}>
+        <View style={[styles.listItem, { marginVertical: 0 }, isSelected && styles.listItemSelected]}>
+          <TouchableOpacity
+            style={styles.circleMainRow}
+            onPress={() => onToggleInterest(item.name, item.displayName)}
+            activeOpacity={0.7}
+          >
+            <View style={[styles.itemIcon, isSelected && styles.itemIconSelected, styles.hashtagIcon]}>
+              <Text style={[styles.hashtagText, isSelected && styles.hashtagTextSelected]}>#</Text>
+            </View>
+            <View style={styles.itemContent}>
+              <Text style={[styles.itemLabel, isSelected && styles.itemLabelSelected]} numberOfLines={1}>
+                {item.displayName}
+              </Text>
+              <View style={styles.interestSubtitleRow}>
+                {followerCount > 0 ? (
+                  <>
+                    <View style={styles.stackedAvatars}>
+                      {previewFollowers.map((f, idx) => (
+                        <View key={f.id} style={[styles.stackedAvatar, isSelected && styles.stackedAvatarSelected, { marginLeft: idx > 0 ? -8 : 0, zIndex: 3 - idx }]}>
+                          <Avatar name={f.name || '?'} userId={f.id || ''} imageUrl={f.profilePictureUrl || undefined} simple size={18} />
+                        </View>
+                      ))}
+                    </View>
+                    <Text style={[styles.itemSubtitle, isSelected && styles.itemSubtitleSelected, { marginLeft: 4 }]} numberOfLines={1}>
+                      {followerCount} {followerCount === 1 ? 'friend follows' : 'friends follow'}
+                      {extraCount > 0 ? '' : ''}
+                    </Text>
+                  </>
+                ) : item.friendsCount != null ? (
+                  <Text style={[styles.itemSubtitle, isSelected && styles.itemSubtitleSelected]} numberOfLines={1}>
+                    {item.friendsCount} {item.friendsCount === 1 ? 'friend posts here' : 'friends post here'}
+                  </Text>
+                ) : item.isFollowed ? (
+                  <Text style={[styles.itemSubtitle, isSelected && styles.itemSubtitleSelected]} numberOfLines={1}>
+                    Following
+                  </Text>
+                ) : null}
+              </View>
+            </View>
+            <Ionicons
+              name={isSelected ? 'checkmark-circle' : 'ellipse-outline'}
+              size={24}
+              color={isSelected ? theme.colors.primaryContrast : theme.colors.separator}
+            />
+          </TouchableOpacity>
+          {followerCount > 0 && (
+            <TouchableOpacity
+              style={[styles.expandToggle, isSelected && styles.expandToggleSelected]}
+              onPress={() => toggleInterestExpanded(item.id)}
+              hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+            >
+              <Ionicons
+                name={isExpanded ? 'chevron-up' : 'chevron-down'}
+                size={16}
+                color={isSelected ? theme.colors.primaryContrast : theme.colors.textMuted}
+              />
+            </TouchableOpacity>
           )}
-          {item.isFollowed && !item.friendsCount && (
-            <Text style={[styles.itemSubtitle, isSelected && styles.itemSubtitleSelected]} numberOfLines={1}>
-              Following
-            </Text>
-          )}
         </View>
-        <Ionicons
-          name={isSelected ? 'checkmark-circle' : 'ellipse-outline'}
-          size={24}
-          color={isSelected ? theme.colors.primaryContrast : theme.colors.separator}
-        />
-      </TouchableOpacity>
+        {isExpanded && followerCount > 0 && (
+          <View style={styles.memberList}>
+            {followers.map(user => (
+              <View key={user.id} style={styles.memberRow}>
+                <Avatar
+                  name={user.name || '?'}
+                  userId={user.id || ''}
+                  imageUrl={user.profilePictureUrl || undefined}
+                  simple
+                  size={24}
+                />
+                <Text style={styles.memberName} numberOfLines={1}>{user.name}</Text>
+              </View>
+            ))}
+          </View>
+        )}
+      </View>
     );
   };
 
@@ -395,12 +482,7 @@ const AudiencePickerSheet: React.FC<AudiencePickerSheetProps> = ({
                 renderItem={renderCircleItem}
                 contentContainerStyle={styles.listContent}
                 keyboardShouldPersistTaps="handled"
-                ListEmptyComponent={
-                  <Text style={styles.emptyText}>
-                    {query ? 'No circles match your search' : 'No circles yet'}
-                  </Text>
-                }
-                ListFooterComponent={
+                ListHeaderComponent={
                   <TouchableOpacity
                     style={styles.createButton}
                     onPress={onCreateCircle}
@@ -411,6 +493,11 @@ const AudiencePickerSheet: React.FC<AudiencePickerSheetProps> = ({
                     </View>
                     <Text style={styles.createButtonText}>Create New Circle</Text>
                   </TouchableOpacity>
+                }
+                ListEmptyComponent={
+                  <Text style={styles.emptyText}>
+                    {query ? 'No circles match your search' : 'No circles yet'}
+                  </Text>
                 }
               />
             )}
@@ -431,32 +518,43 @@ const AudiencePickerSheet: React.FC<AudiencePickerSheetProps> = ({
             )}
 
             {activeTab === 'interests' && (
-              <FlatList
-                data={filteredInterests}
+              <SectionList
+                sections={interestSections}
                 keyExtractor={(item) => item.id}
                 renderItem={renderInterestItem}
+                renderSectionHeader={({ section }) => (
+                  <Text style={styles.sectionHeader}>{section.title}</Text>
+                )}
                 contentContainerStyle={styles.listContent}
                 keyboardShouldPersistTaps="handled"
+                ListHeaderComponent={
+                  <View>
+                    <View style={styles.interestInfoBox}>
+                      {/* <Ionicons name="sparkles" size={16} color={theme.colors.accent} /> */}
+                      <Text style={styles.interestInfoText}>
+                        Anyone can post to an interest — only your direct friends who follow it will see your posts.
+                      </Text>
+                    </View>
+                    <TouchableOpacity
+                      style={styles.createButton}
+                      onPress={() => {
+                        setNewInterestName('');
+                        setShowCreateInterest(true);
+                        setTimeout(() => createInterestInputRef.current?.focus(), 100);
+                      }}
+                      activeOpacity={0.7}
+                    >
+                      <View style={styles.createButtonIcon}>
+                        <Ionicons name="add" size={18} color={theme.colors.primary} />
+                      </View>
+                      <Text style={styles.createButtonText}>Create New Interest</Text>
+                    </TouchableOpacity>
+                  </View>
+                }
                 ListEmptyComponent={
                   <Text style={styles.emptyText}>
                     {query ? 'No interests match your search' : 'No interests yet'}
                   </Text>
-                }
-                ListFooterComponent={
-                  <TouchableOpacity
-                    style={styles.createButton}
-                    onPress={() => {
-                      setNewInterestName('');
-                      setShowCreateInterest(true);
-                      setTimeout(() => createInterestInputRef.current?.focus(), 100);
-                    }}
-                    activeOpacity={0.7}
-                  >
-                    <View style={styles.createButtonIcon}>
-                      <Ionicons name="add" size={18} color={theme.colors.primary} />
-                    </View>
-                    <Text style={styles.createButtonText}>Create New Interest</Text>
-                  </TouchableOpacity>
                 }
               />
             )}
@@ -713,6 +811,53 @@ const useStyles = makeStyles((theme) => ({
   },
   hashtagTextSelected: {
     color: theme.colors.primaryContrast,
+  },
+  interestSubtitleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginTop: 2,
+  },
+  stackedAvatars: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  stackedAvatar: {
+    borderRadius: 9,
+    borderWidth: 1.5,
+    borderColor: theme.colors.card,
+    overflow: 'hidden',
+  },
+  stackedAvatarSelected: {
+    borderColor: theme.colors.primary,
+  },
+  sectionHeader: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: theme.colors.textMuted,
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+    paddingTop: 16,
+    paddingBottom: 6,
+    paddingHorizontal: 4,
+  },
+  interestInfoBox: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: theme.colors.accent + '12',
+    borderRadius: 12,
+    paddingVertical: 10,
+    paddingHorizontal: 14,
+    marginBottom: 8,
+    gap: 10,
+    borderWidth: 1,
+    borderColor: theme.colors.accent + '30',
+  },
+  interestInfoText: {
+    flex: 1,
+    fontSize: 13,
+    color: theme.colors.accent,
+    fontWeight: '500',
+    lineHeight: 18,
   },
   avatarContainer: {
     marginRight: 0,
