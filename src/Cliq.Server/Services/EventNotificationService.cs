@@ -12,7 +12,7 @@ public interface IEventNotificationService
 {
     Task SendFriendRequestNotificationAsync(Guid requesterId, Guid addresseeId, Guid friendshipId, string requesterName);
     Task SendFriendRequestAcceptedNotificationAsync(Guid accepterId, Guid requesterId, string requesterName);
-    Task SendNewPostNotificationAsync(Guid postId, Guid authorId, string postText, IEnumerable<Guid> circleIds, string authorName, bool hasImage, IEnumerable<Guid>? directUserIds = null, IEnumerable<Guid>? excludeUserIds = null);
+    Task SendNewPostNotificationAsync(Guid postId, Guid authorId, string postText, IEnumerable<Guid> circleIds, string authorName, bool hasImage, IEnumerable<Guid>? excludeUserIds = null, IEnumerable<Guid>? interestIds = null, IEnumerable<Guid>? directUserIds = null);
     Task SendNewEventNotificationAsync(Guid eventId, Guid authorId, string title, IEnumerable<Guid> circleIds, string authorName);
     Task SendNewCommentNotificationAsync(Guid commentId, Guid postId, Guid postAuthorId, Guid commenterId, string commentText, string commenterName, IEnumerable<Guid>? excludeUserIds = null);
     Task SendCommentReplyNotificationAsync(Guid replyId, Guid postId, Guid parentCommentId, Guid parentCommentAuthorId, Guid replierId, string replyText, string commenterName, IEnumerable<Guid>? excludeUserIds = null);
@@ -21,6 +21,7 @@ public interface IEventNotificationService
     Task SendNewSubscribableCircle(Guid authorId, string authorName, Guid circleId, string circleName, Guid[] recipients, Guid[] alreadyMembers);
     Task SendPostMentionNotificationsAsync(Guid postId, Guid authorId, string authorName, string postText, IEnumerable<Guid> mentionedUserIds);
     Task SendCommentMentionNotificationsAsync(Guid commentId, Guid postId, Guid commenterId, string commenterName, string commentText, IEnumerable<Guid> mentionedUserIds);
+    Task SendInterestDiscoveryNotificationsAsync(Guid authorId, string authorName, Guid interestId, string interestName, string interestDisplayName);
 }
 
 public class EventNotificationService : IEventNotificationService
@@ -57,33 +58,55 @@ public class EventNotificationService : IEventNotificationService
         await _notificationQueue.AddAsync(requesterId, notificationData);
     }
 
-    public async Task SendNewPostNotificationAsync(Guid postId, Guid authorId, string postText, IEnumerable<Guid> circleIds, string authorName, bool hasImage, IEnumerable<Guid>? directUserIds = null, IEnumerable<Guid>? excludeUserIds = null)
+    public async Task SendNewPostNotificationAsync(Guid postId, Guid authorId, string postText, IEnumerable<Guid> circleIds, string authorName, bool hasImage, IEnumerable<Guid>? excludeUserIds = null, IEnumerable<Guid>? interestIds = null, IEnumerable<Guid>? directUserIds = null)
     {
         var circleIdsList = circleIds.ToList();
         var excludeSet = excludeUserIds?.ToHashSet() ?? new HashSet<Guid>();
         excludeSet.Add(authorId); // Always exclude the author
 
-        // Get all circle members excluding the author and mentioned users
-        var recipientUserIds = await _dbContext.CircleMemberships
-            .Where(cm => circleIdsList.Contains(cm.CircleId) && !excludeSet.Contains(cm.UserId))
-            .Select(cm => cm.UserId)
-            .Distinct()
-            .ToListAsync();
+        var allRecipientIds = new HashSet<Guid>();
 
-        // Also include users the post was shared with directly
-        if (directUserIds != null)
+        // 1. Circle members
+        if (circleIdsList.Count > 0)
         {
-            var existingRecipients = recipientUserIds.ToHashSet();
-            foreach (var directUserId in directUserIds)
-            {
-                if (!excludeSet.Contains(directUserId) && !existingRecipients.Contains(directUserId))
-                {
-                    recipientUserIds.Add(directUserId);
-                }
-            }
+            var circleRecipients = await _dbContext.CircleMemberships
+                .Where(cm => circleIdsList.Contains(cm.CircleId) && !excludeSet.Contains(cm.UserId))
+                .Select(cm => cm.UserId)
+                .Distinct()
+                .ToListAsync();
+            allRecipientIds.UnionWith(circleRecipients);
         }
 
-        if (recipientUserIds.Count != 0)
+        // 2. Interest followers who are friends with the author
+        var interestIdsList = interestIds?.ToList();
+        if (interestIdsList != null && interestIdsList.Count > 0)
+        {
+            // Get the author's accepted friend IDs
+            var friendIds = await _dbContext.Friendships
+                .Where(f => f.Status == FriendshipStatus.Accepted &&
+                    (f.RequesterId == authorId || f.AddresseeId == authorId))
+                .Select(f => f.RequesterId == authorId ? f.AddresseeId : f.RequesterId)
+                .ToListAsync();
+
+            // Find friends who follow any of the post's interests
+            var interestRecipients = await _dbContext.InterestSubscriptions
+                .Where(s => interestIdsList.Contains(s.InterestId) &&
+                    friendIds.Contains(s.UserId) &&
+                    !excludeSet.Contains(s.UserId))
+                .Select(s => s.UserId)
+                .Distinct()
+                .ToListAsync();
+            allRecipientIds.UnionWith(interestRecipients);
+        }
+
+        // 3. Directly shared users
+        var directUserIdsList = directUserIds?.ToList();
+        if (directUserIdsList != null && directUserIdsList.Count > 0)
+        {
+            allRecipientIds.UnionWith(directUserIdsList.Where(id => !excludeSet.Contains(id)));
+        }
+
+        if (allRecipientIds.Count != 0)
         {
             var notificationData = new NewPostNotificationData
             {
@@ -94,7 +117,7 @@ public class EventNotificationService : IEventNotificationService
                 HasImage = hasImage
             };
 
-            await _notificationQueue.AddBulkAsync(_dbContext, recipientUserIds, notificationData);
+            await _notificationQueue.AddBulkAsync(_dbContext, allRecipientIds.ToList(), notificationData);
         }
     }
 
@@ -268,5 +291,109 @@ public class EventNotificationService : IEventNotificationService
         };
 
         await _notificationQueue.AddBulkAsync(_dbContext, userIdsList, notificationData);
+    }
+
+    /// <summary>
+    /// Sends interest discovery notifications to the author's friends who don't follow the interest.
+    /// Respects per-user opt-out (DisableInterestDiscovery) and a 30-day cooldown per (user, interest).
+    /// After cooldown, re-notifies with updated friend count.
+    /// </summary>
+    public async Task SendInterestDiscoveryNotificationsAsync(Guid authorId, string authorName, Guid interestId, string interestName, string interestDisplayName)
+    {
+        var cooldownDays = 30;
+        var cooldownCutoff = DateTime.UtcNow.AddDays(-cooldownDays);
+
+        // Get the author's accepted friend IDs
+        var friendIds = await _dbContext.Friendships
+            .Where(f => f.Status == FriendshipStatus.Accepted &&
+                (f.RequesterId == authorId || f.AddresseeId == authorId))
+            .Select(f => f.RequesterId == authorId ? f.AddresseeId : f.RequesterId)
+            .ToListAsync();
+
+        if (friendIds.Count == 0) return;
+
+        // Find friends who DON'T follow this interest
+        var friendsAlreadyFollowing = (await _dbContext.InterestSubscriptions
+            .Where(s => s.InterestId == interestId && friendIds.Contains(s.UserId))
+            .Select(s => s.UserId)
+            .ToListAsync()).ToHashSet();
+
+        var friendsNotFollowing = friendIds.Where(id => !friendsAlreadyFollowing.Contains(id)).ToList();
+        if (friendsNotFollowing.Count == 0) return;
+
+        // Exclude friends who have opted out of interest discovery notifications
+        var optedOutUserIds = (await _dbContext.Users
+            .Where(u => friendsNotFollowing.Contains(u.Id) && u.DisableInterestDiscovery)
+            .Select(u => u.Id)
+            .ToListAsync()).ToHashSet();
+
+        friendsNotFollowing = friendsNotFollowing.Where(id => !optedOutUserIds.Contains(id)).ToList();
+        if (friendsNotFollowing.Count == 0) return;
+
+        // Check existing discovery notifications for this interest within cooldown period
+        var recentlyNotified = (await _dbContext.InterestDiscoveryNotifications
+            .Where(d => d.InterestId == interestId &&
+                friendsNotFollowing.Contains(d.RecipientUserId) &&
+                d.SentAt > cooldownCutoff)
+            .Select(d => d.RecipientUserId)
+            .ToListAsync()).ToHashSet();
+
+        // For users past cooldown, get their old records to update
+        var expiredRecords = await _dbContext.InterestDiscoveryNotifications
+            .Where(d => d.InterestId == interestId &&
+                friendsNotFollowing.Contains(d.RecipientUserId) &&
+                d.SentAt <= cooldownCutoff)
+            .ToListAsync();
+
+        var expiredUserIds = expiredRecords.Select(d => d.RecipientUserId).ToHashSet();
+
+        // Count how many of the author's friends post to this interest (for the "N friends" message)
+        var friendsPostingCount = await _dbContext.InterestPosts
+            .Where(ip => ip.InterestId == interestId)
+            .Select(ip => ip.Post!.UserId)
+            .Where(uid => friendIds.Contains(uid))
+            .Distinct()
+            .CountAsync();
+
+        // Recipients = never-notified + expired-cooldown
+        var newRecipients = friendsNotFollowing
+            .Where(id => !recentlyNotified.Contains(id) && !expiredUserIds.Contains(id))
+            .ToList();
+
+        var reNotifyRecipients = expiredUserIds.ToList();
+
+        var allRecipients = newRecipients.Concat(reNotifyRecipients).ToList();
+        if (allRecipients.Count == 0) return;
+
+        // Create/update tracking records
+        foreach (var userId in newRecipients)
+        {
+            await _dbContext.InterestDiscoveryNotifications.AddAsync(new InterestDiscoveryNotification
+            {
+                RecipientUserId = userId,
+                InterestId = interestId,
+                SentAt = DateTime.UtcNow,
+                FriendCount = Math.Max(1, friendsPostingCount)
+            });
+        }
+
+        foreach (var record in expiredRecords)
+        {
+            record.SentAt = DateTime.UtcNow;
+            record.FriendCount = Math.Max(1, friendsPostingCount);
+        }
+
+        // Send the notification
+        var notificationData = new InterestDiscoveryNotificationData
+        {
+            InterestId = interestId,
+            InterestName = interestName,
+            InterestDisplayName = interestDisplayName,
+            AuthorId = authorId,
+            AuthorName = authorName,
+            FriendCount = Math.Max(1, friendsPostingCount)
+        };
+
+        await _notificationQueue.AddBulkAsync(_dbContext, allRecipients, notificationData);
     }
 }

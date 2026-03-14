@@ -1010,6 +1010,7 @@ public class PostService : IPostService
             await _dbContext.CirclePosts.AddRangeAsync(circlePosts);
 
             // Handle interests: get-or-create each interest and link to the post
+            var resolvedInterestIds = new List<Guid>();
             if (interestNames != null && interestNames.Length > 0)
             {
                 foreach (var interestName in interestNames.Distinct())
@@ -1022,6 +1023,7 @@ public class PostService : IPostService
                     }
 
                     var interest = await _interestService.GetOrCreateInterestAsync(normalizedName, displayName, userId);
+                    resolvedInterestIds.Add(interest.Id);
 
                     var interestPost = new InterestPost
                     {
@@ -1054,7 +1056,6 @@ public class PostService : IPostService
                         {
                             interestPost.WasAnnounced = true;
                             await _interestService.RecordAnnouncementAsync(userId, interest.Id);
-                            // TODO: Send announcement notifications to all friends
                         }
                     }
                 }
@@ -1093,8 +1094,9 @@ public class PostService : IPostService
                     circleIds, 
                     user.Name, 
                     imageObjectKeys != null && imageObjectKeys.Any(),
-                    directUserIds: userIds,
-                    excludeUserIds: mentionedUserIds);
+                    excludeUserIds: mentionedUserIds,
+                    interestIds: resolvedInterestIds,
+                    directUserIds: userIds);
 
                 // Send mention notifications for validated mentions
                 if (mentionedUserIds.Any())
@@ -1105,6 +1107,23 @@ public class PostService : IPostService
                         user.Name,
                         text,
                         mentionedUserIds);
+                }
+
+                // Send interest discovery notifications to friends who don't follow each interest.
+                // Done here (after SaveChangesAsync) so InterestPost records are flushed and
+                // all notification logic is in the same transaction + error handling block.
+                if (resolvedInterestIds.Count > 0)
+                {
+                    // Load interest details for the resolved IDs
+                    var interests = await _dbContext.Interests
+                        .Where(i => resolvedInterestIds.Contains(i.Id))
+                        .ToListAsync();
+
+                    foreach (var interest in interests)
+                    {
+                        await _eventNotificationService.SendInterestDiscoveryNotificationsAsync(
+                            userId, user.Name, interest.Id, interest.Name, interest.DisplayName);
+                    }
                 }
             }
             catch (Exception ex)

@@ -32,6 +32,7 @@ public class CliqDbContext : IdentityDbContext<User, CliqRole, Guid>
     public DbSet<InterestSubscription> InterestSubscriptions { get; set; }
     public DbSet<InterestPost> InterestPosts { get; set; }
     public DbSet<InterestAnnouncement> InterestAnnouncements { get; set; }
+    public DbSet<InterestDiscoveryNotification> InterestDiscoveryNotifications { get; set; }
 
     public CliqDbContext(
             DbContextOptions<CliqDbContext> options,
@@ -549,6 +550,31 @@ public class CliqDbContext : IdentityDbContext<User, CliqRole, Guid>
             entity.HasOne(a => a.Interest)
                 .WithMany()
                 .HasForeignKey(a => a.InterestId)
+                .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        // ========== InterestDiscoveryNotification ==========
+        modelBuilder.Entity<InterestDiscoveryNotification>(entity =>
+        {
+            entity.HasKey(d => d.Id);
+
+            entity.Property(d => d.SentAt)
+                .HasDefaultValueSql("NOW()");
+
+            // Unique constraint - only one active discovery notification per user per interest
+            entity.HasIndex(d => new { d.RecipientUserId, d.InterestId }).IsUnique();
+
+            // Index for querying by recipient
+            entity.HasIndex(d => d.RecipientUserId);
+
+            entity.HasOne(d => d.RecipientUser)
+                .WithMany()
+                .HasForeignKey(d => d.RecipientUserId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            entity.HasOne(d => d.Interest)
+                .WithMany()
+                .HasForeignKey(d => d.InterestId)
                 .OnDelete(DeleteBehavior.Cascade);
         });
     }

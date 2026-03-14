@@ -102,6 +102,38 @@ public class InterestAnnouncement
     public DateTime AnnouncedAt { get; set; } = DateTime.UtcNow;
 }
 
+/// <summary>
+/// Tracks when a user was last notified about an interest they don't follow.
+/// Prevents spamming the same user about the same interest.
+/// After a cooldown period (e.g. 30 days), they can be re-notified with an updated count.
+/// </summary>
+public class InterestDiscoveryNotification
+{
+    public Guid Id { get; set; } = Guid.NewGuid();
+
+    /// <summary>
+    /// The user who received the discovery notification.
+    /// </summary>
+    public Guid RecipientUserId { get; set; }
+    public User? RecipientUser { get; set; }
+
+    /// <summary>
+    /// The interest the user was nudged about.
+    /// </summary>
+    public Guid InterestId { get; set; }
+    public Interest? Interest { get; set; }
+
+    /// <summary>
+    /// When the notification was sent.
+    /// </summary>
+    public DateTime SentAt { get; set; } = DateTime.UtcNow;
+
+    /// <summary>
+    /// How many friends were posting to this interest at the time of notification.
+    /// </summary>
+    public int FriendCount { get; set; } = 1;
+}
+
 // ========== DTOs ==========
 
 public class InterestDto
