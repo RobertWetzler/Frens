@@ -15,6 +15,7 @@ public interface ICircleService
     Task<IEnumerable<CirclePublicDto>> GetUserCirclesWithMentionableUsersAsync(Guid userId);
     Task<IEnumerable<CircleWithMembersDto>> GetUserCirclesWithMembersAsync(Guid userId);
     Task DeleteCircleAsync(Guid requestorId, Guid circleId);
+    Task<InterestPublicDto> ConvertCircleToInterestAsync(Guid requestorId, Guid circleId);
     Task FollowCircle(Guid userId, Guid circleId, Guid? notificationId);
     Task DenyFollowCircle(Guid userId, Guid notificationId);
     Task UnfollowCircle(Guid userId, Guid circleId);
@@ -412,6 +413,127 @@ public class CircleService : ICircleService
         {
             await transaction.RollbackAsync();
             _logger.LogError(ex, "Error deleting circle {CircleId} for user: {UserId}", circleId, requestorId);
+            throw;
+        }
+    }
+
+    /// <summary>
+    /// Converts a circle to an interest. Only the owner can do this.
+    /// - Creates the interest (or gets existing with same name)
+    /// - Subscribes all circle members to the interest
+    /// - Re-links all circle posts to the interest
+    /// - Deletes the circle
+    /// </summary>
+    public async Task<InterestPublicDto> ConvertCircleToInterestAsync(Guid requestorId, Guid circleId)
+    {
+        var circle = await _dbContext.Circles
+            .Include(c => c.Members)
+            .Include(c => c.Posts)
+            .FirstOrDefaultAsync(c => c.Id == circleId);
+
+        if (circle == null)
+            throw new BadHttpRequestException($"Circle {circleId} not found");
+
+        if (circle.OwnerId != requestorId)
+            throw new UnauthorizedAccessException($"User {requestorId} is not authorized to convert circle {circleId}");
+
+        using var transaction = await _dbContext.Database.BeginTransactionAsync();
+        try
+        {
+            // Normalize circle name to interest name
+            var (normalizedName, displayName, validationError) = Utilities.InterestNameHelper.NormalizeAndValidate(circle.Name);
+            if (validationError != null)
+            {
+                // Fallback: strip spaces and lowercase
+                normalizedName = circle.Name.Replace(" ", "").ToLowerInvariant();
+                displayName = circle.Name;
+            }
+
+            // Get or create the interest
+            var interest = await _dbContext.Interests.FirstOrDefaultAsync(i => i.Name == normalizedName);
+            if (interest == null)
+            {
+                interest = new Interest
+                {
+                    Id = Guid.NewGuid(),
+                    Name = normalizedName,
+                    DisplayName = displayName,
+                    CreatedByUserId = requestorId,
+                    CreatedAt = DateTime.UtcNow
+                };
+                await _dbContext.Interests.AddAsync(interest);
+            }
+
+            // Subscribe all circle members (+ owner) to the interest
+            var memberUserIds = circle.Members?.Select(m => m.UserId).ToList() ?? new List<Guid>();
+            if (!memberUserIds.Contains(requestorId))
+                memberUserIds.Add(requestorId);
+
+            var existingSubscribers = await _dbContext.InterestSubscriptions
+                .Where(s => s.InterestId == interest.Id && memberUserIds.Contains(s.UserId))
+                .Select(s => s.UserId)
+                .ToListAsync();
+
+            var newSubscribers = memberUserIds.Except(existingSubscribers).ToList();
+            foreach (var userId in newSubscribers)
+            {
+                await _dbContext.InterestSubscriptions.AddAsync(new InterestSubscription
+                {
+                    InterestId = interest.Id,
+                    UserId = userId,
+                    SubscribedAt = DateTime.UtcNow
+                });
+            }
+
+            // Re-link circle posts to the interest
+            if (circle.Posts != null && circle.Posts.Any())
+            {
+                var postIds = circle.Posts.Select(cp => cp.PostId).ToList();
+                var existingInterestPosts = await _dbContext.InterestPosts
+                    .Where(ip => ip.InterestId == interest.Id && postIds.Contains(ip.PostId))
+                    .Select(ip => ip.PostId)
+                    .ToListAsync();
+
+                var newPostIds = postIds.Except(existingInterestPosts).ToList();
+                foreach (var postId in newPostIds)
+                {
+                    await _dbContext.InterestPosts.AddAsync(new InterestPost
+                    {
+                        InterestId = interest.Id,
+                        PostId = postId,
+                        SharedAt = DateTime.UtcNow
+                    });
+                }
+
+                // Remove circle-post links
+                _dbContext.CirclePosts.RemoveRange(circle.Posts);
+            }
+
+            // Remove all memberships
+            if (circle.Members != null && circle.Members.Any())
+                _dbContext.CircleMemberships.RemoveRange(circle.Members);
+
+            // Remove the circle
+            _dbContext.Circles.Remove(circle);
+
+            await _dbContext.SaveChangesAsync();
+            await transaction.CommitAsync();
+
+            _logger.LogInformation(
+                "Circle {CircleId} ({CircleName}) converted to interest {InterestName} by user {UserId}. {MemberCount} members subscribed, {PostCount} posts re-linked.",
+                circleId, circle.Name, interest.Name, requestorId, newSubscribers.Count, circle.Posts?.Count ?? 0);
+
+            return new InterestPublicDto
+            {
+                Id = interest.Id,
+                Name = interest.Name,
+                DisplayName = interest.DisplayName
+            };
+        }
+        catch (Exception ex)
+        {
+            await transaction.RollbackAsync();
+            _logger.LogError(ex, "Error converting circle {CircleId} to interest for user: {UserId}", circleId, requestorId);
             throw;
         }
     }

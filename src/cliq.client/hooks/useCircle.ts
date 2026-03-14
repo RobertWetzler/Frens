@@ -104,6 +104,19 @@ export function useCirclesWithMembers() {
         }
     }, []);
 
+    const convertCircleToInterest = useCallback(async (circleId: string) => {
+        try {
+            const result = await ApiClient.call(c => c.circle_ConvertCircleToInterest(circleId));
+            // Remove the converted circle from local state
+            setCircles(prevCircles => prevCircles.filter(circle => circle.id !== circleId));
+            return result;
+        } catch (err) {
+            console.log("Failed to convert circle to interest with err " + err);
+            setError('Failed to convert circle to interest');
+            return null;
+        }
+    }, []);
+
     const removeUsersFromCircle = useCallback(async (circleId: string, userIds: string[]) => {
         try {
             setIsRemovingUser(true);
@@ -173,6 +186,7 @@ export function useCirclesWithMembers() {
         error, 
         loadCircles, 
         deleteCircle, 
+        convertCircleToInterest,
         removeUsersFromCircle,
         addUsersToCircle,
         isRemovingUser,

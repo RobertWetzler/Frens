@@ -100,6 +100,30 @@ public class CircleController : ControllerBase
         }
     }
 
+    [HttpPost("{circleId}/convert-to-interest")]
+    [ProducesResponseType(typeof(InterestPublicDto), StatusCodes.Status200OK)]
+    public async Task<ActionResult<InterestPublicDto>> ConvertCircleToInterest(Guid circleId)
+    {
+        if (!AuthUtils.TryGetUserIdFromToken(this.HttpContext, out var userId))
+        {
+            return Unauthorized();
+        }
+
+        try
+        {
+            var interest = await _circleService.ConvertCircleToInterestAsync(userId, circleId);
+            return Ok(interest);
+        }
+        catch (UnauthorizedAccessException)
+        {
+            return Forbid();
+        }
+        catch (BadHttpRequestException ex)
+        {
+            return NotFound(ex.Message);
+        }
+    }
+
     public record FollowCircleRequest(Guid circleId, Guid? notificationId);
 
     [HttpPost("follow")]

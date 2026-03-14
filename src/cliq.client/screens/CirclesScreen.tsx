@@ -24,6 +24,7 @@ const CirclesScreen = ({ navigation }) => {
     isLoading, 
     error, 
     deleteCircle, 
+    convertCircleToInterest,
     loadCircles, 
     removeUsersFromCircle,
     addUsersToCircle,
@@ -43,6 +44,9 @@ const CirclesScreen = ({ navigation }) => {
   const [deleteModalVisible, setDeleteModalVisible] = useState(false);
   const [circleToDelete, setCircleToDelete] = useState<{id: string, name: string} | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [convertModalVisible, setConvertModalVisible] = useState(false);
+  const [circleToConvert, setCircleToConvert] = useState<{id: string, name: string} | null>(null);
+  const [isConverting, setIsConverting] = useState(false);
   const [menuVisible, setMenuVisible] = useState<string | null>(null);
   const [removeUserModalVisible, setRemoveUserModalVisible] = useState(false);
   const [userToRemove, setUserToRemove] = useState<{circleId: string, userId: string, userName: string, circleName: string} | null>(null);
@@ -137,7 +141,7 @@ const CirclesScreen = ({ navigation }) => {
     setMenuVisible(menuVisible === circleId ? null : circleId);
   };
 
-  const handleMenuAction = (action: 'rename' | 'delete', circleId: string, circleName: string) => {
+  const handleMenuAction = (action: 'rename' | 'delete' | 'convert', circleId: string, circleName: string) => {
     console.log('handleMenuAction called with:', action, circleId, circleName);
     setMenuVisible(null);
     
@@ -145,6 +149,9 @@ const CirclesScreen = ({ navigation }) => {
       console.log('Delete action selected, about to call handleDeleteCircle');
       console.log('Parameters:', { circleId, circleName });
       handleDeleteCircle(circleId, circleName);
+    } else if (action === 'convert') {
+      setCircleToConvert({ id: circleId, name: circleName });
+      setConvertModalVisible(true);
     } else if (action === 'rename') {
       // TODO: Implement rename functionality
       console.log('Rename circle:', circleId, circleName);
@@ -250,6 +257,12 @@ const CirclesScreen = ({ navigation }) => {
                           visible={menuVisible === circle.id}
                           onClose={() => toggleMenu(circle.id || '')}
                           items={[
+                            {
+                              id: 'convert',
+                              label: 'Convert to Interest',
+                              icon: 'sparkles-outline',
+                              onPress: () => handleMenuAction('convert', circle.id || '', circle.name || ''),
+                            },
                             {
                               id: 'rename',
                               label: 'Rename Circle',
@@ -417,6 +430,31 @@ const CirclesScreen = ({ navigation }) => {
         onCancel={cancelDelete}
         isLoading={isDeleting}
         destructive={true}
+      />
+
+      {/* Convert to Interest Confirmation Modal */}
+      <ConfirmationModal
+        visible={convertModalVisible}
+        title="Convert to Interest"
+        message={`Convert "${circleToConvert?.name}" to an interest? All members will automatically follow the new interest and existing posts will be moved. The circle will be removed.`}
+        confirmLabel="Convert"
+        cancelLabel="Cancel"
+        onConfirm={async () => {
+          if (!circleToConvert) return;
+          setIsConverting(true);
+          const result = await convertCircleToInterest(circleToConvert.id);
+          setIsConverting(false);
+          setConvertModalVisible(false);
+          setCircleToConvert(null);
+          if (!result) {
+            console.error('Failed to convert circle to interest');
+          }
+        }}
+        onCancel={() => {
+          setConvertModalVisible(false);
+          setCircleToConvert(null);
+        }}
+        isLoading={isConverting}
       />
 
       {/* Remove User Confirmation Modal */}
