@@ -3,6 +3,7 @@ using System;
 using Cliq.Server.Data;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 
@@ -11,9 +12,11 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace Cliq.Server.Migrations
 {
     [DbContext(typeof(CliqDbContext))]
-    partial class CliqDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260213082528_AddInterests")]
+    partial class AddInterests
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -425,38 +428,6 @@ namespace Cliq.Server.Migrations
                     b.ToTable("InterestAnnouncements", "public");
                 });
 
-            modelBuilder.Entity("Cliq.Server.Models.InterestDiscoveryNotification", b =>
-                {
-                    b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("uuid");
-
-                    b.Property<int>("FriendCount")
-                        .HasColumnType("integer");
-
-                    b.Property<Guid>("InterestId")
-                        .HasColumnType("uuid");
-
-                    b.Property<Guid>("RecipientUserId")
-                        .HasColumnType("uuid");
-
-                    b.Property<DateTime>("SentAt")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("timestamp with time zone")
-                        .HasDefaultValueSql("NOW()");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("InterestId");
-
-                    b.HasIndex("RecipientUserId");
-
-                    b.HasIndex("RecipientUserId", "InterestId")
-                        .IsUnique();
-
-                    b.ToTable("InterestDiscoveryNotifications", "public");
-                });
-
             modelBuilder.Entity("Cliq.Server.Models.InterestPost", b =>
                 {
                     b.Property<Guid>("InterestId")
@@ -675,9 +646,6 @@ namespace Cliq.Server.Migrations
 
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("timestamp with time zone");
-
-                    b.Property<bool>("DisableInterestDiscovery")
-                        .HasColumnType("boolean");
 
                     b.Property<string>("Email")
                         .HasMaxLength(256)
@@ -1117,25 +1085,6 @@ namespace Cliq.Server.Migrations
                     b.Navigation("Interest");
 
                     b.Navigation("User");
-                });
-
-            modelBuilder.Entity("Cliq.Server.Models.InterestDiscoveryNotification", b =>
-                {
-                    b.HasOne("Cliq.Server.Models.Interest", "Interest")
-                        .WithMany()
-                        .HasForeignKey("InterestId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.HasOne("Cliq.Server.Models.User", "RecipientUser")
-                        .WithMany()
-                        .HasForeignKey("RecipientUserId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.Navigation("Interest");
-
-                    b.Navigation("RecipientUser");
                 });
 
             modelBuilder.Entity("Cliq.Server.Models.InterestPost", b =>

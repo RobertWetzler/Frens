@@ -5,7 +5,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import Post from '../components/Post';
-import SubscribableCirclesCard from '../components/SubscribableCirclesCard';
+import DiscoverCard from '../components/DiscoverCard';
 import RecommendedFriendsCard from '../components/RecommendedFriendsCard';
 import getEnvVars from 'env'
 import { useFilteredFeed } from 'hooks/usePosts';
@@ -31,6 +31,7 @@ const HomeScreen = ({ navigation }) => {
         circles,
         availableSubscribableCircles,
         recommendedFriends,
+        suggestedInterests,
         notificationCount,
         isLoading,
         isRefreshing,
@@ -295,29 +296,29 @@ const HomeScreen = ({ navigation }) => {
                                     shouldAnimate={shouldAnimate}
                                     animationDelay={animationDelay}
                                 />
-                                {/* Show subscribable circles card after the second post (index 1), or after first if only 1-2 posts */}
-                                {availableSubscribableCircles && availableSubscribableCircles.length > 0 && 
+                                {/* Show discover card (circles + interests) after the second post */}
+                                {((availableSubscribableCircles && availableSubscribableCircles.length > 0) ||
+                                  (suggestedInterests && suggestedInterests.length > 0)) && 
                                  ((posts && posts.length >= 2 && index === 1) || (posts && posts.length < 2 && index === posts.length - 1)) && (
-                                    <SubscribableCirclesCard
-                                        circles={availableSubscribableCircles}
+                                    <DiscoverCard
+                                        circles={availableSubscribableCircles || []}
+                                        interests={suggestedInterests || []}
                                         shouldAnimate={shouldAnimate}
                                         animationDelay={animationDelay + 150}
-                                        onCircleSubscribed={(circleId) => {
-                                            // Refresh feed after subscribing to get new posts from that circle
-                                            // loadFeed();
+                                        onCircleSubscribed={(circleId) => {}}
+                                        onInterestFollowed={(interestName) => {
+                                            loadFeed();
                                         }}
                                     />
                                 )}
-                                {/* Show recommended friends card after subscribable circles (or after second post if no circles) */}
+                                {/* Show recommended friends card */}
                                 {recommendedFriends && recommendedFriends.length > 0 && 
                                  ((posts && posts.length >= 2 && index === 1) || (posts && posts.length < 2 && index === posts.length - 1)) && (
                                     <RecommendedFriendsCard
                                         friends={recommendedFriends}
                                         shouldAnimate={shouldAnimate}
-                                        animationDelay={animationDelay + (availableSubscribableCircles?.length > 0 ? 300 : 150)}
-                                        onFriendRequestSent={(userId) => {
-                                            // Optionally refresh feed after sending friend request
-                                        }}
+                                        animationDelay={animationDelay + 300}
+                                        onFriendRequestSent={(userId) => {}}
                                     />
                                 )}
                             </>
@@ -334,29 +335,31 @@ const HomeScreen = ({ navigation }) => {
                                 isFirstPost={index === 0}
                                 onFirstPostLayout={index === 0 ? setFirstPostHeight : undefined}
                             />
-                            {/* Show subscribable circles card after the second post (index 1), or after first if only 1-2 posts */}
-                            {availableSubscribableCircles && availableSubscribableCircles.length > 0 && 
+                            {/* Show discover card (circles + interests) after the second post */}
+                            {((availableSubscribableCircles && availableSubscribableCircles.length > 0) ||
+                              (suggestedInterests && suggestedInterests.length > 0)) && 
                              ((posts && posts.length >= 2 && index === 1) || (posts && posts.length < 2 && index === posts.length - 1)) && (
-                                <SubscribableCirclesCard
-                                    circles={availableSubscribableCircles}
+                                <DiscoverCard
+                                    circles={availableSubscribableCircles || []}
+                                    interests={suggestedInterests || []}
                                     shouldAnimate={shouldAnimate}
                                     animationDelay={animationDelay + 150}
                                     onCircleSubscribed={(circleId) => {
-                                        // Refresh feed after subscribing to get new posts from that circle
+                                        loadFeed();
+                                    }}
+                                    onInterestFollowed={(interestName) => {
                                         loadFeed();
                                     }}
                                 />
                             )}
-                            {/* Show recommended friends card after subscribable circles (or after second post if no circles) */}
+                            {/* Show recommended friends card */}
                             {recommendedFriends && recommendedFriends.length > 0 && 
                              ((posts && posts.length >= 2 && index === 1) || (posts && posts.length < 2 && index === posts.length - 1)) && (
                                 <RecommendedFriendsCard
                                     friends={recommendedFriends}
                                     shouldAnimate={shouldAnimate}
-                                    animationDelay={animationDelay + (availableSubscribableCircles?.length > 0 ? 300 : 150)}
-                                    onFriendRequestSent={(userId) => {
-                                        // Optionally refresh feed after sending friend request
-                                    }}
+                                    animationDelay={animationDelay + 300}
+                                    onFriendRequestSent={(userId) => {}}
                                 />
                             )}
                         </>

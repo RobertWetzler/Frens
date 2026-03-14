@@ -18,6 +18,12 @@ public class User : IdentityUser<Guid>
     public string? ProfilePictureKey { get; set; }
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
     public DateTime? LastLogin { get; set; }
+
+    /// <summary>
+    /// When true, the user will not receive notifications about new interests their friends are posting to.
+    /// Default is false (notifications enabled).
+    /// </summary>
+    public bool DisableInterestDiscovery { get; set; } = false;
     public ICollection<Friendship> FriendRequestsSent { get; set; } = new List<Friendship>();
     public ICollection<Friendship> FriendRequestsReceived { get; set; } = new List<Friendship>();
     public ICollection<Circle> OwnedCircles { get; set; }

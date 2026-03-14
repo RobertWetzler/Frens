@@ -178,6 +178,7 @@ public class IndividualPostTests : IClassFixture<DatabaseFixture>
             });
         var metricsService = new MetricsService();  // Use real instance, not mock
         var mockActivityService = new Mock<IUserActivityService>();
+        var mockInterestService = new Mock<IInterestService>();
         
         return new PostService(
             context,
@@ -190,7 +191,8 @@ public class IndividualPostTests : IClassFixture<DatabaseFixture>
             mockNotificationService.Object,
             _mockStorageService.Object,
             metricsService,
-            mockActivityService.Object);
+            mockActivityService.Object,
+            mockInterestService.Object);
     }
 
     [Fact]

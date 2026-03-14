@@ -51,6 +51,10 @@ public class PostNotificationIntegrationTests : IClassFixture<DatabaseFixture>
                 .ForMember(dest => dest.NotGoingCount, opt => opt.Ignore())
                 .ForMember(dest => dest.CurrentUserRsvp, opt => opt.Ignore());
             cfg.CreateMap<EventRsvp, EventRsvpDto>();
+            cfg.CreateMap<InterestPost, InterestPublicDto>()
+                .ForMember(dest => dest.Id, opt => opt.MapFrom(src => src.Interest != null ? src.Interest.Id : src.InterestId))
+                .ForMember(dest => dest.Name, opt => opt.MapFrom(src => src.Interest != null ? src.Interest.Name : string.Empty))
+                .ForMember(dest => dest.DisplayName, opt => opt.MapFrom(src => src.Interest != null ? src.Interest.DisplayName : string.Empty));
         });
         _mapper = mapperConfig.CreateMapper();
     }
@@ -62,6 +66,7 @@ public class PostNotificationIntegrationTests : IClassFixture<DatabaseFixture>
         var mockFriendshipLogger = new Mock<ILogger<FriendshipService>>();
         var mockCommentLogger = new Mock<ILogger<CommentService>>();
         var mockNotificationLogger = new Mock<ILogger<NotificationService>>();
+        var mockInterestLogger = new Mock<ILogger<InterestService>>();
         var mockStorageService = new Mock<IObjectStorageService>();
         var metricsService = new MetricsService();  // Use real instance, not mock
         var mockActivityService = new Mock<IUserActivityService>();
@@ -80,6 +85,7 @@ public class PostNotificationIntegrationTests : IClassFixture<DatabaseFixture>
         var commentService = new CommentService(context, _mapper, eventNotificationService, friendshipService, mockPostLogger.Object, mockActivityService.Object, mockStorageService.Object);
         var circleService = new CircleService(context, commentService, friendshipService, _mapper, eventNotificationService, mockCircleLogger.Object, mockStorageService.Object);
         var notificationService = new NotificationService(friendshipService, context, _mapper);
+        var interestService = new InterestService(context, friendshipService, mockInterestLogger.Object);
 
         var postService = new PostService(
             context,
@@ -92,7 +98,8 @@ public class PostNotificationIntegrationTests : IClassFixture<DatabaseFixture>
             notificationService,
             mockStorageService.Object,
             metricsService,
-            mockActivityService.Object
+            mockActivityService.Object,
+            interestService
         );
 
         return (postService, eventNotificationService);
@@ -412,5 +419,483 @@ public class PostNotificationIntegrationTests : IClassFixture<DatabaseFixture>
             .ToList();
 
         Assert.Empty(notifications);
+    }
+
+    [Fact]
+    public async Task CreatePost_WithInterest_NotifiesFriendsWhoFollowInterest()
+    {
+        // Arrange
+        using var context = _fixture.CreateContext();
+        var (postService, _) = CreateServices(context);
+
+        var authorId = Guid.NewGuid();
+        var friend1Id = Guid.NewGuid();
+        var friend2Id = Guid.NewGuid();
+        var nonFriendId = Guid.NewGuid();
+
+        var author = new User($"interest-author-{Guid.NewGuid()}@test.com") { Id = authorId, Name = "Interest Author" };
+        var friend1 = new User($"interest-friend1-{Guid.NewGuid()}@test.com") { Id = friend1Id, Name = "Friend 1" };
+        var friend2 = new User($"interest-friend2-{Guid.NewGuid()}@test.com") { Id = friend2Id, Name = "Friend 2" };
+        var nonFriend = new User($"interest-nonfriend-{Guid.NewGuid()}@test.com") { Id = nonFriendId, Name = "Non Friend" };
+
+        context.Users.AddRange(author, friend1, friend2, nonFriend);
+
+        // Create friendships (author <-> friend1, author <-> friend2)
+        context.Friendships.AddRange(
+            new Friendship { RequesterId = authorId, AddresseeId = friend1Id, Status = FriendshipStatus.Accepted, AcceptedAt = DateTime.UtcNow },
+            new Friendship { RequesterId = authorId, AddresseeId = friend2Id, Status = FriendshipStatus.Accepted, AcceptedAt = DateTime.UtcNow }
+        );
+
+        // Create an interest and subscribe friend1 + nonFriend (but not friend2)
+        var interest = new Interest { Id = Guid.NewGuid(), Name = "cooking", DisplayName = "Cooking", CreatedByUserId = authorId };
+        context.Set<Interest>().Add(interest);
+
+        context.InterestSubscriptions.AddRange(
+            new InterestSubscription { InterestId = interest.Id, UserId = friend1Id },
+            new InterestSubscription { InterestId = interest.Id, UserId = nonFriendId }
+        );
+
+        await context.SaveChangesAsync();
+
+        // Act - Create post with interest
+        var postDto = await postService.CreatePostAsync(
+            authorId,
+            Array.Empty<Guid>(),   // no circles
+            Array.Empty<Guid>(),   // no direct users
+            "Check out my cooking post!",
+            interestNames: new[] { "cooking" }
+        );
+
+        // Assert - Only friend1 should get notified (follows interest AND is friend)
+        // nonFriend follows interest but is not a friend, so no notification
+        // friend2 is a friend but does not follow the interest, so no notification
+        var allNotifications = await context.Set<Notification>()
+            .Where(n => n.Metadata != null)
+            .ToListAsync();
+        var notifications = allNotifications
+            .Where(n => n.Metadata!.Contains(postDto.Id.ToString()))
+            .ToList();
+
+        Assert.Single(notifications);
+        Assert.Equal(friend1Id, notifications[0].UserId);
+    }
+
+    [Fact]
+    public async Task CreatePost_WithDirectUsers_NotifiesDirectRecipients()
+    {
+        // Arrange
+        using var context = _fixture.CreateContext();
+        var (postService, _) = CreateServices(context);
+
+        var authorId = Guid.NewGuid();
+        var targetUserId = Guid.NewGuid();
+
+        var author = new User($"direct-author-{Guid.NewGuid()}@test.com") { Id = authorId, Name = "Direct Author" };
+        var targetUser = new User($"direct-target-{Guid.NewGuid()}@test.com") { Id = targetUserId, Name = "Target User" };
+
+        context.Users.AddRange(author, targetUser);
+
+        // Must be friends for direct sharing
+        context.Friendships.Add(
+            new Friendship { RequesterId = authorId, AddresseeId = targetUserId, Status = FriendshipStatus.Accepted, AcceptedAt = DateTime.UtcNow }
+        );
+
+        await context.SaveChangesAsync();
+
+        // Act
+        var postDto = await postService.CreatePostAsync(
+            authorId,
+            Array.Empty<Guid>(),      // no circles
+            new[] { targetUserId },    // direct user
+            "Direct message post"
+        );
+
+        // Assert - Target user gets notified
+        var allNotifications = await context.Set<Notification>()
+            .Where(n => n.Metadata != null)
+            .ToListAsync();
+        var notifications = allNotifications
+            .Where(n => n.Metadata!.Contains(postDto.Id.ToString()))
+            .ToList();
+
+        Assert.Single(notifications);
+        Assert.Equal(targetUserId, notifications[0].UserId);
+    }
+
+    [Fact]
+    public async Task CreatePost_WithCircleAndInterestOverlap_NoDuplicateNotifications()
+    {
+        // Arrange
+        using var context = _fixture.CreateContext();
+        var (postService, _) = CreateServices(context);
+
+        var authorId = Guid.NewGuid();
+        var friendId = Guid.NewGuid();
+        var circleId = Guid.NewGuid();
+
+        var author = new User($"overlap-author-{Guid.NewGuid()}@test.com") { Id = authorId, Name = "Overlap Author" };
+        var friend = new User($"overlap-friend-{Guid.NewGuid()}@test.com") { Id = friendId, Name = "Overlap Friend" };
+
+        context.Users.AddRange(author, friend);
+
+        // Friendship
+        context.Friendships.Add(
+            new Friendship { RequesterId = authorId, AddresseeId = friendId, Status = FriendshipStatus.Accepted, AcceptedAt = DateTime.UtcNow }
+        );
+
+        // Circle with friend as member
+        var circle = new Circle { Id = circleId, Name = "Overlap Circle", OwnerId = authorId, IsShared = false };
+        context.Circles.Add(circle);
+        context.CircleMemberships.Add(new CircleMembership { CircleId = circleId, UserId = friendId });
+
+        // Interest that friend also follows
+        var interest = new Interest { Id = Guid.NewGuid(), Name = "overlap_topic", DisplayName = "Overlap Topic", CreatedByUserId = authorId };
+        context.Set<Interest>().Add(interest);
+        context.InterestSubscriptions.Add(new InterestSubscription { InterestId = interest.Id, UserId = friendId });
+
+        await context.SaveChangesAsync();
+
+        // Act - Post to BOTH the circle and the interest
+        var postDto = await postService.CreatePostAsync(
+            authorId,
+            new[] { circleId },
+            Array.Empty<Guid>(),
+            "Overlap test post",
+            interestNames: new[] { "overlap_topic" }
+        );
+
+        // Assert - Friend should get exactly ONE notification, not two
+        var allNotifications = await context.Set<Notification>()
+            .Where(n => n.Metadata != null)
+            .ToListAsync();
+        var notifications = allNotifications
+            .Where(n => n.Metadata!.Contains(postDto.Id.ToString()))
+            .ToList();
+
+        Assert.Single(notifications);
+        Assert.Equal(friendId, notifications[0].UserId);
+    }
+
+    [Fact]
+    public async Task CreatePost_WithAllThreeAudienceTypes_DeduplicatesNotifications()
+    {
+        // Arrange - One user appears in circle, follows interest, AND is a direct recipient
+        using var context = _fixture.CreateContext();
+        var (postService, _) = CreateServices(context);
+
+        var authorId = Guid.NewGuid();
+        var friendId = Guid.NewGuid();
+        var circleOnlyId = Guid.NewGuid();
+        var circleId = Guid.NewGuid();
+
+        var author = new User($"all3-author-{Guid.NewGuid()}@test.com") { Id = authorId, Name = "Triple Author" };
+        var friend = new User($"all3-friend-{Guid.NewGuid()}@test.com") { Id = friendId, Name = "Triple Friend" };
+        var circleOnly = new User($"all3-circleonly-{Guid.NewGuid()}@test.com") { Id = circleOnlyId, Name = "Circle Only" };
+
+        context.Users.AddRange(author, friend, circleOnly);
+
+        // Friendships
+        context.Friendships.AddRange(
+            new Friendship { RequesterId = authorId, AddresseeId = friendId, Status = FriendshipStatus.Accepted, AcceptedAt = DateTime.UtcNow },
+            new Friendship { RequesterId = authorId, AddresseeId = circleOnlyId, Status = FriendshipStatus.Accepted, AcceptedAt = DateTime.UtcNow }
+        );
+
+        // Circle with both friend and circleOnly
+        var circle = new Circle { Id = circleId, Name = "All3 Circle", OwnerId = authorId, IsShared = false };
+        context.Circles.Add(circle);
+        context.CircleMemberships.AddRange(
+            new CircleMembership { CircleId = circleId, UserId = friendId },
+            new CircleMembership { CircleId = circleId, UserId = circleOnlyId }
+        );
+
+        // Interest that friend follows (but circleOnly does not)
+        var interest = new Interest { Id = Guid.NewGuid(), Name = "triple_test", DisplayName = "Triple Test", CreatedByUserId = authorId };
+        context.Set<Interest>().Add(interest);
+        context.InterestSubscriptions.Add(new InterestSubscription { InterestId = interest.Id, UserId = friendId });
+
+        await context.SaveChangesAsync();
+
+        // Act - Post to circle + interest + direct user (friend)
+        var postDto = await postService.CreatePostAsync(
+            authorId,
+            new[] { circleId },
+            new[] { friendId },      // friend is also direct
+            "All three audience types",
+            interestNames: new[] { "triple_test" }
+        );
+
+        // Assert - friend appears in all 3 audiences but gets exactly 1 notification
+        // circleOnly is only in the circle, gets 1 notification
+        var allNotifications = await context.Set<Notification>()
+            .Where(n => n.Metadata != null)
+            .ToListAsync();
+        var notifications = allNotifications
+            .Where(n => n.Metadata!.Contains(postDto.Id.ToString()))
+            .ToList();
+
+        Assert.Equal(2, notifications.Count);
+        Assert.Contains(notifications, n => n.UserId == friendId);
+        Assert.Contains(notifications, n => n.UserId == circleOnlyId);
+        // No duplicates
+        Assert.Equal(notifications.Count, notifications.Select(n => n.UserId).Distinct().Count());
+    }
+
+    [Fact]
+    public async Task CreatePost_WithInterest_SendsDiscoveryNotificationToNonFollowers()
+    {
+        // Arrange: Friend A posts to interest X. Friend B doesn't follow X.
+        // Friend B should get a discovery notification.
+        using var context = _fixture.CreateContext();
+        var (postService, _) = CreateServices(context);
+
+        var authorId = Guid.NewGuid();
+        var friendBId = Guid.NewGuid();
+
+        var author = new User($"disc-author-{Guid.NewGuid()}@test.com") { Id = authorId, Name = "Chef Alice" };
+        var friendB = new User($"disc-friendb-{Guid.NewGuid()}@test.com") { Id = friendBId, Name = "Friend Bob" };
+
+        context.Users.AddRange(author, friendB);
+
+        // Friendship
+        context.Friendships.Add(
+            new Friendship { RequesterId = authorId, AddresseeId = friendBId, Status = FriendshipStatus.Accepted, AcceptedAt = DateTime.UtcNow }
+        );
+
+        // Create the interest but Friend B does NOT follow it
+        var interest = new Interest { Id = Guid.NewGuid(), Name = "baking", DisplayName = "Baking", CreatedByUserId = authorId };
+        context.Set<Interest>().Add(interest);
+
+        await context.SaveChangesAsync();
+
+        // Act
+        var postDto = await postService.CreatePostAsync(
+            authorId,
+            Array.Empty<Guid>(),
+            Array.Empty<Guid>(),
+            "Just baked sourdough!",
+            interestNames: new[] { "baking" }
+        );
+
+        // Assert - Friend B gets a discovery notification about the interest
+        var allNotifications = await context.Set<Notification>()
+            .Where(n => n.Metadata != null)
+            .ToListAsync();
+        var discoveryNotifications = allNotifications
+            .Where(n => n.Metadata!.Contains("InterestDiscovery") && n.UserId == friendBId)
+            .ToList();
+
+        Assert.Single(discoveryNotifications);
+        Assert.Contains("Baking", discoveryNotifications[0].Title);
+        Assert.Contains("Chef Alice", discoveryNotifications[0].Title);
+
+        // Assert - Tracking record was created
+        var trackingRecord = await context.Set<InterestDiscoveryNotification>()
+            .Where(d => d.RecipientUserId == friendBId && d.InterestId == interest.Id)
+            .FirstOrDefaultAsync();
+
+        Assert.NotNull(trackingRecord);
+    }
+
+    [Fact]
+    public async Task CreatePost_WithInterest_DoesNotDoubleNotifyWithinCooldown()
+    {
+        // Arrange: Friend B was already notified about interest X recently.
+        // A second post to X should NOT send another discovery notification.
+        using var context = _fixture.CreateContext();
+        var (postService, _) = CreateServices(context);
+
+        var authorId = Guid.NewGuid();
+        var friendBId = Guid.NewGuid();
+
+        var author = new User($"cooldown-author-{Guid.NewGuid()}@test.com") { Id = authorId, Name = "Author" };
+        var friendB = new User($"cooldown-friendb-{Guid.NewGuid()}@test.com") { Id = friendBId, Name = "Friend B" };
+
+        context.Users.AddRange(author, friendB);
+        context.Friendships.Add(
+            new Friendship { RequesterId = authorId, AddresseeId = friendBId, Status = FriendshipStatus.Accepted, AcceptedAt = DateTime.UtcNow }
+        );
+
+        var interest = new Interest { Id = Guid.NewGuid(), Name = "yoga", DisplayName = "Yoga", CreatedByUserId = authorId };
+        context.Set<Interest>().Add(interest);
+
+        // Pre-existing tracking record (sent 5 days ago - within 30-day cooldown)
+        context.Set<InterestDiscoveryNotification>().Add(new InterestDiscoveryNotification
+        {
+            RecipientUserId = friendBId,
+            InterestId = interest.Id,
+            SentAt = DateTime.UtcNow.AddDays(-5),
+            FriendCount = 1
+        });
+
+        await context.SaveChangesAsync();
+
+        // Act
+        var postDto = await postService.CreatePostAsync(
+            authorId,
+            Array.Empty<Guid>(),
+            Array.Empty<Guid>(),
+            "Morning yoga session",
+            interestNames: new[] { "yoga" }
+        );
+
+        // Assert - No new discovery notification (within cooldown)
+        var allNotifications = await context.Set<Notification>()
+            .Where(n => n.Metadata != null)
+            .ToListAsync();
+        var discoveryNotifications = allNotifications
+            .Where(n => n.Metadata!.Contains("InterestDiscovery") && n.UserId == friendBId)
+            .ToList();
+
+        Assert.Empty(discoveryNotifications);
+    }
+
+    [Fact]
+    public async Task CreatePost_WithInterest_ReNotifiesAfterCooldownExpires()
+    {
+        // Arrange: Friend B was notified about interest X 35 days ago (past 30-day cooldown).
+        // A new post should re-notify with updated friend count.
+        using var context = _fixture.CreateContext();
+        var (postService, _) = CreateServices(context);
+
+        var authorId = Guid.NewGuid();
+        var friendBId = Guid.NewGuid();
+
+        var author = new User($"renotify-author-{Guid.NewGuid()}@test.com") { Id = authorId, Name = "Renotify Author" };
+        var friendB = new User($"renotify-friendb-{Guid.NewGuid()}@test.com") { Id = friendBId, Name = "Friend B" };
+
+        context.Users.AddRange(author, friendB);
+        context.Friendships.Add(
+            new Friendship { RequesterId = authorId, AddresseeId = friendBId, Status = FriendshipStatus.Accepted, AcceptedAt = DateTime.UtcNow }
+        );
+
+        var interest = new Interest { Id = Guid.NewGuid(), Name = "running", DisplayName = "Running", CreatedByUserId = authorId };
+        context.Set<Interest>().Add(interest);
+
+        // Expired tracking record (35 days ago)
+        context.Set<InterestDiscoveryNotification>().Add(new InterestDiscoveryNotification
+        {
+            RecipientUserId = friendBId,
+            InterestId = interest.Id,
+            SentAt = DateTime.UtcNow.AddDays(-35),
+            FriendCount = 1
+        });
+
+        await context.SaveChangesAsync();
+
+        // Act
+        var postDto = await postService.CreatePostAsync(
+            authorId,
+            Array.Empty<Guid>(),
+            Array.Empty<Guid>(),
+            "5K this morning!",
+            interestNames: new[] { "running" }
+        );
+
+        // Assert - Re-notified
+        var allNotifications = await context.Set<Notification>()
+            .Where(n => n.Metadata != null)
+            .ToListAsync();
+        var discoveryNotifications = allNotifications
+            .Where(n => n.Metadata!.Contains("InterestDiscovery") && n.UserId == friendBId)
+            .ToList();
+
+        Assert.Single(discoveryNotifications);
+
+        // Assert - Tracking record was updated (not duplicated)
+        var trackingRecords = await context.Set<InterestDiscoveryNotification>()
+            .Where(d => d.RecipientUserId == friendBId && d.InterestId == interest.Id)
+            .ToListAsync();
+
+        Assert.Single(trackingRecords);
+        Assert.True(trackingRecords[0].SentAt > DateTime.UtcNow.AddMinutes(-1)); // Recently updated
+    }
+
+    [Fact]
+    public async Task CreatePost_WithInterest_RespectsOptOutSetting()
+    {
+        // Arrange: Friend B has opted out of interest discovery notifications.
+        using var context = _fixture.CreateContext();
+        var (postService, _) = CreateServices(context);
+
+        var authorId = Guid.NewGuid();
+        var friendBId = Guid.NewGuid();
+
+        var author = new User($"optout-author-{Guid.NewGuid()}@test.com") { Id = authorId, Name = "Author" };
+        var friendB = new User($"optout-friendb-{Guid.NewGuid()}@test.com") { Id = friendBId, Name = "Friend B", DisableInterestDiscovery = true };
+
+        context.Users.AddRange(author, friendB);
+        context.Friendships.Add(
+            new Friendship { RequesterId = authorId, AddresseeId = friendBId, Status = FriendshipStatus.Accepted, AcceptedAt = DateTime.UtcNow }
+        );
+
+        var interest = new Interest { Id = Guid.NewGuid(), Name = "gaming", DisplayName = "Gaming", CreatedByUserId = authorId };
+        context.Set<Interest>().Add(interest);
+
+        await context.SaveChangesAsync();
+
+        // Act
+        var postDto = await postService.CreatePostAsync(
+            authorId,
+            Array.Empty<Guid>(),
+            Array.Empty<Guid>(),
+            "New game review!",
+            interestNames: new[] { "gaming" }
+        );
+
+        // Assert - No discovery notification because Friend B opted out
+        var allNotifications = await context.Set<Notification>()
+            .Where(n => n.Metadata != null)
+            .ToListAsync();
+        var discoveryNotifications = allNotifications
+            .Where(n => n.Metadata!.Contains("InterestDiscovery") && n.UserId == friendBId)
+            .ToList();
+
+        Assert.Empty(discoveryNotifications);
+    }
+
+    [Fact]
+    public async Task CreatePost_WithInterest_SkipsDiscoveryForFriendsAlreadyFollowing()
+    {
+        // Arrange: Friend B already follows the interest. No discovery needed.
+        using var context = _fixture.CreateContext();
+        var (postService, _) = CreateServices(context);
+
+        var authorId = Guid.NewGuid();
+        var friendBId = Guid.NewGuid();
+
+        var author = new User($"follows-author-{Guid.NewGuid()}@test.com") { Id = authorId, Name = "Author" };
+        var friendB = new User($"follows-friendb-{Guid.NewGuid()}@test.com") { Id = friendBId, Name = "Friend B" };
+
+        context.Users.AddRange(author, friendB);
+        context.Friendships.Add(
+            new Friendship { RequesterId = authorId, AddresseeId = friendBId, Status = FriendshipStatus.Accepted, AcceptedAt = DateTime.UtcNow }
+        );
+
+        var interest = new Interest { Id = Guid.NewGuid(), Name = "photography", DisplayName = "Photography", CreatedByUserId = authorId };
+        context.Set<Interest>().Add(interest);
+
+        // Friend B already follows the interest
+        context.InterestSubscriptions.Add(new InterestSubscription { InterestId = interest.Id, UserId = friendBId });
+
+        await context.SaveChangesAsync();
+
+        // Act
+        var postDto = await postService.CreatePostAsync(
+            authorId,
+            Array.Empty<Guid>(),
+            Array.Empty<Guid>(),
+            "Sunset photo!",
+            interestNames: new[] { "photography" }
+        );
+
+        // Assert - No discovery notification (already following)
+        var allNotifications = await context.Set<Notification>()
+            .Where(n => n.Metadata != null)
+            .ToListAsync();
+        var discoveryNotifications = allNotifications
+            .Where(n => n.Metadata!.Contains("InterestDiscovery") && n.UserId == friendBId)
+            .ToList();
+
+        Assert.Empty(discoveryNotifications);
     }
 }

@@ -64,6 +64,12 @@ public class MappingProfile : Profile
 
         // Notification mappings
         CreateMap<Notification, NotificationDto>();
+
+        // Interest mappings
+        CreateMap<InterestPost, InterestPublicDto>()
+            .ForMember(dest => dest.Id, opt => opt.MapFrom(src => src.Interest != null ? src.Interest.Id : src.InterestId))
+            .ForMember(dest => dest.Name, opt => opt.MapFrom(src => src.Interest != null ? src.Interest.Name : string.Empty))
+            .ForMember(dest => dest.DisplayName, opt => opt.MapFrom(src => src.Interest != null ? src.Interest.DisplayName : string.Empty));
     }
 }
 

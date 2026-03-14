@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import { CirclePublicDto, CircleWithMembersDto, UpdateUsersInCircleRequest, UserDto } from '../services/generated/generatedClient';
+import { CirclePublicDto, CircleWithMembersDto, InterestPublicDto, InterestSuggestionDto, UpdateUsersInCircleRequest, UserDto } from '../services/generated/generatedClient';
 import { ApiClient } from 'services/apiClient';
 
 export function useMemberCircles() {
@@ -32,6 +32,8 @@ export function useMemberCircles() {
 export function useCreatePostData() {
     const [circles, setCircles] = useState<CirclePublicDto[]>([]);
     const [friends, setFriends] = useState<UserDto[]>([]);
+    const [followedInterests, setFollowedInterests] = useState<InterestPublicDto[]>([]);
+    const [suggestedInterests, setSuggestedInterests] = useState<InterestSuggestionDto[]>([]);
     const [isLoading, setIsLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
 
@@ -41,12 +43,16 @@ export function useCreatePostData() {
             const data = await ApiClient.call(c => c.post_GetCreatePostData());
             setCircles(data.circles || []);
             setFriends(data.friends || []);
+            setFollowedInterests(data.followedInterests || []);
+            setSuggestedInterests(data.suggestedInterests || []);
             setError(null);
         } catch (err) {
             console.log("Failed to load create post data with err " + err)
             setError('Failed to load data');
             setCircles([]);
             setFriends([]);
+            setFollowedInterests([]);
+            setSuggestedInterests([]);
         } finally {
             setIsLoading(false);
         }
@@ -56,7 +62,7 @@ export function useCreatePostData() {
         loadData();
     }, [loadData]);
 
-    return { circles, friends, isLoading, error, loadData };
+    return { circles, friends, followedInterests, suggestedInterests, isLoading, error, loadData };
 }
 
 export function useCirclesWithMembers() {

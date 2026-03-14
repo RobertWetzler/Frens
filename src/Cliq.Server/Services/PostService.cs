@@ -13,7 +13,7 @@ public interface IPostService
     Task<FeedDto> GetFilteredFeedForUserAsync(Guid userId, Guid[]? circleIds, int page = 1, int pageSize = 20);
     Task<List<PostDto>> GetAllPostsAsync(bool includeCommentCount = false);
     Task<IEnumerable<PostDto>> GetUserPostsAsync(Guid userId, int page = 1, int pageSize = 20);
-    Task<PostDto> CreatePostAsync(Guid userId, Guid[] circleIds, Guid[] userIds, string text, IEnumerable<string>? imageObjectKeys = null, List<MentionDto>? mentions = null);
+    Task<PostDto> CreatePostAsync(Guid userId, Guid[] circleIds, Guid[] userIds, string text, IEnumerable<string>? imageObjectKeys = null, List<MentionDto>? mentions = null, string[]? interestNames = null, bool announceNewInterests = false);
     Task<PostDto?> UpdatePostAsync(Guid id, Guid updatedByUserId, string newText);
     Task<bool> DeletePostAsync(Guid id, Guid deletedByUserId);
     Task<bool> PostExistsAsync(Guid id);
@@ -36,6 +36,7 @@ public class PostService : IPostService
     private readonly IObjectStorageService _storage;
     private readonly MetricsService _metricsService;
     private readonly IUserActivityService _activityService;
+    private readonly IInterestService _interestService;
 
     public PostService(
         CliqDbContext dbContext,
@@ -48,7 +49,8 @@ public class PostService : IPostService
     INotificationService notificationService,
     IObjectStorageService storage,
     MetricsService metricsService,
-    IUserActivityService activityService)
+    IUserActivityService activityService,
+    IInterestService interestService)
     {
         _dbContext = dbContext;
         _commentService = commentService;
@@ -61,6 +63,7 @@ public class PostService : IPostService
     _storage = storage;
     _metricsService = metricsService;
     _activityService = activityService;
+    _interestService = interestService;
     }
 
     /// <summary>
@@ -350,13 +353,27 @@ public class PostService : IPostService
             // 1. Created by the user (so they see their own posts)
             // 2. Shared with user's circles
             // 3. Shared directly with the user
+            // 4. Shared to interests the user follows, from friends
             // Also track which posts were shared directly with the user (for privacy flag)
+
+            // Pre-fetch the user's followed interest IDs and friend IDs for the interest query
+            var followedInterestIds = await _dbContext.InterestSubscriptions
+                .Where(s => s.UserId == userId)
+                .Select(s => s.InterestId)
+                .ToListAsync();
+
+            var friendIdsForInterests = (await _friendshipService.GetFriendsAsync(userId))
+                .Select(f => f.Id).ToList();
+
             var postsWithSharingInfo = await _dbContext.Posts
                 .Where(p => 
                     p.UserId == userId ||
                     p.SharedWithCircles.Any(cp =>
                         cp.Circle != null && cp.Circle.Members.Any(m => m.UserId == userId)) ||
-                    p.SharedWithUsers.Any(ip => ip.UserId == userId))
+                    p.SharedWithUsers.Any(ip => ip.UserId == userId) ||
+                    // Interest-based: post is in an interest the user follows, from a friend
+                    (p.SharedWithInterests.Any(ip => followedInterestIds.Contains(ip.InterestId)) &&
+                     friendIdsForInterests.Contains(p.UserId)))
                 .OrderByDescending(p => p.Date)
                 .Skip((page - 1) * pageSize)
                 .Take(pageSize)
@@ -418,6 +435,9 @@ public class PostService : IPostService
             var circlesByPost = circleInfo
                 .GroupBy(c => c.PostId)
                 .ToDictionary(g => g.Key, g => g.ToList());
+
+            // Step 3b: Get interest information for posts (filtered to viewer's followed interests for privacy)
+            var interestsByPost = await _interestService.GetInterestsForPostsAsync(postIds, followedInterestIds);
 
             // Step 4: Get full sharing info ONLY for posts owned by the current user (for privacy)
             var ownedPostIds = postsWithComments
@@ -505,6 +525,11 @@ public class PostService : IPostService
                 
                 // Set flag if this post was shared directly with the current user
                 dto.SharedWithYouDirectly = postsSharedWithCurrentUserSet.Contains(pc.Post.Id);
+
+                // Populate interests for this post
+                dto.SharedWithInterests = interestsByPost.TryGetValue(pc.Post.Id, out var interests)
+                    ? interests
+                    : new List<InterestPublicDto>();
                 
                 return dto;
             }).ToList();
@@ -516,6 +541,7 @@ public class PostService : IPostService
             // Only fetch recommended content on first page to improve performance
             var availableSubscribableCircles = new List<SubscribableCircleDto>();
             var recommendedFriends = new List<RecommendedFriendDto>();
+            var suggestedInterests = new List<InterestSuggestionDto>();
             
             if (page == 1)
             {
@@ -529,22 +555,28 @@ public class PostService : IPostService
                     .Select(cm => cm.CircleId)
                     .ToListAsync();
                 
-                // Get subscribable circles from friends where user is not a member
+                // Get subscribable circles from friends, sorted by most recent post activity
                 availableSubscribableCircles = await _dbContext.Circles
                     .Where(c => c.IsSubscribable && 
                                friendIds.Contains(c.OwnerId) && 
                                !userCircleIds.Contains(c.Id))
                     .Include(c => c.Owner)
-                    .Select(c => new SubscribableCircleDto
+                    .Select(c => new 
                     {
-                        Id = c.Id,
-                        Name = c.Name,
+                        Circle = c,
+                        LatestPost = c.Posts.Max(cp => (DateTime?)cp.SharedAt)
+                    })
+                    .OrderByDescending(x => x.LatestPost)
+                    .Select(x => new SubscribableCircleDto
+                    {
+                        Id = x.Circle.Id,
+                        Name = x.Circle.Name,
                         Owner = new UserDto
                         {
-                            Id = c.Owner!.Id,
-                            Name = c.Owner.Name,
-                            ProfilePictureUrl = !string.IsNullOrEmpty(c.Owner.ProfilePictureKey)
-                                ? _storage.GetProfilePictureUrl(c.Owner.ProfilePictureKey)
+                            Id = x.Circle.Owner!.Id,
+                            Name = x.Circle.Owner.Name,
+                            ProfilePictureUrl = !string.IsNullOrEmpty(x.Circle.Owner.ProfilePictureKey)
+                                ? _storage.GetProfilePictureUrl(x.Circle.Owner.ProfilePictureKey)
                                 : null
                         }
                     })
@@ -552,6 +584,9 @@ public class PostService : IPostService
                 
                 // Get recommended friends based on mutual connections (single optimized query)
                 recommendedFriends = await _friendshipService.GetRecommendedFriendsRawSqlAsync(userId, limit: 5, minimumMutualFriends: 2);
+
+                // Get recommended interests: popular among friends but not yet followed
+                suggestedInterests = await _interestService.GetRecommendedInterestsForFeedAsync(userId, limit: 5);
             }
             
             // Increment custom metrics for home feed loads
@@ -566,7 +601,8 @@ public class PostService : IPostService
                 NotificationCount = notificationCount,
                 UserCircles = userCircles.ToList(),
                 AvailableSubscribableCircles = availableSubscribableCircles,
-                RecommendedFriends = recommendedFriends
+                RecommendedFriends = recommendedFriends,
+                SuggestedInterests = suggestedInterests
             };
         }
         catch (Exception ex)
@@ -581,6 +617,15 @@ public class PostService : IPostService
         try
         {
             IQueryable<Post> baseQuery;
+
+            // Pre-fetch the user's followed interest IDs and friend IDs for interest queries
+            var filteredFollowedInterestIds = await _dbContext.InterestSubscriptions
+                .Where(s => s.UserId == userId)
+                .Select(s => s.InterestId)
+                .ToListAsync();
+
+            var filteredFriendIds = (await _friendshipService.GetFriendsAsync(userId))
+                .Select(f => f.Id).ToList();
             
             if (circleIds == null || circleIds.Length == 0)
             {
@@ -590,7 +635,10 @@ public class PostService : IPostService
                         p.UserId == userId ||
                         p.SharedWithCircles.Any(cp =>
                             cp.Circle != null && cp.Circle.Members.Any(m => m.UserId == userId)) ||
-                        p.SharedWithUsers.Any(ip => ip.UserId == userId));
+                        p.SharedWithUsers.Any(ip => ip.UserId == userId) ||
+                        // Interest-based: post is in an interest the user follows, from a friend
+                        (p.SharedWithInterests.Any(ip => filteredFollowedInterestIds.Contains(ip.InterestId)) &&
+                         filteredFriendIds.Contains(p.UserId)));
             }
             else
             {
@@ -663,6 +711,9 @@ public class PostService : IPostService
             var circlesByPost = circleInfo
                 .GroupBy(c => c.PostId)
                 .ToDictionary(g => g.Key, g => g.ToList());
+
+            // Step 3b: Get interest information for posts (filtered to viewer's followed interests for privacy)
+            var filteredInterestsByPost = await _interestService.GetInterestsForPostsAsync(postIds, filteredFollowedInterestIds);
 
             // Step 4: Get full sharing info ONLY for posts owned by the current user (for privacy)
             var ownedPostIds = postsWithComments
@@ -750,6 +801,11 @@ public class PostService : IPostService
                 
                 // Set flag if this post was shared directly with the current user
                 dto.SharedWithYouDirectly = postsSharedWithCurrentUserSet.Contains(pc.Post.Id);
+
+                // Populate interests for this post
+                dto.SharedWithInterests = filteredInterestsByPost.TryGetValue(pc.Post.Id, out var filteredInterests)
+                    ? filteredInterests
+                    : new List<InterestPublicDto>();
                 
                 return dto;
             }).ToList();
@@ -760,6 +816,7 @@ public class PostService : IPostService
             // Only fetch recommended content on first page to improve performance
             var availableSubscribableCircles = new List<SubscribableCircleDto>();
             var recommendedFriends = new List<RecommendedFriendDto>();
+            var suggestedInterests = new List<InterestSuggestionDto>();
             
             if (page == 1)
             {
@@ -773,22 +830,28 @@ public class PostService : IPostService
                     .Select(cm => cm.CircleId)
                     .ToListAsync();
                 
-                // Get subscribable circles from friends where user is not a member
+                // Get subscribable circles from friends, sorted by most recent post activity
                 availableSubscribableCircles = await _dbContext.Circles
                     .Where(c => c.IsSubscribable && 
                                friendIds.Contains(c.OwnerId) && 
                                !userCircleIds.Contains(c.Id))
                     .Include(c => c.Owner)
-                    .Select(c => new SubscribableCircleDto
+                    .Select(c => new 
                     {
-                        Id = c.Id,
-                        Name = c.Name,
+                        Circle = c,
+                        LatestPost = c.Posts.Max(cp => (DateTime?)cp.SharedAt)
+                    })
+                    .OrderByDescending(x => x.LatestPost)
+                    .Select(x => new SubscribableCircleDto
+                    {
+                        Id = x.Circle.Id,
+                        Name = x.Circle.Name,
                         Owner = new UserDto
                         {
-                            Id = c.Owner!.Id,
-                            Name = c.Owner.Name,
-                            ProfilePictureUrl = !string.IsNullOrEmpty(c.Owner.ProfilePictureKey)
-                                ? _storage.GetProfilePictureUrl(c.Owner.ProfilePictureKey)
+                            Id = x.Circle.Owner!.Id,
+                            Name = x.Circle.Owner.Name,
+                            ProfilePictureUrl = !string.IsNullOrEmpty(x.Circle.Owner.ProfilePictureKey)
+                                ? _storage.GetProfilePictureUrl(x.Circle.Owner.ProfilePictureKey)
                                 : null
                         }
                     })
@@ -796,6 +859,9 @@ public class PostService : IPostService
                 
                 // Get recommended friends based on mutual connections (single optimized query)
                 recommendedFriends = await _friendshipService.GetRecommendedFriendsRawSqlAsync(userId, limit: 5, minimumMutualFriends: 2);
+
+                // Get recommended interests: popular among friends but not yet followed
+                suggestedInterests = await _interestService.GetRecommendedInterestsForFeedAsync(userId, limit: 5);
             }
             
             return new FeedDto
@@ -804,7 +870,8 @@ public class PostService : IPostService
                 NotificationCount = notificationCount,
                 UserCircles = userCircles.ToList(),
                 AvailableSubscribableCircles = availableSubscribableCircles,
-                RecommendedFriends = recommendedFriends
+                RecommendedFriends = recommendedFriends,
+                SuggestedInterests = suggestedInterests
             };
         }
         catch (Exception ex)
@@ -900,7 +967,7 @@ public class PostService : IPostService
         }
     }
 
-    public async Task<PostDto> CreatePostAsync(Guid userId, Guid[] circleIds, Guid[] userIds, string text, IEnumerable<string>? imageObjectKeys = null, List<MentionDto>? mentions = null)
+    public async Task<PostDto> CreatePostAsync(Guid userId, Guid[] circleIds, Guid[] userIds, string text, IEnumerable<string>? imageObjectKeys = null, List<MentionDto>? mentions = null, string[]? interestNames = null, bool announceNewInterests = false)
     {
         var user = await this._dbContext.Users.FirstOrDefaultAsync(u => u.Id == userId);
         if (user == null)
@@ -953,6 +1020,59 @@ public class PostService : IPostService
 
             await _dbContext.IndividualPosts.AddRangeAsync(individualPosts);
             await _dbContext.CirclePosts.AddRangeAsync(circlePosts);
+
+            // Handle interests: get-or-create each interest and link to the post
+            var resolvedInterestIds = new List<Guid>();
+            if (interestNames != null && interestNames.Length > 0)
+            {
+                foreach (var interestName in interestNames.Distinct())
+                {
+                    var (normalizedName, displayName, validationError) = Utilities.InterestNameHelper.NormalizeAndValidate(interestName);
+                    if (validationError != null)
+                    {
+                        _logger.LogWarning("Skipping invalid interest name '{InterestName}': {Error}", interestName, validationError);
+                        continue;
+                    }
+
+                    var interest = await _interestService.GetOrCreateInterestAsync(normalizedName, displayName, userId);
+                    resolvedInterestIds.Add(interest.Id);
+
+                    var interestPost = new InterestPost
+                    {
+                        InterestId = interest.Id,
+                        PostId = post.Id,
+                        SharedAt = DateTime.UtcNow,
+                        WasAnnounced = false
+                    };
+                    await _dbContext.InterestPosts.AddAsync(interestPost);
+
+                    // Auto-subscribe the poster to the interest if not already following
+                    var alreadyFollowing = await _dbContext.InterestSubscriptions
+                        .AnyAsync(s => s.InterestId == interest.Id && s.UserId == userId);
+                    if (!alreadyFollowing)
+                    {
+                        await _dbContext.InterestSubscriptions.AddAsync(new InterestSubscription
+                        {
+                            InterestId = interest.Id,
+                            UserId = userId,
+                            SubscribedAt = DateTime.UtcNow
+                        });
+                    }
+
+                    // Handle announcement for new interests
+                    if (announceNewInterests)
+                    {
+                        var friendsFollowing = await _dbContext.InterestSubscriptions
+                            .AnyAsync(s => s.InterestId == interest.Id && s.UserId != userId);
+                        if (!friendsFollowing && await _interestService.CanAnnounceInterestAsync(userId))
+                        {
+                            interestPost.WasAnnounced = true;
+                            await _interestService.RecordAnnouncementAsync(userId, interest.Id);
+                        }
+                    }
+                }
+            }
+
             await SaveChangesAsync();
 
             // Reload the post with relationships before committing
@@ -986,8 +1106,9 @@ public class PostService : IPostService
                     circleIds, 
                     user.Name, 
                     imageObjectKeys != null && imageObjectKeys.Any(),
-                    directUserIds: userIds,
-                    excludeUserIds: mentionedUserIds);
+                    excludeUserIds: mentionedUserIds,
+                    interestIds: resolvedInterestIds,
+                    directUserIds: userIds);
 
                 // Send mention notifications for validated mentions
                 if (mentionedUserIds.Any())
@@ -998,6 +1119,23 @@ public class PostService : IPostService
                         user.Name,
                         text,
                         mentionedUserIds);
+                }
+
+                // Send interest discovery notifications to friends who don't follow each interest.
+                // Done here (after SaveChangesAsync) so InterestPost records are flushed and
+                // all notification logic is in the same transaction + error handling block.
+                if (resolvedInterestIds.Count > 0)
+                {
+                    // Load interest details for the resolved IDs
+                    var interests = await _dbContext.Interests
+                        .Where(i => resolvedInterestIds.Contains(i.Id))
+                        .ToListAsync();
+
+                    foreach (var interest in interests)
+                    {
+                        await _eventNotificationService.SendInterestDiscoveryNotificationsAsync(
+                            userId, user.Name, interest.Id, interest.Name, interest.DisplayName);
+                    }
                 }
             }
             catch (Exception ex)

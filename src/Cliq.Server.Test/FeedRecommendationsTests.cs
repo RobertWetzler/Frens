@@ -193,6 +193,7 @@ public class FeedRecommendationsTests : IClassFixture<DatabaseFixture>
         
         var metricsService = new MetricsService();
         var mockActivityService = new Mock<IUserActivityService>();
+        var mockInterestService = new Mock<IInterestService>();
         
         return new PostService(
             context,
@@ -205,7 +206,8 @@ public class FeedRecommendationsTests : IClassFixture<DatabaseFixture>
             mockNotificationService.Object,
             _mockStorageService.Object,
             metricsService,
-            mockActivityService.Object);
+            mockActivityService.Object,
+            mockInterestService.Object);
     }
 
     #region Page 1 Returns Recommendations

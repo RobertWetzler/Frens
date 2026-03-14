@@ -14,4 +14,9 @@ public class FeedDto
     /// These are people who share friends with you but are not yet connected.
     /// </summary>
     public List<RecommendedFriendDto> RecommendedFriends { get; set; } = new List<RecommendedFriendDto>();
+    /// <summary>
+    /// Interests popular among the user's friends that the user has not yet followed.
+    /// Shown as suggestions in the feed (similar to AvailableSubscribableCircles).
+    /// </summary>
+    public List<InterestSuggestionDto> SuggestedInterests { get; set; } = new List<InterestSuggestionDto>();
 }

@@ -16,7 +16,8 @@ public enum NotificationType
     PostMention,
     CommentMention,
     NewSubscribableCircle,
-    NewSubscribableCircleNoFollow
+    NewSubscribableCircleNoFollow,
+    InterestDiscovery
 }
 
 /// <summary>
@@ -511,6 +512,58 @@ public class CommentMentionNotificationData : NotificationData
     }
 
     public override string? Navigate => $"/post/{PostId}";
+}
+
+/// <summary>
+/// Notification data for when a friend starts posting to an interest you don't follow.
+/// </summary>
+public class InterestDiscoveryNotificationData : NotificationData
+{
+    public Guid InterestId { get; set; }
+    public required string InterestName { get; set; }
+    public required string InterestDisplayName { get; set; }
+    public Guid AuthorId { get; set; }
+    public required string AuthorName { get; set; }
+    /// <summary>
+    /// Number of friends posting to this interest (used for re-notification after cooldown).
+    /// </summary>
+    public int FriendCount { get; set; } = 1;
+
+    public InterestDiscoveryNotificationData()
+    {
+        Type = NotificationType.InterestDiscovery;
+    }
+
+    public override string Title
+    {
+        get => FriendCount > 1
+            ? $"{FriendCount} friends are posting to #{InterestDisplayName}"
+            : $"{AuthorName} started posting to #{InterestDisplayName}";
+        set { }
+    }
+
+    public override string Message
+    {
+        get => "Follow to join the conversation!";
+        set { }
+    }
+
+    public override string Metadata
+    {
+        get => new
+        {
+            Type = Type.ToString(),
+            InterestId,
+            InterestName,
+            InterestDisplayName,
+            AuthorId,
+            AuthorName,
+            FriendCount
+        }.ToJson();
+        set { }
+    }
+
+    public override string? Navigate => $"/interests";
 }
 
 public static class JsonExtensions
