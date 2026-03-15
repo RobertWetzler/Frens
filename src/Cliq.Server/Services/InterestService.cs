@@ -531,7 +531,7 @@ public class InterestService : IInterestService
                 FriendPostCount = g.Select(ip => ip.Post!.UserId).Distinct().Count(),
                 MostRecentPost = g.Max(ip => ip.SharedAt)
             })
-            .Where(g => g.FriendPostCount >= 2) // At least 2 friends post to it
+            .Where(g => g.FriendPostCount >= 1) // At least 1 friend posts to it
             .OrderByDescending(g => g.MostRecentPost)
             .ThenByDescending(g => g.FriendPostCount)
             .Take(limit)

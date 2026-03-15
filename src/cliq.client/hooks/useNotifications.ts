@@ -25,6 +25,29 @@ class NewSubscribableCircle implements IEnrichedNotification {
     }
 }
 
+class InterestDiscoveryNotification implements IEnrichedNotification {
+    id: string;
+    fromId: string;
+    fromName: string;
+    interestId: string;
+    interestName: string;
+    interestDisplayName: string;
+    friendCount: number;
+    metadata: any;
+    createdAt: any;
+    constructor(id, fromId, fromName, interestId, interestName, interestDisplayName, friendCount, createdAt, metadata) {
+        this.id = id
+        this.fromId = fromId
+        this.fromName = fromName
+        this.interestId = interestId
+        this.interestName = interestName
+        this.interestDisplayName = interestDisplayName
+        this.friendCount = friendCount
+        this.createdAt = createdAt
+        this.metadata = metadata
+    }
+}
+
 // class NewComment implements IEnrichedNotification {
 //   fromId: string;
 //   fromName: string;
@@ -48,7 +71,7 @@ class NewSubscribableCircle implements IEnrichedNotification {
 // TODO: Make a generic hook for API calls.
 export function useNotificationFeed() {
     const [notificationFeed, setNotificationFeed] = useState<NotificationFeedDto>();
-    const [processedNotifications, setProcessedNotifications] = useState<NewSubscribableCircle[]>();
+    const [processedNotifications, setProcessedNotifications] = useState<(NewSubscribableCircle | InterestDiscoveryNotification)[]>();
     // const [combinedNotificationFeed, setCombinedNotificationFeed] = useState<(NewSubscribableCircle[]>();
     const [isLoading, setIsLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
@@ -75,21 +98,21 @@ export function useNotificationFeed() {
                         n.createdAt,
                         metadata)
                 }
+                if (metadata["Type"] == "InterestDiscovery") {
+                    return new InterestDiscoveryNotification(
+                        n.id,
+                        metadata["AuthorId"],
+                        metadata["AuthorName"],
+                        metadata["InterestId"],
+                        metadata["InterestName"],
+                        metadata["InterestDisplayName"],
+                        metadata["FriendCount"] || 1,
+                        n.createdAt,
+                        metadata)
+                }
                 console.log("Not returning newsubcircle notif")
-                // Can only add new notifs once we update their metadata to have the right values. Set all existing to "already read" so they dont get loaded
-                // if (metadata["Type"] == "NewComment")
-                // {
-                //   return new NewComment(
-                //     metadata["CommenterId"],
-                //     metadata["CommenterName"],
-                //     metadata["CommentId"],
-                //     metadata["PostId"],
-                //     metadata["CommentTexxt"],
-                //     metadata
-                //   )
-                // }
             }
-            );
+            ).filter(Boolean);
             setProcessedNotifications(processedNotifications);
 
             // Make combined feed

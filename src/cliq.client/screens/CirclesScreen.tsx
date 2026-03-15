@@ -370,12 +370,6 @@ const CirclesScreen = ({ navigation }) => {
                               onPress: () => handleMenuAction('convert', circle.id || '', circle.name || ''),
                             },
                             {
-                              id: 'rename',
-                              label: 'Rename Circle',
-                              icon: 'pencil-outline',
-                              onPress: () => handleMenuAction('rename', circle.id || '', circle.name || ''),
-                            },
-                            {
                               id: 'delete',
                               label: 'Delete Circle',
                               icon: 'trash-outline',

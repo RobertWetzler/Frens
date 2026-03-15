@@ -33,6 +33,29 @@ class NewSubscribableCircle implements IEnrichedNotification {
   }
 }
 
+class InterestDiscoveryNotification implements IEnrichedNotification {
+  id: string;
+  fromId: string;
+  fromName: string;
+  interestId: string;
+  interestName: string;
+  interestDisplayName: string;
+  friendCount: number;
+  metadata: any;
+  createdAt: any;
+  constructor(id, fromId, fromName, interestId, interestName, interestDisplayName, friendCount, createdAt, metadata) {
+    this.id = id
+    this.fromId = fromId
+    this.fromName = fromName
+    this.interestId = interestId
+    this.interestName = interestName
+    this.interestDisplayName = interestDisplayName
+    this.friendCount = friendCount
+    this.createdAt = createdAt
+    this.metadata = metadata
+  }
+}
+
 // class NewComment implements IEnrichedNotification {
 //   fromId: string;
 //   fromName: string;
@@ -86,6 +109,14 @@ const NotificationsScreen: React.FC<NotificationsScreenProps> = ({ navigation })
   };
   const handleAvatarPress = (userId: string) => navigation.navigate('Profile', { userId });
 
+  const handleFollowInterest = async (interestName: string) => {
+    try {
+      const { FollowInterestRequest } = await import('services/generated/generatedClient');
+      await ApiClient.call(c => c.interest_FollowInterest(interestName, new FollowInterestRequest()));
+      loadNotificationFeed();
+    } catch (e) { console.error('Failed to follow interest:', e); }
+  };
+
   const sortedFriendRequests = notificationFeed?.friendRequests?.slice().sort((a, b) => {
     if (!a.createdAt || !b.createdAt) return 0; return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
   }) || [];
@@ -133,11 +164,12 @@ const NotificationsScreen: React.FC<NotificationsScreenProps> = ({ navigation })
     </View>
   );
 
-  const renderNotifications = ({ item }: { item: (FriendRequestDto | NewSubscribableCircle) }) => (
+  const renderNotifications = ({ item }: { item: any }) => (
       <View>
-      {/* For some reason, checking in reverse order doesnt work. item isinstanceof NewSubscribableCircle is always false (prototype never gets set?) */}
-      { item instanceof FriendRequestDto  ? (
+      { item.requesterId ? (
         renderFriendRequest({item})
+      ) : item.metadata?.Type === 'InterestDiscovery' ? (
+        renderInterestDiscovery({item})
       ) : (
         renderNewSubscribableCircle({item})
       )}
@@ -163,6 +195,32 @@ const NotificationsScreen: React.FC<NotificationsScreenProps> = ({ navigation })
           </TouchableOpacity>
           <TouchableOpacity style={styles.denyButton} onPress={() => handleDenyFollowCircleRequest(item.id)}>
             <Text style={styles.denyButtonText}>Deny</Text>
+          </TouchableOpacity>
+        </View>
+      </View>
+    </View>
+  )
+
+  const renderInterestDiscovery = ({ item }: { item: InterestDiscoveryNotification }) => (
+    <View style={styles.notificationItem}>
+      <View style={[styles.avatarContainer, styles.interestIconContainer]}>
+        <View style={styles.interestIcon}>
+          <Ionicons name="sparkles" size={20} color={theme.colors.accent} />
+        </View>
+      </View>
+      <View style={styles.notificationContent}>
+        <View style={styles.notificationText}>
+          <Text style={styles.userName}>
+            {item.friendCount > 1
+              ? `${item.friendCount} friends are posting about `
+              : `${item.fromName} started posting about `}
+          </Text>
+          <Text style={styles.boldText}>#{item.interestDisplayName}</Text>
+        </View>
+        <Text style={styles.timeText}>{item.createdAt ? formatDate(new Date(item.createdAt)) : ''}</Text>
+        <View style={styles.actionButtons}>
+          <TouchableOpacity style={styles.acceptButton} onPress={() => handleFollowInterest(item.interestName)}>
+            <Text style={styles.acceptButtonText}>Follow</Text>
           </TouchableOpacity>
         </View>
       </View>
@@ -253,6 +311,8 @@ const useStyles = makeStyles((theme) => ({
   emptyContainer: { flex: 1, justifyContent: 'center', alignItems: 'center', paddingHorizontal: 40 },
   emptyText: { fontSize: 18, fontWeight: '600', color: theme.colors.textPrimary, marginTop: 16, marginBottom: 8 },
   emptySubText: { fontSize: 14, color: theme.colors.textSecondary, textAlign: 'center', lineHeight: 20 },
+  interestIconContainer: { justifyContent: 'center', alignItems: 'center' },
+  interestIcon: { width: 44, height: 44, borderRadius: 22, backgroundColor: theme.colors.accent + '20', justifyContent: 'center', alignItems: 'center' },
 }));
 
 export default NotificationsScreen;

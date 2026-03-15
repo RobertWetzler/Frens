@@ -1,4 +1,5 @@
 using Cliq.Server.Models;
+using Cliq.Server.Services;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 
@@ -15,6 +16,7 @@ public static class SeedExtensions
         if (await db.Users.AnyAsync()) return;
 
         var userManager = scope.ServiceProvider.GetRequiredService<UserManager<User>>();
+        var eventNotificationService = scope.ServiceProvider.GetRequiredService<IEventNotificationService>();
 
         // Create users first
         var users = await CreateUsersAsync(userManager);
@@ -24,7 +26,7 @@ public static class SeedExtensions
         users.AddRange(additionalUsers);
 
         // Now add other data using the DbContext
-        await AddPostsAndRelatedDataAsync(db, users);
+        await AddPostsAndRelatedDataAsync(db, users, eventNotificationService);
     }
 
     private static async Task<List<User>> CreateUsersAsync(UserManager<User> userManager)
@@ -146,7 +148,7 @@ public static class SeedExtensions
         return additionalUsers;
     }
 
-    private static async Task AddPostsAndRelatedDataAsync(CliqDbContext db, List<User> users)
+    private static async Task AddPostsAndRelatedDataAsync(CliqDbContext db, List<User> users, IEventNotificationService eventNotificationService)
     {
         var sierra = GetUser(users, "smushi@example.com");
         var robert = GetUser(users, "robert@gmail.com");
@@ -364,6 +366,17 @@ public static class SeedExtensions
         // Sierra posts to HelloKitty — none of Robert's friends follow it yet,
         // so Robert wouldn't see this unless he follows the interest
         await CreatePostWithInterestsAsync(db, sierra, "New Hello Kitty x Nike collab dropping next week 🎀", DateTime.UtcNow.AddHours(-8.5), Array.Empty<Circle>(), new[] { hellokitty });
+
+        // ─── Simulate interest discovery notifications ───
+        // Use the real EventNotificationService so notifications go through the actual
+        // pipeline (notification + delivery rows), matching production behavior exactly.
+        // This tests the notification screen rendering for InterestDiscovery type.
+        await eventNotificationService.SendInterestDiscoveryNotificationsAsync(
+            devon.Id, devon.Name, photography.Id, photography.Name, photography.DisplayName);
+        await eventNotificationService.SendInterestDiscoveryNotificationsAsync(
+            sierra.Id, sierra.Name, hellokitty.Id, hellokitty.Name, hellokitty.DisplayName);
+        await eventNotificationService.SendInterestDiscoveryNotificationsAsync(
+            spencer.Id, spencer.Name, recipes.Id, recipes.Name, recipes.DisplayName);
     }
 
     private static User GetUser(List<User> users, string email)
