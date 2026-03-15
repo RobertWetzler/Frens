@@ -318,7 +318,7 @@ public class EventNotificationService : IEventNotificationService
             .Select(s => s.UserId)
             .ToListAsync()).ToHashSet();
 
-        var friendsNotFollowing = friendIds.Where(id => !friendsAlreadyFollowing.Contains(id)).ToList();
+        var friendsNotFollowing = friendIds.Where(id => !friendsAlreadyFollowing.Contains(id) && id != authorId).ToList();
         if (friendsNotFollowing.Count == 0) return;
 
         // Exclude friends who have opted out of interest discovery notifications
