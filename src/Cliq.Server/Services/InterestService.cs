@@ -88,6 +88,7 @@ public class InterestService : IInterestService
     private readonly CliqDbContext _dbContext;
     private readonly IFriendshipService _friendshipService;
     private readonly ILogger<InterestService> _logger;
+    private readonly IObjectStorageService _storage;
 
     /// <summary>
     /// Maximum number of interest announcements per week.
@@ -97,11 +98,13 @@ public class InterestService : IInterestService
     public InterestService(
         CliqDbContext dbContext,
         IFriendshipService friendshipService,
-        ILogger<InterestService> logger)
+        ILogger<InterestService> logger,
+        IObjectStorageService storage)
     {
         _dbContext = dbContext;
         _friendshipService = friendshipService;
         _logger = logger;
+        _storage = storage;
     }
 
     public async Task<List<InterestSuggestionDto>> SearchInterestsAsync(Guid userId, string query, int limit = 10)
@@ -381,21 +384,31 @@ public class InterestService : IInterestService
             .ToListAsync();
 
         // Get friend followers for each of the user's interests
-        var friendFollowersByInterest = await _dbContext.InterestSubscriptions
+        var rawFollowers = await _dbContext.InterestSubscriptions
             .Where(s => userInterestIds.Contains(s.InterestId) && friendIds.Contains(s.UserId))
             .Include(s => s.User)
-            .GroupBy(s => s.InterestId)
-            .Select(g => new
+            .Select(s => new
             {
-                InterestId = g.Key,
-                Friends = g.Select(s => new MentionableUserDto
+                s.InterestId,
+                s.UserId,
+                s.User!.Name,
+                s.User.ProfilePictureKey
+            })
+            .ToListAsync();
+
+        var friendFollowersByInterest = rawFollowers
+            .GroupBy(s => s.InterestId)
+            .ToDictionary(
+                g => g.Key,
+                g => g.Select(s => new MentionableUserDto
                 {
                     Id = s.UserId,
-                    Name = s.User!.Name,
-                    ProfilePictureUrl = null // Avatar component handles fallback
+                    Name = s.Name,
+                    ProfilePictureUrl = !string.IsNullOrEmpty(s.ProfilePictureKey)
+                        ? _storage.GetProfilePictureUrl(s.ProfilePictureKey)
+                        : null
                 }).ToList()
-            })
-            .ToDictionaryAsync(g => g.InterestId, g => g.Friends);
+            );
 
         var interests = await _dbContext.InterestSubscriptions
             .Where(s => s.UserId == userId)
@@ -450,21 +463,31 @@ public class InterestService : IInterestService
 
         // Populate friend followers for each suggested interest
         var suggestedInterestIds = suggestions.Select(s => s.Id).ToList();
-        var friendFollowersByInterest = await _dbContext.InterestSubscriptions
+        var rawSugFollowers = await _dbContext.InterestSubscriptions
             .Where(s => suggestedInterestIds.Contains(s.InterestId) && friendIds.Contains(s.UserId))
             .Include(s => s.User)
-            .GroupBy(s => s.InterestId)
-            .Select(g => new
+            .Select(s => new
             {
-                InterestId = g.Key,
-                Friends = g.Select(s => new MentionableUserDto
+                s.InterestId,
+                s.UserId,
+                s.User!.Name,
+                s.User.ProfilePictureKey
+            })
+            .ToListAsync();
+
+        var friendFollowersByInterest = rawSugFollowers
+            .GroupBy(s => s.InterestId)
+            .ToDictionary(
+                g => g.Key,
+                g => g.Select(s => new MentionableUserDto
                 {
                     Id = s.UserId,
-                    Name = s.User!.Name,
-                    ProfilePictureUrl = null
+                    Name = s.Name,
+                    ProfilePictureUrl = !string.IsNullOrEmpty(s.ProfilePictureKey)
+                        ? _storage.GetProfilePictureUrl(s.ProfilePictureKey)
+                        : null
                 }).ToList()
-            })
-            .ToDictionaryAsync(g => g.InterestId, g => g.Friends);
+            );
 
         foreach (var suggestion in suggestions)
         {
@@ -546,21 +569,31 @@ public class InterestService : IInterestService
 
         // Populate friend followers for the feed discover card
         var suggestedIds = suggestions.Select(s => s.Id).ToList();
-        var friendFollowersByInterest = await _dbContext.InterestSubscriptions
+        var rawFeedFollowers = await _dbContext.InterestSubscriptions
             .Where(s => suggestedIds.Contains(s.InterestId) && friendIds.Contains(s.UserId))
             .Include(s => s.User)
-            .GroupBy(s => s.InterestId)
-            .Select(g => new
+            .Select(s => new
             {
-                InterestId = g.Key,
-                Friends = g.Select(s => new MentionableUserDto
+                s.InterestId,
+                s.UserId,
+                s.User!.Name,
+                s.User.ProfilePictureKey
+            })
+            .ToListAsync();
+
+        var friendFollowersByInterest = rawFeedFollowers
+            .GroupBy(s => s.InterestId)
+            .ToDictionary(
+                g => g.Key,
+                g => g.Select(s => new MentionableUserDto
                 {
                     Id = s.UserId,
-                    Name = s.User!.Name,
-                    ProfilePictureUrl = null
+                    Name = s.Name,
+                    ProfilePictureUrl = !string.IsNullOrEmpty(s.ProfilePictureKey)
+                        ? _storage.GetProfilePictureUrl(s.ProfilePictureKey)
+                        : null
                 }).ToList()
-            })
-            .ToDictionaryAsync(g => g.InterestId, g => g.Friends);
+            );
 
         foreach (var suggestion in suggestions)
         {

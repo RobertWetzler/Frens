@@ -85,7 +85,7 @@ public class PostNotificationIntegrationTests : IClassFixture<DatabaseFixture>
         var commentService = new CommentService(context, _mapper, eventNotificationService, friendshipService, mockPostLogger.Object, mockActivityService.Object, mockStorageService.Object);
         var circleService = new CircleService(context, commentService, friendshipService, _mapper, eventNotificationService, mockCircleLogger.Object, mockStorageService.Object);
         var notificationService = new NotificationService(friendshipService, context, _mapper);
-        var interestService = new InterestService(context, friendshipService, mockInterestLogger.Object);
+        var interestService = new InterestService(context, friendshipService, mockInterestLogger.Object, mockStorageService.Object);
 
         var postService = new PostService(
             context,

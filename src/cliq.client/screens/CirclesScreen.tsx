@@ -331,7 +331,7 @@ const CirclesScreen = ({ navigation }) => {
                                 <View style={styles.stackedAvatars}>
                                   {previewMembers.map((m, idx) => (
                                     <View key={m.id} style={[styles.stackedAvatar, { marginLeft: idx > 0 ? -6 : 0, zIndex: 3 - idx }]}>
-                                      <Avatar name={m.name || '?'} userId={m.id || ''} simple size={18} />
+                                      <Avatar name={m.name || '?'} userId={m.id || ''} imageUrl={m.profilePictureUrl || undefined} simple size={18} />
                                     </View>
                                   ))}
                                 </View>
@@ -469,7 +469,7 @@ const CirclesScreen = ({ navigation }) => {
                                 <View style={styles.stackedAvatars}>
                                   {previewMembers.map((m, idx) => (
                                     <View key={m.id} style={[styles.stackedAvatar, { marginLeft: idx > 0 ? -6 : 0, zIndex: 3 - idx }]}>
-                                      <Avatar name={m.name || '?'} userId={m.id || ''} simple size={18} />
+                                      <Avatar name={m.name || '?'} userId={m.id || ''} imageUrl={m.profilePictureUrl || undefined} simple size={18} />
                                     </View>
                                   ))}
                                 </View>
