@@ -3965,62 +3965,6 @@ export interface IEventRsvpDto {
     user?: UserDto;
 }
 
-export class InterestPublicDto implements IInterestPublicDto {
-    id?: string;
-    name?: string;
-    displayName?: string;
-    friendFollowers?: MentionableUserDto[] | undefined;
-
-    constructor(data?: IInterestPublicDto) {
-        if (data) {
-            for (var property in data) {
-                if (data.hasOwnProperty(property))
-                    (<any>this)[property] = (<any>data)[property];
-            }
-        }
-    }
-
-    init(_data?: any) {
-        if (_data) {
-            this.id = _data["id"];
-            this.name = _data["name"];
-            this.displayName = _data["displayName"];
-            if (Array.isArray(_data["friendFollowers"])) {
-                this.friendFollowers = [] as any;
-                for (let item of _data["friendFollowers"])
-                    this.friendFollowers!.push(MentionableUserDto.fromJS(item));
-            }
-        }
-    }
-
-    static fromJS(data: any): InterestPublicDto {
-        data = typeof data === 'object' ? data : {};
-        let result = new InterestPublicDto();
-        result.init(data);
-        return result;
-    }
-
-    toJSON(data?: any) {
-        data = typeof data === 'object' ? data : {};
-        data["id"] = this.id;
-        data["name"] = this.name;
-        data["displayName"] = this.displayName;
-        if (Array.isArray(this.friendFollowers)) {
-            data["friendFollowers"] = [];
-            for (let item of this.friendFollowers)
-                data["friendFollowers"].push(item.toJSON());
-        }
-        return data;
-    }
-}
-
-export interface IInterestPublicDto {
-    id?: string;
-    name?: string;
-    displayName?: string;
-    friendFollowers?: MentionableUserDto[] | undefined;
-}
-
 export class MyEventsResponse implements IMyEventsResponse {
     events?: EventDto[];
     calendarSubscriptionUrl?: string | undefined;

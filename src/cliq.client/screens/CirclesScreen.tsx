@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useMemo } from 'react';
 import {
   View,
   Text,
@@ -6,15 +6,19 @@ import {
   TouchableOpacity,
   ActivityIndicator,
   SafeAreaView,
+  TextInput,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useFocusEffect } from '@react-navigation/native';
 import { useCirclesWithMembers } from '../hooks/useCircle';
+import { InterestDto } from 'services/generated/generatedClient';
+import { ApiClient } from 'services/apiClient';
 import { useAuth } from '../contexts/AuthContext';
 import Header from '../components/Header';
 import { useTheme } from '../theme/ThemeContext';
 import { makeStyles } from '../theme/makeStyles';
 import Username from 'components/Username';
+import Avatar from 'components/Avatar';
 import DropdownMenu, { DropdownMenuItem } from '../components/DropdownMenu';
 import ConfirmationModal from '../components/ConfirmationModal';
 
@@ -52,6 +56,65 @@ const CirclesScreen = ({ navigation }) => {
   const [userToRemove, setUserToRemove] = useState<{circleId: string, userId: string, userName: string, circleName: string} | null>(null);
   const [isRemovingUser, setIsRemovingUser] = useState(false);
   const [removingUserId, setRemovingUserId] = useState<string | null>(null);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [interests, setInterests] = useState<InterestDto[]>([]);
+  const [unfollowModalVisible, setUnfollowModalVisible] = useState(false);
+  const [itemToUnfollow, setItemToUnfollow] = useState<{type: 'circle' | 'interest', id: string, name: string} | null>(null);
+  const [isUnfollowing, setIsUnfollowing] = useState(false);
+
+  const loadInterests = useCallback(async () => {
+    try {
+      const result = await ApiClient.call(c => c.interest_GetMyInterests());
+      setInterests(result);
+    } catch (err) {
+      console.log('Failed to load interests:', err);
+    }
+  }, []);
+
+  const query = searchQuery.trim().toLowerCase();
+
+  // Separate, filter, and sort circles
+  const ownedCircles = useMemo(() => {
+    const owned = circles.filter(c => c.isOwner);
+    const filtered = query ? owned.filter(c => c.name?.toLowerCase().includes(query)) : owned;
+    return filtered.sort((a, b) => (a.name ?? '').localeCompare(b.name ?? ''));
+  }, [circles, query]);
+
+  const sharedCircles = useMemo(() => {
+    const shared = circles.filter(c => !c.isOwner);
+    const filtered = query ? shared.filter(c => c.name?.toLowerCase().includes(query)) : shared;
+    return filtered.sort((a, b) => (a.name ?? '').localeCompare(b.name ?? ''));
+  }, [circles, query]);
+
+  const filteredInterests = useMemo(() => {
+    const filtered = query ? interests.filter(i => (i.displayName ?? i.name ?? '').toLowerCase().includes(query)) : interests;
+    return filtered.sort((a, b) => (a.displayName ?? '').localeCompare(b.displayName ?? ''));
+  }, [interests, query]);
+
+  const handleUnfollow = (type: 'circle' | 'interest', id: string, name: string) => {
+    setItemToUnfollow({ type, id, name });
+    setUnfollowModalVisible(true);
+  };
+
+  const confirmUnfollow = async () => {
+    if (!itemToUnfollow) return;
+    setIsUnfollowing(true);
+    try {
+      if (itemToUnfollow.type === 'circle') {
+        await ApiClient.call(c => c.circle_UnfollowCircle(itemToUnfollow.id));
+        await loadCircles();
+      } else {
+        await ApiClient.call(c => c.interest_UnfollowInterest(itemToUnfollow.id));
+        setInterests(prev => prev.filter(i => i.name !== itemToUnfollow.id));
+      }
+    } catch (err) {
+      console.error('Failed to unfollow:', err);
+    } finally {
+      setIsUnfollowing(false);
+      setUnfollowModalVisible(false);
+      setItemToUnfollow(null);
+    }
+  };
 
   //Refresh circles when screen comes into focus
   // TODO - This could be optimized to use the state of the hooks instead of reloading everything, but for some reason its still needed.
@@ -61,6 +124,7 @@ const CirclesScreen = ({ navigation }) => {
       const refreshCircles = async () => {
         console.log('CirclesScreen: About to call loadCircles...');
         await loadCircles();
+        await loadInterests();
         console.log('CirclesScreen: loadCircles completed');
       };
       refreshCircles();
@@ -158,10 +222,6 @@ const CirclesScreen = ({ navigation }) => {
     }
   };
 
-  // Separate owned and shared circles
-  const ownedCircles = circles.filter(circle => circle.isOwner);
-  const sharedCircles = circles.filter(circle => !circle.isOwner);
-
   if (isLoading) {
     return (
       <SafeAreaView style={styles.container}>
@@ -199,12 +259,26 @@ const CirclesScreen = ({ navigation }) => {
         onBackPress={() => navigation.goBack()}
       />
       
-      <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
-        <TouchableOpacity 
-          style={styles.scrollContent} 
-          activeOpacity={1} 
-          onPress={() => setMenuVisible(null)}
-        >
+      {/* Search bar */}
+      <View style={styles.searchContainer}>
+        <Ionicons name="search" size={18} color={theme.colors.textMuted} style={styles.searchIcon} />
+        <TextInput
+          style={styles.searchInput}
+          placeholder="Search..."
+          placeholderTextColor={theme.colors.inputPlaceholder}
+          value={searchQuery}
+          onChangeText={setSearchQuery}
+          autoCapitalize="none"
+          autoCorrect={false}
+        />
+        {searchQuery.length > 0 && (
+          <TouchableOpacity onPress={() => setSearchQuery('')}>
+            <Ionicons name="close-circle" size={18} color={theme.colors.textMuted} />
+          </TouchableOpacity>
+        )}
+      </View>
+
+      <ScrollView style={styles.content} contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
           {circles.length === 0 ? (
           <View style={styles.emptyContainer}>
             <Ionicons name="people-outline" size={64} color={theme.colors.separator} />
@@ -217,45 +291,77 @@ const CirclesScreen = ({ navigation }) => {
             {ownedCircles.length > 0 && (
               <>
                 <View style={styles.sectionHeader}>
-                  <Text style={styles.sectionTitle}>My Circles</Text>
+                  <Text style={styles.sectionTitle}>My Circles ({ownedCircles.length})</Text>
+                  <TouchableOpacity
+                    style={styles.createCircleButton}
+                    onPress={() => navigation.navigate('CreateCircle')}
+                    activeOpacity={0.7}
+                  >
+                    <Ionicons name="add" size={16} color={theme.colors.primary} />
+                    <Text style={styles.createCircleText}>New</Text>
+                  </TouchableOpacity>
                 </View>
                 {ownedCircles.map((circle, index) => {
                   const isExpanded = expandedCircles.has(circle.id || '');
                   const isMenuOpen = menuVisible === circle.id;
+                  const members = circle.members ?? [];
+                  const previewMembers = members.slice(0, 3);
                   return (
                     <View key={circle.id} style={[
                       styles.circleCard,
                       isMenuOpen && { zIndex: 9999 + index, elevation: 9999 + index }
                     ]}>
-                      <View style={styles.circleHeader}>
+                      <View style={styles.circleRow}>
                         <TouchableOpacity
                           style={styles.circleMainContent}
                           onPress={() => toggleCircleExpansion(circle.id || '')}
                           activeOpacity={0.7}
                         >
+                          <View style={styles.circleIcon}>
+                            <Ionicons
+                              name={circle.isShared ? 'people' : 'person'}
+                              size={18}
+                              color={theme.colors.primary}
+                            />
+                          </View>
                           <View style={styles.circleInfo}>
-                            <View style={styles.circleTitleRow}>
-                              <Text style={styles.circleName}>{circle.name}</Text>
-                            </View>
-                            <View style={styles.circleDetails}>
-                              <Text style={styles.circleType}>
-                                {circle.isShared ? 'Shared Circle' : 'Private Circle'}
+                            <Text style={styles.circleName} numberOfLines={1}>{circle.name}</Text>
+                            <View style={styles.circleSubtitleRow}>
+                              {previewMembers.length > 0 && (
+                                <View style={styles.stackedAvatars}>
+                                  {previewMembers.map((m, idx) => (
+                                    <View key={m.id} style={[styles.stackedAvatar, { marginLeft: idx > 0 ? -6 : 0, zIndex: 3 - idx }]}>
+                                      <Avatar name={m.name || '?'} userId={m.id || ''} simple size={18} />
+                                    </View>
+                                  ))}
+                                </View>
+                              )}
+                              <Text style={[styles.circleSubtext, previewMembers.length > 0 && { marginLeft: 4 }]}>
+                                {members.length} {members.length === 1 ? 'member' : 'members'}
+                                {circle.isShared ? ' · Shared' : ' · Private'}
                               </Text>
-                              <Text style={styles.memberCount}>
-                                {circle.members?.length || 0} members
-                              </Text>
+                              <Ionicons
+                                name={isExpanded ? 'chevron-up' : 'chevron-down'}
+                                size={14}
+                                color={theme.colors.textMuted}
+                                style={{ marginLeft: 2 }}
+                              />
                             </View>
                           </View>
-                          <Ionicons
-                            name={isExpanded ? 'chevron-up' : 'chevron-down'}
-                            size={24}
-                            color={theme.colors.textMuted}
-                          />
                         </TouchableOpacity>
-                        
+
                         <DropdownMenu
                           visible={menuVisible === circle.id}
                           onClose={() => toggleMenu(circle.id || '')}
+                          triggerButton={
+                            <TouchableOpacity
+                              style={styles.menuButton}
+                              onPress={() => toggleMenu(circle.id || '')}
+                              hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                            >
+                              <Ionicons name="ellipsis-vertical" size={18} color={theme.colors.textMuted} />
+                            </TouchableOpacity>
+                          }
                           items={[
                             {
                               id: 'convert',
@@ -339,44 +445,63 @@ const CirclesScreen = ({ navigation }) => {
             {sharedCircles.length > 0 && (
               <>
                 <View style={styles.sectionHeader}>
-                  <Text style={styles.sectionTitle}>Circles Shared with Me</Text>
+                  <Text style={styles.sectionTitle}>Shared with Me ({sharedCircles.length})</Text>
                 </View>
                 {sharedCircles.map((circle) => {
                   const isExpanded = expandedCircles.has(circle.id || '');
-                  // Find the owner from the members list
-                  const owner = circle.owner
+                  const owner = circle.owner;
+                  const members = circle.members ?? [];
+                  const previewMembers = members.slice(0, 3);
                   
                   return (
                     <View key={circle.id} style={styles.circleCard}>
-                      <TouchableOpacity
-                        style={styles.circleHeader}
-                        onPress={() => toggleCircleExpansion(circle.id || '')}
-                        activeOpacity={0.7}
-                      >
-                        <View style={styles.circleInfo}>
-                          <View style={styles.circleTitleRow}>
-                            <Text style={styles.circleName}>{circle.name}</Text>
+                      <View style={styles.circleRow}>
+                        <TouchableOpacity
+                          style={styles.circleMainContent}
+                          onPress={() => toggleCircleExpansion(circle.id || '')}
+                          activeOpacity={0.7}
+                        >
+                          <View style={styles.circleIcon}>
+                            <Ionicons
+                              name={circle.isShared ? 'people' : 'person'}
+                              size={18}
+                              color={theme.colors.primary}
+                            />
                           </View>
-                          <View style={styles.circleDetails}>
-                            <Text style={styles.circleType}>
-                              {circle.isShared ? 'Shared Circle' : 'Private Circle'}
-                            </Text>
-                            <Text style={styles.memberCount}>
-                              {circle.members?.length || 0} members
-                            </Text>
+                          <View style={styles.circleInfo}>
+                            <Text style={styles.circleName} numberOfLines={1}>{circle.name}</Text>
+                            <View style={styles.circleSubtitleRow}>
+                              {previewMembers.length > 0 && (
+                                <View style={styles.stackedAvatars}>
+                                  {previewMembers.map((m, idx) => (
+                                    <View key={m.id} style={[styles.stackedAvatar, { marginLeft: idx > 0 ? -6 : 0, zIndex: 3 - idx }]}>
+                                      <Avatar name={m.name || '?'} userId={m.id || ''} simple size={18} />
+                                    </View>
+                                  ))}
+                                </View>
+                              )}
+                              <Text style={[styles.circleSubtext, previewMembers.length > 0 && { marginLeft: 4 }]}>
+                                {members.length} {members.length === 1 ? 'member' : 'members'}
+                                {owner ? ` · ${owner.name}` : ''}
+                              </Text>
+                              <Ionicons
+                                name={isExpanded ? 'chevron-up' : 'chevron-down'}
+                                size={14}
+                                color={theme.colors.textMuted}
+                                style={{ marginLeft: 2 }}
+                              />
+                            </View>
                           </View>
-                          {owner && (
-                            <Text style={styles.ownerInfo}>
-                              Owner: {owner.name}
-                            </Text>
-                          )}
-                        </View>
-                        <Ionicons
-                          name={isExpanded ? 'chevron-up' : 'chevron-down'}
-                          size={24}
-                          color={theme.colors.textMuted}
-                        />
-                      </TouchableOpacity>
+                        </TouchableOpacity>
+
+                        <TouchableOpacity
+                          style={styles.leaveButton}
+                          onPress={() => handleUnfollow('circle', circle.id || '', circle.name || '')}
+                          hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                        >
+                          <Text style={styles.leaveButtonText}>Leave</Text>
+                        </TouchableOpacity>
+                      </View>
 
                       {isExpanded && (
                         <View style={styles.membersContainer}>
@@ -406,17 +531,49 @@ const CirclesScreen = ({ navigation }) => {
               </>
             )}
 
-            {/* Show message if no circles at all */}
-            {ownedCircles.length === 0 && sharedCircles.length === 0 && (
+            {/* Interests Section */}
+            {filteredInterests.length > 0 && (
+              <>
+                <View style={styles.sectionHeader}>
+                  <Text style={styles.sectionTitle}>My Interests ({filteredInterests.length})</Text>
+                </View>
+                {filteredInterests.map((interest) => (
+                  <View key={interest.id} style={styles.circleCard}>
+                    <View style={styles.circleRow}>
+                      <View style={[styles.circleIcon, styles.interestIcon]}>
+                        <Text style={styles.hashtagText}>#</Text>
+                      </View>
+                      <View style={styles.circleInfo}>
+                        <Text style={styles.circleName} numberOfLines={1}>{interest.displayName}</Text>
+                        <Text style={styles.circleSubtext}>
+                          {(interest.friendsFollowingCount ?? 0) > 0
+                            ? `${interest.friendsFollowingCount} ${interest.friendsFollowingCount === 1 ? 'friend follows' : 'friends follow'}`
+                            : 'Following'}
+                        </Text>
+                      </View>
+                      <TouchableOpacity
+                        style={styles.leaveButton}
+                        onPress={() => handleUnfollow('interest', interest.name || '', interest.displayName || '')}
+                        hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                      >
+                        <Text style={styles.leaveButtonText}>Unfollow</Text>
+                      </TouchableOpacity>
+                    </View>
+                  </View>
+                ))}
+              </>
+            )}
+
+            {/* Show message if nothing at all */}
+            {ownedCircles.length === 0 && sharedCircles.length === 0 && filteredInterests.length === 0 && (
               <View style={styles.emptyContainer}>
                 <Ionicons name="people-outline" size={64} color={theme.colors.separator} />
-                <Text style={styles.emptyTitle}>No Circles Yet</Text>
-                <Text style={styles.emptyText}>You haven't joined any circles yet.</Text>
+                <Text style={styles.emptyTitle}>Nothing Here Yet</Text>
+                <Text style={styles.emptyText}>You haven't joined any circles or followed any interests yet.</Text>
               </View>
             )}
           </>
         )}
-        </TouchableOpacity>
       </ScrollView>
 
       {/* Delete Confirmation Modal */}
@@ -469,6 +626,21 @@ const CirclesScreen = ({ navigation }) => {
         isLoading={isRemovingUser}
         destructive={true}
       />
+
+      {/* Leave/Unfollow Confirmation Modal */}
+      <ConfirmationModal
+        visible={unfollowModalVisible}
+        title={itemToUnfollow?.type === 'circle' ? 'Leave Circle' : 'Unfollow Interest'}
+        message={itemToUnfollow?.type === 'circle'
+          ? `Leave "${itemToUnfollow?.name}"? You won't see posts from this circle anymore.`
+          : `Unfollow #${itemToUnfollow?.name}? You won't see posts tagged with this interest anymore.`}
+        confirmLabel={itemToUnfollow?.type === 'circle' ? 'Leave' : 'Unfollow'}
+        cancelLabel="Cancel"
+        onConfirm={confirmUnfollow}
+        onCancel={() => { setUnfollowModalVisible(false); setItemToUnfollow(null); }}
+        isLoading={isUnfollowing}
+        destructive={true}
+      />
     </SafeAreaView>
   );
 };
@@ -476,10 +648,48 @@ const CirclesScreen = ({ navigation }) => {
 // makeStyles at bottom
 const useStyles = makeStyles((theme) => ({
   container: { flex: 1, backgroundColor: theme.colors.backgroundAlt },
-  content: { flex: 1, padding: 16 },
-  scrollContent: { flex: 1 },
-  sectionHeader: { paddingVertical: 16, paddingHorizontal: 4 },
-  sectionTitle: { fontSize: 20, fontWeight: '600', color: theme.colors.textPrimary, marginBottom: 8 },
+  searchContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: theme.colors.card,
+    marginHorizontal: 16,
+    marginTop: 12,
+    marginBottom: 4,
+    borderRadius: 12,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    borderWidth: 1,
+    borderColor: theme.colors.inputBorder,
+  },
+  searchIcon: { marginRight: 8 },
+  searchInput: {
+    flex: 1,
+    fontSize: 16,
+    color: theme.colors.textPrimary,
+    padding: 0,
+  },
+  content: { flex: 1 },
+  scrollContent: { padding: 16, paddingBottom: 100 },
+  sectionHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingVertical: 12,
+    paddingHorizontal: 4,
+  },
+  sectionTitle: { fontSize: 13, fontWeight: '700', color: theme.colors.textMuted, textTransform: 'uppercase', letterSpacing: 0.5 },
+  createCircleButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 4,
+    paddingHorizontal: 10,
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: theme.colors.primary + '40',
+    borderStyle: 'dashed',
+    gap: 3,
+  },
+  createCircleText: { fontSize: 13, fontWeight: '600', color: theme.colors.primary },
   loadingContainer: { flex: 1, justifyContent: 'center', alignItems: 'center' },
   loadingText: { marginTop: 16, fontSize: 16, color: theme.colors.textSecondary },
   errorContainer: { flex: 1, justifyContent: 'center', alignItems: 'center', padding: 20 },
@@ -487,31 +697,49 @@ const useStyles = makeStyles((theme) => ({
   emptyContainer: { flex: 1, justifyContent: 'center', alignItems: 'center', paddingTop: 100 },
   emptyTitle: { fontSize: 20, fontWeight: '600', color: theme.colors.textPrimary, marginTop: 16 },
   emptyText: { fontSize: 16, color: theme.colors.textSecondary, textAlign: 'center', marginTop: 8 },
-  circleCard: { backgroundColor: theme.colors.card, borderRadius: 12, marginBottom: 16, shadowColor: theme.colors.shadow, shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.1, shadowRadius: 4, elevation: 3, overflow: 'visible', zIndex: 1, borderWidth: 1, borderColor: theme.colors.separator },
-  circleHeader: { flexDirection: 'row', alignItems: 'center', padding: 16 },
-  circleInfo: { flex: 1 },
+  circleCard: {
+    backgroundColor: theme.colors.card,
+    borderRadius: 12,
+    marginBottom: 8,
+    overflow: 'visible',
+    zIndex: 1,
+  },
+  circleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 12,
+    paddingHorizontal: 14,
+  },
+  circleIcon: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: theme.colors.primary + '15',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 12,
+  },
   circleMainContent: { flex: 1, flexDirection: 'row', alignItems: 'center' },
-  circleActions: { flexDirection: 'row', alignItems: 'center' },
-  deleteButton: { backgroundColor: theme.colors.danger },
-  circleTitleRow: { flexDirection: 'row', alignItems: 'center', marginBottom: 8 },
-  circleName: { fontSize: 18, fontWeight: '600', color: theme.colors.textPrimary, flex: 1 },
-  ownerBadge: { backgroundColor: theme.colors.primary, borderRadius: 12, paddingHorizontal: 8, paddingVertical: 4, marginLeft: 8 },
-  ownerBadgeText: { fontSize: 12, fontWeight: '600', color: theme.colors.primaryContrast },
-  memberBadge: { backgroundColor: theme.colors.accent, borderRadius: 12, paddingHorizontal: 8, paddingVertical: 4, marginLeft: 8 },
-  memberBadgeText: { fontSize: 12, fontWeight: '600', color: theme.colors.primaryContrast },
-  circleDetails: { flexDirection: 'row', alignItems: 'center' },
-  circleType: { fontSize: 14, color: theme.colors.textMuted, marginRight: 16 },
-  memberCount: { fontSize: 14, color: theme.colors.primary, fontWeight: '500' },
-  ownerInfo: { fontSize: 13, color: theme.colors.textSecondary, marginTop: 4, fontStyle: 'italic' },
-  membersContainer: { paddingHorizontal: 16, paddingBottom: 16, borderTopWidth: 1, borderTopColor: theme.colors.separator },
-  membersHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12, marginTop: 8 },
-  membersTitle: { fontSize: 16, fontWeight: '600', color: theme.colors.textPrimary },
-  addUserButton: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 12, paddingVertical: 6, backgroundColor: theme.colors.backgroundAlt, borderRadius: 8, borderWidth: 1, borderColor: theme.colors.primary },
-  addUserButtonText: { fontSize: 14, fontWeight: '500', color: theme.colors.primary, marginLeft: 6 },
-  memberItem: { flexDirection: 'row', alignItems: 'center', paddingVertical: 8 },
+  circleInfo: { flex: 1 },
+  circleName: { fontSize: 16, fontWeight: '600', color: theme.colors.textPrimary },
+  circleSubtitleRow: { flexDirection: 'row', alignItems: 'center', marginTop: 3 },
+  circleSubtext: { fontSize: 12, color: theme.colors.textMuted },
+  stackedAvatars: { flexDirection: 'row', alignItems: 'center' },
+  stackedAvatar: { borderRadius: 9, borderWidth: 1.5, borderColor: theme.colors.card, overflow: 'hidden' },
+  menuButton: { padding: 6, marginLeft: 4 },
+  leaveButton: { paddingVertical: 4, paddingHorizontal: 10, borderRadius: 12, borderWidth: 1, borderColor: theme.colors.textMuted + '40', marginRight: 14 },
+  leaveButtonText: { fontSize: 12, fontWeight: '600', color: theme.colors.textMuted },
+  interestIcon: { backgroundColor: theme.colors.accent + '15' },
+  hashtagText: { fontSize: 17, fontWeight: '700', color: theme.colors.accent },
+  membersContainer: { paddingHorizontal: 14, paddingBottom: 12, borderTopWidth: 1, borderTopColor: theme.colors.separator + '40' },
+  membersHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8, marginTop: 8 },
+  membersTitle: { fontSize: 13, fontWeight: '600', color: theme.colors.textMuted, textTransform: 'uppercase', letterSpacing: 0.3 },
+  addUserButton: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 10, paddingVertical: 5, borderRadius: 16, borderWidth: 1, borderColor: theme.colors.primary + '40', borderStyle: 'dashed', gap: 4 },
+  addUserButtonText: { fontSize: 13, fontWeight: '600', color: theme.colors.primary },
+  memberItem: { flexDirection: 'row', alignItems: 'center', paddingVertical: 6 },
   memberAvatar: { width: 36, height: 36, borderRadius: 18, backgroundColor: theme.colors.primary, justifyContent: 'center', alignItems: 'center', marginRight: 12 },
   memberNameContainer: { flexDirection: 'row', alignItems: 'center', flex: 1 },
-  memberName: { fontSize: 16, color: theme.colors.textPrimary },
+  memberName: { fontSize: 15, color: theme.colors.textPrimary },
   removeUserButton: { padding: 4, marginLeft: 8 },
   noMembersText: { fontSize: 14, color: theme.colors.textMuted, fontStyle: 'italic' },
 }));
