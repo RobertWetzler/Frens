@@ -93,11 +93,20 @@ public class EventService : IEventService
 
     public async Task<List<EventDto>> GetEventsForUserAsync(Guid userId, int page = 1, int pageSize = 20)
     {
+        var followedInterestIds = await _dbContext.InterestSubscriptions
+            .Where(s => s.UserId == userId).Select(s => s.InterestId).ToListAsync();
+        var friendIds = await _dbContext.Friendships
+            .Where(f => f.Status == FriendshipStatus.Accepted && (f.RequesterId == userId || f.AddresseeId == userId))
+            .Select(f => f.RequesterId == userId ? f.AddresseeId : f.RequesterId).ToListAsync();
+
         var events = await _dbContext.Posts
             .OfType<Event>()
-            .Where(e => e.SharedWithCircles.Any(cp =>
-                _dbContext.CircleMemberships.Any(cm => cm.CircleId == cp.CircleId && cm.UserId == userId))
-                || e.UserId == userId)
+            .Where(e =>
+                e.UserId == userId ||
+                e.SharedWithCircles.Any(cp =>
+                    _dbContext.CircleMemberships.Any(cm => cm.CircleId == cp.CircleId && cm.UserId == userId)) ||
+                (e.SharedWithInterests.Any(ip => followedInterestIds.Contains(ip.InterestId)) &&
+                 friendIds.Contains(e.UserId)))
             .Include(e => e.User)
             .OrderByDescending(e => e.StartDateTime)
             .Skip((page - 1) * pageSize)
@@ -109,11 +118,20 @@ public class EventService : IEventService
 
     public async Task<List<EventDto>> GetAllEventsForUserAsync(Guid userId)
     {
+        var followedInterestIds = await _dbContext.InterestSubscriptions
+            .Where(s => s.UserId == userId).Select(s => s.InterestId).ToListAsync();
+        var friendIds = await _dbContext.Friendships
+            .Where(f => f.Status == FriendshipStatus.Accepted && (f.RequesterId == userId || f.AddresseeId == userId))
+            .Select(f => f.RequesterId == userId ? f.AddresseeId : f.RequesterId).ToListAsync();
+
         var events = await _dbContext.Posts
             .OfType<Event>()
-            .Where(e => e.SharedWithCircles.Any(cp =>
-                _dbContext.CircleMemberships.Any(cm => cm.CircleId == cp.CircleId && cm.UserId == userId))
-                || e.UserId == userId)
+            .Where(e =>
+                e.UserId == userId ||
+                e.SharedWithCircles.Any(cp =>
+                    _dbContext.CircleMemberships.Any(cm => cm.CircleId == cp.CircleId && cm.UserId == userId)) ||
+                (e.SharedWithInterests.Any(ip => followedInterestIds.Contains(ip.InterestId)) &&
+                 friendIds.Contains(e.UserId)))
             .Include(e => e.User)
             .OrderByDescending(e => e.StartDateTime)
             .ToListAsync();
@@ -124,12 +142,20 @@ public class EventService : IEventService
     public async Task<List<EventDto>> GetUpcomingEventsAsync(Guid userId, int page = 1, int pageSize = 20)
     {
         var now = DateTime.UtcNow;
+        var followedInterestIds = await _dbContext.InterestSubscriptions
+            .Where(s => s.UserId == userId).Select(s => s.InterestId).ToListAsync();
+        var friendIds = await _dbContext.Friendships
+            .Where(f => f.Status == FriendshipStatus.Accepted && (f.RequesterId == userId || f.AddresseeId == userId))
+            .Select(f => f.RequesterId == userId ? f.AddresseeId : f.RequesterId).ToListAsync();
+
         var events = await _dbContext.Posts
             .OfType<Event>()
             .Where(e => e.StartDateTime > now &&
-                (e.SharedWithCircles.Any(cp =>
-                    _dbContext.CircleMemberships.Any(cm => cm.CircleId == cp.CircleId && cm.UserId == userId))
-                || e.UserId == userId))
+                (e.UserId == userId ||
+                 e.SharedWithCircles.Any(cp =>
+                    _dbContext.CircleMemberships.Any(cm => cm.CircleId == cp.CircleId && cm.UserId == userId)) ||
+                 (e.SharedWithInterests.Any(ip => followedInterestIds.Contains(ip.InterestId)) &&
+                  friendIds.Contains(e.UserId))))
             .Include(e => e.User)
             .OrderBy(e => e.StartDateTime)
             .Skip((page - 1) * pageSize)
@@ -247,13 +273,22 @@ public class EventService : IEventService
 
     public async Task<EventRsvpDto?> RsvpToEventAsync(Guid eventId, Guid userId, CreateRsvpDto rsvpDto)
     {
+        var followedInterestIds = await _dbContext.InterestSubscriptions
+            .Where(s => s.UserId == userId).Select(s => s.InterestId).ToListAsync();
+        var friendIds = await _dbContext.Friendships
+            .Where(f => f.Status == FriendshipStatus.Accepted && (f.RequesterId == userId || f.AddresseeId == userId))
+            .Select(f => f.RequesterId == userId ? f.AddresseeId : f.RequesterId).ToListAsync();
+
         // Check if event exists and user has access
         var hasAccess = await _dbContext.Posts
             .OfType<Event>()
             .Where(e => e.Id == eventId)
-            .AnyAsync(e => e.SharedWithCircles.Any(cp =>
-                _dbContext.CircleMemberships.Any(cm => cm.CircleId == cp.CircleId && cm.UserId == userId))
-                || e.UserId == userId);
+            .AnyAsync(e =>
+                e.UserId == userId ||
+                e.SharedWithCircles.Any(cp =>
+                    _dbContext.CircleMemberships.Any(cm => cm.CircleId == cp.CircleId && cm.UserId == userId)) ||
+                (e.SharedWithInterests.Any(ip => followedInterestIds.Contains(ip.InterestId)) &&
+                 friendIds.Contains(e.UserId)));
 
         if (!hasAccess)
         {

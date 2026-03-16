@@ -224,10 +224,34 @@ public class PostService : IPostService
                 .AnyAsync(cp => _dbContext.CircleMemberships
                     .Any(cm => cm.CircleId == cp.CircleId && cm.UserId == requestorId));
 
+            // Check if post is shared directly with the requestor
             isAuthorized = isAuthorized ||
-                // Or if post is shared directly with the requestor
                 await _dbContext.IndividualPosts
                     .AnyAsync(ip => ip.PostId == id && ip.UserId == requestorId);
+
+            // Check if post is tagged with an interest the requestor follows, from a friend
+            if (!isAuthorized)
+            {
+                var followedInterestIds = await _dbContext.InterestSubscriptions
+                    .Where(s => s.UserId == requestorId)
+                    .Select(s => s.InterestId)
+                    .ToListAsync();
+
+                if (followedInterestIds.Count > 0)
+                {
+                    var postInFollowedInterest = await _dbContext.InterestPosts
+                        .AnyAsync(ip => ip.PostId == id && followedInterestIds.Contains(ip.InterestId));
+
+                    if (postInFollowedInterest)
+                    {
+                        // Verify the post author is a friend
+                        isAuthorized = await _dbContext.Friendships
+                            .AnyAsync(f => f.Status == FriendshipStatus.Accepted &&
+                                ((f.RequesterId == requestorId && f.AddresseeId == post.UserId) ||
+                                 (f.AddresseeId == requestorId && f.RequesterId == post.UserId)));
+                    }
+                }
+            }
 
             if (!isAuthorized)
             {
