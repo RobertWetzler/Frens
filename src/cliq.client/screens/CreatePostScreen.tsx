@@ -17,7 +17,7 @@ import DateTimePicker from '@react-native-community/datetimepicker';
 import { Ionicons } from '@expo/vector-icons';
 import { useCreatePostData } from 'hooks/useCircle';
 import ShaderBackground from 'components/ShaderBackground';
-import { CreateEventDto, FollowInterestRequest, MentionDto, MentionableUserDto } from 'services/generated/generatedClient';
+import { FollowInterestRequest, MentionDto, MentionableUserDto } from 'services/generated/generatedClient';
 import * as ImagePicker from 'expo-image-picker';
 import * as FileSystem from 'expo-file-system';
 import { useFocusEffect } from '@react-navigation/native';
@@ -210,7 +210,7 @@ const CreatePostScreen = ({ navigation, route }) => {
     setFormError(null);
 
     const MAX_TOTAL_IMAGES_BYTES = 50 * 1024 * 1024;
-    if (!asEvent && images.length > 0) {
+    if (images.length > 0) {
       const totalBytes = images.reduce((sum, img) => sum + (img.size || 0), 0);
       if (totalBytes > MAX_TOTAL_IMAGES_BYTES) {
         setFormError('Images exceed 50 MB total. Please remove some and try again.');
@@ -249,7 +249,7 @@ const CreatePostScreen = ({ navigation, route }) => {
         user: { id: '', name: 'You', email: '' },
         sharedWithCircles: circles.filter(c => selectedCircleIds.includes(c.id)),
         commentCount: 0,
-        hasImage: false,
+        hasImage: images.length > 0,
         _optimisticId: optimisticId,
         _status: 'pending',
         _discriminator: 'Event',
@@ -257,6 +257,7 @@ const CreatePostScreen = ({ navigation, route }) => {
         startDateTime: start,
         endDateTime: end,
         isEvent: true,
+        _localImages: images.map(img => ({ uri: img.uri, fileName: img.fileName, type: img.type, webFile: img.webFile })),
       } as any;
 
       feedEvents.emit(FEED_POST_CREATED, optimisticEvent);
@@ -265,10 +266,12 @@ const CreatePostScreen = ({ navigation, route }) => {
       const capturedTitle = eventTitle.trim();
       const capturedCircleIds = [...selectedCircleIds];
       const capturedUserIds = [...selectedUserIds];
+      const capturedImages = [...images];
       setPostContent('');
       setSelectedCircleIds([]);
       setSelectedUserIds([]);
       setSelectedInterests([]);
+      setImages([]);
       setEventTitle('');
       setStartDate('');
       setStartTime('');
@@ -279,14 +282,26 @@ const CreatePostScreen = ({ navigation, route }) => {
       navigation.goBack();
 
       try {
+        const fileParams = capturedImages.map(img => ({
+          data: Platform.OS === 'web' ? (img.webFile as any) : { uri: img.uri, name: img.fileName, type: img.type },
+          fileName: img.fileName,
+        }));
         const response = await ApiClient.call(c =>
-          c.event_CreateEvent(new CreateEventDto({
-            title: capturedTitle,
-            text: capturedContent,
-            startDateTime: start,
-            endDateTime: end,
-            circleIds: capturedCircleIds,
-          }))
+          c.event_CreateEvent(
+            capturedTitle,
+            capturedContent,
+            start,
+            end,
+            undefined, // location
+            undefined, // timezone
+            undefined, // maxAttendees
+            false,     // isAllDay
+            false,     // isRecurring
+            undefined, // recurrenceRule
+            capturedCircleIds,
+            capturedUserIds,
+            fileParams.length > 0 ? fileParams : undefined,
+          )
         );
         feedEvents.emit(FEED_POST_STATUS_UPDATED, {
           optimisticId,
@@ -461,56 +476,24 @@ const CreatePostScreen = ({ navigation, route }) => {
 
           {/* Toolbar row: Photos + Event toggle */}
           <View style={styles.toolbar}>
-            {!asEvent && (
-              Platform.OS === 'web' ? (
-                <>
-                  <input
-                    multiple
-                    accept="image/*"
-                    style={{ display: 'none' }}
-                    id="post-image-input"
-                    type="file"
-                    onChange={(e) => {
-                      const files = Array.from(e.target.files || []);
-                      const mapped = files.map(f => ({ uri: URL.createObjectURL(f), fileName: f.name, type: f.type || 'image/jpeg', webFile: f, size: f.size }));
-                      setImages(prev => [...prev, ...mapped]);
-                      e.target.value = '';
-                    }}
-                  />
-                  <TouchableOpacity
-                    style={styles.toolbarButton}
-                    onPress={() => (document.getElementById('post-image-input') as HTMLInputElement)?.click()}
-                    activeOpacity={0.7}
-                  >
-                    <Ionicons name="image-outline" size={20} color={theme.colors.primary} />
-                    <Text style={styles.toolbarButtonText}>
-                      {images.length > 0 ? `${images.length} photo${images.length > 1 ? 's' : ''}` : 'Photos'}
-                    </Text>
-                  </TouchableOpacity>
-                </>
-              ) : (
+            {Platform.OS === 'web' ? (
+              <>
+                <input
+                  multiple
+                  accept="image/*"
+                  style={{ display: 'none' }}
+                  id="post-image-input"
+                  type="file"
+                  onChange={(e) => {
+                    const files = Array.from(e.target.files || []);
+                    const mapped = files.map(f => ({ uri: URL.createObjectURL(f), fileName: f.name, type: f.type || 'image/jpeg', webFile: f, size: f.size }));
+                    setImages(prev => [...prev, ...mapped]);
+                    e.target.value = '';
+                  }}
+                />
                 <TouchableOpacity
                   style={styles.toolbarButton}
-                  onPress={async () => {
-                    try {
-                      const perm = await ImagePicker.requestMediaLibraryPermissionsAsync();
-                      if (perm.status !== 'granted') return;
-                      const result = await ImagePicker.launchImageLibraryAsync({ allowsMultipleSelection: true, mediaTypes: ImagePicker.MediaTypeOptions.Images, quality: 0.9 });
-                      if (result.canceled) return;
-                      const assets = result.assets || [];
-                      const sized = await Promise.all(
-                        assets.map(async (a) => {
-                          let size: number | undefined = undefined;
-                          try {
-                            const info = await FileSystem.getInfoAsync(a.uri);
-                            if (info.exists && typeof info.size === 'number') size = info.size;
-                          } catch {}
-                          return { uri: a.uri, fileName: a.fileName || `photo-${Date.now()}.jpg`, type: a.mimeType || 'image/jpeg', size };
-                        })
-                      );
-                      setImages(prev => [...prev, ...sized]);
-                    } catch (e) { console.warn('Image pick error', e); }
-                  }}
+                  onPress={() => (document.getElementById('post-image-input') as HTMLInputElement)?.click()}
                   activeOpacity={0.7}
                 >
                   <Ionicons name="image-outline" size={20} color={theme.colors.primary} />
@@ -518,7 +501,37 @@ const CreatePostScreen = ({ navigation, route }) => {
                     {images.length > 0 ? `${images.length} photo${images.length > 1 ? 's' : ''}` : 'Photos'}
                   </Text>
                 </TouchableOpacity>
-              )
+              </>
+            ) : (
+              <TouchableOpacity
+                style={styles.toolbarButton}
+                onPress={async () => {
+                  try {
+                    const perm = await ImagePicker.requestMediaLibraryPermissionsAsync();
+                    if (perm.status !== 'granted') return;
+                    const result = await ImagePicker.launchImageLibraryAsync({ allowsMultipleSelection: true, mediaTypes: ImagePicker.MediaTypeOptions.Images, quality: 0.9 });
+                    if (result.canceled) return;
+                    const assets = result.assets || [];
+                    const sized = await Promise.all(
+                      assets.map(async (a) => {
+                        let size: number | undefined = undefined;
+                        try {
+                          const info = await FileSystem.getInfoAsync(a.uri);
+                          if (info.exists && typeof info.size === 'number') size = info.size;
+                        } catch {}
+                        return { uri: a.uri, fileName: a.fileName || `photo-${Date.now()}.jpg`, type: a.mimeType || 'image/jpeg', size };
+                      })
+                    );
+                    setImages(prev => [...prev, ...sized]);
+                  } catch (e) { console.warn('Image pick error', e); }
+                }}
+                activeOpacity={0.7}
+              >
+                <Ionicons name="image-outline" size={20} color={theme.colors.primary} />
+                <Text style={styles.toolbarButtonText}>
+                  {images.length > 0 ? `${images.length} photo${images.length > 1 ? 's' : ''}` : 'Photos'}
+                </Text>
+              </TouchableOpacity>
             )}
 
             <TouchableOpacity
@@ -538,7 +551,7 @@ const CreatePostScreen = ({ navigation, route }) => {
           </View>
 
           {/* Image thumbnails */}
-          {images.length > 0 && !asEvent && (
+          {images.length > 0 && (
             <View style={styles.thumbRow}>
               <FlatList
                 horizontal

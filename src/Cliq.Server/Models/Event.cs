@@ -1,5 +1,6 @@
 using System.ComponentModel.DataAnnotations;
 using System.Runtime.Serialization;
+using Microsoft.AspNetCore.Http;
 
 namespace Cliq.Server.Models;
 
@@ -109,6 +110,24 @@ public class UpdateEventDto
     public bool? IsAllDay { get; set; }
     public bool? IsRecurring { get; set; }
     public string? RecurrenceRule { get; set; }
+}
+
+public class CreateEventWithImageRequest
+{
+    public string Title { get; set; } = string.Empty;
+    public string Text { get; set; } = string.Empty;
+    public DateTime StartDateTime { get; set; }
+    public DateTime? EndDateTime { get; set; }
+    public string? Location { get; set; }
+    public string? Timezone { get; set; } = "UTC";
+    public int? MaxAttendees { get; set; }
+    public bool IsAllDay { get; set; } = false;
+    public bool IsRecurring { get; set; } = false;
+    public string? RecurrenceRule { get; set; }
+    public Guid[] CircleIds { get; set; } = Array.Empty<Guid>();
+    public Guid[] UserIds { get; set; } = Array.Empty<Guid>();
+    // Multiple images supported; ordering preserved as received.
+    public List<IFormFile>? Images { get; set; }
 }
 
 public class CreateRsvpDto

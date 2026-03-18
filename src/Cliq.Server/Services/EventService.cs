@@ -11,7 +11,7 @@ public interface IEventService
     Task<List<EventDto>> GetEventsForUserAsync(Guid userId, int page = 1, int pageSize = 20);
     Task<List<EventDto>> GetAllEventsForUserAsync(Guid userId);
     Task<List<EventDto>> GetUpcomingEventsAsync(Guid userId, int page = 1, int pageSize = 20);
-    Task<EventDto> CreateEventAsync(Guid userId, CreateEventDto createEventDto);
+    Task<EventDto> CreateEventAsync(Guid userId, CreateEventDto createEventDto, List<string>? imageObjectKeys = null);
     Task<EventDto?> UpdateEventAsync(Guid eventId, Guid updatedByUserId, UpdateEventDto updateEventDto);
     Task<bool> DeleteEventAsync(Guid eventId, Guid deletedByUserId);
     Task<EventRsvpDto?> RsvpToEventAsync(Guid eventId, Guid userId, CreateRsvpDto rsvpDto);
@@ -165,7 +165,7 @@ public class EventService : IEventService
         return _mapper.Map<List<EventDto>>(events);
     }
 
-    public async Task<EventDto> CreateEventAsync(Guid userId, CreateEventDto createEventDto)
+    public async Task<EventDto> CreateEventAsync(Guid userId, CreateEventDto createEventDto, List<string>? imageObjectKeys = null)
     {
         var user = await this._dbContext.Users.FirstOrDefaultAsync(u => u.Id == userId);
         if (user == null)
@@ -189,7 +189,8 @@ public class EventService : IEventService
             MaxAttendees = createEventDto.MaxAttendees,
             IsAllDay = createEventDto.IsAllDay,
             IsRecurring = createEventDto.IsRecurring,
-            RecurrenceRule = createEventDto.RecurrenceRule
+            RecurrenceRule = createEventDto.RecurrenceRule,
+            ImageObjectKeys = imageObjectKeys ?? new List<string>()
         };
 
         _dbContext.Posts.Add(eventEntity);

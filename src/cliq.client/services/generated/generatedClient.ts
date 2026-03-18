@@ -1055,18 +1055,49 @@ export class Client {
         return Promise.resolve<MyEventsResponse>(null as any);
     }
 
-    event_CreateEvent(createEventDto: CreateEventDto, signal?: AbortSignal): Promise<EventDto> {
+    event_CreateEvent(title: string | null | undefined, text: string | null | undefined, startDateTime: Date | undefined, endDateTime: Date | null | undefined, location: string | null | undefined, timezone: string | null | undefined, maxAttendees: number | null | undefined, isAllDay: boolean | undefined, isRecurring: boolean | undefined, recurrenceRule: string | null | undefined, circleIds: string[] | null | undefined, userIds: string[] | null | undefined, images: FileParameter[] | null | undefined, signal?: AbortSignal): Promise<EventDto> {
         let url_ = this.baseUrl + "/api/Event";
         url_ = url_.replace(/[?&]$/, "");
 
-        const content_ = JSON.stringify(createEventDto);
+        const content_ = new FormData();
+        if (title !== null && title !== undefined)
+            content_.append("Title", title.toString());
+        if (text !== null && text !== undefined)
+            content_.append("Text", text.toString());
+        if (startDateTime === null || startDateTime === undefined)
+            throw new Error("The parameter 'startDateTime' cannot be null.");
+        else
+            content_.append("StartDateTime", startDateTime.toJSON());
+        if (endDateTime !== null && endDateTime !== undefined)
+            content_.append("EndDateTime", endDateTime.toJSON());
+        if (location !== null && location !== undefined)
+            content_.append("Location", location.toString());
+        if (timezone !== null && timezone !== undefined)
+            content_.append("Timezone", timezone.toString());
+        if (maxAttendees !== null && maxAttendees !== undefined)
+            content_.append("MaxAttendees", maxAttendees.toString());
+        if (isAllDay === null || isAllDay === undefined)
+            throw new Error("The parameter 'isAllDay' cannot be null.");
+        else
+            content_.append("IsAllDay", isAllDay.toString());
+        if (isRecurring === null || isRecurring === undefined)
+            throw new Error("The parameter 'isRecurring' cannot be null.");
+        else
+            content_.append("IsRecurring", isRecurring.toString());
+        if (recurrenceRule !== null && recurrenceRule !== undefined)
+            content_.append("RecurrenceRule", recurrenceRule.toString());
+        if (circleIds !== null && circleIds !== undefined)
+            circleIds.forEach(item_ => content_.append("CircleIds", item_.toString()));
+        if (userIds !== null && userIds !== undefined)
+            userIds.forEach(item_ => content_.append("UserIds", item_.toString()));
+        if (images !== null && images !== undefined)
+            images.forEach(item_ => content_.append("Images", item_.data, item_.fileName ? item_.fileName : "Images") );
 
         let options_: RequestInit = {
             body: content_,
             method: "POST",
             signal,
             headers: {
-                "Content-Type": "application/json",
                 "Accept": "application/json"
             }
         };
@@ -4011,102 +4042,6 @@ export class MyEventsResponse implements IMyEventsResponse {
 export interface IMyEventsResponse {
     events?: EventDto[];
     calendarSubscriptionUrl?: string | undefined;
-}
-
-export class CreateEventDto implements ICreateEventDto {
-    title?: string;
-    text?: string;
-    startDateTime?: Date;
-    endDateTime?: Date | undefined;
-    location?: string | undefined;
-    timezone?: string | undefined;
-    maxAttendees?: number | undefined;
-    isAllDay?: boolean;
-    isRecurring?: boolean;
-    recurrenceRule?: string | undefined;
-    circleIds?: string[];
-    userIds?: string[];
-
-    constructor(data?: ICreateEventDto) {
-        if (data) {
-            for (var property in data) {
-                if (data.hasOwnProperty(property))
-                    (<any>this)[property] = (<any>data)[property];
-            }
-        }
-    }
-
-    init(_data?: any) {
-        if (_data) {
-            this.title = _data["title"];
-            this.text = _data["text"];
-            this.startDateTime = _data["startDateTime"] ? new Date(_data["startDateTime"].toString()) : <any>undefined;
-            this.endDateTime = _data["endDateTime"] ? new Date(_data["endDateTime"].toString()) : <any>undefined;
-            this.location = _data["location"];
-            this.timezone = _data["timezone"];
-            this.maxAttendees = _data["maxAttendees"];
-            this.isAllDay = _data["isAllDay"];
-            this.isRecurring = _data["isRecurring"];
-            this.recurrenceRule = _data["recurrenceRule"];
-            if (Array.isArray(_data["circleIds"])) {
-                this.circleIds = [] as any;
-                for (let item of _data["circleIds"])
-                    this.circleIds!.push(item);
-            }
-            if (Array.isArray(_data["userIds"])) {
-                this.userIds = [] as any;
-                for (let item of _data["userIds"])
-                    this.userIds!.push(item);
-            }
-        }
-    }
-
-    static fromJS(data: any): CreateEventDto {
-        data = typeof data === 'object' ? data : {};
-        let result = new CreateEventDto();
-        result.init(data);
-        return result;
-    }
-
-    toJSON(data?: any) {
-        data = typeof data === 'object' ? data : {};
-        data["title"] = this.title;
-        data["text"] = this.text;
-        data["startDateTime"] = this.startDateTime ? this.startDateTime.toISOString() : <any>undefined;
-        data["endDateTime"] = this.endDateTime ? this.endDateTime.toISOString() : <any>undefined;
-        data["location"] = this.location;
-        data["timezone"] = this.timezone;
-        data["maxAttendees"] = this.maxAttendees;
-        data["isAllDay"] = this.isAllDay;
-        data["isRecurring"] = this.isRecurring;
-        data["recurrenceRule"] = this.recurrenceRule;
-        if (Array.isArray(this.circleIds)) {
-            data["circleIds"] = [];
-            for (let item of this.circleIds)
-                data["circleIds"].push(item);
-        }
-        if (Array.isArray(this.userIds)) {
-            data["userIds"] = [];
-            for (let item of this.userIds)
-                data["userIds"].push(item);
-        }
-        return data;
-    }
-}
-
-export interface ICreateEventDto {
-    title?: string;
-    text?: string;
-    startDateTime?: Date;
-    endDateTime?: Date | undefined;
-    location?: string | undefined;
-    timezone?: string | undefined;
-    maxAttendees?: number | undefined;
-    isAllDay?: boolean;
-    isRecurring?: boolean;
-    recurrenceRule?: string | undefined;
-    circleIds?: string[];
-    userIds?: string[];
 }
 
 export class UpdateEventDto implements IUpdateEventDto {

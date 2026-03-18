@@ -54,8 +54,9 @@ public class MappingProfile : Profile
             .ForMember(dest => dest.Name, opt => opt.MapFrom(src => src.Circle != null ? src.Circle.Name : string.Empty))
             .ForMember(dest => dest.IsShared, opt => opt.MapFrom(src => src.Circle != null ? src.Circle.IsShared : false));
         
-        // Event mappings
+        // Event mappings — inherit Post→PostDto rules (HasImage, ImageCount, SharedWith*)
         CreateMap<Event, EventDto>()
+            .IncludeBase<Post, PostDto>()
             .ForMember(dest => dest.GoingCount, opt => opt.Ignore())
             .ForMember(dest => dest.MaybeCount, opt => opt.Ignore())
             .ForMember(dest => dest.NotGoingCount, opt => opt.Ignore())

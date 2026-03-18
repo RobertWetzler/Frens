@@ -69,8 +69,10 @@ public class EventController : ControllerBase
     }
 
     [HttpPost]
+    [RequestSizeLimit(50_000_000)]
+    [Consumes("multipart/form-data", "application/json")]
     [ProducesResponseType(typeof(EventDto), StatusCodes.Status201Created)]
-    public async Task<ActionResult<EventDto>> CreateEvent([FromBody] CreateEventDto createEventDto)
+    public async Task<ActionResult<EventDto>> CreateEvent([FromForm] CreateEventWithImageRequest request)
     {
         if (!AuthUtils.TryGetUserIdFromToken(HttpContext, out var userId))
         {
@@ -79,13 +81,68 @@ public class EventController : ControllerBase
 
         try
         {
-            var eventDto = await _eventService.CreateEventAsync(userId, createEventDto);
+            var imageKeys = new List<string>();
+            if (request.Images != null && request.Images.Count > 0)
+            {
+                var allowed = new[] { "image/png", "image/jpeg", "image/heic", "image/webp" };
+                long totalBytes = 0;
+                var storage = HttpContext.RequestServices.GetService<IObjectStorageService>();
+                var imageProcessor = HttpContext.RequestServices.GetService<IImageProcessingService>();
+                if (storage == null)
+                {
+                    return StatusCode(StatusCodes.Status500InternalServerError, "Storage service not available");
+                }
+                if (imageProcessor == null)
+                {
+                    return StatusCode(StatusCodes.Status500InternalServerError, "Image processing service not available");
+                }
+                foreach (var img in request.Images)
+                {
+                    if (img == null || img.Length == 0) continue;
+                    if (!allowed.Contains(img.ContentType))
+                    {
+                        return BadRequest($"Unsupported image content type: {img.ContentType}");
+                    }
+                    if (img.Length > 25_000_000)
+                    {
+                        return BadRequest($"Single image too large (>25MB): {img.FileName}");
+                    }
+                    await using var originalStream = img.OpenReadStream();
+                    var (processedStream, outputContentType) = await imageProcessor.ProcessAsync(
+                        originalStream, img.ContentType, maxWidth: 1920, maxHeight: 1920, preferredMaxBytes: 1_000_000);
+                    totalBytes += processedStream.Length;
+                    if (totalBytes > 50_000_000)
+                    {
+                        return BadRequest("Total images payload too large (>50MB)");
+                    }
+                    var key = await storage.UploadPostImageAsync(userId, processedStream, outputContentType);
+                    imageKeys.Add(key);
+                }
+            }
+
+            var createEventDto = new CreateEventDto
+            {
+                Title = request.Title,
+                Text = request.Text,
+                StartDateTime = request.StartDateTime,
+                EndDateTime = request.EndDateTime,
+                Location = request.Location,
+                Timezone = request.Timezone,
+                MaxAttendees = request.MaxAttendees,
+                IsAllDay = request.IsAllDay,
+                IsRecurring = request.IsRecurring,
+                RecurrenceRule = request.RecurrenceRule,
+                CircleIds = request.CircleIds,
+                UserIds = request.UserIds
+            };
+
+            var eventDto = await _eventService.CreateEventAsync(userId, createEventDto, imageKeys);
             return CreatedAtAction(nameof(GetEvent), new { id = eventDto.Id }, eventDto);
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error creating event for user {UserId}", userId);
-        if (ex is BadHttpRequestException)
+            if (ex is BadHttpRequestException)
             {
                 return BadRequest(ex.Message);
             }
