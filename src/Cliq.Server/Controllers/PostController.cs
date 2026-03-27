@@ -199,7 +199,7 @@ public class PostController : ControllerBase
         var imageKeys = new List<string>();
         if (request.Images != null && request.Images.Count > 0)
         {
-            var allowed = new [] { "image/png", "image/jpeg", "image/heic", "image/webp" };
+            var allowed = new [] { "image/png", "image/jpeg", "image/heic", "image/webp", "image/gif" };
             long totalBytes = 0;
             var storage = HttpContext.RequestServices.GetService<IObjectStorageService>();
             var imageProcessor = HttpContext.RequestServices.GetService<IImageProcessingService>();
