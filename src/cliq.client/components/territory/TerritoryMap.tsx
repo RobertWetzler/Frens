@@ -45,9 +45,13 @@ interface TerritoryMapProps {
   cooldownSeconds: number;
   isClaiming: boolean;
   locationError: string | null;
+  locationRequested: boolean;
   location: { lat: number; lng: number } | null;
+  viewerMode: boolean;
   onClaimCell: () => void;
   onBoundsChanged: (bounds: MapBounds) => void;
+  onRequestLocation: () => void;
+  onEnterViewerMode: () => void;
 }
 
 /** Re-center the map on first location fix only */
@@ -111,9 +115,13 @@ const TerritoryMap: React.FC<TerritoryMapProps> = ({
   cooldownSeconds,
   isClaiming,
   locationError,
+  locationRequested,
   location,
+  viewerMode,
   onClaimCell,
   onBoundsChanged,
+  onRequestLocation,
+  onEnterViewerMode,
 }) => {
   const { theme } = useTheme();
   const styles = useStyles();
@@ -155,24 +163,64 @@ const TerritoryMap: React.FC<TerritoryMapProps> = ({
       <View style={styles.errorContainer}>
         <Ionicons name="map-outline" size={48} color={theme.colors.textMuted} />
         <Text style={styles.errorTitle}>Web Only</Text>
-        <Text style={styles.errorText}>Territory Wars map is only available on web.</Text>
+        <Text style={styles.errorText}>FrenZones map is only available on web.</Text>
       </View>
     );
   }
 
-  if (locationError) {
+  if (locationError && !viewerMode) {
+    const isDenied = locationError.toLowerCase().includes('denied') ||
+      locationError.toLowerCase().includes('permission');
     return (
       <View style={styles.errorContainer}>
         <Ionicons name="location-outline" size={48} color={theme.colors.danger} />
         <Text style={styles.errorTitle}>Location Required</Text>
         <Text style={styles.errorText}>
-          Enable location access to play Territory Wars. We need to know where you are to let you claim cells.
+          {isDenied
+            ? 'Location access was denied. On iOS, go to Settings → Privacy → Location Services → Safari and set to "Allow". Then come back and try again.'
+            : 'Could not get your location. Make sure Location Services are enabled, or try on your phone.'}
         </Text>
+        <Text style={[styles.errorText, { fontSize: 12, marginTop: 8 }]}>
+          Error: {locationError}
+        </Text>
+        <TouchableOpacity
+          style={[styles.locationButton, { backgroundColor: theme.colors.primary }]}
+          onPress={onRequestLocation}
+        >
+          <Ionicons name="refresh" size={18} color="#FFF" />
+          <Text style={styles.locationButtonText}>Try Again</Text>
+        </TouchableOpacity>
+        <TouchableOpacity
+          style={[styles.locationButton, { backgroundColor: 'transparent', borderWidth: 1, borderColor: theme.colors.textMuted, marginTop: 12 }]}
+          onPress={onEnterViewerMode}
+        >
+          <Ionicons name="eye-outline" size={18} color={theme.colors.textMuted} />
+          <Text style={[styles.locationButtonText, { color: theme.colors.textMuted }]}>Browse Map (View Only)</Text>
+        </TouchableOpacity>
       </View>
     );
   }
 
-  if (!userCell || !location) {
+  if (!viewerMode && (!locationRequested || (!userCell && !location))) {
+    return (
+      <View style={styles.errorContainer}>
+        <Ionicons name="navigate-outline" size={48} color={theme.colors.primary} />
+        <Text style={styles.errorTitle}>Share Your Location</Text>
+        <Text style={styles.errorText}>
+          FrenZones needs your location to show nearby zones and let you fren them.
+        </Text>
+        <TouchableOpacity
+          style={[styles.locationButton, { backgroundColor: theme.colors.primary }]}
+          onPress={onRequestLocation}
+        >
+          <Ionicons name="location" size={18} color="#FFF" />
+          <Text style={styles.locationButtonText}>Share My Location</Text>
+        </TouchableOpacity>
+      </View>
+    );
+  }
+
+  if (!viewerMode && (!userCell || !location)) {
     return (
       <View style={styles.loadingContainer}>
         <ActivityIndicator size="large" color={theme.colors.primary} />
@@ -183,12 +231,25 @@ const TerritoryMap: React.FC<TerritoryMapProps> = ({
 
   const canClaim = cooldownSeconds === 0 && !isClaiming;
 
+  // Default center for viewer mode (Seattle)
+  const mapCenter = location
+    ? [location.lat, location.lng]
+    : [47.6062, -122.3321];
+
   return (
     <View style={styles.container}>
+      {/* Viewer mode banner */}
+      {viewerMode && (
+        <View style={styles.viewerBanner}>
+          <Ionicons name="eye-outline" size={16} color={theme.colors.textMuted} />
+          <Text style={styles.viewerBannerText}>Viewer mode — fren zones from your phone</Text>
+        </View>
+      )}
+
       {/* Leaflet map */}
       <View style={styles.mapWrapper}>
         <MapContainer
-          center={[location.lat, location.lng]}
+          center={mapCenter as [number, number]}
           zoom={16}
           style={{ width: '100%', height: '100%' }}
           zoomControl={true}
@@ -198,7 +259,7 @@ const TerritoryMap: React.FC<TerritoryMapProps> = ({
             url="https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png"
             maxZoom={20}
           />
-          <RecenterOnce lat={location.lat} lng={location.lng} />
+          {location && <RecenterOnce lat={location.lat} lng={location.lng} />}
           <BoundsWatcher onBoundsChanged={onBoundsChanged} />
 
           {/* Claimed cells as colored rectangles */}
@@ -210,8 +271,8 @@ const TerritoryMap: React.FC<TerritoryMapProps> = ({
                 color: rect.color,
                 fillColor: rect.color,
                 fillOpacity: 0.55,
-                weight: 1,
-                opacity: 0.8,
+                weight: 0,
+                stroke: false,
               }}
               eventHandlers={{
                 click: (e: any) => {
@@ -233,7 +294,7 @@ const TerritoryMap: React.FC<TerritoryMapProps> = ({
           ))}
 
           {/* User's current cell highlight */}
-          {userCellBounds && (
+          {!viewerMode && userCellBounds && (
             <Rectangle
               bounds={userCellBounds}
               pathOptions={{
@@ -247,42 +308,46 @@ const TerritoryMap: React.FC<TerritoryMapProps> = ({
           )}
 
           {/* User location dot */}
-          <CircleMarker
-            center={[location.lat, location.lng]}
-            radius={7}
-            pathOptions={{
-              color: '#FFF',
-              fillColor: playerColor || theme.colors.primary,
-              fillOpacity: 1,
-              weight: 3,
-            }}
-          />
+          {!viewerMode && location && (
+            <CircleMarker
+              center={[location.lat, location.lng]}
+              radius={7}
+              pathOptions={{
+                color: '#FFF',
+                fillColor: playerColor || theme.colors.primary,
+                fillOpacity: 1,
+                weight: 3,
+              }}
+            />
+          )}
         </MapContainer>
       </View>
 
       {/* Claim Button overlay */}
-      <View style={styles.claimOverlay}>
-        {isClaiming ? (
-          <View style={[styles.claimButton, { backgroundColor: theme.colors.textMuted }]}>
-            <ActivityIndicator size="small" color="#FFF" />
-            <Text style={styles.claimButtonText}>Claiming...</Text>
-          </View>
-        ) : cooldownSeconds > 0 ? (
-          <View style={[styles.claimButton, styles.claimButtonCooldown]}>
-            <Ionicons name="time-outline" size={20} color="#FFF" />
-            <Text style={styles.claimButtonText}>Wait {cooldownSeconds}s</Text>
-          </View>
-        ) : (
-          <TouchableOpacity
-            style={[styles.claimButton, playerColor ? { backgroundColor: playerColor } : undefined]}
-            onPress={onClaimCell}
-            disabled={!canClaim}
-          >
-            <Ionicons name="flag" size={20} color="#FFF" />
-            <Text style={styles.claimButtonText}>Claim This Cell</Text>
-          </TouchableOpacity>
-        )}
-      </View>
+      {!viewerMode && (
+        <View style={styles.claimOverlay}>
+          {isClaiming ? (
+            <View style={[styles.claimButton, { backgroundColor: theme.colors.textMuted }]}>
+              <ActivityIndicator size="small" color="#FFF" />
+              <Text style={styles.claimButtonText}>Claiming...</Text>
+            </View>
+          ) : cooldownSeconds > 0 ? (
+            <View style={[styles.claimButton, styles.claimButtonCooldown]}>
+              <Ionicons name="time-outline" size={20} color="#FFF" />
+              <Text style={styles.claimButtonText}>Wait {cooldownSeconds}s</Text>
+            </View>
+          ) : (
+            <TouchableOpacity
+              style={[styles.claimButton, playerColor ? { backgroundColor: playerColor } : undefined]}
+              onPress={onClaimCell}
+              disabled={!canClaim}
+            >
+              <Ionicons name="flag" size={20} color="#FFF" />
+              <Text style={styles.claimButtonText}>Claim This Zone</Text>
+            </TouchableOpacity>
+          )}
+        </View>
+      )}
     </View>
   );
 };
@@ -321,6 +386,39 @@ const useStyles = makeStyles((theme) => ({
     color: theme.colors.textSecondary,
     textAlign: 'center',
     lineHeight: 20,
+  },
+  locationButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    marginTop: 20,
+    paddingVertical: 14,
+    paddingHorizontal: 28,
+    borderRadius: 28,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.25,
+    shadowRadius: 6,
+    elevation: 5,
+  },
+  locationButtonText: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: '#FFF',
+  },
+  viewerBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    paddingVertical: 8,
+    backgroundColor: theme.isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.05)',
+  },
+  viewerBannerText: {
+    fontSize: 13,
+    color: theme.colors.textMuted,
+    fontStyle: 'italic',
   },
   mapWrapper: {
     flex: 1,

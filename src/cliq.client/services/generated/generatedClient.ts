@@ -2857,12 +2857,12 @@ export class Client {
         return Promise.resolve<TerritoryCellDto[]>(null as any);
     }
 
-    territory_GetLeaderboard(top: number | undefined, signal?: AbortSignal): Promise<TerritoryLeaderboardEntryDto[]> {
+    territory_GetLeaderboard(topPerCity: number | undefined, signal?: AbortSignal): Promise<TerritoryCityLeaderboardDto> {
         let url_ = this.baseUrl + "/api/Territory/leaderboard?";
-        if (top === null)
-            throw new Error("The parameter 'top' cannot be null.");
-        else if (top !== undefined)
-            url_ += "top=" + encodeURIComponent("" + top) + "&";
+        if (topPerCity === null)
+            throw new Error("The parameter 'topPerCity' cannot be null.");
+        else if (topPerCity !== undefined)
+            url_ += "topPerCity=" + encodeURIComponent("" + topPerCity) + "&";
         url_ = url_.replace(/[?&]$/, "");
 
         let options_: RequestInit = {
@@ -2878,21 +2878,14 @@ export class Client {
         });
     }
 
-    protected processTerritory_GetLeaderboard(response: Response): Promise<TerritoryLeaderboardEntryDto[]> {
+    protected processTerritory_GetLeaderboard(response: Response): Promise<TerritoryCityLeaderboardDto> {
         const status = response.status;
         let _headers: any = {}; if (response.headers && response.headers.forEach) { response.headers.forEach((v: any, k: any) => _headers[k] = v); };
         if (status === 200) {
             return response.text().then((_responseText) => {
             let result200: any = null;
             let resultData200 = _responseText === "" ? null : JSON.parse(_responseText, this.jsonParseReviver);
-            if (Array.isArray(resultData200)) {
-                result200 = [] as any;
-                for (let item of resultData200)
-                    result200!.push(TerritoryLeaderboardEntryDto.fromJS(item));
-            }
-            else {
-                result200 = <any>null;
-            }
+            result200 = TerritoryCityLeaderboardDto.fromJS(resultData200);
             return result200;
             });
         } else if (status !== 200 && status !== 204) {
@@ -2900,7 +2893,49 @@ export class Client {
             return throwException("An unexpected server error occurred.", status, _responseText, _headers);
             });
         }
-        return Promise.resolve<TerritoryLeaderboardEntryDto[]>(null as any);
+        return Promise.resolve<TerritoryCityLeaderboardDto>(null as any);
+    }
+
+    territory_ChangeColor(request: TerritoryRegisterRequest, signal?: AbortSignal): Promise<void> {
+        let url_ = this.baseUrl + "/api/Territory/color";
+        url_ = url_.replace(/[?&]$/, "");
+
+        const content_ = JSON.stringify(request);
+
+        let options_: RequestInit = {
+            body: content_,
+            method: "PUT",
+            signal,
+            headers: {
+                "Content-Type": "application/json",
+            }
+        };
+
+        return this.http.fetch(url_, options_).then((_response: Response) => {
+            return this.processTerritory_ChangeColor(_response);
+        });
+    }
+
+    protected processTerritory_ChangeColor(response: Response): Promise<void> {
+        const status = response.status;
+        let _headers: any = {}; if (response.headers && response.headers.forEach) { response.headers.forEach((v: any, k: any) => _headers[k] = v); };
+        if (status === 204) {
+            return response.text().then((_responseText) => {
+            return;
+            });
+        } else if (status === 400) {
+            return response.text().then((_responseText) => {
+            let result400: any = null;
+            let resultData400 = _responseText === "" ? null : JSON.parse(_responseText, this.jsonParseReviver);
+            result400 = ProblemDetails.fromJS(resultData400);
+            return throwException("A server side error occurred.", status, _responseText, _headers, result400);
+            });
+        } else if (status !== 200 && status !== 204) {
+            return response.text().then((_responseText) => {
+            return throwException("An unexpected server error occurred.", status, _responseText, _headers);
+            });
+        }
+        return Promise.resolve<void>(null as any);
     }
 
     testAuth_GenerateTestToken(email: string | undefined, signal?: AbortSignal): Promise<FileResponse> {
@@ -5710,6 +5745,7 @@ export class TerritoryCellDto implements ITerritoryCellDto {
     claimedByName?: string | undefined;
     color?: string | undefined;
     claimedAt?: Date | undefined;
+    city?: string | undefined;
 
     constructor(data?: ITerritoryCellDto) {
         if (data) {
@@ -5728,6 +5764,7 @@ export class TerritoryCellDto implements ITerritoryCellDto {
             this.claimedByName = _data["claimedByName"];
             this.color = _data["color"];
             this.claimedAt = _data["claimedAt"] ? new Date(_data["claimedAt"].toString()) : <any>undefined;
+            this.city = _data["city"];
         }
     }
 
@@ -5746,6 +5783,7 @@ export class TerritoryCellDto implements ITerritoryCellDto {
         data["claimedByName"] = this.claimedByName;
         data["color"] = this.color;
         data["claimedAt"] = this.claimedAt ? this.claimedAt.toISOString() : <any>undefined;
+        data["city"] = this.city;
         return data;
     }
 }
@@ -5757,6 +5795,7 @@ export interface ITerritoryCellDto {
     claimedByName?: string | undefined;
     color?: string | undefined;
     claimedAt?: Date | undefined;
+    city?: string | undefined;
 }
 
 export class TerritoryClaimRequest implements ITerritoryClaimRequest {
@@ -5797,6 +5836,102 @@ export class TerritoryClaimRequest implements ITerritoryClaimRequest {
 export interface ITerritoryClaimRequest {
     latitude?: number;
     longitude?: number;
+}
+
+export class TerritoryCityLeaderboardDto implements ITerritoryCityLeaderboardDto {
+    cities?: CitySectionDto[];
+
+    constructor(data?: ITerritoryCityLeaderboardDto) {
+        if (data) {
+            for (var property in data) {
+                if (data.hasOwnProperty(property))
+                    (<any>this)[property] = (<any>data)[property];
+            }
+        }
+    }
+
+    init(_data?: any) {
+        if (_data) {
+            if (Array.isArray(_data["cities"])) {
+                this.cities = [] as any;
+                for (let item of _data["cities"])
+                    this.cities!.push(CitySectionDto.fromJS(item));
+            }
+        }
+    }
+
+    static fromJS(data: any): TerritoryCityLeaderboardDto {
+        data = typeof data === 'object' ? data : {};
+        let result = new TerritoryCityLeaderboardDto();
+        result.init(data);
+        return result;
+    }
+
+    toJSON(data?: any) {
+        data = typeof data === 'object' ? data : {};
+        if (Array.isArray(this.cities)) {
+            data["cities"] = [];
+            for (let item of this.cities)
+                data["cities"].push(item.toJSON());
+        }
+        return data;
+    }
+}
+
+export interface ITerritoryCityLeaderboardDto {
+    cities?: CitySectionDto[];
+}
+
+export class CitySectionDto implements ICitySectionDto {
+    city?: string;
+    userHasClaims?: boolean;
+    players?: TerritoryLeaderboardEntryDto[];
+
+    constructor(data?: ICitySectionDto) {
+        if (data) {
+            for (var property in data) {
+                if (data.hasOwnProperty(property))
+                    (<any>this)[property] = (<any>data)[property];
+            }
+        }
+    }
+
+    init(_data?: any) {
+        if (_data) {
+            this.city = _data["city"];
+            this.userHasClaims = _data["userHasClaims"];
+            if (Array.isArray(_data["players"])) {
+                this.players = [] as any;
+                for (let item of _data["players"])
+                    this.players!.push(TerritoryLeaderboardEntryDto.fromJS(item));
+            }
+        }
+    }
+
+    static fromJS(data: any): CitySectionDto {
+        data = typeof data === 'object' ? data : {};
+        let result = new CitySectionDto();
+        result.init(data);
+        return result;
+    }
+
+    toJSON(data?: any) {
+        data = typeof data === 'object' ? data : {};
+        data["city"] = this.city;
+        data["userHasClaims"] = this.userHasClaims;
+        if (Array.isArray(this.players)) {
+            data["players"] = [];
+            for (let item of this.players)
+                data["players"].push(item.toJSON());
+        }
+        return data;
+    }
+}
+
+export interface ICitySectionDto {
+    city?: string;
+    userHasClaims?: boolean;
+    players?: TerritoryLeaderboardEntryDto[];
 }
 
 export class TerritoryLeaderboardEntryDto implements ITerritoryLeaderboardEntryDto {

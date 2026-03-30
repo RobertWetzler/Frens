@@ -82,11 +82,11 @@ const TerritoryGameCard: React.FC<TerritoryGameCardProps> = ({
           <View style={styles.content}>
             <View style={styles.textSection}>
               <View style={styles.badge}>
-                <Text style={styles.badgeText}>🎮 APRIL FOOLS</Text>
-              </View>
-              <Text style={styles.title}>Territory Wars</Text>
+                <Text style={styles.badgeText}>🎮 MONTH OF APRIL FOOLS</Text>
+                <Text style={styles.badgeText}>Active through April 30</Text>              </View>
+              <Text style={styles.title}>FrenZones</Text>
               <Text style={styles.description}>
-                Claim real-world territory by walking to it. Compete with friends for the biggest empire!
+                Paint the map with your color! Walk to a spot, claim it, and compete for the top of the leaderboard.
               </Text>
             </View>
             <View style={styles.iconSection}>

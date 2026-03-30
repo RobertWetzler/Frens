@@ -3,6 +3,7 @@ using System;
 using Cliq.Server.Data;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 
@@ -11,9 +12,11 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace Cliq.Server.Migrations
 {
     [DbContext(typeof(CliqDbContext))]
-    partial class CliqDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260330035058_AddTerritoryCityCountry")]
+    partial class AddTerritoryCityCountry
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -710,45 +713,6 @@ namespace Cliq.Server.Migrations
                     b.ToTable("TerritoryClaims", "public");
                 });
 
-            modelBuilder.Entity("Cliq.Server.Models.TerritoryClaimHistory", b =>
-                {
-                    b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("uuid");
-
-                    b.Property<string>("Action")
-                        .IsRequired()
-                        .HasMaxLength(20)
-                        .HasColumnType("character varying(20)");
-
-                    b.Property<long>("CellCol")
-                        .HasColumnType("bigint");
-
-                    b.Property<long>("CellRow")
-                        .HasColumnType("bigint");
-
-                    b.Property<string>("Color")
-                        .IsRequired()
-                        .HasMaxLength(10)
-                        .HasColumnType("character varying(10)");
-
-                    b.Property<DateTime>("Timestamp")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("timestamp with time zone")
-                        .HasDefaultValueSql("NOW()");
-
-                    b.Property<Guid>("UserId")
-                        .HasColumnType("uuid");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("Timestamp");
-
-                    b.HasIndex("UserId");
-
-                    b.ToTable("TerritoryClaimHistory", "public");
-                });
-
             modelBuilder.Entity("Cliq.Server.Models.TerritoryPlayer", b =>
                 {
                     b.Property<Guid>("Id")
@@ -1338,17 +1302,6 @@ namespace Cliq.Server.Migrations
                         .IsRequired();
 
                     b.Navigation("ClaimedByUser");
-                });
-
-            modelBuilder.Entity("Cliq.Server.Models.TerritoryClaimHistory", b =>
-                {
-                    b.HasOne("Cliq.Server.Models.User", "User")
-                        .WithMany()
-                        .HasForeignKey("UserId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.Navigation("User");
                 });
 
             modelBuilder.Entity("Cliq.Server.Models.TerritoryPlayer", b =>

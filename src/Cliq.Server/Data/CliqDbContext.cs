@@ -37,6 +37,7 @@ public class CliqDbContext : IdentityDbContext<User, CliqRole, Guid>
     // Territory Wars - April Fools' r/Place-style map game
     public DbSet<TerritoryPlayer> TerritoryPlayers { get; set; }
     public DbSet<TerritoryClaim> TerritoryClaims { get; set; }
+    public DbSet<TerritoryClaimHistory> TerritoryClaimHistory { get; set; }
 
     public CliqDbContext(
             DbContextOptions<CliqDbContext> options,
@@ -620,7 +621,30 @@ public class CliqDbContext : IdentityDbContext<User, CliqRole, Guid>
 
             entity.Property(e => e.Bucket).IsRequired().HasMaxLength(40);
             entity.Property(e => e.Color).IsRequired().HasMaxLength(10);
+            entity.Property(e => e.City).HasMaxLength(100);
+            entity.Property(e => e.Country).HasMaxLength(100);
             entity.Property(e => e.ClaimedAt).HasDefaultValueSql("NOW()");
+
+            // Index for city-based leaderboard queries
+            entity.HasIndex(e => e.City);
+        });
+
+        // ========== TerritoryClaimHistory ==========
+        modelBuilder.Entity<TerritoryClaimHistory>(entity =>
+        {
+            entity.HasKey(e => e.Id);
+
+            entity.HasOne(e => e.User)
+                .WithMany()
+                .HasForeignKey(e => e.UserId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            entity.Property(e => e.Color).IsRequired().HasMaxLength(10);
+            entity.Property(e => e.Action).IsRequired().HasMaxLength(20);
+            entity.Property(e => e.Timestamp).HasDefaultValueSql("NOW()");
+
+            // Index for timelapse replay: ordered by time
+            entity.HasIndex(e => e.Timestamp);
         });
     }
 }

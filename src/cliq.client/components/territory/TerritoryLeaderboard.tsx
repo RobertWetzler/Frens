@@ -1,61 +1,69 @@
 import React from 'react';
-import { View, Text, FlatList } from 'react-native';
+import { View, Text } from 'react-native';
 import { useTheme } from '../../theme/ThemeContext';
 import { makeStyles } from '../../theme/makeStyles';
-import { TerritoryPlayer } from 'services/territoryGame';
+import { CityLeaderboard, TerritoryPlayer } from 'services/territoryGame';
 import { Ionicons } from '@expo/vector-icons';
 
 interface TerritoryLeaderboardProps {
-  players: TerritoryPlayer[];
+  leaderboard: CityLeaderboard;
 }
 
-const TerritoryLeaderboard: React.FC<TerritoryLeaderboardProps> = ({ players }) => {
+const TerritoryLeaderboard: React.FC<TerritoryLeaderboardProps> = ({ leaderboard }) => {
   const { theme } = useTheme();
   const styles = useStyles();
 
-  if (players.length === 0) {
+  if (leaderboard.cities.length === 0) {
     return (
       <View style={styles.emptyContainer}>
         <Ionicons name="trophy-outline" size={40} color={theme.colors.textMuted} />
-        <Text style={styles.emptyText}>No territory claimed yet</Text>
-        <Text style={styles.emptySubtext}>Be the first to claim a cell!</Text>
+        <Text style={styles.emptyText}>No zones frenned yet</Text>
+        <Text style={styles.emptySubtext}>Be the first to fren a zone!</Text>
       </View>
     );
   }
 
   return (
     <View style={styles.container}>
-      <Text style={styles.title}>🏆 Leaderboard</Text>
-      <FlatList
-        data={players}
-        scrollEnabled={false}
-        keyExtractor={(item) => item.userId}
-        renderItem={({ item, index }) => {
-          const isTop3 = index < 3;
-          const rankEmoji = index === 0 ? '🥇' : index === 1 ? '🥈' : index === 2 ? '🥉' : null;
-          return (
-            <View style={[styles.row, isTop3 && styles.rowTop3]}>
-              <View style={styles.rankContainer}>
-                {rankEmoji ? (
-                  <Text style={styles.rankEmoji}>{rankEmoji}</Text>
-                ) : (
-                  <Text style={styles.rankNumber}>{index + 1}</Text>
-                )}
+      <Text style={styles.pageTitle}>🏆 Leaderboard</Text>
+      {leaderboard.cities.map((section) => (
+        <View key={section.city} style={styles.citySection}>
+          <View style={styles.cityHeader}>
+            <Ionicons name="location" size={16} color={theme.colors.primary} />
+            <Text style={styles.cityName}>{section.city}</Text>
+            {section.userHasClaims && (
+              <View style={styles.yourCityBadge}>
+                <Text style={styles.yourCityText}>Your city</Text>
               </View>
-              <View style={[styles.colorDot, { backgroundColor: item.color }]} />
-              <Text style={[styles.playerName, isTop3 && styles.playerNameBold]} numberOfLines={1}>
-                {item.displayName}
-              </Text>
-              <View style={styles.scoreContainer}>
-                <Text style={[styles.score, isTop3 && { color: item.color }]}>
-                  {item.cellsClaimed}
+            )}
+          </View>
+          {section.players.map((player, index) => {
+            const isTop3 = index < 3;
+            const rankEmoji = index === 0 ? '🥇' : index === 1 ? '🥈' : index === 2 ? '🥉' : null;
+            return (
+              <View key={player.userId} style={[styles.row, isTop3 && styles.rowTop3]}>
+                <View style={styles.rankContainer}>
+                  {rankEmoji ? (
+                    <Text style={styles.rankEmoji}>{rankEmoji}</Text>
+                  ) : (
+                    <Text style={styles.rankNumber}>{index + 1}</Text>
+                  )}
+                </View>
+                <View style={[styles.colorDot, { backgroundColor: player.color }]} />
+                <Text style={[styles.playerName, isTop3 && styles.playerNameBold]} numberOfLines={1}>
+                  {player.displayName}
                 </Text>
-                <Text style={styles.scoreLabel}>points</Text>
+                <View style={styles.scoreContainer}>
+                  <Text style={[styles.score, isTop3 && { color: player.color }]}>
+                    {player.cellsClaimed}
+                  </Text>
+                  <Text style={styles.scoreLabel}>points</Text>
+                </View>
               </View>
-            </View>
-          );
-        }}
-      />
+            );
+          })}
+        </View>
+      ))}
     </View>
   );
 };
@@ -65,11 +73,40 @@ const useStyles = makeStyles((theme) => ({
     paddingHorizontal: 16,
     paddingVertical: 12,
   },
-  title: {
+  pageTitle: {
     fontSize: 20,
     fontWeight: '700',
     color: theme.colors.textPrimary,
-    marginBottom: 12,
+    marginBottom: 16,
+  },
+  citySection: {
+    marginBottom: 20,
+  },
+  cityHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    marginBottom: 8,
+    paddingBottom: 8,
+    borderBottomWidth: 1,
+    borderBottomColor: theme.colors.separator,
+  },
+  cityName: {
+    fontSize: 17,
+    fontWeight: '700',
+    color: theme.colors.textPrimary,
+    flex: 1,
+  },
+  yourCityBadge: {
+    backgroundColor: theme.colors.primary + '20',
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    borderRadius: 8,
+  },
+  yourCityText: {
+    fontSize: 11,
+    fontWeight: '600',
+    color: theme.colors.primary,
   },
   row: {
     flexDirection: 'row',

@@ -10,7 +10,8 @@ public interface ITerritoryService
     Task<TerritoryPlayerDto> RegisterAsync(Guid userId, string color);
     Task<TerritoryCellDto> ClaimCellAsync(Guid userId, double latitude, double longitude);
     Task<List<TerritoryCellDto>> GetCellsInBoundsAsync(double southLat, double westLng, double northLat, double eastLng);
-    Task<List<TerritoryLeaderboardEntryDto>> GetLeaderboardAsync(int top);
+    Task<TerritoryCityLeaderboardDto> GetCityLeaderboardAsync(Guid userId, int topPerCity);
+    Task ChangeColorAsync(Guid userId, string newColor);
 }
 
 public class TerritoryService : ITerritoryService
@@ -27,11 +28,13 @@ public class TerritoryService : ITerritoryService
     private const int BucketSize = 32;
 
     private readonly CliqDbContext _db;
+    private readonly ICityLookupService _cityLookup;
     private readonly ILogger<TerritoryService> _logger;
 
-    public TerritoryService(CliqDbContext db, ILogger<TerritoryService> logger)
+    public TerritoryService(CliqDbContext db, ICityLookupService cityLookup, ILogger<TerritoryService> logger)
     {
         _db = db;
+        _cityLookup = cityLookup;
         _logger = logger;
     }
 
@@ -118,12 +121,24 @@ public class TerritoryService : ITerritoryService
         var existing = await _db.TerritoryClaims
             .FirstOrDefaultAsync(c => c.CellRow == cellRow && c.CellCol == cellCol);
 
+        // Resolve city: reuse from existing cell if available, otherwise reverse geocode
+        string? city = existing?.City;
+        string? country = existing?.Country;
+        if (city == null && country == null)
+        {
+            var geo = await _cityLookup.LookupAsync(latitude, longitude, cellRow, cellCol);
+            city = geo.City;
+            country = geo.Country;
+        }
+
         if (existing != null)
         {
             existing.ClaimedByUserId = userId;
             existing.Color = player.Color;
             existing.ClaimedAt = DateTime.UtcNow;
             existing.Bucket = bucket;
+            existing.City = city;
+            existing.Country = country;
         }
         else
         {
@@ -134,12 +149,24 @@ public class TerritoryService : ITerritoryService
                 Bucket = bucket,
                 ClaimedByUserId = userId,
                 Color = player.Color,
+                City = city,
+                Country = country,
             };
             _db.TerritoryClaims.Add(claim);
         }
 
         // Update last claim time
         player.LastClaimAt = DateTime.UtcNow;
+
+        // Append to history log (for timelapse replay)
+        _db.TerritoryClaimHistory.Add(new TerritoryClaimHistory
+        {
+            CellRow = cellRow,
+            CellCol = cellCol,
+            UserId = userId,
+            Color = player.Color,
+            Action = "claim",
+        });
 
         await _db.SaveChangesAsync();
 
@@ -151,6 +178,7 @@ public class TerritoryService : ITerritoryService
             ClaimedByName = user.Name,
             Color = player.Color,
             ClaimedAt = DateTime.UtcNow,
+            City = city,
         };
     }
 
@@ -184,35 +212,93 @@ public class TerritoryService : ITerritoryService
         return claims;
     }
 
-    public async Task<List<TerritoryLeaderboardEntryDto>> GetLeaderboardAsync(int top = 20)
+    private static readonly HashSet<string> UsCityCountries = new(StringComparer.OrdinalIgnoreCase)
     {
-        var leaderboard = await _db.TerritoryClaims
+        "United States", "United States of America", "US", "USA"
+    };
+
+    /// <summary>
+    /// Computes the leaderboard region label for a claim.
+    /// US claims → city name (e.g. "Seattle"), non-US → country name (e.g. "Japan").
+    /// </summary>
+    public static string GetLeaderboardRegion(string? city, string? country)
+    {
+        if (country != null && UsCityCountries.Contains(country))
+            return city ?? country;
+        if (country != null)
+            return country;
+        return city ?? "Unknown";
+    }
+
+    public async Task<TerritoryCityLeaderboardDto> GetCityLeaderboardAsync(Guid userId, int topPerCity = 10)
+    {
+        // Pull all claims with city/country to compute regions in-memory
+        // (GetLeaderboardRegion logic can't be translated to SQL)
+        var allClaims = await _db.TerritoryClaims
             .AsNoTracking()
-            .GroupBy(c => c.ClaimedByUserId)
+            .Select(c => new { c.City, c.Country, c.ClaimedByUserId, c.Color, c.ClaimedAt })
+            .ToListAsync();
+
+        // Group by computed region + user
+        var raw = allClaims
+            .GroupBy(c => new { Region = GetLeaderboardRegion(c.City, c.Country), c.ClaimedByUserId })
             .Select(g => new
             {
-                UserId = g.Key,
+                Region = g.Key.Region,
+                UserId = g.Key.ClaimedByUserId,
                 CellsClaimed = g.Count(),
                 Color = g.OrderByDescending(c => c.ClaimedAt).First().Color,
             })
-            .OrderByDescending(x => x.CellsClaimed)
-            .Take(top)
-            .ToListAsync();
+            .ToList();
 
         // Batch-load user names
-        var userIds = leaderboard.Select(l => l.UserId).ToList();
+        var userIds = raw.Select(r => r.UserId).Distinct().ToList();
         var userNames = await _db.Users
             .AsNoTracking()
             .Where(u => userIds.Contains(u.Id))
             .ToDictionaryAsync(u => u.Id, u => u.Name);
 
-        return leaderboard.Select(l => new TerritoryLeaderboardEntryDto
-        {
-            UserId = l.UserId.ToString(),
-            DisplayName = userNames.GetValueOrDefault(l.UserId, "Unknown"),
-            Color = l.Color,
-            CellsClaimed = l.CellsClaimed,
-        }).ToList();
+        // Find which regions the current user has claims in
+        var userRegions = raw.Where(r => r.UserId == userId).Select(r => r.Region).ToHashSet();
+
+        // Group by region, rank within each, take top N per region
+        var cityGroups = raw
+            .GroupBy(r => r.Region)
+            .Select(g => new CitySectionDto
+            {
+                City = g.Key,
+                UserHasClaims = userRegions.Contains(g.Key),
+                Players = g
+                    .OrderByDescending(r => r.CellsClaimed)
+                    .Take(topPerCity)
+                    .Select(r => new TerritoryLeaderboardEntryDto
+                    {
+                        UserId = r.UserId.ToString(),
+                        DisplayName = userNames.GetValueOrDefault(r.UserId, "Unknown"),
+                        Color = r.Color,
+                        CellsClaimed = r.CellsClaimed,
+                    })
+                    .ToList(),
+            })
+            // User's cities first, then by total claims descending
+            .OrderByDescending(c => c.UserHasClaims)
+            .ThenByDescending(c => c.Players.Sum(p => p.CellsClaimed))
+            .ToList();
+
+        return new TerritoryCityLeaderboardDto { Cities = cityGroups };
+    }
+
+    public async Task ChangeColorAsync(Guid userId, string newColor)
+    {
+        var player = await _db.TerritoryPlayers.FirstOrDefaultAsync(p => p.UserId == userId)
+            ?? throw new InvalidOperationException("Not registered for FrenZones");
+
+        player.Color = newColor;
+        await _db.SaveChangesAsync();
+
+        // Bulk-update all existing cells to the new color via direct SQL
+        await _db.Database.ExecuteSqlInterpolatedAsync(
+            $"UPDATE public.\"TerritoryClaims\" SET \"Color\" = {newColor} WHERE \"ClaimedByUserId\" = {userId}");
     }
 
     // ─── Spatial hashing helpers ───
@@ -270,6 +356,7 @@ public class TerritoryCellDto
     public string? ClaimedByName { get; set; }
     public string? Color { get; set; }
     public DateTime? ClaimedAt { get; set; }
+    public string? City { get; set; }
 }
 
 public class TerritoryLeaderboardEntryDto
@@ -278,6 +365,18 @@ public class TerritoryLeaderboardEntryDto
     public required string DisplayName { get; set; }
     public required string Color { get; set; }
     public int CellsClaimed { get; set; }
+}
+
+public class CitySectionDto
+{
+    public required string City { get; set; }
+    public bool UserHasClaims { get; set; }
+    public List<TerritoryLeaderboardEntryDto> Players { get; set; } = new();
+}
+
+public class TerritoryCityLeaderboardDto
+{
+    public List<CitySectionDto> Cities { get; set; } = new();
 }
 
 // ─── Request DTOs ───
@@ -306,6 +405,7 @@ public static class TerritoryServiceExtensions
 {
     public static IServiceCollection AddTerritoryServices(this IServiceCollection services)
     {
+        services.AddSingleton<ICityLookupService, CityLookupService>();
         services.AddScoped<ITerritoryService, TerritoryService>();
         return services;
     }

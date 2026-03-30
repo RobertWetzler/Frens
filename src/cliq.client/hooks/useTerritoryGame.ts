@@ -3,6 +3,7 @@ import {
   TerritoryCell,
   TerritoryPlayer,
   TerritoryGameState,
+  CityLeaderboard,
   coordsToCell,
   CLAIM_COOLDOWN_MS,
 } from 'services/territoryGame';
@@ -19,35 +20,53 @@ export interface MapBounds {
 export function useTerritoryGame() {
   const [gameState, setGameState] = useState<TerritoryGameState | null>(null);
   const [cells, setCells] = useState<TerritoryCell[]>([]);
-  const [leaderboard, setLeaderboard] = useState<TerritoryPlayer[]>([]);
+  const [leaderboard, setLeaderboard] = useState<CityLeaderboard>({ cities: [] });
   const [location, setLocation] = useState<{ lat: number; lng: number } | null>(null);
   const [locationError, setLocationError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isClaiming, setIsClaiming] = useState(false);
   const [cooldownSeconds, setCooldownSeconds] = useState(0);
+  const [locationRequested, setLocationRequested] = useState(false);
+  const [viewerMode, setViewerMode] = useState(false);
   const cooldownRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const watchIdRef = useRef<number | null>(null);
 
-  // Watch user location
+  const onPositionSuccess = useCallback((position: GeolocationPosition) => {
+    setLocation({
+      lat: position.coords.latitude,
+      lng: position.coords.longitude,
+    });
+    setLocationError(null);
+  }, []);
+
+  // Watch user location — tries high accuracy first, falls back to low accuracy
   const startWatchingLocation = useCallback(() => {
     if (!navigator.geolocation) {
       setLocationError('Geolocation is not supported by your browser');
       return;
     }
-    watchIdRef.current = navigator.geolocation.watchPosition(
-      (position) => {
-        setLocation({
-          lat: position.coords.latitude,
-          lng: position.coords.longitude,
-        });
-        setLocationError(null);
-      },
-      (error) => {
-        setLocationError(error.message);
-      },
-      { enableHighAccuracy: true, maximumAge: 5000, timeout: 10000 }
-    );
-  }, []);
+
+    const startWatch = (highAccuracy: boolean) => {
+      watchIdRef.current = navigator.geolocation.watchPosition(
+        onPositionSuccess,
+        (error) => {
+          // If high accuracy failed, retry with low accuracy (helps on desktop Macs without GPS)
+          if (highAccuracy && (error.code === error.POSITION_UNAVAILABLE || error.code === error.TIMEOUT)) {
+            console.warn('High accuracy location failed, retrying with low accuracy');
+            if (watchIdRef.current !== null) {
+              navigator.geolocation.clearWatch(watchIdRef.current);
+            }
+            startWatch(false);
+            return;
+          }
+          setLocationError(error.message);
+        },
+        { enableHighAccuracy: highAccuracy, maximumAge: 10000, timeout: 30000 }
+      );
+    };
+
+    startWatch(true);
+  }, [onPositionSuccess]);
 
   const stopWatchingLocation = useCallback(() => {
     if (watchIdRef.current !== null) {
@@ -97,15 +116,19 @@ export function useTerritoryGame() {
   // Load leaderboard from API
   const loadLeaderboard = useCallback(async () => {
     try {
-      const dtos = await ApiClient.call((c) => c.territory_GetLeaderboard(20));
-      setLeaderboard(
-        dtos.map((d) => ({
-          userId: d.userId,
-          displayName: d.displayName,
-          color: d.color,
-          cellsClaimed: d.cellsClaimed,
-        }))
-      );
+      const dto = await ApiClient.call((c) => c.territory_GetLeaderboard(10));
+      setLeaderboard({
+        cities: (dto.cities ?? []).map((cs) => ({
+          city: cs.city ?? 'Unknown',
+          userHasClaims: cs.userHasClaims,
+          players: (cs.players ?? []).map((p) => ({
+            userId: p.userId ?? '',
+            displayName: p.displayName ?? 'Unknown',
+            color: p.color ?? '#999',
+            cellsClaimed: p.cellsClaimed,
+          })),
+        })),
+      });
     } catch (err) {
       console.error('Failed to load leaderboard:', err);
     }
@@ -113,6 +136,12 @@ export function useTerritoryGame() {
 
   // Track last known bounds so claim can refresh the current view
   const lastBoundsRef = useRef<MapBounds | null>(null);
+
+  // Enter viewer mode — browse the map without location
+  const enterViewerMode = useCallback(() => {
+    setViewerMode(true);
+    loadLeaderboard();
+  }, [loadLeaderboard]);
 
   // Register via API
   const register = useCallback(async (color: string) => {
@@ -126,6 +155,21 @@ export function useTerritoryGame() {
       throw err;
     }
   }, [loadGameState]);
+
+  // Change color via API
+  const changeColor = useCallback(async (color: string) => {
+    try {
+      await ApiClient.call((c) =>
+        c.territory_ChangeColor(new TerritoryRegisterRequest({ color }))
+      );
+      await loadGameState();
+      // Refresh map cells to show the new color
+      if (lastBoundsRef.current) await loadCellsInBounds(lastBoundsRef.current);
+    } catch (err) {
+      console.error('Failed to change color:', err);
+      throw err;
+    }
+  }, [loadGameState, loadCellsInBounds]);
 
   // Claim cell via API
   const claimCell = useCallback(async () => {
@@ -167,12 +211,59 @@ export function useTerritoryGame() {
     }
   }, [cooldownSeconds > 0]); // only re-run when transitioning from 0 to >0
 
-  // Initial load
+  // Request location — must be called from a user gesture for iOS Safari
+  const requestLocation = useCallback(() => {
+    setLocationRequested(true);
+    setLocationError(null);
+    startWatchingLocation();
+  }, [startWatchingLocation]);
+
+  // Initial load — check if location is already granted and auto-start
   useEffect(() => {
     const init = async () => {
       setIsLoading(true);
-      startWatchingLocation();
       await loadGameState();
+
+      // Try to detect if we already have location permission
+      let alreadyGranted = false;
+
+      // Method 1: Permissions API (Chrome, Firefox — not iOS Safari)
+      try {
+        if (navigator.permissions) {
+          const status = await navigator.permissions.query({ name: 'geolocation' });
+          if (status.state === 'granted') {
+            alreadyGranted = true;
+          }
+        }
+      } catch {
+        // Permissions API not supported
+      }
+
+      // Method 2: Quick getCurrentPosition probe with short timeout
+      // If it succeeds, permission was already granted
+      if (!alreadyGranted && navigator.geolocation) {
+        try {
+          await new Promise<void>((resolve, reject) => {
+            navigator.geolocation.getCurrentPosition(
+              (pos) => {
+                onPositionSuccess(pos);
+                alreadyGranted = true;
+                resolve();
+              },
+              () => reject(),
+              { enableHighAccuracy: false, maximumAge: 60000, timeout: 3000 }
+            );
+          });
+        } catch {
+          // Permission not granted or timed out — will show button
+        }
+      }
+
+      if (alreadyGranted) {
+        setLocationRequested(true);
+        startWatchingLocation();
+      }
+
       setIsLoading(false);
     };
     init();
@@ -192,6 +283,16 @@ export function useTerritoryGame() {
     loadCellsInBounds(bounds);
   }, [loadCellsInBounds]);
 
+  // Poll cells every 15 seconds for semi-live updates
+  useEffect(() => {
+    const interval = setInterval(() => {
+      if (lastBoundsRef.current) {
+        loadCellsInBounds(lastBoundsRef.current);
+      }
+    }, 15000);
+    return () => clearInterval(interval);
+  }, [loadCellsInBounds]);
+
   const userCell = location ? coordsToCell(location.lat, location.lng) : null;
 
   return {
@@ -204,8 +305,13 @@ export function useTerritoryGame() {
     isLoading,
     isClaiming,
     cooldownSeconds,
+    locationRequested,
+    viewerMode,
     register,
     claimCell,
+    changeColor,
+    requestLocation,
+    enterViewerMode,
     onMapBoundsChanged,
     refresh: () => {
       const refreshes: Promise<any>[] = [loadLeaderboard(), loadGameState()];
