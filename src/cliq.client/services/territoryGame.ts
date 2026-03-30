@@ -35,7 +35,7 @@ export interface TerritoryGameState {
 // Longitude: varies by latitude; ~0.001785° at 40°N
 export const CELL_SIZE_LAT = 0.001369;
 export const CELL_SIZE_LNG = 0.001785;
-export const CLAIM_COOLDOWN_MS = 60_000; // 1 minute
+export const CLAIM_COOLDOWN_MS = 120_000; // 2 minutes
 export const GRID_VISIBLE_RADIUS = 8; // show 17x17 grid
 
 export const TERRITORY_COLORS = [

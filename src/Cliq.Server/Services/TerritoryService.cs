@@ -18,7 +18,7 @@ public class TerritoryService : ITerritoryService
     // Cell size must match the frontend constants exactly
     private const double CellSizeLat = 0.001369;
     private const double CellSizeLng = 0.001785;
-    private const int CooldownSeconds = 60;
+    private const int CooldownSeconds = 120;
 
     /// <summary>
     /// Bucket size for spatial hashing. Each bucket covers BucketSize×BucketSize cells.
