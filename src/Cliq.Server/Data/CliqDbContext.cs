@@ -33,6 +33,10 @@ public class CliqDbContext : IdentityDbContext<User, CliqRole, Guid>
     public DbSet<InterestPost> InterestPosts { get; set; }
     public DbSet<InterestAnnouncement> InterestAnnouncements { get; set; }
     public DbSet<InterestDiscoveryNotification> InterestDiscoveryNotifications { get; set; }
+    
+    // Territory Wars - April Fools' r/Place-style map game
+    public DbSet<TerritoryPlayer> TerritoryPlayers { get; set; }
+    public DbSet<TerritoryClaim> TerritoryClaims { get; set; }
 
     public CliqDbContext(
             DbContextOptions<CliqDbContext> options,
@@ -576,6 +580,47 @@ public class CliqDbContext : IdentityDbContext<User, CliqRole, Guid>
                 .WithMany()
                 .HasForeignKey(d => d.InterestId)
                 .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        // ========== TerritoryPlayer ==========
+        modelBuilder.Entity<TerritoryPlayer>(entity =>
+        {
+            entity.HasKey(e => e.Id);
+
+            entity.HasOne(e => e.User)
+                .WithMany()
+                .HasForeignKey(e => e.UserId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            // One registration per user
+            entity.HasIndex(e => e.UserId).IsUnique();
+
+            entity.Property(e => e.Color).IsRequired().HasMaxLength(10);
+            entity.Property(e => e.RegisteredAt).HasDefaultValueSql("NOW()");
+        });
+
+        // ========== TerritoryClaim ==========
+        modelBuilder.Entity<TerritoryClaim>(entity =>
+        {
+            entity.HasKey(e => e.Id);
+
+            entity.HasOne(e => e.ClaimedByUser)
+                .WithMany()
+                .HasForeignKey(e => e.ClaimedByUserId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            // Unique cell: only one claim per (row, col)
+            entity.HasIndex(e => new { e.CellRow, e.CellCol }).IsUnique();
+
+            // Bucket index for efficient spatial range queries
+            entity.HasIndex(e => e.Bucket);
+
+            // Composite index for spatial queries filtered by bucket + row range
+            entity.HasIndex(e => new { e.Bucket, e.CellRow, e.CellCol });
+
+            entity.Property(e => e.Bucket).IsRequired().HasMaxLength(40);
+            entity.Property(e => e.Color).IsRequired().HasMaxLength(10);
+            entity.Property(e => e.ClaimedAt).HasDefaultValueSql("NOW()");
         });
     }
 }

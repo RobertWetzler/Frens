@@ -26,6 +26,7 @@ import { MentionProvider } from 'contexts/MentionContext';
 import CreateCircleScreen from 'screens/CreateCircleScreen';
 import AddUsersToCircleScreen from 'screens/AddUsersToCircleScreen';
 import NotificationsScreen from 'screens/NotificationScreen';
+import TerritoryGameScreen from 'screens/TerritoryGameScreen';
 import { useServiceWorker } from './hooks/useServiceWorker';
 import { ShaderBackgroundProvider } from 'contexts/ShaderBackgroundContext';
 import GlobalShaderBackground from 'components/GlobalShaderBackground';
@@ -42,6 +43,7 @@ type RootStackParamList = {
   Profile: { userId: string };
   Notifications: undefined;
   Settings: undefined;
+  TerritoryGame: undefined;
 };
 
 type TabParamList = {
@@ -78,6 +80,7 @@ const linking: LinkingOptions<RootStackParamList> = {
       CreatePost: 'create-post',
       CreateCircle: 'create-circle',
       Notifications: 'notifications',
+      TerritoryGame: 'territory-game',
     },
   },
 };
@@ -412,6 +415,15 @@ const MainApp = () => {
               component={SettingsScreen} 
               options={{ 
                 title: 'Settings',
+                headerShown: false,
+                headerBackTitleVisible: false,
+              }}
+            />
+            <Stack.Screen 
+              name="TerritoryGame" 
+              component={TerritoryGameScreen} 
+              options={{ 
+                title: 'Territory Wars',
                 headerShown: false,
                 headerBackTitleVisible: false,
               }}

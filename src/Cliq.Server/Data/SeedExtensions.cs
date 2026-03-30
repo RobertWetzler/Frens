@@ -377,6 +377,142 @@ public static class SeedExtensions
             sierra.Id, sierra.Name, hellokitty.Id, hellokitty.Name, hellokitty.DisplayName);
         await eventNotificationService.SendInterestDiscoveryNotificationsAsync(
             spencer.Id, spencer.Name, recipes.Id, recipes.Name, recipes.DisplayName);
+
+        // ===== Territory Wars seed data =====
+        await SeedTerritoryDataAsync(db, users);
+    }
+
+    /// <summary>
+    /// Seeds Territory Wars players and ~300 claimed cells across downtown Seattle,
+    /// Capitol Hill, University District, Fremont, Ballard, and Queen Anne.
+    /// </summary>
+    private static async Task SeedTerritoryDataAsync(CliqDbContext db, List<User> users)
+    {
+        var robert = GetUser(users, "robert@gmail.com");
+        var sierra = GetUser(users, "smushi@example.com");
+        var spencer = GetUser(users, "sandman@example.com");
+        var devon = GetUser(users, "devio@example.com");
+        var jacob = GetUser(users, "twilly@example.com");
+        var marcus = GetUser(users, "marcus@example.com");
+        var olivia = GetUser(users, "olivia@example.com");
+        var noah = GetUser(users, "noah@example.com");
+
+        // Cell size constants must match TerritoryService / frontend
+        const double CellSizeLat = 0.001369;
+        const double CellSizeLng = 0.001785;
+        const int BucketSize = 32;
+
+        string ComputeBucket(long row, long col)
+        {
+            var br = row >= 0 ? row / BucketSize : (row - BucketSize + 1) / BucketSize;
+            var bc = col >= 0 ? col / BucketSize : (col - BucketSize + 1) / BucketSize;
+            return $"{br}:{bc}";
+        }
+
+        // Register players with colors
+        var playerColors = new (User user, string color)[]
+        {
+            (robert, "#1E90FF"),    // Dodger Blue
+            (sierra, "#FF69B4"),    // Hot Pink
+            (spencer, "#32CD32"),   // Lime Green
+            (devon, "#FF4444"),     // Red
+            (jacob, "#FFD700"),     // Gold
+            (marcus, "#8A2BE2"),    // Blue Violet
+            (olivia, "#00CED1"),    // Dark Turquoise
+            (noah, "#FF8C00"),      // Orange
+        };
+
+        var territoryPlayers = playerColors.Select(pc => new TerritoryPlayer
+        {
+            UserId = pc.user.Id,
+            Color = pc.color,
+            RegisteredAt = DateTime.UtcNow.AddHours(-Random.Shared.Next(1, 24)),
+            LastClaimAt = DateTime.UtcNow.AddMinutes(-Random.Shared.Next(2, 120)),
+        }).ToList();
+
+        await db.TerritoryPlayers.AddRangeAsync(territoryPlayers);
+        await db.SaveChangesAsync();
+
+        // Seattle landmarks & neighborhoods (lat, lng) as territory hotspots
+        var hotspots = new (double lat, double lng, string name)[]
+        {
+            // Downtown / Pike Place
+            (47.6097, -122.3421, "Pike Place Market"),
+            (47.6062, -122.3321, "Downtown Core"),
+            (47.6080, -122.3359, "Westlake Center"),
+            // Capitol Hill
+            (47.6148, -122.3187, "Capitol Hill N"),
+            (47.6195, -122.3208, "Volunteer Park"),
+            (47.6130, -122.3140, "Capitol Hill S"),
+            // University District
+            (47.6553, -122.3035, "U-District North"),
+            (47.6590, -122.3130, "UW Campus"),
+            (47.6510, -122.3050, "The Ave"),
+            // Fremont
+            (47.6510, -122.3500, "Fremont Center"),
+            (47.6540, -122.3460, "Fremont Bridge"),
+            // Ballard
+            (47.6690, -122.3831, "Ballard Ave"),
+            (47.6725, -122.3875, "Ballard Locks"),
+            // Queen Anne
+            (47.6370, -122.3568, "Lower Queen Anne"),
+            (47.6375, -122.3562, "Seattle Center"),
+            (47.6325, -122.3565, "Space Needle area"),
+            // South Lake Union
+            (47.6260, -122.3385, "SLU / Amazon"),
+            (47.6289, -122.3425, "Lake Union Park"),
+            // Waterfront
+            (47.6050, -122.3395, "Seattle Waterfront"),
+            (47.6025, -122.3385, "Pioneer Square"),
+            // International District
+            (47.5983, -122.3275, "Chinatown / ID"),
+            // Green Lake
+            (47.6795, -122.3285, "Green Lake W"),
+            (47.6815, -122.3245, "Green Lake E"),
+            // Wallingford
+            (47.6585, -122.3350, "Wallingford"),
+        };
+
+        var claims = new List<TerritoryClaim>();
+        var rng = new Random(42); // deterministic for consistent seeds
+
+        foreach (var (lat, lng, _) in hotspots)
+        {
+            var centerRow = (long)Math.Floor(lat / CellSizeLat);
+            var centerCol = (long)Math.Floor(lng / CellSizeLng);
+
+            // Each hotspot: scatter 10-18 claimed cells in a cluster
+            var clusterSize = rng.Next(10, 19);
+            for (int i = 0; i < clusterSize; i++)
+            {
+                var dr = rng.Next(-4, 5);
+                var dc = rng.Next(-4, 5);
+                var row = centerRow + dr;
+                var col = centerCol + dc;
+
+                // Skip if already claimed (avoid unique constraint violation)
+                if (claims.Any(c => c.CellRow == row && c.CellCol == col))
+                    continue;
+
+                // Pick a player — weight it so hotspots tend toward one player
+                // but with some mixing for contested borders
+                var playerIdx = (Math.Abs(dr + dc) + i) % playerColors.Length;
+                var (user, color) = playerColors[playerIdx];
+
+                claims.Add(new TerritoryClaim
+                {
+                    CellRow = row,
+                    CellCol = col,
+                    Bucket = ComputeBucket(row, col),
+                    ClaimedByUserId = user.Id,
+                    Color = color,
+                    ClaimedAt = DateTime.UtcNow.AddMinutes(-rng.Next(2, 1440)),
+                });
+            }
+        }
+
+        await db.TerritoryClaims.AddRangeAsync(claims);
+        await db.SaveChangesAsync();
     }
 
     private static User GetUser(List<User> users, string email)

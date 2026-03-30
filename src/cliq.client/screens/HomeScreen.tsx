@@ -22,6 +22,10 @@ import { useTheme } from '../theme/ThemeContext';
 import { makeStyles } from '../theme/makeStyles';
 import { useSnowCollision } from 'contexts/SnowCollisionContext';
 import { Svg, Circle, Ellipse, Path, Rect, Line } from 'react-native-svg';
+import TerritoryGameCard from 'components/territory/TerritoryGameCard';
+
+// Feature flag for April Fools' Territory Wars game
+const TERRITORY_GAME_ENABLED = true;
 
 
 const HomeScreen = ({ navigation }) => {
@@ -368,6 +372,14 @@ const HomeScreen = ({ navigation }) => {
                 keyExtractor={(item) => item.id}
                 ListHeaderComponent={() => (
                     <View>
+                        {/* Territory Wars game card */}
+                        {TERRITORY_GAME_ENABLED && (
+                            <TerritoryGameCard
+                                onPress={() => navigation.navigate('TerritoryGame')}
+                                shouldAnimate={isFirstLoad}
+                                animationDelay={ANIMATION_DELAY - 200}
+                            />
+                        )}
                         {/* Only show circle filter if user has more than one circle */}
                         {circles && circles.length > 1 && (
                             <View style={styles.filterContainer}>

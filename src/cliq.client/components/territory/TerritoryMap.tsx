@@ -1,0 +1,364 @@
+import React, { useMemo, useCallback } from 'react';
+import { View, Text, TouchableOpacity, ActivityIndicator, Platform } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
+import { useTheme } from '../../theme/ThemeContext';
+import { makeStyles } from '../../theme/makeStyles';
+import { TerritoryCell, cellToCoords, cellToBounds } from 'services/territoryGame';
+import type { MapBounds } from 'hooks/useTerritoryGame';
+
+function formatTimeAgo(dateStr: string): string {
+  const now = Date.now();
+  const then = new Date(dateStr).getTime();
+  const diffMs = now - then;
+  const mins = Math.floor(diffMs / 60000);
+  if (mins < 1) return 'just now';
+  if (mins < 60) return `${mins}m ago`;
+  const hours = Math.floor(mins / 60);
+  if (hours < 24) return `${hours}h ago`;
+  const days = Math.floor(hours / 24);
+  return `${days}d ago`;
+}
+
+// Leaflet imports (web only)
+let MapContainer: any;
+let TileLayer: any;
+let Rectangle: any;
+let CircleMarker: any;
+let Tooltip: any;
+let useMap: any;
+let useMapEvents: any;
+if (Platform.OS === 'web') {
+  const RL = require('react-leaflet');
+  MapContainer = RL.MapContainer;
+  TileLayer = RL.TileLayer;
+  Rectangle = RL.Rectangle;
+  CircleMarker = RL.CircleMarker;
+  Tooltip = RL.Tooltip;
+  useMap = RL.useMap;
+  useMapEvents = RL.useMapEvents;
+}
+
+interface TerritoryMapProps {
+  cells: TerritoryCell[];
+  userCell: { row: number; col: number } | null;
+  playerColor: string | null;
+  cooldownSeconds: number;
+  isClaiming: boolean;
+  locationError: string | null;
+  location: { lat: number; lng: number } | null;
+  onClaimCell: () => void;
+  onBoundsChanged: (bounds: MapBounds) => void;
+}
+
+/** Re-center the map on first location fix only */
+const RecenterOnce: React.FC<{ lat: number; lng: number }> = ({ lat, lng }) => {
+  const map = useMap();
+  const hasCentered = React.useRef(false);
+  React.useEffect(() => {
+    if (!hasCentered.current) {
+      map.setView([lat, lng], map.getZoom(), { animate: false });
+      hasCentered.current = true;
+    }
+  }, [lat, lng]);
+  return null;
+};
+
+/** Fires onBoundsChanged on map moveend/zoomend and on mount */
+const BoundsWatcher: React.FC<{ onBoundsChanged: (bounds: MapBounds) => void }> = ({ onBoundsChanged }) => {
+  const map = useMapEvents({
+    moveend: () => {
+      const b = map.getBounds();
+      onBoundsChanged({
+        south: b.getSouth(),
+        west: b.getWest(),
+        north: b.getNorth(),
+        east: b.getEast(),
+      });
+    },
+    zoomend: () => {
+      const b = map.getBounds();
+      onBoundsChanged({
+        south: b.getSouth(),
+        west: b.getWest(),
+        north: b.getNorth(),
+        east: b.getEast(),
+      });
+    },
+  });
+
+  // Fire initial bounds on mount
+  React.useEffect(() => {
+    // Small delay so the map has settled its initial view
+    const timer = setTimeout(() => {
+      const b = map.getBounds();
+      onBoundsChanged({
+        south: b.getSouth(),
+        west: b.getWest(),
+        north: b.getNorth(),
+        east: b.getEast(),
+      });
+    }, 100);
+    return () => clearTimeout(timer);
+  }, []);
+
+  return null;
+};
+
+const TerritoryMap: React.FC<TerritoryMapProps> = ({
+  cells,
+  userCell,
+  playerColor,
+  cooldownSeconds,
+  isClaiming,
+  locationError,
+  location,
+  onClaimCell,
+  onBoundsChanged,
+}) => {
+  const { theme } = useTheme();
+  const styles = useStyles();
+
+  // Build a lookup map for fast cell rendering
+  const cellMap = useMemo(() => {
+    const map = new Map<string, TerritoryCell>();
+    for (const cell of cells) {
+      map.set(`${cell.row},${cell.col}`, cell);
+    }
+    return map;
+  }, [cells]);
+
+  // Compute all rectangles to render on the map
+  const cellRectangles = useMemo(() => {
+    return cells.map((cell) => ({
+      key: `${cell.row},${cell.col}`,
+      bounds: cellToBounds(cell.row, cell.col),
+      color: cell.color || '#999',
+      claimedByName: cell.claimedByName,
+      claimedAt: cell.claimedAt,
+    }));
+  }, [cells]);
+
+  // User's current cell bounds for highlight
+  const userCellBounds = useMemo(() => {
+    if (!userCell) return null;
+    return cellToBounds(userCell.row, userCell.col);
+  }, [userCell?.row, userCell?.col]);
+
+  // Check if user's current cell is already claimed
+  const userCellClaimed = useMemo(() => {
+    if (!userCell) return null;
+    return cellMap.get(`${userCell.row},${userCell.col}`) ?? null;
+  }, [userCell, cellMap]);
+
+  if (Platform.OS !== 'web') {
+    return (
+      <View style={styles.errorContainer}>
+        <Ionicons name="map-outline" size={48} color={theme.colors.textMuted} />
+        <Text style={styles.errorTitle}>Web Only</Text>
+        <Text style={styles.errorText}>Territory Wars map is only available on web.</Text>
+      </View>
+    );
+  }
+
+  if (locationError) {
+    return (
+      <View style={styles.errorContainer}>
+        <Ionicons name="location-outline" size={48} color={theme.colors.danger} />
+        <Text style={styles.errorTitle}>Location Required</Text>
+        <Text style={styles.errorText}>
+          Enable location access to play Territory Wars. We need to know where you are to let you claim cells.
+        </Text>
+      </View>
+    );
+  }
+
+  if (!userCell || !location) {
+    return (
+      <View style={styles.loadingContainer}>
+        <ActivityIndicator size="large" color={theme.colors.primary} />
+        <Text style={styles.loadingText}>Finding your location...</Text>
+      </View>
+    );
+  }
+
+  const canClaim = cooldownSeconds === 0 && !isClaiming;
+
+  return (
+    <View style={styles.container}>
+      {/* Leaflet map */}
+      <View style={styles.mapWrapper}>
+        <MapContainer
+          center={[location.lat, location.lng]}
+          zoom={16}
+          style={{ width: '100%', height: '100%' }}
+          zoomControl={true}
+          attributionControl={false}
+        >
+          <TileLayer
+            url="https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png"
+            maxZoom={20}
+          />
+          <RecenterOnce lat={location.lat} lng={location.lng} />
+          <BoundsWatcher onBoundsChanged={onBoundsChanged} />
+
+          {/* Claimed cells as colored rectangles */}
+          {cellRectangles.map((rect) => (
+            <Rectangle
+              key={rect.key}
+              bounds={rect.bounds}
+              pathOptions={{
+                color: rect.color,
+                fillColor: rect.color,
+                fillOpacity: 0.55,
+                weight: 1,
+                opacity: 0.8,
+              }}
+              eventHandlers={{
+                click: (e: any) => {
+                  e.target.openTooltip();
+                },
+              }}
+            >
+              <Tooltip direction="top" sticky={false}>
+                <div style={{ textAlign: 'center', fontSize: 13 }}>
+                  <strong>{rect.claimedByName || 'Unknown'}</strong>
+                  {rect.claimedAt && (
+                    <div style={{ color: '#888', fontSize: 11, marginTop: 2 }}>
+                      {formatTimeAgo(rect.claimedAt)}
+                    </div>
+                  )}
+                </div>
+              </Tooltip>
+            </Rectangle>
+          ))}
+
+          {/* User's current cell highlight */}
+          {userCellBounds && (
+            <Rectangle
+              bounds={userCellBounds}
+              pathOptions={{
+                color: playerColor || theme.colors.primary,
+                fillColor: playerColor ? playerColor + '44' : theme.colors.primary + '44',
+                fillOpacity: 0.3,
+                weight: 3,
+                dashArray: userCellClaimed ? undefined : '6 4',
+              }}
+            />
+          )}
+
+          {/* User location dot */}
+          <CircleMarker
+            center={[location.lat, location.lng]}
+            radius={7}
+            pathOptions={{
+              color: '#FFF',
+              fillColor: playerColor || theme.colors.primary,
+              fillOpacity: 1,
+              weight: 3,
+            }}
+          />
+        </MapContainer>
+      </View>
+
+      {/* Claim Button overlay */}
+      <View style={styles.claimOverlay}>
+        {isClaiming ? (
+          <View style={[styles.claimButton, { backgroundColor: theme.colors.textMuted }]}>
+            <ActivityIndicator size="small" color="#FFF" />
+            <Text style={styles.claimButtonText}>Claiming...</Text>
+          </View>
+        ) : cooldownSeconds > 0 ? (
+          <View style={[styles.claimButton, styles.claimButtonCooldown]}>
+            <Ionicons name="time-outline" size={20} color="#FFF" />
+            <Text style={styles.claimButtonText}>Wait {cooldownSeconds}s</Text>
+          </View>
+        ) : (
+          <TouchableOpacity
+            style={[styles.claimButton, playerColor ? { backgroundColor: playerColor } : undefined]}
+            onPress={onClaimCell}
+            disabled={!canClaim}
+          >
+            <Ionicons name="flag" size={20} color="#FFF" />
+            <Text style={styles.claimButtonText}>Claim This Cell</Text>
+          </TouchableOpacity>
+        )}
+      </View>
+    </View>
+  );
+};
+
+const useStyles = makeStyles((theme) => ({
+  container: {
+    flex: 1,
+    position: 'relative' as any,
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 40,
+  },
+  loadingText: {
+    marginTop: 12,
+    color: theme.colors.textMuted,
+    fontSize: 15,
+  },
+  errorContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 40,
+  },
+  errorTitle: {
+    fontSize: 20,
+    fontWeight: '700',
+    color: theme.colors.danger,
+    marginTop: 12,
+    marginBottom: 8,
+  },
+  errorText: {
+    fontSize: 14,
+    color: theme.colors.textSecondary,
+    textAlign: 'center',
+    lineHeight: 20,
+  },
+  mapWrapper: {
+    flex: 1,
+    overflow: 'hidden' as any,
+  },
+  claimOverlay: {
+    position: 'absolute' as any,
+    bottom: 24,
+    left: 0,
+    right: 0,
+    alignItems: 'center',
+    zIndex: 1000,
+  },
+  claimButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    backgroundColor: theme.colors.primary,
+    paddingVertical: 14,
+    paddingHorizontal: 32,
+    borderRadius: 28,
+    minWidth: 200,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.35,
+    shadowRadius: 8,
+    elevation: 8,
+  },
+  claimButtonCooldown: {
+    backgroundColor: theme.colors.textMuted,
+    opacity: 0.85,
+  },
+  claimButtonText: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: '#FFF',
+  },
+}));
+
+export default TerritoryMap;
