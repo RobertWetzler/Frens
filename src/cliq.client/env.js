@@ -18,14 +18,16 @@ if (generatedDev) {
 
 const DEFAULT_DEV_URL = 'http://localhost:5188';
 
+const getBrowserOrigin = () =>
+  typeof window !== 'undefined' && window.location ? window.location.origin : null;
+
 const ENV = {
   development: {
     API_URL: generatedUrl || process.env.DEV_API_URL || DEFAULT_DEV_URL,
     VAPID_PUBLIC_KEY: 'BCs0Nh-yet4gbF_-xqsSEAJLFFE9iDcXBE2dade9YzkDyy-6UaJ8uFh2tcIT__ht38M2PqwlLs7Bu_aHL7_HmDA'
   },
   production: {
-    // TODO: Change to Frens domain once I buy a domain name
-    API_URL: 'https://cliq-server.fly.dev', // Production API endpoint
+    API_URL: getBrowserOrigin() || 'https://cliq-server.fly.dev',
     VAPID_PUBLIC_KEY: 'BIw5zCVYA6Mh7HjPtZhqlt9ZNp5mNOh6sZaT7znRtiPIaWEWy4e7KOtYfs7erRMKTy4sKqEAqnrj-Tvd3SpRCZY'
   }
 };
