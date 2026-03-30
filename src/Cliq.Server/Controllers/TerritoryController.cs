@@ -86,16 +86,36 @@ public class TerritoryController : ControllerBase
         return Ok(cells);
     }
 
-    /// <summary>Get the territory leaderboard.</summary>
+    /// <summary>Get the territory leaderboard grouped by city, with the current user's cities first.</summary>
     [HttpGet("leaderboard")]
-    public async Task<ActionResult<List<TerritoryLeaderboardEntryDto>>> GetLeaderboard(
-        [FromQuery] int top = 20)
+    public async Task<ActionResult<TerritoryCityLeaderboardDto>> GetLeaderboard(
+        [FromQuery] int topPerCity = 10)
     {
         if (!AuthUtils.TryGetUserIdFromToken(HttpContext, out var userId))
             return Unauthorized();
 
-        top = Math.Clamp(top, 1, 100);
-        var leaderboard = await _territoryService.GetLeaderboardAsync(top);
+        topPerCity = Math.Clamp(topPerCity, 1, 50);
+        var leaderboard = await _territoryService.GetCityLeaderboardAsync(userId, topPerCity);
         return Ok(leaderboard);
+    }
+
+    /// <summary>Change the player's color.</summary>
+    [HttpPut("color")]
+    [ProducesResponseType(StatusCodes.Status204NoContent)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    public async Task<ActionResult> ChangeColor([FromBody] TerritoryRegisterRequest request)
+    {
+        if (!AuthUtils.TryGetUserIdFromToken(HttpContext, out var userId))
+            return Unauthorized();
+
+        try
+        {
+            await _territoryService.ChangeColorAsync(userId, request.Color);
+            return NoContent();
+        }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(ex.Message);
+        }
     }
 }

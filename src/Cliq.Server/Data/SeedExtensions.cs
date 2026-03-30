@@ -433,70 +433,41 @@ public static class SeedExtensions
         await db.TerritoryPlayers.AddRangeAsync(territoryPlayers);
         await db.SaveChangesAsync();
 
-        // Seattle landmarks & neighborhoods (lat, lng) as territory hotspots
-        var hotspots = new (double lat, double lng, string name)[]
-        {
-            // Downtown / Pike Place
-            (47.6097, -122.3421, "Pike Place Market"),
-            (47.6062, -122.3321, "Downtown Core"),
-            (47.6080, -122.3359, "Westlake Center"),
-            // Capitol Hill
-            (47.6148, -122.3187, "Capitol Hill N"),
-            (47.6195, -122.3208, "Volunteer Park"),
-            (47.6130, -122.3140, "Capitol Hill S"),
-            // University District
-            (47.6553, -122.3035, "U-District North"),
-            (47.6590, -122.3130, "UW Campus"),
-            (47.6510, -122.3050, "The Ave"),
-            // Fremont
-            (47.6510, -122.3500, "Fremont Center"),
-            (47.6540, -122.3460, "Fremont Bridge"),
-            // Ballard
-            (47.6690, -122.3831, "Ballard Ave"),
-            (47.6725, -122.3875, "Ballard Locks"),
-            // Queen Anne
-            (47.6370, -122.3568, "Lower Queen Anne"),
-            (47.6375, -122.3562, "Seattle Center"),
-            (47.6325, -122.3565, "Space Needle area"),
-            // South Lake Union
-            (47.6260, -122.3385, "SLU / Amazon"),
-            (47.6289, -122.3425, "Lake Union Park"),
-            // Waterfront
-            (47.6050, -122.3395, "Seattle Waterfront"),
-            (47.6025, -122.3385, "Pioneer Square"),
-            // International District
-            (47.5983, -122.3275, "Chinatown / ID"),
-            // Green Lake
-            (47.6795, -122.3285, "Green Lake W"),
-            (47.6815, -122.3245, "Green Lake E"),
-            // Wallingford
-            (47.6585, -122.3350, "Wallingford"),
-        };
+        // Dense coverage of greater Seattle area for stress testing
+        // Bounding box: ~47.50 to ~47.73 lat, ~-122.44 to ~-122.25 lng
+        // This covers: SODO, Downtown, Capitol Hill, U-District, Fremont, Ballard,
+        // Queen Anne, Magnolia, Wallingford, Green Lake, Ravenna, Madison Park, etc.
+        const double minLat = 47.50;
+        const double maxLat = 47.73;
+        const double minLng = -122.44;
+        const double maxLng = -122.25;
+
+        var minRow = (long)Math.Floor(minLat / CellSizeLat);
+        var maxRow = (long)Math.Floor(maxLat / CellSizeLat);
+        var minCol = (long)Math.Floor(minLng / CellSizeLng);
+        var maxCol = (long)Math.Floor(maxLng / CellSizeLng);
 
         var claims = new List<TerritoryClaim>();
+        var claimedCells = new HashSet<(long, long)>();
         var rng = new Random(42); // deterministic for consistent seeds
 
-        foreach (var (lat, lng, _) in hotspots)
+        // Fill the entire bounding box — ~30,000+ cells
+        for (var row = minRow; row <= maxRow; row++)
         {
-            var centerRow = (long)Math.Floor(lat / CellSizeLat);
-            var centerCol = (long)Math.Floor(lng / CellSizeLng);
-
-            // Each hotspot: scatter 10-18 claimed cells in a cluster
-            var clusterSize = rng.Next(10, 19);
-            for (int i = 0; i < clusterSize; i++)
+            for (var col = minCol; col <= maxCol; col++)
             {
-                var dr = rng.Next(-4, 5);
-                var dc = rng.Next(-4, 5);
-                var row = centerRow + dr;
-                var col = centerCol + dc;
-
-                // Skip if already claimed (avoid unique constraint violation)
-                if (claims.Any(c => c.CellRow == row && c.CellCol == col))
+                // Skip ~60% of cells randomly to create organic-looking gaps
+                if (rng.NextDouble() < 0.60)
                     continue;
 
-                // Pick a player — weight it so hotspots tend toward one player
-                // but with some mixing for contested borders
-                var playerIdx = (Math.Abs(dr + dc) + i) % playerColors.Length;
+                claimedCells.Add((row, col));
+
+                // Assign to a player based on spatial regions for realistic territory blobs
+                var latFrac = (double)(row - minRow) / (maxRow - minRow);
+                var lngFrac = (double)(col - minCol) / (maxCol - minCol);
+                var regionIdx = ((int)(latFrac * 3) * 3 + (int)(lngFrac * 3)) % playerColors.Length;
+                // Add some mixing at borders
+                var playerIdx = rng.NextDouble() < 0.75 ? regionIdx : rng.Next(playerColors.Length);
                 var (user, color) = playerColors[playerIdx];
 
                 claims.Add(new TerritoryClaim
@@ -506,6 +477,8 @@ public static class SeedExtensions
                     Bucket = ComputeBucket(row, col),
                     ClaimedByUserId = user.Id,
                     Color = color,
+                    City = "Seattle",
+                    Country = "United States",
                     ClaimedAt = DateTime.UtcNow.AddMinutes(-rng.Next(2, 1440)),
                 });
             }

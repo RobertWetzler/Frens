@@ -423,7 +423,7 @@ const MainApp = () => {
               name="TerritoryGame" 
               component={TerritoryGameScreen} 
               options={{ 
-                title: 'Territory Wars',
+                title: 'FrenZones',
                 headerShown: false,
                 headerBackTitleVisible: false,
               }}

@@ -9,12 +9,12 @@
 		<!-- Overwritten at build time by DetectLanIp target below -->
 		<SpaProxyServerUrl>https://localhost:8443</SpaProxyServerUrl>
 		<BuildFrontendEnabled>false</BuildFrontendEnabled>
-	</PropertyGroup>
+	  <UserSecretsId>7703389f-a74a-406f-968b-223a30b4a935</UserSecretsId>
+  </PropertyGroup>
 
 	<!-- Detect LAN IP at build time so the SPA proxy redirects to the machine's IP, not localhost -->
 	<Target Name="DetectLanIp" BeforeTargets="WriteSpaConfigurationToDisk" Condition="'$(Configuration)' == 'Debug'">
-		<Exec Command="ipconfig getifaddr en0 2>/dev/null || ipconfig getifaddr en1 2>/dev/null || echo localhost"
-		      ConsoleToMsBuild="true" StandardOutputImportance="low" IgnoreExitCode="true">
+		<Exec Command="ipconfig getifaddr en0 2&gt;/dev/null || ipconfig getifaddr en1 2&gt;/dev/null || echo localhost" ConsoleToMsBuild="true" StandardOutputImportance="low" IgnoreExitCode="true">
 			<Output TaskParameter="ConsoleOutput" PropertyName="_LanIp" />
 		</Exec>
 		<PropertyGroup>
@@ -63,9 +63,7 @@
 	<Target Name="NSwag" AfterTargets="PostBuildEvent" Condition="'$(GenerateTypeScriptClient)' == 'true'">
 		<Message Text="Generating TypeScript client from Swagger..." Importance="high" />
 		<!-- Generate swagger.json from the compiled project (uses ApiExplorer, no running server needed) -->
-		<Exec Command="$(NSwagExe_Net80) aspnetcore2openapi /Project:$(MSBuildProjectFullPath) /NoBuild:true /Output:$(MSBuildProjectDirectory)/swagger.json" 
-			  WorkingDirectory="$(MSBuildProjectDirectory)"
-			  EnvironmentVariables="ASPNETCORE_ENVIRONMENT=Development" />
+		<Exec Command="$(NSwagExe_Net80) aspnetcore2openapi /Project:$(MSBuildProjectFullPath) /NoBuild:true /Output:$(MSBuildProjectDirectory)/swagger.json" WorkingDirectory="$(MSBuildProjectDirectory)" EnvironmentVariables="ASPNETCORE_ENVIRONMENT=Development" />
 		<!-- Generate TypeScript client from swagger.json -->
 		<Exec Command="$(NSwagExe_Net80) openapi2tsclient /Input:$(MSBuildProjectDirectory)/swagger.json /Output:$(MSBuildProjectDirectory)/../cliq.client/services/generated/generatedClient.ts /Template:Fetch /TypeStyle:Class /UseAbortSignal:true /OperationGenerationMode:SingleClientFromOperationId /ClassName:Client" />
 		<Message Text="TypeScript client generated successfully!" Importance="high" />

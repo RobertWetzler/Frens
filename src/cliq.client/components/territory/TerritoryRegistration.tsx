@@ -30,8 +30,8 @@ const TerritoryRegistration: React.FC<TerritoryRegistrationProps> = ({ onRegiste
       {/* Header */}
       <View style={styles.header}>
         <Text style={styles.emoji}>🗺️</Text>
-        <Text style={styles.title}>Territory Wars</Text>
-        <Text style={styles.subtitle}>Claim your ground. Defend your turf.</Text>
+        <Text style={styles.title}>FrenZones</Text>
+        <Text style={styles.subtitle}>Paint the map. Rep your crew.</Text>
       </View>
 
       {/* Instructions */}
@@ -78,7 +78,7 @@ const TerritoryRegistration: React.FC<TerritoryRegistrationProps> = ({ onRegiste
       {/* Color Picker */}
       <View style={styles.colorSection}>
         <Text style={styles.colorTitle}>Choose Your Color</Text>
-        <Text style={styles.colorSubtitle}>This is the color that will represent your territory</Text>
+        <Text style={styles.colorSubtitle}>This is the color that will represent your zones</Text>
         <View style={styles.colorGrid}>
           {TERRITORY_COLORS.map((color) => (
             <TouchableOpacity
@@ -111,7 +111,7 @@ const TerritoryRegistration: React.FC<TerritoryRegistrationProps> = ({ onRegiste
       >
         <Ionicons name="flag" size={20} color="#FFF" style={{ marginRight: 8 }} />
         <Text style={styles.startButtonText}>
-          {isSubmitting ? 'Joining...' : 'Start Claiming Territory'}
+          {isSubmitting ? 'Joining...' : 'Start Frenning Zones'}
         </Text>
       </TouchableOpacity>
     </ScrollView>

@@ -16,6 +16,16 @@ export interface TerritoryPlayer {
   cellsClaimed: number;
 }
 
+export interface CitySection {
+  city: string;
+  userHasClaims: boolean;
+  players: TerritoryPlayer[];
+}
+
+export interface CityLeaderboard {
+  cities: CitySection[];
+}
+
 export interface TerritoryRegistration {
   userId: string;
   color: string;

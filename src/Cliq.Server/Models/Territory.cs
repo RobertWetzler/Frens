@@ -46,5 +46,33 @@ public class TerritoryClaim
     /// <summary>Hex color at time of claim (denormalized from TerritoryPlayer for fast rendering)</summary>
     public required string Color { get; set; }
 
+    /// <summary>City name resolved via reverse geocoding at claim time. Null if geocoding failed.</summary>
+    public string? City { get; set; }
+
+    /// <summary>Country name resolved via reverse geocoding at claim time.</summary>
+    public string? Country { get; set; }
+
     public DateTime ClaimedAt { get; set; } = DateTime.UtcNow;
+}
+
+/// <summary>
+/// Append-only audit log of every cell claim event.
+/// Used for timelapse replay and analytics — never queried during live gameplay.
+/// </summary>
+public class TerritoryClaimHistory
+{
+    public Guid Id { get; set; } = Guid.NewGuid();
+
+    public long CellRow { get; set; }
+    public long CellCol { get; set; }
+
+    public Guid UserId { get; set; }
+    public User User { get; set; } = null!;
+
+    public required string Color { get; set; }
+
+    /// <summary>The type of action: "claim", "blast", "incognito", etc.</summary>
+    public string Action { get; set; } = "claim";
+
+    public DateTime Timestamp { get; set; } = DateTime.UtcNow;
 }
