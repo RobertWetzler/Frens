@@ -9,10 +9,39 @@ namespace Cliq.Server.Controllers;
 public class TerritoryController : ControllerBase
 {
     private readonly ITerritoryService _territoryService;
+    private readonly IConfiguration _configuration;
 
-    public TerritoryController(ITerritoryService territoryService)
+    public TerritoryController(ITerritoryService territoryService, IConfiguration configuration)
     {
         _territoryService = territoryService;
+        _configuration = configuration;
+    }
+
+    /// <summary>Check if the territory game is currently active.</summary>
+    [HttpGet("active")]
+    public ActionResult<TerritoryActiveDto> IsActive()
+    {
+        var now = DateTime.UtcNow;
+        var startUtc = ParseConfigDateTime("TerritoryGame:StartUtc")
+            ?? new DateTime(2026, 4, 3, 14, 0, 0, DateTimeKind.Utc); // April 3 7am PST
+        var endUtc = ParseConfigDateTime("TerritoryGame:EndUtc")
+            ?? new DateTime(2026, 5, 1, 7, 0, 0, DateTimeKind.Utc);  // April 30 midnight PST
+
+        return Ok(new TerritoryActiveDto
+        {
+            IsActive = now >= startUtc && now < endUtc,
+            StartUtc = startUtc,
+            EndUtc = endUtc,
+        });
+    }
+
+    private DateTime? ParseConfigDateTime(string key)
+    {
+        var raw = _configuration[key];
+        if (!string.IsNullOrWhiteSpace(raw) && DateTime.TryParse(raw, null,
+                System.Globalization.DateTimeStyles.AdjustToUniversal, out var dt))
+            return dt;
+        return null;
     }
 
     /// <summary>Get the current user's territory game state (registered, color, cooldown).</summary>

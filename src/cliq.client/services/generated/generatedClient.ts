@@ -2672,6 +2672,41 @@ export class Client {
         return Promise.resolve<ProfilePictureResponseDto>(null as any);
     }
 
+    territory_IsActive(signal?: AbortSignal): Promise<TerritoryActiveDto> {
+        let url_ = this.baseUrl + "/api/Territory/active";
+        url_ = url_.replace(/[?&]$/, "");
+
+        let options_: RequestInit = {
+            method: "GET",
+            signal,
+            headers: {
+                "Accept": "application/json"
+            }
+        };
+
+        return this.http.fetch(url_, options_).then((_response: Response) => {
+            return this.processTerritory_IsActive(_response);
+        });
+    }
+
+    protected processTerritory_IsActive(response: Response): Promise<TerritoryActiveDto> {
+        const status = response.status;
+        let _headers: any = {}; if (response.headers && response.headers.forEach) { response.headers.forEach((v: any, k: any) => _headers[k] = v); };
+        if (status === 200) {
+            return response.text().then((_responseText) => {
+            let result200: any = null;
+            let resultData200 = _responseText === "" ? null : JSON.parse(_responseText, this.jsonParseReviver);
+            result200 = TerritoryActiveDto.fromJS(resultData200);
+            return result200;
+            });
+        } else if (status !== 200 && status !== 204) {
+            return response.text().then((_responseText) => {
+            return throwException("An unexpected server error occurred.", status, _responseText, _headers);
+            });
+        }
+        return Promise.resolve<TerritoryActiveDto>(null as any);
+    }
+
     territory_GetGameState(signal?: AbortSignal): Promise<TerritoryGameStateDto> {
         let url_ = this.baseUrl + "/api/Territory/state";
         url_ = url_.replace(/[?&]$/, "");
@@ -5540,6 +5575,50 @@ export class ProfilePictureResponseDto implements IProfilePictureResponseDto {
 
 export interface IProfilePictureResponseDto {
     profilePictureUrl?: string;
+}
+
+export class TerritoryActiveDto implements ITerritoryActiveDto {
+    isActive?: boolean;
+    startUtc?: Date;
+    endUtc?: Date;
+
+    constructor(data?: ITerritoryActiveDto) {
+        if (data) {
+            for (var property in data) {
+                if (data.hasOwnProperty(property))
+                    (<any>this)[property] = (<any>data)[property];
+            }
+        }
+    }
+
+    init(_data?: any) {
+        if (_data) {
+            this.isActive = _data["isActive"];
+            this.startUtc = _data["startUtc"] ? new Date(_data["startUtc"].toString()) : <any>undefined;
+            this.endUtc = _data["endUtc"] ? new Date(_data["endUtc"].toString()) : <any>undefined;
+        }
+    }
+
+    static fromJS(data: any): TerritoryActiveDto {
+        data = typeof data === 'object' ? data : {};
+        let result = new TerritoryActiveDto();
+        result.init(data);
+        return result;
+    }
+
+    toJSON(data?: any) {
+        data = typeof data === 'object' ? data : {};
+        data["isActive"] = this.isActive;
+        data["startUtc"] = this.startUtc ? this.startUtc.toISOString() : <any>undefined;
+        data["endUtc"] = this.endUtc ? this.endUtc.toISOString() : <any>undefined;
+        return data;
+    }
+}
+
+export interface ITerritoryActiveDto {
+    isActive?: boolean;
+    startUtc?: Date;
+    endUtc?: Date;
 }
 
 export class TerritoryGameStateDto implements ITerritoryGameStateDto {

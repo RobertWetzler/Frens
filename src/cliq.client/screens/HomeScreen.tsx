@@ -23,9 +23,7 @@ import { makeStyles } from '../theme/makeStyles';
 import { useSnowCollision } from 'contexts/SnowCollisionContext';
 import { Svg, Circle, Ellipse, Path, Rect, Line } from 'react-native-svg';
 import TerritoryGameCard from 'components/territory/TerritoryGameCard';
-
-// Feature flag for April Fools' FrenZones game
-const TERRITORY_GAME_ENABLED = true;
+import { useApi } from 'hooks/useApi';
 
 
 const HomeScreen = ({ navigation }) => {
@@ -61,6 +59,14 @@ const HomeScreen = ({ navigation }) => {
     const [isPilingDelayComplete, setIsPilingDelayComplete] = useState(false);
     const { theme } = useTheme();
     const styles = useStyles();
+
+    // Check if the territory game is active (server-controlled window)
+    const { data: territoryActive } = useApi(
+        (client) => client.territory_IsActive(),
+        [],
+        { immediate: true }
+    );
+    const TERRITORY_GAME_ENABLED = territoryActive?.isActive ?? false;
     
     // Only enable snow piling computations when theme is holiday
     const isHolidayTheme = theme.name === 'holiday';

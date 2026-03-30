@@ -332,6 +332,13 @@ public class TerritoryService : ITerritoryService
 
 // ─── DTOs ───
 
+public class TerritoryActiveDto
+{
+    public bool IsActive { get; set; }
+    public DateTime StartUtc { get; set; }
+    public DateTime EndUtc { get; set; }
+}
+
 public class TerritoryGameStateDto
 {
     public bool IsRegistered { get; set; }
