@@ -29,6 +29,7 @@ export function useTerritoryGame() {
   const [locationRequested, setLocationRequested] = useState(false);
   const [viewerMode, setViewerMode] = useState(false);
   const cooldownRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const cooldownEndRef = useRef<number>(0);
   const watchIdRef = useRef<number | null>(null);
 
   const onPositionSuccess = useCallback((position: GeolocationPosition) => {
@@ -87,6 +88,9 @@ export function useTerritoryGame() {
         cooldownSeconds: dto.cooldownSeconds,
       });
       setCooldownSeconds(dto.cooldownSeconds);
+      if (dto.cooldownSeconds > 0) {
+        cooldownEndRef.current = Date.now() + dto.cooldownSeconds * 1000;
+      }
     } catch (err) {
       console.error('Failed to load game state:', err);
     }
@@ -181,6 +185,7 @@ export function useTerritoryGame() {
           new TerritoryClaimRequest({ latitude: location.lat, longitude: location.lng })
         )
       );
+      cooldownEndRef.current = Date.now() + CLAIM_COOLDOWN_MS;
       setCooldownSeconds(Math.ceil(CLAIM_COOLDOWN_MS / 1000));
       const refreshes: Promise<any>[] = [loadLeaderboard(), loadGameState()];
       if (lastBoundsRef.current) refreshes.push(loadCellsInBounds(lastBoundsRef.current));
@@ -193,17 +198,22 @@ export function useTerritoryGame() {
     }
   }, [location, isClaiming, loadCellsInBounds, loadLeaderboard, loadGameState]);
 
-  // Cooldown timer
+  // Cooldown timer — uses wall-clock time so backgrounding the app doesn't freeze it
   useEffect(() => {
     if (cooldownSeconds > 0) {
+      // Set the end time when first entering cooldown
+      if (cooldownEndRef.current === 0) {
+        cooldownEndRef.current = Date.now() + cooldownSeconds * 1000;
+      }
       cooldownRef.current = setInterval(() => {
-        setCooldownSeconds((prev) => {
-          if (prev <= 1) {
-            if (cooldownRef.current) clearInterval(cooldownRef.current);
-            return 0;
-          }
-          return prev - 1;
-        });
+        const remaining = Math.ceil((cooldownEndRef.current - Date.now()) / 1000);
+        if (remaining <= 0) {
+          if (cooldownRef.current) clearInterval(cooldownRef.current);
+          cooldownEndRef.current = 0;
+          setCooldownSeconds(0);
+        } else {
+          setCooldownSeconds(remaining);
+        }
       }, 1000);
       return () => {
         if (cooldownRef.current) clearInterval(cooldownRef.current);
