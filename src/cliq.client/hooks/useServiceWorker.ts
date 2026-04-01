@@ -5,6 +5,20 @@ export const useServiceWorker = () => {
   useEffect(() => {
     if (Platform.OS !== 'web') return;
 
+    // Service workers add caching/proxy behavior that often interferes with
+    // local HTTP/HTTPS certificate testing. Keep them off in development.
+    if (process.env.NODE_ENV === 'development') {
+      if ('serviceWorker' in navigator) {
+        navigator.serviceWorker.getRegistrations().then((registrations) => {
+          registrations.forEach((registration) => {
+            registration.unregister();
+          });
+        });
+      }
+      console.log('Service worker disabled in development.');
+      return;
+    }
+
     console.log('Trying to register service worker');
     
     if ('serviceWorker' in navigator) {

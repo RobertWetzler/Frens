@@ -32,6 +32,7 @@ public class CircleService : ICircleService
     private readonly IEventNotificationService _eventNotificationService;
     private readonly ILogger<CircleService> _logger;
     private readonly IObjectStorageService _storage;
+    private readonly IAprilFoolsIdentityService _aprilFoolsIdentityService;
 
     public CircleService(
         CliqDbContext dbContext,
@@ -40,7 +41,8 @@ public class CircleService : ICircleService
         IMapper mapper,
         IEventNotificationService eventNotificationService,
         ILogger<CircleService> logger,
-        IObjectStorageService storage)
+        IObjectStorageService storage,
+        IAprilFoolsIdentityService aprilFoolsIdentityService)
     {
         _dbContext = dbContext;
         _commentService = commentService;
@@ -49,6 +51,7 @@ public class CircleService : ICircleService
         _eventNotificationService = eventNotificationService;
         _logger = logger;
         _storage = storage;
+        _aprilFoolsIdentityService = aprilFoolsIdentityService;
     }
 
     public async Task<CirclePublicDto> CreateCircleAsync(Guid creatorId, CircleCreationDto circleDto)
@@ -136,8 +139,9 @@ public class CircleService : ICircleService
                 // Really gotta reduce these N+1 queries on writes and put this into a background job...
                 var allFrens = await _friendshipService.GetFriendsAsync(creatorId);
                 var nonMembers = allFrens.Where(u => !alreadyMembers.Contains(u.Id)).Select(u => u.Id).ToArray();
+                var creatorAliasName = await _aprilFoolsIdentityService.GetAliasNameAsync(creatorId, creator.Name);
                 await _eventNotificationService.SendNewSubscribableCircle(authorId: creatorId,
-                    authorName: creator.Name,
+                    authorName: creatorAliasName,
                     circleId: circle.Id,
                     circleName: circle.Name,
                     recipients: nonMembers,
@@ -254,6 +258,7 @@ public class CircleService : ICircleService
                         ? _storage.GetProfilePictureUrl(circle.Owner.ProfilePictureKey)
                         : null
                 });
+                await _aprilFoolsIdentityService.ApplyAliasAsync(mentionableUsers[^1]);
             }
 
             result.Add(new CirclePublicDto
@@ -281,6 +286,11 @@ public class CircleService : ICircleService
                         : null
                 })
                 .ToList() ?? new List<MentionableUserDto>();
+
+            foreach (var mentionableUser in mentionableUsers)
+            {
+                await _aprilFoolsIdentityService.ApplyAliasAsync(mentionableUser);
+            }
 
             result.Add(new CirclePublicDto
             {
@@ -357,7 +367,7 @@ public class CircleService : ICircleService
         {
             return new UserDto { Id = Guid.Empty, Name = "Unknown" };
         }
-        return new UserDto
+        var dto = new UserDto
         {
             Id = user.Id,
             Name = user.Name,
@@ -365,6 +375,9 @@ public class CircleService : ICircleService
                 ? _storage.GetProfilePictureUrl(user.ProfilePictureKey) 
                 : null
         };
+
+        _aprilFoolsIdentityService.ApplyAliasAsync(dto).GetAwaiter().GetResult();
+        return dto;
     }
 
     public async Task DeleteCircleAsync(Guid requestorId, Guid circleId)

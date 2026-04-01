@@ -53,12 +53,14 @@ public class FriendshipService : IFriendshipService
     private readonly IMapper _mapper;
     private readonly IEventNotificationService? _eventNotificationService;
     private readonly IObjectStorageService _storage;
+    private readonly IAprilFoolsIdentityService _aprilFoolsIdentityService;
 
-    public FriendshipService(CliqDbContext dbContext, IMapper mapper, IObjectStorageService storage, IEventNotificationService? eventNotificationService = null)
+    public FriendshipService(CliqDbContext dbContext, IMapper mapper, IObjectStorageService storage, IAprilFoolsIdentityService aprilFoolsIdentityService, IEventNotificationService? eventNotificationService = null)
     {
         _dbContext = dbContext;
         _mapper = mapper;
         _storage = storage;
+        _aprilFoolsIdentityService = aprilFoolsIdentityService;
         _eventNotificationService = eventNotificationService;
     }
 
@@ -136,7 +138,8 @@ public class FriendshipService : IFriendshipService
         // Send notification to addressee
         try
         {
-            _eventNotificationService?.SendFriendRequestNotificationAsync(requesterId, addresseeId, newFriendship.Id, requester.Name);
+            var requesterAliasName = await _aprilFoolsIdentityService.GetAliasNameAsync(requesterId, requester.Name);
+            _eventNotificationService?.SendFriendRequestNotificationAsync(requesterId, addresseeId, newFriendship.Id, requesterAliasName);
         }
         catch (Exception ex)
         {
@@ -169,7 +172,8 @@ public class FriendshipService : IFriendshipService
         // Send notification to requester
         try
         {
-            _eventNotificationService?.SendFriendRequestAcceptedNotificationAsync(userId, friendship.RequesterId, friendship.Addressee.Name);
+            var accepterAliasName = await _aprilFoolsIdentityService.GetAliasNameAsync(userId, friendship.Addressee.Name);
+            _eventNotificationService?.SendFriendRequestAcceptedNotificationAsync(userId, friendship.RequesterId, accepterAliasName);
         }
         catch (Exception ex)
         {
@@ -273,7 +277,20 @@ public class FriendshipService : IFriendshipService
         }
         var friendRequests = await query.ToListAsync();
 
-        return _mapper.Map<IEnumerable<FriendRequestDto>>(friendRequests);
+        var dtos = _mapper.Map<IEnumerable<FriendRequestDto>>(friendRequests).ToList();
+        foreach (var dto in dtos)
+        {
+            if (dto.Requester != null)
+            {
+                await _aprilFoolsIdentityService.ApplyAliasAsync(dto.Requester);
+            }
+            if (dto.Addressee != null)
+            {
+                await _aprilFoolsIdentityService.ApplyAliasAsync(dto.Addressee);
+            }
+        }
+
+        return dtos;
     }
 
     public async Task<int> GetFriendRequestsCountAsync(Guid userId)
@@ -323,6 +340,8 @@ public class FriendshipService : IFriendshipService
             {
                 dto.ProfilePictureUrl = _storage.GetProfilePictureUrl(user.ProfilePictureKey);
             }
+
+            _aprilFoolsIdentityService.ApplyAliasAsync(dto).GetAwaiter().GetResult();
         }
         
         return userDtos;
@@ -499,7 +518,7 @@ public class FriendshipService : IFriendshipService
             .Select(u => new { u.Id, u.Name, u.ProfilePictureKey })
             .ToDictionaryAsync(u => u.Id);
         
-        return recommendations
+        var recommendationDtos = recommendations
             .Where(r => users.ContainsKey(r.UserId))
             .Select(r => new RecommendedFriendDto
             {
@@ -515,6 +534,13 @@ public class FriendshipService : IFriendshipService
             })
             .OrderByDescending(r => r.MutualFriendCount)
             .ToList();
+
+        foreach (var recommendation in recommendationDtos)
+        {
+            _aprilFoolsIdentityService.ApplyAliasAsync(recommendation.User).GetAwaiter().GetResult();
+        }
+
+        return recommendationDtos;
     }
     
     public async Task<List<RecommendedFriendDto>> GetRecommendedFriendsRawSqlAsync(
@@ -577,7 +603,7 @@ public class FriendshipService : IFriendshipService
                 new Npgsql.NpgsqlParameter("@limit", limit))
             .ToListAsync();
         
-        return results.Select(r => new RecommendedFriendDto
+        var recommendationDtos = results.Select(r => new RecommendedFriendDto
         {
             User = new UserDto
             {
@@ -589,6 +615,13 @@ public class FriendshipService : IFriendshipService
             },
             MutualFriendCount = r.MutualFriendCount
         }).ToList();
+
+        foreach (var recommendation in recommendationDtos)
+        {
+            _aprilFoolsIdentityService.ApplyAliasAsync(recommendation.User).GetAwaiter().GetResult();
+        }
+
+        return recommendationDtos;
     }
     
     // Helper class for raw SQL query result mapping

@@ -5,6 +5,9 @@ packages
 wwwroot
 /src/Cliq/Cliq.Server/.env
 .DS_Store
+.vscode/launch.json
+.vscode/settings.json
+.vscode/tasks.json
 
 # Native iOS project (ignored)
 src/cliq.client/ios/

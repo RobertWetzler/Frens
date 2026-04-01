@@ -27,6 +27,7 @@ public class CommentService : ICommentService
     private readonly ILogger _logger;
     private readonly IUserActivityService _activityService;
     private readonly IObjectStorageService _storage;
+    private readonly IAprilFoolsIdentityService _aprilFoolsIdentityService;
 
     public CommentService(CliqDbContext dbContext,
         IMapper mapper,
@@ -34,7 +35,8 @@ public class CommentService : ICommentService
         IFriendshipService friendshipService,
         ILogger<PostService> logger,
         IUserActivityService activityService,
-        IObjectStorageService storage
+        IObjectStorageService storage,
+        IAprilFoolsIdentityService aprilFoolsIdentityService
         )
     {
         _dbContext = dbContext;
@@ -44,6 +46,7 @@ public class CommentService : ICommentService
         _logger = logger;
         _activityService = activityService;
         _storage = storage;
+        _aprilFoolsIdentityService = aprilFoolsIdentityService;
     }
 
     /// <summary>
@@ -142,6 +145,7 @@ public class CommentService : ICommentService
             // Get mentioned user IDs to exclude from regular notifications
             var mentionedUserIds = MentionParser.GetMentionedUserIds(validatedMentions);
             
+            var commenterAliasName = await _aprilFoolsIdentityService.GetAliasNameAsync(comment.UserId, commentWithUser.User?.Name ?? "Someone");
             // Notify post author (if not commenting on own post and not mentioned)
             if (parentPost.UserId != comment.UserId && commentWithUser.User != null)
             {
@@ -151,7 +155,7 @@ public class CommentService : ICommentService
                     postAuthorId: parentPost.UserId,
                     commenterId: comment.UserId,
                     commentText: comment.Text,
-                    commenterName: commentWithUser.User.Name,
+                    commenterName: commenterAliasName,
                     excludeUserIds: mentionedUserIds);
             }
             // TODO Dont notify post author if they are also the parent comment author
@@ -165,7 +169,7 @@ public class CommentService : ICommentService
                     parentCommentAuthorId: parentComment.User.Id,
                     replierId: comment.UserId,
                     replyText: comment.Text,
-                    commenterName: commentWithUser.User!.Name,
+                    commenterName: commenterAliasName,
                     excludeUserIds: mentionedUserIds);
             }
 
@@ -176,7 +180,7 @@ public class CommentService : ICommentService
                     comment.Id,
                     comment.PostId,
                     comment.UserId,
-                    commentWithUser.User!.Name,
+                    commenterAliasName,
                     comment.Text,
                     mentionedUserIds);
             }
@@ -239,6 +243,10 @@ public class CommentService : ICommentService
         {
             dto.User.ProfilePictureUrl = _storage.GetProfilePictureUrl(comment.User.ProfilePictureKey);
         }
+        if (dto.User != null)
+        {
+            _aprilFoolsIdentityService.ApplyAliasAsync(dto.User, comment.Date).GetAwaiter().GetResult();
+        }
         
         // For carpool comments, also populate profile pictures for riders
         if (dto is CarpoolCommentDto carpoolDto && comment.CarpoolSeats != null)
@@ -250,6 +258,7 @@ public class CommentService : ICommentService
                 {
                     rider.ProfilePictureUrl = _storage.GetProfilePictureUrl(seat.User.ProfilePictureKey);
                 }
+                _aprilFoolsIdentityService.ApplyAliasAsync(rider, comment.Date).GetAwaiter().GetResult();
             }
         }
         
@@ -329,13 +338,15 @@ public class CommentService : ICommentService
             await _dbContext.SaveChangesAsync();
             return false; // indicates leave
         }
+        var carpoolerRealName = username.IsNullOrEmpty() ? (await _dbContext.Users.FindAsync(userId))?.Name ?? "Someone" : username;
+        var carpoolerAliasName = await _aprilFoolsIdentityService.GetAliasNameAsync(userId, carpoolerRealName);
         await _eventNotificationService.SendCarpoolReplyNotificationAsync(
             postId: comment.PostId,
             commentId: comment.Id,
             commentAuthorId: comment.UserId,
             commentText: comment.Text,
             carpoolerId: userId,
-            carpoolerName: username.IsNullOrEmpty() ? (await _dbContext.Users.FindAsync(userId))?.Name ?? "Someone" : username,
+            carpoolerName: carpoolerAliasName,
             isOptIn: isOptIn);
         return isOptIn; // indicates join
     }

@@ -37,6 +37,7 @@ public class PostService : IPostService
     private readonly MetricsService _metricsService;
     private readonly IUserActivityService _activityService;
     private readonly IInterestService _interestService;
+    private readonly IAprilFoolsIdentityService _aprilFoolsIdentityService;
 
     public PostService(
         CliqDbContext dbContext,
@@ -50,7 +51,8 @@ public class PostService : IPostService
     IObjectStorageService storage,
     MetricsService metricsService,
     IUserActivityService activityService,
-    IInterestService interestService)
+    IInterestService interestService,
+    IAprilFoolsIdentityService aprilFoolsIdentityService)
     {
         _dbContext = dbContext;
         _commentService = commentService;
@@ -64,13 +66,25 @@ public class PostService : IPostService
     _metricsService = metricsService;
     _activityService = activityService;
     _interestService = interestService;
+    _aprilFoolsIdentityService = aprilFoolsIdentityService;
     }
 
     /// <summary>
     /// Populates ProfilePictureUrl for a UserDto based on the user's ProfilePictureKey.
     /// </summary>
-    private void PopulateProfilePictureUrl(UserDto? userDto, User? user)
+    private void PopulateProfilePictureUrl(UserDto? userDto, User? user, DateTime contentDateUtc)
     {
+        if (userDto != null && user != null && _aprilFoolsIdentityService.IsContentDuringPrank(contentDateUtc))
+        {
+            var alias = _aprilFoolsIdentityService.GetAliasIdentityAsync(user.Id).GetAwaiter().GetResult();
+            if (alias != null)
+            {
+                userDto.Name = alias.TargetName;
+                userDto.ProfilePictureUrl = alias.TargetProfilePictureUrl;
+                return;
+            }
+        }
+
         if (userDto != null && user != null && !string.IsNullOrEmpty(user.ProfilePictureKey))
         {
             userDto.ProfilePictureUrl = _storage.GetProfilePictureUrl(user.ProfilePictureKey);
@@ -82,8 +96,26 @@ public class PostService : IPostService
     /// </summary>
     private void PopulatePostProfilePictureUrls(PostDto dto, Post post)
     {
-        PopulateProfilePictureUrl(dto.User, post.User);
+        PopulateProfilePictureUrl(dto.User, post.User, post.Date);
         // SharedWithUsers is handled separately as it may be populated from a different source
+    }
+
+    private DateTime? GetFeedCutoffUtcForAprilFools()
+    {
+        var nowUtc = DateTime.UtcNow;
+        var pst = TimeZoneInfo.FindSystemTimeZoneById("America/Los_Angeles");
+        var pstNow = TimeZoneInfo.ConvertTimeFromUtc(nowUtc, pst);
+
+        // Only apply feed pruning during the real April Fools window (April 1 9am+ through April 2 PST)
+        var isRealAprilWindow = pstNow.Month == 4 && ((pstNow.Day == 1 && pstNow.Hour >= 9) || pstNow.Day == 2);
+        if (!isRealAprilWindow)
+        {
+            return null;
+        }
+
+        // Cutoff = April 1 9am PST converted to UTC
+        var cutoffPst = new DateTime(pstNow.Year, 4, 1, 9, 0, 0, DateTimeKind.Unspecified);
+        return TimeZoneInfo.ConvertTimeToUtc(cutoffPst, pst);
     }
 
     /// <summary>
@@ -198,6 +230,11 @@ public class PostService : IPostService
             }
         }
 
+        foreach (var mentionableUser in mentionableUsers)
+        {
+            await _aprilFoolsIdentityService.ApplyAliasAsync(mentionableUser);
+        }
+
         return mentionableUsers;
     }
 
@@ -267,6 +304,12 @@ public class PostService : IPostService
                 .ThenInclude(r => r.User)
             .FirstOrDefaultAsync(p => p.Id == id);
 
+        if (fullPost == null)
+        {
+            _logger.LogWarning("Post {PostId} disappeared before full load", id);
+            throw new BadHttpRequestException($"Post {id} not found");
+        }
+
         PostDto dto;
         
         // Check if the post is an event and map accordingly
@@ -287,6 +330,13 @@ public class PostService : IPostService
             eventDto.Rsvps = eventPost.Rsvps
                 .Select(r => _mapper.Map<EventRsvpDto>(r))
                 .ToList();
+            foreach (var rsvp in eventDto.Rsvps)
+            {
+                if (rsvp.User != null)
+                {
+                    _aprilFoolsIdentityService.ApplyAliasAsync(rsvp.User, fullPost.Date).GetAwaiter().GetResult();
+                }
+            }
             
             dto = eventDto;
         }
@@ -389,8 +439,15 @@ public class PostService : IPostService
             var friendIdsForInterests = (await _friendshipService.GetFriendsAsync(userId))
                 .Select(f => f.Id).ToList();
 
-            var postsWithSharingInfo = await _dbContext.Posts
-                .Where(p => 
+            var feedCutoffUtc = GetFeedCutoffUtcForAprilFools();
+            IQueryable<Post> feedQuery = _dbContext.Posts;
+            if (feedCutoffUtc.HasValue)
+            {
+                feedQuery = feedQuery.Where(p => p.Date >= feedCutoffUtc.Value);
+            }
+
+            var postsWithSharingInfo = await feedQuery
+                .Where(p =>
                     p.UserId == userId ||
                     p.SharedWithCircles.Any(cp =>
                         cp.Circle != null && cp.Circle.Members.Any(m => m.UserId == userId)) ||
@@ -511,6 +568,13 @@ public class PostService : IPostService
                         .Where(r => r.Status != RsvpStatus.NoResponse)
                         .Select(r => _mapper.Map<EventRsvpDto>(r))
                         .ToList();
+                    foreach (var rsvp in eventDto.Rsvps)
+                    {
+                        if (rsvp.User != null)
+                        {
+                            _aprilFoolsIdentityService.ApplyAliasAsync(rsvp.User, pc.Post.Date).GetAwaiter().GetResult();
+                        }
+                    }
                     
                     dto = eventDto;
                 }
@@ -541,6 +605,10 @@ public class PostService : IPostService
                         Id = u.UserId,
                         Name = u.UserName
                     }).ToList();
+                    foreach (var sharedUser in dto.SharedWithUsers)
+                    {
+                        _aprilFoolsIdentityService.ApplyAliasAsync(sharedUser, pc.Post.Date).GetAwaiter().GetResult();
+                    }
                 }
                 else
                 {
@@ -605,6 +673,14 @@ public class PostService : IPostService
                         }
                     })
                     .ToListAsync();
+
+                foreach (var circle in availableSubscribableCircles)
+                {
+                    if (circle.Owner != null)
+                    {
+                        await _aprilFoolsIdentityService.ApplyAliasAsync(circle.Owner);
+                    }
+                }
                 
                 // Get recommended friends based on mutual connections (single optimized query)
                 recommendedFriends = await _friendshipService.GetRecommendedFriendsRawSqlAsync(userId, limit: 5, minimumMutualFriends: 2);
@@ -641,6 +717,12 @@ public class PostService : IPostService
         try
         {
             IQueryable<Post> baseQuery;
+            var feedCutoffUtc = GetFeedCutoffUtcForAprilFools();
+            IQueryable<Post> sourcePosts = _dbContext.Posts;
+            if (feedCutoffUtc.HasValue)
+            {
+                sourcePosts = sourcePosts.Where(p => p.Date >= feedCutoffUtc.Value);
+            }
 
             // Pre-fetch the user's followed interest IDs and friend IDs for interest queries
             var filteredFollowedInterestIds = await _dbContext.InterestSubscriptions
@@ -654,7 +736,7 @@ public class PostService : IPostService
             if (circleIds == null || circleIds.Length == 0)
             {
                 // If no circles specified, return all posts user has access to (same as GetFeedForUserAsync)
-                baseQuery = _dbContext.Posts
+                baseQuery = sourcePosts
                     .Where(p => 
                         p.UserId == userId ||
                         p.SharedWithCircles.Any(cp =>
@@ -668,7 +750,7 @@ public class PostService : IPostService
             {
                 // Filter by specific circles — only return posts that are shared with the selected circle(s)
                 // and the user is a member of those circles
-                baseQuery = _dbContext.Posts
+                baseQuery = sourcePosts
                     .Where(p => 
                         p.SharedWithCircles.Any(cp =>
                             circleIds.Contains(cp.CircleId) &&
@@ -786,6 +868,13 @@ public class PostService : IPostService
                         .Where(r => r.Status != RsvpStatus.NoResponse)
                         .Select(r => _mapper.Map<EventRsvpDto>(r))
                         .ToList();
+                    foreach (var rsvp in eventDto.Rsvps)
+                    {
+                        if (rsvp.User != null)
+                        {
+                            _aprilFoolsIdentityService.ApplyAliasAsync(rsvp.User, pc.Post.Date).GetAwaiter().GetResult();
+                        }
+                    }
                     
                     dto = eventDto;
                 }
@@ -817,6 +906,10 @@ public class PostService : IPostService
                         Id = u.UserId,
                         Name = u.UserName
                     }).ToList();
+                    foreach (var sharedUser in dto.SharedWithUsers)
+                    {
+                        _aprilFoolsIdentityService.ApplyAliasAsync(sharedUser, pc.Post.Date).GetAwaiter().GetResult();
+                    }
                 }
                 else
                 {
@@ -880,6 +973,14 @@ public class PostService : IPostService
                         }
                     })
                     .ToListAsync();
+
+                foreach (var circle in availableSubscribableCircles)
+                {
+                    if (circle.Owner != null)
+                    {
+                        await _aprilFoolsIdentityService.ApplyAliasAsync(circle.Owner);
+                    }
+                }
                 
                 // Get recommended friends based on mutual connections (single optimized query)
                 recommendedFriends = await _friendshipService.GetRecommendedFriendsRawSqlAsync(userId, limit: 5, minimumMutualFriends: 2);
@@ -945,6 +1046,13 @@ public class PostService : IPostService
                         .Where(r => r.Status != RsvpStatus.NoResponse)
                         .Select(r => _mapper.Map<EventRsvpDto>(r))
                         .ToList();
+                    foreach (var rsvp in eventDto.Rsvps)
+                    {
+                        if (rsvp.User != null)
+                        {
+                            _aprilFoolsIdentityService.ApplyAliasAsync(rsvp.User, pc.Post.Date).GetAwaiter().GetResult();
+                        }
+                    }
                     
                     dto = eventDto;
                 }
@@ -968,7 +1076,13 @@ public class PostService : IPostService
                 .AsNoTracking()
                 .ToListAsync();
 
-            return _mapper.Map<List<PostDto>>(posts);
+            var postDtos = _mapper.Map<List<PostDto>>(posts);
+            for (var i = 0; i < posts.Count; i++)
+            {
+                PopulatePostProfilePictureUrls(postDtos[i], posts[i]);
+            }
+
+            return postDtos;
         }
     }
     public async Task<IEnumerable<PostDto>> GetUserPostsAsync(Guid userId, int page = 1, int pageSize = 20)
@@ -982,7 +1096,14 @@ public class PostService : IPostService
                 .Skip((page - 1) * pageSize)
                 .Take(pageSize)
                 .ToListAsync();
-            return this._mapper.Map<PostDto[]>(posts);
+
+            var postDtos = this._mapper.Map<PostDto[]>(posts);
+            for (var i = 0; i < posts.Count; i++)
+            {
+                PopulatePostProfilePictureUrls(postDtos[i], posts[i]);
+            }
+
+            return postDtos;
         }
         catch (Exception ex)
         {
@@ -1123,12 +1244,13 @@ public class PostService : IPostService
                 // Get mentioned user IDs to exclude from regular post notifications
                 var mentionedUserIds = MentionParser.GetMentionedUserIds(validatedMentions);
                 
+                var aliasName = await _aprilFoolsIdentityService.GetAliasNameAsync(userId, user.Name);
                 await _eventNotificationService.SendNewPostNotificationAsync(
                     post.Id, 
                     userId, 
                     text, 
                     circleIds, 
-                    user.Name, 
+                    aliasName, 
                     imageObjectKeys != null && imageObjectKeys.Any(),
                     excludeUserIds: mentionedUserIds,
                     interestIds: resolvedInterestIds,
@@ -1140,7 +1262,7 @@ public class PostService : IPostService
                     await _eventNotificationService.SendPostMentionNotificationsAsync(
                         post.Id,
                         userId,
-                        user.Name,
+                        aliasName,
                         text,
                         mentionedUserIds);
                 }
@@ -1158,7 +1280,7 @@ public class PostService : IPostService
                     foreach (var interest in interests)
                     {
                         await _eventNotificationService.SendInterestDiscoveryNotificationsAsync(
-                            userId, user.Name, interest.Id, interest.Name, interest.DisplayName);
+                            userId, aliasName, interest.Id, interest.Name, interest.DisplayName);
                     }
                 }
             }
@@ -1179,6 +1301,12 @@ public class PostService : IPostService
             _ = Task.Run(async () => await _activityService.RecordActivityAsync(userId, UserActivityType.PostCreated));
 
             var dto = this._mapper.Map<PostDto>(entry.Entity);
+            dto.User = new UserDto
+            {
+                Id = user.Id,
+                Name = user.Name
+            };
+            PopulatePostProfilePictureUrls(dto, post!);
             dto.HasImage = post.ImageObjectKeys.Any();
             dto.ImageCount = post.ImageObjectKeys.Count;
             dto.Mentions = validatedMentions;
@@ -1208,7 +1336,13 @@ public class PostService : IPostService
             _dbContext.Posts.Update(post);
             await SaveChangesAsync();
 
-            return this._mapper.Map<PostDto>(post);
+            await _dbContext.Entry(post)
+                .Reference(p => p.User)
+                .LoadAsync();
+
+            var dto = this._mapper.Map<PostDto>(post);
+            PopulatePostProfilePictureUrls(dto, post!);
+            return dto;
         }
         catch (Exception ex)
         {

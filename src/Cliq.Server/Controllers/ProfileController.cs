@@ -21,6 +21,7 @@ namespace Cliq.Server.Controllers
         private readonly IMapper _mapper;
         private readonly CliqDbContext _context;
         private readonly IObjectStorageService _storage;
+        private readonly IAprilFoolsIdentityService _aprilFoolsIdentityService;
 
         public ProfileController(
             UserManager<User> userManager,
@@ -28,7 +29,8 @@ namespace Cliq.Server.Controllers
             IPostService postService,
             IMapper mapper,
             CliqDbContext context,
-            IObjectStorageService storage)
+            IObjectStorageService storage,
+            IAprilFoolsIdentityService aprilFoolsIdentityService)
         {
             _userManager = userManager;
             _friendshipService = friendshipService;
@@ -36,6 +38,7 @@ namespace Cliq.Server.Controllers
             _mapper = mapper;
             _context = context;
             _storage = storage;
+            _aprilFoolsIdentityService = aprilFoolsIdentityService;
         }
 
         [HttpGet]
@@ -60,6 +63,8 @@ namespace Cliq.Server.Controllers
             {
                 userProfile.ProfilePictureUrl = _storage.GetProfilePictureUrl(user.ProfilePictureKey);
             }
+
+            await _aprilFoolsIdentityService.ApplyAliasAsync(userProfile);
 
             // Initialize response
             var response = new ProfilePageResponseDto

@@ -30,17 +30,20 @@ public class EventService : IEventService
     private readonly IMapper _mapper;
     private readonly IEventNotificationService _eventNotificationService;
     private readonly ILogger<EventService> _logger;
+    private readonly IAprilFoolsIdentityService _aprilFoolsIdentityService;
 
     public EventService(
         CliqDbContext dbContext,
         IMapper mapper,
         IEventNotificationService eventNotificationService,
-        ILogger<EventService> logger)
+        ILogger<EventService> logger,
+        IAprilFoolsIdentityService aprilFoolsIdentityService)
     {
         _dbContext = dbContext;
         _mapper = mapper;
         _eventNotificationService = eventNotificationService;
         _logger = logger;
+        _aprilFoolsIdentityService = aprilFoolsIdentityService;
     }
 
     public async Task<EventDto?> GetEventByIdAsync(Guid requestorId, Guid id, bool includeRsvps = true)
@@ -209,7 +212,8 @@ public class EventService : IEventService
         // Send notifications to circle members
         try
         {
-            await _eventNotificationService.SendNewEventNotificationAsync(eventEntity.Id, userId, eventEntity.Title, createEventDto.CircleIds, user.Name);
+            var aliasName = await _aprilFoolsIdentityService.GetAliasNameAsync(userId, user.Name);
+            await _eventNotificationService.SendNewEventNotificationAsync(eventEntity.Id, userId, eventEntity.Title, createEventDto.CircleIds, aliasName);
         }
         catch (Exception ex)
         {
