@@ -52,6 +52,9 @@ public class TerritoryClaim
     /// <summary>Country name resolved via reverse geocoding at claim time.</summary>
     public string? Country { get; set; }
 
+    /// <summary>Neighborhood/suburb resolved via reverse geocoding at claim time.</summary>
+    public string? Neighborhood { get; set; }
+
     public DateTime ClaimedAt { get; set; } = DateTime.UtcNow;
 }
 

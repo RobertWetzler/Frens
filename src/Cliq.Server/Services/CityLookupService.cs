@@ -13,7 +13,7 @@ public interface ICityLookupService
     Task<CityLookupResult> LookupAsync(double latitude, double longitude, long cellRow, long cellCol);
 }
 
-public record CityLookupResult(string? City, string? Country);
+public record CityLookupResult(string? City, string? Country, string? Neighborhood);
 
 public class CityLookupService : ICityLookupService
 {
@@ -48,7 +48,7 @@ public class CityLookupService : ICityLookupService
         if (string.IsNullOrEmpty(_apiKey))
         {
             _logger.LogWarning("LocationIQ API key not configured — skipping reverse geocode");
-            return new CityLookupResult(null, null);
+            return new CityLookupResult(null, null, null);
         }
 
         try
@@ -60,7 +60,7 @@ public class CityLookupService : ICityLookupService
             {
                 _logger.LogWarning("LocationIQ returned {Status} for ({Lat}, {Lng})",
                     response.StatusCode, latitude, longitude);
-                return new CityLookupResult(null, null);
+                return new CityLookupResult(null, null, null);
             }
 
             var json = await response.Content.ReadAsStringAsync();
@@ -82,14 +82,28 @@ public class CityLookupService : ICityLookupService
                 ? countryVal.GetString()
                 : null;
 
-            var result = new CityLookupResult(city, country);
+            // Extract neighborhood/suburb
+            string? neighborhood = null;
+            foreach (var field in new[] { "neighbourhood", "suburb", "quarter" })
+            {
+                if (address.TryGetProperty(field, out var nbVal))
+                {
+                    neighborhood = nbVal.GetString();
+                    break;
+                }
+            }
+
+            // Apply known display name corrections
+            neighborhood = NormalizeNeighborhood(neighborhood);
+
+            var result = new CityLookupResult(city, country, neighborhood);
             _cache.TryAdd(cacheKey, result);
             return result;
         }
         catch (Exception ex)
         {
             _logger.LogWarning(ex, "Reverse geocode failed for ({Lat}, {Lng})", latitude, longitude);
-            return new CityLookupResult(null, null);
+            return new CityLookupResult(null, null, null);
         }
     }
 
@@ -97,11 +111,20 @@ public class CityLookupService : ICityLookupService
     /// Warm the cache from DB data so we never re-call the API for cells
     /// that already have city/country stored.
     /// </summary>
-    public void WarmCache(long cellRow, long cellCol, string? city, string? country)
+    public void WarmCache(long cellRow, long cellCol, string? city, string? country, string? neighborhood)
     {
         if (city != null || country != null)
         {
-            _cache.TryAdd($"{cellRow},{cellCol}", new CityLookupResult(city, country));
+            _cache.TryAdd($"{cellRow},{cellCol}", new CityLookupResult(city, country, neighborhood));
         }
     }
+
+    /// <summary>
+    /// Corrects known API neighborhood names to preferred display names.
+    /// </summary>
+    private static string? NormalizeNeighborhood(string? name) => name switch
+    {
+        "Central Area" => "Central District",
+        _ => name,
+    };
 }

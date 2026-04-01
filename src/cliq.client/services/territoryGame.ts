@@ -7,6 +7,8 @@ export interface TerritoryCell {
   claimedByName: string | null;
   color: string | null;
   claimedAt: string | null;
+  city: string | null;
+  neighborhood: string | null;
 }
 
 export interface TerritoryPlayer {
@@ -16,10 +18,17 @@ export interface TerritoryPlayer {
   cellsClaimed: number;
 }
 
+export interface NeighborhoodSection {
+  neighborhood: string;
+  userHasClaims: boolean;
+  players: TerritoryPlayer[];
+}
+
 export interface CitySection {
   city: string;
   userHasClaims: boolean;
   players: TerritoryPlayer[];
+  neighborhoods?: NeighborhoodSection[];
 }
 
 export interface CityLeaderboard {

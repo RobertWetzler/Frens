@@ -143,6 +143,8 @@ const TerritoryMap: React.FC<TerritoryMapProps> = ({
       color: cell.color || '#999',
       claimedByName: cell.claimedByName,
       claimedAt: cell.claimedAt,
+      city: cell.city,
+      neighborhood: cell.neighborhood,
     }));
   }, [cells]);
 
@@ -283,6 +285,11 @@ const TerritoryMap: React.FC<TerritoryMapProps> = ({
               <Tooltip direction="top" sticky={false}>
                 <div style={{ textAlign: 'center', fontSize: 13 }}>
                   <strong>{rect.claimedByName || 'Unknown'}</strong>
+                  {rect.city && (
+                    <div style={{ color: '#666', fontSize: 11, marginTop: 2 }}>
+                      {rect.neighborhood ? `${rect.neighborhood}, ${rect.city}` : rect.city}
+                    </div>
+                  )}
                   {rect.claimedAt && (
                     <div style={{ color: '#888', fontSize: 11, marginTop: 2 }}>
                       {formatTimeAgo(rect.claimedAt)}

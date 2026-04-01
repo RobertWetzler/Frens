@@ -110,6 +110,8 @@ export function useTerritoryGame() {
           claimedByName: d.claimedByName ?? null,
           color: d.color ?? null,
           claimedAt: d.claimedAt?.toISOString() ?? null,
+          city: d.city ?? null,
+          neighborhood: d.neighborhood ?? null,
         }))
       );
     } catch (err) {
@@ -130,6 +132,16 @@ export function useTerritoryGame() {
             displayName: p.displayName ?? 'Unknown',
             color: p.color ?? '#999',
             cellsClaimed: p.cellsClaimed,
+          })),
+          neighborhoods: cs.neighborhoods?.map((nb) => ({
+            neighborhood: nb.neighborhood ?? 'Unknown',
+            userHasClaims: nb.userHasClaims,
+            players: (nb.players ?? []).map((p) => ({
+              userId: p.userId ?? '',
+              displayName: p.displayName ?? 'Unknown',
+              color: p.color ?? '#999',
+              cellsClaimed: p.cellsClaimed,
+            })),
           })),
         })),
       });

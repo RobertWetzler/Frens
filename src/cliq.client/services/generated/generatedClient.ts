@@ -5825,6 +5825,7 @@ export class TerritoryCellDto implements ITerritoryCellDto {
     color?: string | undefined;
     claimedAt?: Date | undefined;
     city?: string | undefined;
+    neighborhood?: string | undefined;
 
     constructor(data?: ITerritoryCellDto) {
         if (data) {
@@ -5844,6 +5845,7 @@ export class TerritoryCellDto implements ITerritoryCellDto {
             this.color = _data["color"];
             this.claimedAt = _data["claimedAt"] ? new Date(_data["claimedAt"].toString()) : <any>undefined;
             this.city = _data["city"];
+            this.neighborhood = _data["neighborhood"];
         }
     }
 
@@ -5863,6 +5865,7 @@ export class TerritoryCellDto implements ITerritoryCellDto {
         data["color"] = this.color;
         data["claimedAt"] = this.claimedAt ? this.claimedAt.toISOString() : <any>undefined;
         data["city"] = this.city;
+        data["neighborhood"] = this.neighborhood;
         return data;
     }
 }
@@ -5875,6 +5878,7 @@ export interface ITerritoryCellDto {
     color?: string | undefined;
     claimedAt?: Date | undefined;
     city?: string | undefined;
+    neighborhood?: string | undefined;
 }
 
 export class TerritoryClaimRequest implements ITerritoryClaimRequest {
@@ -5965,6 +5969,7 @@ export class CitySectionDto implements ICitySectionDto {
     city?: string;
     userHasClaims?: boolean;
     players?: TerritoryLeaderboardEntryDto[];
+    neighborhoods?: NeighborhoodSectionDto[] | undefined;
 
     constructor(data?: ICitySectionDto) {
         if (data) {
@@ -5983,6 +5988,11 @@ export class CitySectionDto implements ICitySectionDto {
                 this.players = [] as any;
                 for (let item of _data["players"])
                     this.players!.push(TerritoryLeaderboardEntryDto.fromJS(item));
+            }
+            if (Array.isArray(_data["neighborhoods"])) {
+                this.neighborhoods = [] as any;
+                for (let item of _data["neighborhoods"])
+                    this.neighborhoods!.push(NeighborhoodSectionDto.fromJS(item));
             }
         }
     }
@@ -6003,6 +6013,11 @@ export class CitySectionDto implements ICitySectionDto {
             for (let item of this.players)
                 data["players"].push(item.toJSON());
         }
+        if (Array.isArray(this.neighborhoods)) {
+            data["neighborhoods"] = [];
+            for (let item of this.neighborhoods)
+                data["neighborhoods"].push(item.toJSON());
+        }
         return data;
     }
 }
@@ -6011,6 +6026,7 @@ export interface ICitySectionDto {
     city?: string;
     userHasClaims?: boolean;
     players?: TerritoryLeaderboardEntryDto[];
+    neighborhoods?: NeighborhoodSectionDto[] | undefined;
 }
 
 export class TerritoryLeaderboardEntryDto implements ITerritoryLeaderboardEntryDto {
@@ -6059,6 +6075,58 @@ export interface ITerritoryLeaderboardEntryDto {
     displayName?: string;
     color?: string;
     cellsClaimed?: number;
+}
+
+export class NeighborhoodSectionDto implements INeighborhoodSectionDto {
+    neighborhood?: string;
+    userHasClaims?: boolean;
+    players?: TerritoryLeaderboardEntryDto[];
+
+    constructor(data?: INeighborhoodSectionDto) {
+        if (data) {
+            for (var property in data) {
+                if (data.hasOwnProperty(property))
+                    (<any>this)[property] = (<any>data)[property];
+            }
+        }
+    }
+
+    init(_data?: any) {
+        if (_data) {
+            this.neighborhood = _data["neighborhood"];
+            this.userHasClaims = _data["userHasClaims"];
+            if (Array.isArray(_data["players"])) {
+                this.players = [] as any;
+                for (let item of _data["players"])
+                    this.players!.push(TerritoryLeaderboardEntryDto.fromJS(item));
+            }
+        }
+    }
+
+    static fromJS(data: any): NeighborhoodSectionDto {
+        data = typeof data === 'object' ? data : {};
+        let result = new NeighborhoodSectionDto();
+        result.init(data);
+        return result;
+    }
+
+    toJSON(data?: any) {
+        data = typeof data === 'object' ? data : {};
+        data["neighborhood"] = this.neighborhood;
+        data["userHasClaims"] = this.userHasClaims;
+        if (Array.isArray(this.players)) {
+            data["players"] = [];
+            for (let item of this.players)
+                data["players"].push(item.toJSON());
+        }
+        return data;
+    }
+}
+
+export interface INeighborhoodSectionDto {
+    neighborhood?: string;
+    userHasClaims?: boolean;
+    players?: TerritoryLeaderboardEntryDto[];
 }
 
 export interface FileParameter {

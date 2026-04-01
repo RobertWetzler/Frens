@@ -112,6 +112,17 @@ public class TerritoryController : ControllerBase
             return BadRequest("Viewport too large. Zoom in.");
 
         var cells = await _territoryService.GetCellsInBoundsAsync(south, west, north, east);
+
+        // Strip neighborhood data before the configured reveal date
+        var neighborhoodsAfter = ParseConfigDateTime("TerritoryGame:NeighborhoodsAfterUtc")
+            ?? (ParseConfigDateTime("TerritoryGame:StartUtc")
+                ?? new DateTime(2026, 4, 3, 14, 0, 0, DateTimeKind.Utc)).AddDays(7);
+        if (DateTime.UtcNow < neighborhoodsAfter)
+        {
+            foreach (var cell in cells)
+                cell.Neighborhood = null;
+        }
+
         return Ok(cells);
     }
 
@@ -124,7 +135,14 @@ public class TerritoryController : ControllerBase
             return Unauthorized();
 
         topPerCity = Math.Clamp(topPerCity, 1, 50);
-        var leaderboard = await _territoryService.GetCityLeaderboardAsync(userId, topPerCity);
+
+        // Neighborhoods appear after a configurable date (default: 1 week after game start)
+        var neighborhoodsAfter = ParseConfigDateTime("TerritoryGame:NeighborhoodsAfterUtc")
+            ?? (ParseConfigDateTime("TerritoryGame:StartUtc")
+                ?? new DateTime(2026, 4, 3, 14, 0, 0, DateTimeKind.Utc)).AddDays(7);
+        var includeNeighborhoods = DateTime.UtcNow >= neighborhoodsAfter;
+
+        var leaderboard = await _territoryService.GetCityLeaderboardAsync(userId, topPerCity, includeNeighborhoods);
         return Ok(leaderboard);
     }
 

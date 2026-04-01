@@ -1,13 +1,81 @@
-import React from 'react';
-import { View, Text } from 'react-native';
+import React, { useState } from 'react';
+import { View, Text, TouchableOpacity } from 'react-native';
 import { useTheme } from '../../theme/ThemeContext';
 import { makeStyles } from '../../theme/makeStyles';
-import { CityLeaderboard, TerritoryPlayer } from 'services/territoryGame';
+import { CityLeaderboard, TerritoryPlayer, NeighborhoodSection } from 'services/territoryGame';
 import { Ionicons } from '@expo/vector-icons';
 
 interface TerritoryLeaderboardProps {
   leaderboard: CityLeaderboard;
 }
+
+const PlayerRow: React.FC<{ player: TerritoryPlayer; index: number }> = ({ player, index }) => {
+  const styles = useStyles();
+  const isTop3 = index < 3;
+  const rankEmoji = index === 0 ? '🥇' : index === 1 ? '🥈' : index === 2 ? '🥉' : null;
+  return (
+    <View style={[styles.row, isTop3 && styles.rowTop3]}>
+      <View style={styles.rankContainer}>
+        {rankEmoji ? (
+          <Text style={styles.rankEmoji}>{rankEmoji}</Text>
+        ) : (
+          <Text style={styles.rankNumber}>{index + 1}</Text>
+        )}
+      </View>
+      <View style={[styles.colorDot, { backgroundColor: player.color }]} />
+      <Text style={[styles.playerName, isTop3 && styles.playerNameBold]} numberOfLines={1}>
+        {player.displayName}
+      </Text>
+      <View style={styles.scoreContainer}>
+        <Text style={[styles.score, isTop3 && { color: player.color }]}>
+          {player.cellsClaimed}
+        </Text>
+        <Text style={styles.scoreLabel}>points</Text>
+      </View>
+    </View>
+  );
+};
+
+const NeighborhoodDropdown: React.FC<{ neighborhoods: NeighborhoodSection[] }> = ({ neighborhoods }) => {
+  const [expanded, setExpanded] = useState(false);
+  const { theme } = useTheme();
+  const styles = useStyles();
+
+  return (
+    <View style={styles.neighborhoodContainer}>
+      <TouchableOpacity
+        style={styles.neighborhoodToggle}
+        onPress={() => setExpanded(!expanded)}
+        activeOpacity={0.7}
+      >
+        <Ionicons name="map-outline" size={14} color={theme.colors.textMuted} />
+        <Text style={styles.neighborhoodToggleText}>
+          Neighborhoods ({neighborhoods.length})
+        </Text>
+        <Ionicons
+          name={expanded ? 'chevron-up' : 'chevron-down'}
+          size={16}
+          color={theme.colors.textMuted}
+        />
+      </TouchableOpacity>
+      {expanded && neighborhoods.map((nb) => (
+        <View key={nb.neighborhood} style={styles.neighborhoodSection}>
+          <View style={styles.neighborhoodHeader}>
+            <Text style={styles.neighborhoodName}>{nb.neighborhood}</Text>
+            {nb.userHasClaims && (
+              <View style={styles.yourNeighborhoodBadge}>
+                <Text style={styles.yourNeighborhoodText}>You</Text>
+              </View>
+            )}
+          </View>
+          {nb.players.map((player, index) => (
+            <PlayerRow key={player.userId} player={player} index={index} />
+          ))}
+        </View>
+      ))}
+    </View>
+  );
+};
 
 const TerritoryLeaderboard: React.FC<TerritoryLeaderboardProps> = ({ leaderboard }) => {
   const { theme } = useTheme();
@@ -37,31 +105,12 @@ const TerritoryLeaderboard: React.FC<TerritoryLeaderboardProps> = ({ leaderboard
               </View>
             )}
           </View>
-          {section.players.map((player, index) => {
-            const isTop3 = index < 3;
-            const rankEmoji = index === 0 ? '🥇' : index === 1 ? '🥈' : index === 2 ? '🥉' : null;
-            return (
-              <View key={player.userId} style={[styles.row, isTop3 && styles.rowTop3]}>
-                <View style={styles.rankContainer}>
-                  {rankEmoji ? (
-                    <Text style={styles.rankEmoji}>{rankEmoji}</Text>
-                  ) : (
-                    <Text style={styles.rankNumber}>{index + 1}</Text>
-                  )}
-                </View>
-                <View style={[styles.colorDot, { backgroundColor: player.color }]} />
-                <Text style={[styles.playerName, isTop3 && styles.playerNameBold]} numberOfLines={1}>
-                  {player.displayName}
-                </Text>
-                <View style={styles.scoreContainer}>
-                  <Text style={[styles.score, isTop3 && { color: player.color }]}>
-                    {player.cellsClaimed}
-                  </Text>
-                  <Text style={styles.scoreLabel}>points</Text>
-                </View>
-              </View>
-            );
-          })}
+          {section.players.map((player, index) => (
+            <PlayerRow key={player.userId} player={player} index={index} />
+          ))}
+          {section.neighborhoods && section.neighborhoods.length > 0 && (
+            <NeighborhoodDropdown neighborhoods={section.neighborhoods} />
+          )}
         </View>
       ))}
     </View>
@@ -177,6 +226,53 @@ const useStyles = makeStyles((theme) => ({
     fontSize: 13,
     color: theme.colors.textMuted,
     marginTop: 4,
+  },
+  neighborhoodContainer: {
+    marginTop: 4,
+    marginBottom: 4,
+  },
+  neighborhoodToggle: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    paddingVertical: 8,
+    paddingHorizontal: 4,
+  },
+  neighborhoodToggleText: {
+    flex: 1,
+    fontSize: 13,
+    fontWeight: '600',
+    color: theme.colors.textMuted,
+  },
+  neighborhoodSection: {
+    marginLeft: 12,
+    marginBottom: 12,
+    borderLeftWidth: 2,
+    borderLeftColor: theme.colors.separator,
+    paddingLeft: 12,
+  },
+  neighborhoodHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    marginBottom: 6,
+  },
+  neighborhoodName: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: theme.colors.textPrimary,
+    flex: 1,
+  },
+  yourNeighborhoodBadge: {
+    backgroundColor: theme.colors.primary + '15',
+    paddingHorizontal: 6,
+    paddingVertical: 1,
+    borderRadius: 6,
+  },
+  yourNeighborhoodText: {
+    fontSize: 10,
+    fontWeight: '600',
+    color: theme.colors.primary,
   },
 }));
 

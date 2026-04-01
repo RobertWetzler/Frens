@@ -10,7 +10,7 @@ public interface ITerritoryService
     Task<TerritoryPlayerDto> RegisterAsync(Guid userId, string color);
     Task<TerritoryCellDto> ClaimCellAsync(Guid userId, double latitude, double longitude);
     Task<List<TerritoryCellDto>> GetCellsInBoundsAsync(double southLat, double westLng, double northLat, double eastLng);
-    Task<TerritoryCityLeaderboardDto> GetCityLeaderboardAsync(Guid userId, int topPerCity);
+    Task<TerritoryCityLeaderboardDto> GetCityLeaderboardAsync(Guid userId, int topPerCity, bool includeNeighborhoods = false);
     Task ChangeColorAsync(Guid userId, string newColor);
 }
 
@@ -124,11 +124,13 @@ public class TerritoryService : ITerritoryService
         // Resolve city: reuse from existing cell if available, otherwise reverse geocode
         string? city = existing?.City;
         string? country = existing?.Country;
+        string? neighborhood = existing?.Neighborhood;
         if (city == null && country == null)
         {
             var geo = await _cityLookup.LookupAsync(latitude, longitude, cellRow, cellCol);
             city = geo.City;
             country = geo.Country;
+            neighborhood = geo.Neighborhood;
         }
 
         if (existing != null)
@@ -139,6 +141,7 @@ public class TerritoryService : ITerritoryService
             existing.Bucket = bucket;
             existing.City = city;
             existing.Country = country;
+            existing.Neighborhood = neighborhood;
         }
         else
         {
@@ -151,6 +154,7 @@ public class TerritoryService : ITerritoryService
                 Color = player.Color,
                 City = city,
                 Country = country,
+                Neighborhood = neighborhood,
             };
             _db.TerritoryClaims.Add(claim);
         }
@@ -179,6 +183,7 @@ public class TerritoryService : ITerritoryService
             Color = player.Color,
             ClaimedAt = DateTime.UtcNow,
             City = city,
+            Neighborhood = neighborhood,
         };
     }
 
@@ -206,6 +211,8 @@ public class TerritoryService : ITerritoryService
                 ClaimedByName = c.ClaimedByUser.Name,
                 Color = c.Color,
                 ClaimedAt = c.ClaimedAt,
+                City = c.City,
+                Neighborhood = c.Neighborhood,
             })
             .ToListAsync();
 
@@ -230,13 +237,12 @@ public class TerritoryService : ITerritoryService
         return city ?? "Unknown";
     }
 
-    public async Task<TerritoryCityLeaderboardDto> GetCityLeaderboardAsync(Guid userId, int topPerCity = 10)
+    public async Task<TerritoryCityLeaderboardDto> GetCityLeaderboardAsync(Guid userId, int topPerCity = 10, bool includeNeighborhoods = false)
     {
-        // Pull all claims with city/country to compute regions in-memory
-        // (GetLeaderboardRegion logic can't be translated to SQL)
+        // Pull all claims with city/country/neighborhood to compute regions in-memory
         var allClaims = await _db.TerritoryClaims
             .AsNoTracking()
-            .Select(c => new { c.City, c.Country, c.ClaimedByUserId, c.Color, c.ClaimedAt })
+            .Select(c => new { c.City, c.Country, c.Neighborhood, c.ClaimedByUserId, c.Color, c.ClaimedAt })
             .ToListAsync();
 
         // Group by computed region + user
@@ -261,6 +267,48 @@ public class TerritoryService : ITerritoryService
         // Find which regions the current user has claims in
         var userRegions = raw.Where(r => r.UserId == userId).Select(r => r.Region).ToHashSet();
 
+        // Build neighborhood sub-sections per region (only for US cities)
+        Dictionary<string, List<NeighborhoodSectionDto>>? neighborhoodsByRegion = null;
+        if (includeNeighborhoods)
+        {
+            neighborhoodsByRegion = allClaims
+                .Where(c => c.Neighborhood != null && c.Country != null && UsCityCountries.Contains(c.Country))
+                .GroupBy(c => new { Region = GetLeaderboardRegion(c.City, c.Country), c.Neighborhood, c.ClaimedByUserId })
+                .Select(g => new
+                {
+                    Region = g.Key.Region,
+                    Neighborhood = g.Key.Neighborhood!,
+                    UserId = g.Key.ClaimedByUserId,
+                    CellsClaimed = g.Count(),
+                    Color = g.OrderByDescending(c => c.ClaimedAt).First().Color,
+                })
+                .GroupBy(r => r.Region)
+                .ToDictionary(
+                    regionGroup => regionGroup.Key,
+                    regionGroup => regionGroup
+                        .GroupBy(r => r.Neighborhood)
+                        .Select(nbGroup => new NeighborhoodSectionDto
+                        {
+                            Neighborhood = nbGroup.Key,
+                            UserHasClaims = nbGroup.Any(r => r.UserId == userId),
+                            Players = nbGroup
+                                .OrderByDescending(r => r.CellsClaimed)
+                                .Take(topPerCity)
+                                .Select(r => new TerritoryLeaderboardEntryDto
+                                {
+                                    UserId = r.UserId.ToString(),
+                                    DisplayName = userNames.GetValueOrDefault(r.UserId, "Unknown"),
+                                    Color = r.Color,
+                                    CellsClaimed = r.CellsClaimed,
+                                })
+                                .ToList(),
+                        })
+                        .OrderByDescending(n => n.UserHasClaims)
+                        .ThenByDescending(n => n.Players.Sum(p => p.CellsClaimed))
+                        .ToList()
+                );
+        }
+
         // Group by region, rank within each, take top N per region
         var cityGroups = raw
             .GroupBy(r => r.Region)
@@ -279,6 +327,8 @@ public class TerritoryService : ITerritoryService
                         CellsClaimed = r.CellsClaimed,
                     })
                     .ToList(),
+                Neighborhoods = neighborhoodsByRegion != null && neighborhoodsByRegion.TryGetValue(g.Key, out var nbs)
+                    ? nbs : null,
             })
             // User's cities first, then by total claims descending
             .OrderByDescending(c => c.UserHasClaims)
@@ -364,6 +414,7 @@ public class TerritoryCellDto
     public string? Color { get; set; }
     public DateTime? ClaimedAt { get; set; }
     public string? City { get; set; }
+    public string? Neighborhood { get; set; }
 }
 
 public class TerritoryLeaderboardEntryDto
@@ -377,6 +428,14 @@ public class TerritoryLeaderboardEntryDto
 public class CitySectionDto
 {
     public required string City { get; set; }
+    public bool UserHasClaims { get; set; }
+    public List<TerritoryLeaderboardEntryDto> Players { get; set; } = new();
+    public List<NeighborhoodSectionDto>? Neighborhoods { get; set; }
+}
+
+public class NeighborhoodSectionDto
+{
+    public required string Neighborhood { get; set; }
     public bool UserHasClaims { get; set; }
     public List<TerritoryLeaderboardEntryDto> Players { get; set; } = new();
 }
