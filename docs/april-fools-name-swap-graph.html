@@ -1,0 +1,274 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>April Fools Name Swap Graph — April 1, 2026</title>
+<script src="https://d3js.org/d3.v7.min.js"></script>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; overflow: hidden; transition: background 0.3s; }
+  body.dark { background: #0a0a0a; color: #eee; }
+  body.light { background: #f5f5f5; color: #222; }
+  svg { width: 100vw; height: 100vh; }
+
+  .link { stroke-opacity: 0.9; }
+  .link.mutual { stroke-opacity: 1; }
+
+  .node circle { stroke-width: 2px; cursor: pointer; }
+  .node text { font-size: 11px; pointer-events: none; text-anchor: middle; }
+  .dark .node text { fill: #ccc; }
+  .light .node text { fill: #333; }
+  .node.dimmed circle { opacity: 0.1; }
+  .node.dimmed text { opacity: 0.1; }
+  .link.dimmed { stroke-opacity: 0.03; }
+
+  .panel {
+    border-radius: 12px; padding: 16px 20px; transition: all 0.3s;
+  }
+  .dark .panel { background: rgba(20,20,20,0.95); border: 1px solid #333; color: #eee; }
+  .light .panel { background: rgba(255,255,255,0.95); border: 1px solid #ddd; color: #222; box-shadow: 0 2px 12px rgba(0,0,0,0.08); }
+
+  #info { position: fixed; top: 20px; left: 20px; min-width: 280px; pointer-events: none; }
+  #info h2 { font-size: 18px; margin-bottom: 6px; }
+  .dark #info h2 span { color: #a78bfa; }
+  .light #info h2 span { color: #7c3aed; }
+  #info .stat { font-size: 13px; margin-bottom: 2px; }
+  .dark #info .stat { color: #999; }
+  .light #info .stat { color: #666; }
+  #info .highlight { margin-top: 8px; font-size: 13px; }
+
+  #controls { position: fixed; top: 20px; right: 20px; pointer-events: all; min-width: 200px; }
+  #controls label { display: block; font-size: 13px; margin-bottom: 8px; }
+  #controls input[type=range] { width: 100%; margin-top: 4px; }
+  #controls button {
+    margin-top: 8px; padding: 6px 14px; border-radius: 8px; border: 1px solid #888;
+    cursor: pointer; font-size: 13px; font-weight: 600; transition: all 0.2s;
+  }
+  .dark #controls button { background: #222; color: #eee; border-color: #555; }
+  .light #controls button { background: #fff; color: #333; border-color: #ccc; }
+  #controls button:hover { opacity: 0.8; }
+
+  #legend { position: fixed; bottom: 20px; left: 20px; font-size: 12px; }
+  .dark #legend { color: #aaa; }
+  .light #legend { color: #666; }
+  #legend div { margin-bottom: 4px; display: flex; align-items: center; gap: 6px; }
+  #legend .swatch { width: 14px; height: 14px; border-radius: 3px; display: inline-block; }
+</style>
+</head>
+<body class="dark">
+
+<div id="info" class="panel">
+  <h2>🃏 <span>April Fools Name Swap</span></h2>
+  <div class="stat">April 1, 2026 — 28 active users</div>
+  <div class="stat" id="stat-summary"></div>
+  <div class="highlight" id="stat-hover"></div>
+</div>
+
+<div id="controls" class="panel">
+  <label>
+    Density
+    <input type="range" id="density-slider" min="30" max="200" value="60">
+  </label>
+  <label>
+    Font Size
+    <input type="range" id="font-slider" min="8" max="18" value="11">
+  </label>
+  <button id="theme-toggle">☀️ Light Mode</button>
+</div>
+
+<div id="legend" class="panel">
+  <div><strong>Legend</strong></div>
+  <div><span class="swatch" style="background:#a78bfa"></span> User</div>
+  <div style="margin-top:6px; font-size:11px; opacity:0.7">Hover node · Drag to move · Scroll to zoom</div>
+</div>
+
+<svg></svg>
+
+<script>
+const swaps = [
+  ["anya", "stella"], //d?
+  ["Carlyn C.", "Robert Wetzler"], //d
+  ["Carolyn Wetzler", "Howler"],
+  ["Devon Brandt", "pardes"],
+  ["Elana Loomis", "Carolyn Wetzler"], //d
+  ["Emerson", "momes"], //d
+  ["Ethan Cassel-mace", "Sierra Takushi"], //d
+  ["Garret", "Carlyn C."],
+  ["Howler", "Elana Loomis"],
+  ["Jake", "jacob"], //d
+  ["Katie Summers", "amy"], //d
+  ["han", "Garret"], //d
+  ["Liv", "Robert Wetzler"],
+  ["mark", "Ethan Cassel-mace"], //d
+  ["Maxwell Trinh", "Robert Wetzler"],
+  ["my", "lena"], //d
+  ["Nick Friedl", "Garret"], //d
+  ["pardes", "han"], //d
+  ["Robert Wetzler", "Sierra Takushi"], //d
+  ["Sarah Kuziora", "Katie Summers"], //d
+  ["Seth", "Spencer Sands"], //d
+  ["Sierra Takushi", "mark"], //d
+  ["Spencer Sands", "Katie Summers"], //d
+  ["stella", "anya"], //d
+  ["Tim Herwig", "Valeria"], //d
+  ["Valeria", "Tim Herwig"], //d
+];
+
+const activeUsers = new Set(swaps.map(s => s[0]));
+const nodeNames = new Set();
+swaps.forEach(([a, b]) => { nodeNames.add(a); nodeNames.add(b); });
+const nodes = Array.from(nodeNames).map(name => ({ id: name }));
+const swapMap = new Map(swaps.map(([a, b]) => [a, b]));
+const mutualPairs = new Set();
+swaps.forEach(([a, b]) => {
+  if (swapMap.get(b) === a) mutualPairs.add([a, b].sort().join('|'));
+});
+const links = swaps.map(([source, target]) => ({
+  source, target, mutual: mutualPairs.has([source, target].sort().join('|'))
+}));
+
+// Theme state
+let isDark = true;
+const colors = () => isDark
+  ? { active: '#a78bfa', inactive: '#555', mutual: '#f472b6', link: '#ccc', stroke: '#7c3aed', inactiveStroke: '#333', text: '#ddd', textDim: '#777', arrow: '#ccc' }
+  : { active: '#7c3aed', inactive: '#bbb', mutual: '#e11d89', link: '#333', stroke: '#5b21b6', inactiveStroke: '#aaa', text: '#222', textDim: '#888', arrow: '#333' };
+
+const width = window.innerWidth;
+const height = window.innerHeight;
+const svg = d3.select('svg');
+
+// Arrow markers — we'll recreate on theme change
+function setupMarkers() {
+  svg.select('defs').remove();
+  const defs = svg.append('defs');
+  const c = colors();
+
+  defs.append('marker').attr('id', 'arrow').attr('viewBox', '0 0 10 6')
+    .attr('refX', 24).attr('refY', 3).attr('markerWidth', 9).attr('markerHeight', 6)
+    .attr('orient', 'auto')
+    .append('path').attr('d', 'M0,0 L10,3 L0,6 Z').attr('fill', c.arrow).attr('fill-opacity', 1);
+
+  defs.append('marker').attr('id', 'arrow-mutual').attr('viewBox', '0 0 10 6')
+    .attr('refX', 24).attr('refY', 3).attr('markerWidth', 9).attr('markerHeight', 6)
+    .attr('orient', 'auto')
+    .append('path').attr('d', 'M0,0 L10,3 L0,6 Z').attr('fill', c.mutual).attr('fill-opacity', 1);
+}
+setupMarkers();
+
+const g = svg.append('g');
+svg.call(d3.zoom().scaleExtent([0.3, 5]).on('zoom', (e) => g.attr('transform', e.transform)));
+
+const simulation = d3.forceSimulation(nodes)
+  .force('link', d3.forceLink(links).id(d => d.id).distance(60))
+  .force('charge', d3.forceManyBody().strength(-200))
+  .force('x', d3.forceX(width / 2).strength(0.15))
+  .force('y', d3.forceY(height / 2).strength(0.15))
+  .force('collide', d3.forceCollide(25));
+
+// Links as paths (for proper arrowheads on directed edges)
+const link = g.append('g').selectAll('line').data(links).join('line')
+  .attr('class', 'link')
+  .attr('stroke', colors().link)
+  .attr('stroke-width', 1.5)
+  .attr('marker-end', 'url(#arrow)');
+
+// Nodes
+const node = g.append('g').selectAll('g').data(nodes).join('g')
+  .attr('class', 'node')
+  .call(d3.drag()
+    .on('start', (e, d) => { if (!e.active) simulation.alphaTarget(0.3).restart(); d.fx = d.x; d.fy = d.y; })
+    .on('drag', (e, d) => { d.fx = e.x; d.fy = e.y; })
+    .on('end', (e, d) => { if (!e.active) simulation.alphaTarget(0); d.fx = null; d.fy = null; })
+  );
+
+node.append('circle')
+  .attr('r', 14)
+  .attr('fill', colors().active)
+  .attr('stroke', colors().stroke)
+  .attr('stroke-width', 2);
+
+const labels = node.append('text')
+  .attr('dy', 28)
+  .text(d => d.id)
+  .attr('fill', colors().text)
+  .attr('font-weight', '600')
+  .attr('font-size', '11px');
+
+// Hover
+const hoverEl = document.getElementById('stat-hover');
+node.on('mouseover', (e, d) => {
+  const c = colors();
+  const target = swapMap.get(d.id);
+  const swappedBy = [...swapMap.entries()].filter(([_, v]) => v === d.id).map(([k]) => k);
+  let html = `<strong>${d.id}</strong>`;
+  if (target) html += `<br>→ appeared as <strong style="color:${c.active}">${target}</strong>`;
+  if (swappedBy.length > 0) html += `<br>← displayed for: ${swappedBy.map(n => `<strong>${n}</strong>`).join(', ')}`;
+  hoverEl.innerHTML = html;
+  const connected = new Set([d.id]);
+  if (target) connected.add(target);
+  swappedBy.forEach(n => connected.add(n));
+  node.classed('dimmed', n => !connected.has(n.id));
+  link.classed('dimmed', l => !connected.has(l.source.id) && !connected.has(l.target.id));
+});
+node.on('mouseout', () => { hoverEl.innerHTML = ''; node.classed('dimmed', false); link.classed('dimmed', false); });
+
+// Summary
+document.getElementById('stat-summary').textContent =
+  `${swaps.length} swaps · ${mutualPairs.size} mutual · ${nodeNames.size} users involved`;
+
+// Tick
+simulation.on('tick', () => {
+  link.attr('x1', d => d.source.x).attr('y1', d => d.source.y)
+      .attr('x2', d => d.target.x).attr('y2', d => d.target.y);
+  node.attr('transform', d => `translate(${d.x},${d.y})`);
+});
+
+// === Controls ===
+
+// Density slider — controls gravity, charge, link distance, and collision
+document.getElementById('density-slider').addEventListener('input', (e) => {
+  const val = +e.target.value;
+  const linkDist = val;
+  const charge = -(val * 3);
+  const collide = val * 0.4;
+  // Stronger gravity at low density values to pull everything tight
+  const gravity = 0.05 + (1 - val / 200) * 0.4;
+  simulation.force('link').distance(linkDist);
+  simulation.force('charge').strength(charge);
+  simulation.force('x').strength(gravity);
+  simulation.force('y').strength(gravity);
+  simulation.force('collide').radius(collide);
+  simulation.alpha(0.8).restart();
+});
+
+// Font slider
+document.getElementById('font-slider').addEventListener('input', (e) => {
+  const px = +e.target.value;
+  labels.attr('font-size', px + 'px');
+});
+
+// Theme toggle
+function applyTheme() {
+  const c = colors();
+  document.body.className = isDark ? 'dark' : 'light';
+  document.getElementById('theme-toggle').textContent = isDark ? '☀️ Light Mode' : '🌙 Dark Mode';
+
+  setupMarkers();
+  link.attr('stroke', c.link)
+      .attr('marker-end', 'url(#arrow)');
+
+  node.select('circle')
+    .attr('fill', c.active)
+    .attr('stroke', c.stroke);
+
+  labels.attr('fill', c.text);
+}
+
+document.getElementById('theme-toggle').addEventListener('click', () => {
+  isDark = !isDark;
+  applyTheme();
+});
+</script>
+</body>
+</html>
