@@ -4,11 +4,14 @@ import {
   TerritoryPlayer,
   TerritoryGameState,
   CityLeaderboard,
+  PowerupLocation,
+  PowerupInventoryItem,
+  PowerupUseResult,
   coordsToCell,
   CLAIM_COOLDOWN_MS,
 } from 'services/territoryGame';
 import { ApiClient } from 'services/apiClient';
-import { TerritoryRegisterRequest, TerritoryClaimRequest } from 'services/generated/generatedClient';
+import { TerritoryRegisterRequest, TerritoryClaimRequest, PowerupUseRequest } from 'services/generated/generatedClient';
 
 export interface MapBounds {
   south: number;
@@ -28,6 +31,9 @@ export function useTerritoryGame() {
   const [cooldownSeconds, setCooldownSeconds] = useState(0);
   const [locationRequested, setLocationRequested] = useState(false);
   const [viewerMode, setViewerMode] = useState(false);
+  const [debugMode, setDebugMode] = useState(false);
+  const [powerups, setPowerups] = useState<PowerupLocation[]>([]);
+  const [inventory, setInventory] = useState<PowerupInventoryItem[]>([]);
   const cooldownRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const cooldownEndRef = useRef<number>(0);
   const watchIdRef = useRef<number | null>(null);
@@ -118,6 +124,86 @@ export function useTerritoryGame() {
       console.error('Failed to load cells in bounds:', err);
     }
   }, []);
+
+  // Load powerups in current viewport bounds
+  const loadPowerupsInBounds = useCallback(async (bounds: MapBounds) => {
+    try {
+      const dtos = await ApiClient.call((c) =>
+        c.powerup_GetPowerupsInBounds(bounds.south, bounds.west, bounds.north, bounds.east)
+      );
+      setPowerups(
+        dtos.map((d) => ({
+          cellRow: d.cellRow,
+          cellCol: d.cellCol,
+          powerupType: d.powerupType ?? '',
+          name: d.name ?? '',
+          emoji: d.emoji ?? '❓',
+        }))
+      );
+    } catch (err) {
+      console.error('Failed to load powerups:', err);
+    }
+  }, []);
+
+  // Load inventory
+  const loadInventory = useCallback(async () => {
+    try {
+      const dtos = await ApiClient.call((c) => c.powerup_GetInventory());
+      setInventory(
+        dtos.map((d) => ({
+          claimId: d.claimId ?? '',
+          powerupType: d.powerupType ?? '',
+          name: d.name ?? '',
+          description: d.description ?? '',
+          emoji: d.emoji ?? '❓',
+          claimedAt: d.claimedAt?.toISOString() ?? '',
+        }))
+      );
+    } catch (err) {
+      console.error('Failed to load inventory:', err);
+    }
+  }, []);
+
+  // Claim a powerup at current location
+  const claimPowerup = useCallback(async () => {
+    if (!location) return;
+    try {
+      await ApiClient.call((c) =>
+        c.powerup_ClaimPowerup(
+          new TerritoryClaimRequest({ latitude: location.lat, longitude: location.lng })
+        )
+      );
+      // Refresh powerups and inventory
+      if (lastBoundsRef.current) await loadPowerupsInBounds(lastBoundsRef.current);
+      await loadInventory();
+    } catch (err) {
+      console.error('Failed to claim powerup:', err);
+      throw err;
+    }
+  }, [location, loadPowerupsInBounds, loadInventory]);
+
+  // Use a powerup from inventory
+  const usePowerup = useCallback(async (claimId: string): Promise<PowerupUseResult> => {
+    if (!location) throw new Error('Location required');
+    try {
+      const dto = await ApiClient.call((c) =>
+        c.powerup_UsePowerup(
+          new PowerupUseRequest({ claimId, latitude: location.lat, longitude: location.lng })
+        )
+      );
+      await loadInventory();
+      // Refresh map cells to show the effect
+      if (lastBoundsRef.current) await loadCellsInBounds(lastBoundsRef.current);
+      return {
+        success: dto.success,
+        message: dto.message ?? '',
+        cellsAffected: dto.cellsAffected,
+      };
+    } catch (err) {
+      console.error('Failed to use powerup:', err);
+      throw err;
+    }
+  }, [location, loadInventory, loadCellsInBounds]);
 
   // Load leaderboard from API
   const loadLeaderboard = useCallback(async () => {
@@ -303,17 +389,35 @@ export function useTerritoryGame() {
   const onMapBoundsChanged = useCallback((bounds: MapBounds) => {
     lastBoundsRef.current = bounds;
     loadCellsInBounds(bounds);
-  }, [loadCellsInBounds]);
+    loadPowerupsInBounds(bounds);
+  }, [loadCellsInBounds, loadPowerupsInBounds]);
 
-  // Poll cells every 15 seconds for semi-live updates
+  // Poll cells + powerups every 15 seconds for semi-live updates
   useEffect(() => {
     const interval = setInterval(() => {
       if (lastBoundsRef.current) {
         loadCellsInBounds(lastBoundsRef.current);
+        loadPowerupsInBounds(lastBoundsRef.current);
       }
     }, 15000);
     return () => clearInterval(interval);
-  }, [loadCellsInBounds]);
+  }, [loadCellsInBounds, loadPowerupsInBounds]);
+
+  // Load inventory on mount
+  useEffect(() => {
+    if (gameState?.isRegistered) {
+      loadInventory();
+    }
+  }, [gameState?.isRegistered]);
+
+  // Debug: set location by tapping the map (dev mode only)
+  const setDebugLocation = useCallback((lat: number, lng: number) => {
+    setLocation({ lat, lng });
+    setLocationError(null);
+    setLocationRequested(true);
+    setViewerMode(false);
+    setDebugMode(true);
+  }, []);
 
   const userCell = location ? coordsToCell(location.lat, location.lng) : null;
 
@@ -321,6 +425,8 @@ export function useTerritoryGame() {
     gameState,
     cells,
     leaderboard,
+    powerups,
+    inventory,
     location,
     locationError,
     userCell,
@@ -329,15 +435,22 @@ export function useTerritoryGame() {
     cooldownSeconds,
     locationRequested,
     viewerMode,
+    debugMode,
     register,
     claimCell,
     changeColor,
+    claimPowerup,
+    usePowerup,
     requestLocation,
     enterViewerMode,
+    setDebugLocation,
     onMapBoundsChanged,
     refresh: () => {
-      const refreshes: Promise<any>[] = [loadLeaderboard(), loadGameState()];
-      if (lastBoundsRef.current) refreshes.push(loadCellsInBounds(lastBoundsRef.current));
+      const refreshes: Promise<any>[] = [loadLeaderboard(), loadGameState(), loadInventory()];
+      if (lastBoundsRef.current) {
+        refreshes.push(loadCellsInBounds(lastBoundsRef.current));
+        refreshes.push(loadPowerupsInBounds(lastBoundsRef.current));
+      }
       return Promise.all(refreshes);
     },
   };

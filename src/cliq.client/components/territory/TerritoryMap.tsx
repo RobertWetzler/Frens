@@ -4,6 +4,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../../theme/ThemeContext';
 import { makeStyles } from '../../theme/makeStyles';
 import { TerritoryCell, cellToCoords, cellToBounds } from 'services/territoryGame';
+import type { PowerupLocation, PowerupInventoryItem, PowerupUseResult } from 'services/territoryGame';
 import type { MapBounds } from 'hooks/useTerritoryGame';
 
 function formatTimeAgo(dateStr: string): string {
@@ -25,8 +26,10 @@ let TileLayer: any;
 let Rectangle: any;
 let CircleMarker: any;
 let Tooltip: any;
+let Marker: any;
 let useMap: any;
 let useMapEvents: any;
+let L: any;
 if (Platform.OS === 'web') {
   const RL = require('react-leaflet');
   MapContainer = RL.MapContainer;
@@ -34,8 +37,10 @@ if (Platform.OS === 'web') {
   Rectangle = RL.Rectangle;
   CircleMarker = RL.CircleMarker;
   Tooltip = RL.Tooltip;
+  Marker = RL.Marker;
   useMap = RL.useMap;
   useMapEvents = RL.useMapEvents;
+  L = require('leaflet');
 }
 
 interface TerritoryMapProps {
@@ -48,10 +53,17 @@ interface TerritoryMapProps {
   locationRequested: boolean;
   location: { lat: number; lng: number } | null;
   viewerMode: boolean;
+  powerups: PowerupLocation[];
+  inventory: PowerupInventoryItem[];
+  userOnPowerup: boolean;
   onClaimCell: () => void;
+  onClaimPowerup: () => void;
+  onUsePowerup: (claimId: string) => Promise<PowerupUseResult>;
   onBoundsChanged: (bounds: MapBounds) => void;
   onRequestLocation: () => void;
   onEnterViewerMode: () => void;
+  debugMode: boolean;
+  onDebugClick?: (lat: number, lng: number) => void;
 }
 
 /** Re-center the map on first location fix only */
@@ -108,6 +120,16 @@ const BoundsWatcher: React.FC<{ onBoundsChanged: (bounds: MapBounds) => void }> 
   return null;
 };
 
+/** Debug: click map to set fake location (dev mode only) */
+const DebugClickHandler: React.FC<{ onClick: (lat: number, lng: number) => void }> = ({ onClick }) => {
+  useMapEvents({
+    click: (e: any) => {
+      onClick(e.latlng.lat, e.latlng.lng);
+    },
+  });
+  return null;
+};
+
 const TerritoryMap: React.FC<TerritoryMapProps> = ({
   cells,
   userCell,
@@ -118,10 +140,17 @@ const TerritoryMap: React.FC<TerritoryMapProps> = ({
   locationRequested,
   location,
   viewerMode,
+  powerups,
+  inventory,
+  userOnPowerup,
   onClaimCell,
+  onClaimPowerup,
+  onUsePowerup,
   onBoundsChanged,
   onRequestLocation,
   onEnterViewerMode,
+  debugMode,
+  onDebugClick,
 }) => {
   const { theme } = useTheme();
   const styles = useStyles();
@@ -240,8 +269,16 @@ const TerritoryMap: React.FC<TerritoryMapProps> = ({
 
   return (
     <View style={styles.container}>
-      {/* Viewer mode banner */}
-      {viewerMode && (
+      {/* Debug / Viewer mode banner */}
+      {debugMode && (
+        <View style={[styles.viewerBanner, { backgroundColor: '#FFF3E0' }]}>
+          <Ionicons name="bug-outline" size={16} color="#FF9800" />
+          <Text style={[styles.viewerBannerText, { color: '#FF9800', fontStyle: 'normal', fontWeight: '600' }]}>
+            Debug mode — tap map to set location
+          </Text>
+        </View>
+      )}
+      {viewerMode && !debugMode && (
         <View style={styles.viewerBanner}>
           <Ionicons name="eye-outline" size={16} color={theme.colors.textMuted} />
           <Text style={styles.viewerBannerText}>Viewer mode — fren zones from your phone</Text>
@@ -263,6 +300,9 @@ const TerritoryMap: React.FC<TerritoryMapProps> = ({
           />
           {location && <RecenterOnce lat={location.lat} lng={location.lng} />}
           <BoundsWatcher onBoundsChanged={onBoundsChanged} />
+          {(debugMode || viewerMode) && onDebugClick && (
+            <DebugClickHandler onClick={onDebugClick} />
+          )}
 
           {/* Claimed cells as colored rectangles */}
           {cellRectangles.map((rect) => (
@@ -314,6 +354,32 @@ const TerritoryMap: React.FC<TerritoryMapProps> = ({
             />
           )}
 
+          {/* Powerup markers */}
+          {powerups.map((pu) => {
+            const center = cellToBounds(pu.cellRow, pu.cellCol);
+            const lat = (center[0][0] + center[1][0]) / 2;
+            const lng = (center[0][1] + center[1][1]) / 2;
+            const icon = L?.divIcon?.({
+              html: `<div style="font-size:22px;text-align:center;line-height:30px;width:30px;height:30px;background:rgba(255,255,255,0.85);border-radius:50%;box-shadow:0 2px 6px rgba(0,0,0,0.3);">${pu.emoji}</div>`,
+              iconSize: [30, 30],
+              iconAnchor: [15, 15],
+              className: '',
+            });
+            return icon ? (
+              <Marker
+                key={`pu-${pu.cellRow},${pu.cellCol}`}
+                position={[lat, lng]}
+                icon={icon}
+              >
+                <Tooltip direction="top">
+                  <div style={{ textAlign: 'center', fontSize: 13 }}>
+                    <strong>{pu.name}</strong>
+                  </div>
+                </Tooltip>
+              </Marker>
+            ) : null;
+          })}
+
           {/* User location dot */}
           {!viewerMode && location && (
             <CircleMarker
@@ -353,6 +419,30 @@ const TerritoryMap: React.FC<TerritoryMapProps> = ({
               <Text style={styles.claimButtonText}>Claim This Zone</Text>
             </TouchableOpacity>
           )}
+          {/* Powerup claim button — shows when user is standing on a powerup */}
+          {userOnPowerup && (
+            <TouchableOpacity
+              style={[styles.claimButton, { backgroundColor: '#FF9800', marginTop: 8 }]}
+              onPress={onClaimPowerup}
+            >
+              <Text style={styles.claimButtonText}>⚡ Pick Up Powerup</Text>
+            </TouchableOpacity>
+          )}
+        </View>
+      )}
+
+      {/* Inventory panel */}
+      {!viewerMode && inventory.length > 0 && (
+        <View style={styles.inventoryPanel}>
+          {inventory.map((item) => (
+            <TouchableOpacity
+              key={item.claimId}
+              style={styles.inventoryItem}
+              onPress={() => onUsePowerup(item.claimId)}
+            >
+              <Text style={styles.inventoryEmoji}>{item.emoji}</Text>
+            </TouchableOpacity>
+          ))}
         </View>
       )}
     </View>
@@ -463,6 +553,30 @@ const useStyles = makeStyles((theme) => ({
     fontSize: 16,
     fontWeight: '700',
     color: '#FFF',
+  },
+  inventoryPanel: {
+    position: 'absolute' as any,
+    top: 60,
+    right: 12,
+    flexDirection: 'column',
+    gap: 8,
+    zIndex: 1000,
+  },
+  inventoryItem: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: 'rgba(255,255,255,0.9)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.25,
+    shadowRadius: 4,
+    elevation: 5,
+  },
+  inventoryEmoji: {
+    fontSize: 22,
   },
 }));
 

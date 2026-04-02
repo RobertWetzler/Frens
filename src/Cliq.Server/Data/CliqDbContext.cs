@@ -38,6 +38,7 @@ public class CliqDbContext : IdentityDbContext<User, CliqRole, Guid>
     public DbSet<TerritoryPlayer> TerritoryPlayers { get; set; }
     public DbSet<TerritoryClaim> TerritoryClaims { get; set; }
     public DbSet<TerritoryClaimHistory> TerritoryClaimHistory { get; set; }
+    public DbSet<PowerupClaim> PowerupClaims { get; set; }
 
     public CliqDbContext(
             DbContextOptions<CliqDbContext> options,
@@ -645,6 +646,27 @@ public class CliqDbContext : IdentityDbContext<User, CliqRole, Guid>
 
             // Index for timelapse replay: ordered by time
             entity.HasIndex(e => e.Timestamp);
+        });
+
+        // ========== PowerupClaim ==========
+        modelBuilder.Entity<PowerupClaim>(entity =>
+        {
+            entity.HasKey(e => e.Id);
+
+            entity.HasOne(e => e.User)
+                .WithMany()
+                .HasForeignKey(e => e.UserId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            entity.Property(e => e.PowerupType).IsRequired().HasMaxLength(30);
+            entity.Property(e => e.DateKey).IsRequired().HasMaxLength(10);
+            entity.Property(e => e.ClaimedAt).HasDefaultValueSql("NOW()");
+
+            // Prevent double-claims: one claim per cell per day
+            entity.HasIndex(e => new { e.CellRow, e.CellCol, e.DateKey }).IsUnique();
+
+            // For inventory queries
+            entity.HasIndex(e => new { e.UserId, e.UsedAt });
         });
     }
 }

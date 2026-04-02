@@ -79,3 +79,29 @@ public class TerritoryClaimHistory
 
     public DateTime Timestamp { get; set; } = DateTime.UtcNow;
 }
+
+/// <summary>
+/// A powerup that was picked up by a player. Tracks inventory and usage.
+/// Powerup locations are procedurally generated — only claims are stored.
+/// </summary>
+public class PowerupClaim
+{
+    public Guid Id { get; set; } = Guid.NewGuid();
+    public Guid UserId { get; set; }
+    public User User { get; set; } = null!;
+
+    /// <summary>The cell where the powerup was picked up.</summary>
+    public long CellRow { get; set; }
+    public long CellCol { get; set; }
+
+    /// <summary>Powerup type identifier, e.g. "bomb", "lightning".</summary>
+    public required string PowerupType { get; set; }
+
+    /// <summary>Date key for daily reset, e.g. "2026-04-02" in PDT.</summary>
+    public required string DateKey { get; set; }
+
+    public DateTime ClaimedAt { get; set; } = DateTime.UtcNow;
+
+    /// <summary>When the powerup was used. Null if still in inventory.</summary>
+    public DateTime? UsedAt { get; set; }
+}

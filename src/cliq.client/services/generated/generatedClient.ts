@@ -2595,6 +2595,198 @@ export class Client {
         return Promise.resolve<PostDto>(null as any);
     }
 
+    powerup_GetPowerupsInBounds(south: number | undefined, west: number | undefined, north: number | undefined, east: number | undefined, signal?: AbortSignal): Promise<PowerupLocationDto[]> {
+        let url_ = this.baseUrl + "/api/Powerup/inbounds?";
+        if (south === null)
+            throw new Error("The parameter 'south' cannot be null.");
+        else if (south !== undefined)
+            url_ += "south=" + encodeURIComponent("" + south) + "&";
+        if (west === null)
+            throw new Error("The parameter 'west' cannot be null.");
+        else if (west !== undefined)
+            url_ += "west=" + encodeURIComponent("" + west) + "&";
+        if (north === null)
+            throw new Error("The parameter 'north' cannot be null.");
+        else if (north !== undefined)
+            url_ += "north=" + encodeURIComponent("" + north) + "&";
+        if (east === null)
+            throw new Error("The parameter 'east' cannot be null.");
+        else if (east !== undefined)
+            url_ += "east=" + encodeURIComponent("" + east) + "&";
+        url_ = url_.replace(/[?&]$/, "");
+
+        let options_: RequestInit = {
+            method: "GET",
+            signal,
+            headers: {
+                "Accept": "application/json"
+            }
+        };
+
+        return this.http.fetch(url_, options_).then((_response: Response) => {
+            return this.processPowerup_GetPowerupsInBounds(_response);
+        });
+    }
+
+    protected processPowerup_GetPowerupsInBounds(response: Response): Promise<PowerupLocationDto[]> {
+        const status = response.status;
+        let _headers: any = {}; if (response.headers && response.headers.forEach) { response.headers.forEach((v: any, k: any) => _headers[k] = v); };
+        if (status === 200) {
+            return response.text().then((_responseText) => {
+            let result200: any = null;
+            let resultData200 = _responseText === "" ? null : JSON.parse(_responseText, this.jsonParseReviver);
+            if (Array.isArray(resultData200)) {
+                result200 = [] as any;
+                for (let item of resultData200)
+                    result200!.push(PowerupLocationDto.fromJS(item));
+            }
+            else {
+                result200 = <any>null;
+            }
+            return result200;
+            });
+        } else if (status !== 200 && status !== 204) {
+            return response.text().then((_responseText) => {
+            return throwException("An unexpected server error occurred.", status, _responseText, _headers);
+            });
+        }
+        return Promise.resolve<PowerupLocationDto[]>(null as any);
+    }
+
+    powerup_ClaimPowerup(request: TerritoryClaimRequest, signal?: AbortSignal): Promise<PowerupClaimResultDto> {
+        let url_ = this.baseUrl + "/api/Powerup/claim";
+        url_ = url_.replace(/[?&]$/, "");
+
+        const content_ = JSON.stringify(request);
+
+        let options_: RequestInit = {
+            body: content_,
+            method: "POST",
+            signal,
+            headers: {
+                "Content-Type": "application/json",
+                "Accept": "application/json"
+            }
+        };
+
+        return this.http.fetch(url_, options_).then((_response: Response) => {
+            return this.processPowerup_ClaimPowerup(_response);
+        });
+    }
+
+    protected processPowerup_ClaimPowerup(response: Response): Promise<PowerupClaimResultDto> {
+        const status = response.status;
+        let _headers: any = {}; if (response.headers && response.headers.forEach) { response.headers.forEach((v: any, k: any) => _headers[k] = v); };
+        if (status === 200) {
+            return response.text().then((_responseText) => {
+            let result200: any = null;
+            let resultData200 = _responseText === "" ? null : JSON.parse(_responseText, this.jsonParseReviver);
+            result200 = PowerupClaimResultDto.fromJS(resultData200);
+            return result200;
+            });
+        } else if (status === 400) {
+            return response.text().then((_responseText) => {
+            let result400: any = null;
+            let resultData400 = _responseText === "" ? null : JSON.parse(_responseText, this.jsonParseReviver);
+            result400 = ProblemDetails.fromJS(resultData400);
+            return throwException("A server side error occurred.", status, _responseText, _headers, result400);
+            });
+        } else if (status !== 200 && status !== 204) {
+            return response.text().then((_responseText) => {
+            return throwException("An unexpected server error occurred.", status, _responseText, _headers);
+            });
+        }
+        return Promise.resolve<PowerupClaimResultDto>(null as any);
+    }
+
+    powerup_GetInventory(signal?: AbortSignal): Promise<PowerupInventoryItemDto[]> {
+        let url_ = this.baseUrl + "/api/Powerup/inventory";
+        url_ = url_.replace(/[?&]$/, "");
+
+        let options_: RequestInit = {
+            method: "GET",
+            signal,
+            headers: {
+                "Accept": "application/json"
+            }
+        };
+
+        return this.http.fetch(url_, options_).then((_response: Response) => {
+            return this.processPowerup_GetInventory(_response);
+        });
+    }
+
+    protected processPowerup_GetInventory(response: Response): Promise<PowerupInventoryItemDto[]> {
+        const status = response.status;
+        let _headers: any = {}; if (response.headers && response.headers.forEach) { response.headers.forEach((v: any, k: any) => _headers[k] = v); };
+        if (status === 200) {
+            return response.text().then((_responseText) => {
+            let result200: any = null;
+            let resultData200 = _responseText === "" ? null : JSON.parse(_responseText, this.jsonParseReviver);
+            if (Array.isArray(resultData200)) {
+                result200 = [] as any;
+                for (let item of resultData200)
+                    result200!.push(PowerupInventoryItemDto.fromJS(item));
+            }
+            else {
+                result200 = <any>null;
+            }
+            return result200;
+            });
+        } else if (status !== 200 && status !== 204) {
+            return response.text().then((_responseText) => {
+            return throwException("An unexpected server error occurred.", status, _responseText, _headers);
+            });
+        }
+        return Promise.resolve<PowerupInventoryItemDto[]>(null as any);
+    }
+
+    powerup_UsePowerup(request: PowerupUseRequest, signal?: AbortSignal): Promise<PowerupUseResultDto> {
+        let url_ = this.baseUrl + "/api/Powerup/use";
+        url_ = url_.replace(/[?&]$/, "");
+
+        const content_ = JSON.stringify(request);
+
+        let options_: RequestInit = {
+            body: content_,
+            method: "POST",
+            signal,
+            headers: {
+                "Content-Type": "application/json",
+                "Accept": "application/json"
+            }
+        };
+
+        return this.http.fetch(url_, options_).then((_response: Response) => {
+            return this.processPowerup_UsePowerup(_response);
+        });
+    }
+
+    protected processPowerup_UsePowerup(response: Response): Promise<PowerupUseResultDto> {
+        const status = response.status;
+        let _headers: any = {}; if (response.headers && response.headers.forEach) { response.headers.forEach((v: any, k: any) => _headers[k] = v); };
+        if (status === 200) {
+            return response.text().then((_responseText) => {
+            let result200: any = null;
+            let resultData200 = _responseText === "" ? null : JSON.parse(_responseText, this.jsonParseReviver);
+            result200 = PowerupUseResultDto.fromJS(resultData200);
+            return result200;
+            });
+        } else if (status === 400) {
+            return response.text().then((_responseText) => {
+            let result400: any = null;
+            let resultData400 = _responseText === "" ? null : JSON.parse(_responseText, this.jsonParseReviver);
+            result400 = ProblemDetails.fromJS(resultData400);
+            return throwException("A server side error occurred.", status, _responseText, _headers, result400);
+            });
+        } else if (status !== 200 && status !== 204) {
+            return response.text().then((_responseText) => {
+            return throwException("An unexpected server error occurred.", status, _responseText, _headers);
+            });
+        }
+        return Promise.resolve<PowerupUseResultDto>(null as any);
+    }
+
     profile_GetProfile(userId: string | null | undefined, signal?: AbortSignal): Promise<ProfilePageResponseDto> {
         let url_ = this.baseUrl + "/api/Profile?";
         if (userId !== undefined && userId !== null)
@@ -5413,6 +5605,358 @@ export interface IRecommendedFriendDto {
     mutualFriendCount?: number;
 }
 
+export class PowerupLocationDto implements IPowerupLocationDto {
+    cellRow?: number;
+    cellCol?: number;
+    powerupType?: string;
+    name?: string;
+    emoji?: string;
+
+    constructor(data?: IPowerupLocationDto) {
+        if (data) {
+            for (var property in data) {
+                if (data.hasOwnProperty(property))
+                    (<any>this)[property] = (<any>data)[property];
+            }
+        }
+    }
+
+    init(_data?: any) {
+        if (_data) {
+            this.cellRow = _data["cellRow"];
+            this.cellCol = _data["cellCol"];
+            this.powerupType = _data["powerupType"];
+            this.name = _data["name"];
+            this.emoji = _data["emoji"];
+        }
+    }
+
+    static fromJS(data: any): PowerupLocationDto {
+        data = typeof data === 'object' ? data : {};
+        let result = new PowerupLocationDto();
+        result.init(data);
+        return result;
+    }
+
+    toJSON(data?: any) {
+        data = typeof data === 'object' ? data : {};
+        data["cellRow"] = this.cellRow;
+        data["cellCol"] = this.cellCol;
+        data["powerupType"] = this.powerupType;
+        data["name"] = this.name;
+        data["emoji"] = this.emoji;
+        return data;
+    }
+}
+
+export interface IPowerupLocationDto {
+    cellRow?: number;
+    cellCol?: number;
+    powerupType?: string;
+    name?: string;
+    emoji?: string;
+}
+
+export class PowerupClaimResultDto implements IPowerupClaimResultDto {
+    claimId?: string;
+    powerupType?: string;
+    name?: string;
+    description?: string;
+    emoji?: string;
+
+    constructor(data?: IPowerupClaimResultDto) {
+        if (data) {
+            for (var property in data) {
+                if (data.hasOwnProperty(property))
+                    (<any>this)[property] = (<any>data)[property];
+            }
+        }
+    }
+
+    init(_data?: any) {
+        if (_data) {
+            this.claimId = _data["claimId"];
+            this.powerupType = _data["powerupType"];
+            this.name = _data["name"];
+            this.description = _data["description"];
+            this.emoji = _data["emoji"];
+        }
+    }
+
+    static fromJS(data: any): PowerupClaimResultDto {
+        data = typeof data === 'object' ? data : {};
+        let result = new PowerupClaimResultDto();
+        result.init(data);
+        return result;
+    }
+
+    toJSON(data?: any) {
+        data = typeof data === 'object' ? data : {};
+        data["claimId"] = this.claimId;
+        data["powerupType"] = this.powerupType;
+        data["name"] = this.name;
+        data["description"] = this.description;
+        data["emoji"] = this.emoji;
+        return data;
+    }
+}
+
+export interface IPowerupClaimResultDto {
+    claimId?: string;
+    powerupType?: string;
+    name?: string;
+    description?: string;
+    emoji?: string;
+}
+
+export class ProblemDetails implements IProblemDetails {
+    type?: string | undefined;
+    title?: string | undefined;
+    status?: number | undefined;
+    detail?: string | undefined;
+    instance?: string | undefined;
+
+    [key: string]: any;
+
+    constructor(data?: IProblemDetails) {
+        if (data) {
+            for (var property in data) {
+                if (data.hasOwnProperty(property))
+                    (<any>this)[property] = (<any>data)[property];
+            }
+        }
+    }
+
+    init(_data?: any) {
+        if (_data) {
+            for (var property in _data) {
+                if (_data.hasOwnProperty(property))
+                    this[property] = _data[property];
+            }
+            this.type = _data["type"];
+            this.title = _data["title"];
+            this.status = _data["status"];
+            this.detail = _data["detail"];
+            this.instance = _data["instance"];
+        }
+    }
+
+    static fromJS(data: any): ProblemDetails {
+        data = typeof data === 'object' ? data : {};
+        let result = new ProblemDetails();
+        result.init(data);
+        return result;
+    }
+
+    toJSON(data?: any) {
+        data = typeof data === 'object' ? data : {};
+        for (var property in this) {
+            if (this.hasOwnProperty(property))
+                data[property] = this[property];
+        }
+        data["type"] = this.type;
+        data["title"] = this.title;
+        data["status"] = this.status;
+        data["detail"] = this.detail;
+        data["instance"] = this.instance;
+        return data;
+    }
+}
+
+export interface IProblemDetails {
+    type?: string | undefined;
+    title?: string | undefined;
+    status?: number | undefined;
+    detail?: string | undefined;
+    instance?: string | undefined;
+
+    [key: string]: any;
+}
+
+export class TerritoryClaimRequest implements ITerritoryClaimRequest {
+    latitude?: number;
+    longitude?: number;
+
+    constructor(data?: ITerritoryClaimRequest) {
+        if (data) {
+            for (var property in data) {
+                if (data.hasOwnProperty(property))
+                    (<any>this)[property] = (<any>data)[property];
+            }
+        }
+    }
+
+    init(_data?: any) {
+        if (_data) {
+            this.latitude = _data["latitude"];
+            this.longitude = _data["longitude"];
+        }
+    }
+
+    static fromJS(data: any): TerritoryClaimRequest {
+        data = typeof data === 'object' ? data : {};
+        let result = new TerritoryClaimRequest();
+        result.init(data);
+        return result;
+    }
+
+    toJSON(data?: any) {
+        data = typeof data === 'object' ? data : {};
+        data["latitude"] = this.latitude;
+        data["longitude"] = this.longitude;
+        return data;
+    }
+}
+
+export interface ITerritoryClaimRequest {
+    latitude?: number;
+    longitude?: number;
+}
+
+export class PowerupInventoryItemDto implements IPowerupInventoryItemDto {
+    claimId?: string;
+    powerupType?: string;
+    name?: string;
+    description?: string;
+    emoji?: string;
+    claimedAt?: Date;
+
+    constructor(data?: IPowerupInventoryItemDto) {
+        if (data) {
+            for (var property in data) {
+                if (data.hasOwnProperty(property))
+                    (<any>this)[property] = (<any>data)[property];
+            }
+        }
+    }
+
+    init(_data?: any) {
+        if (_data) {
+            this.claimId = _data["claimId"];
+            this.powerupType = _data["powerupType"];
+            this.name = _data["name"];
+            this.description = _data["description"];
+            this.emoji = _data["emoji"];
+            this.claimedAt = _data["claimedAt"] ? new Date(_data["claimedAt"].toString()) : <any>undefined;
+        }
+    }
+
+    static fromJS(data: any): PowerupInventoryItemDto {
+        data = typeof data === 'object' ? data : {};
+        let result = new PowerupInventoryItemDto();
+        result.init(data);
+        return result;
+    }
+
+    toJSON(data?: any) {
+        data = typeof data === 'object' ? data : {};
+        data["claimId"] = this.claimId;
+        data["powerupType"] = this.powerupType;
+        data["name"] = this.name;
+        data["description"] = this.description;
+        data["emoji"] = this.emoji;
+        data["claimedAt"] = this.claimedAt ? this.claimedAt.toISOString() : <any>undefined;
+        return data;
+    }
+}
+
+export interface IPowerupInventoryItemDto {
+    claimId?: string;
+    powerupType?: string;
+    name?: string;
+    description?: string;
+    emoji?: string;
+    claimedAt?: Date;
+}
+
+export class PowerupUseResultDto implements IPowerupUseResultDto {
+    success?: boolean;
+    message?: string;
+    cellsAffected?: number;
+
+    constructor(data?: IPowerupUseResultDto) {
+        if (data) {
+            for (var property in data) {
+                if (data.hasOwnProperty(property))
+                    (<any>this)[property] = (<any>data)[property];
+            }
+        }
+    }
+
+    init(_data?: any) {
+        if (_data) {
+            this.success = _data["success"];
+            this.message = _data["message"];
+            this.cellsAffected = _data["cellsAffected"];
+        }
+    }
+
+    static fromJS(data: any): PowerupUseResultDto {
+        data = typeof data === 'object' ? data : {};
+        let result = new PowerupUseResultDto();
+        result.init(data);
+        return result;
+    }
+
+    toJSON(data?: any) {
+        data = typeof data === 'object' ? data : {};
+        data["success"] = this.success;
+        data["message"] = this.message;
+        data["cellsAffected"] = this.cellsAffected;
+        return data;
+    }
+}
+
+export interface IPowerupUseResultDto {
+    success?: boolean;
+    message?: string;
+    cellsAffected?: number;
+}
+
+export class PowerupUseRequest implements IPowerupUseRequest {
+    claimId?: string;
+    latitude?: number;
+    longitude?: number;
+
+    constructor(data?: IPowerupUseRequest) {
+        if (data) {
+            for (var property in data) {
+                if (data.hasOwnProperty(property))
+                    (<any>this)[property] = (<any>data)[property];
+            }
+        }
+    }
+
+    init(_data?: any) {
+        if (_data) {
+            this.claimId = _data["claimId"];
+            this.latitude = _data["latitude"];
+            this.longitude = _data["longitude"];
+        }
+    }
+
+    static fromJS(data: any): PowerupUseRequest {
+        data = typeof data === 'object' ? data : {};
+        let result = new PowerupUseRequest();
+        result.init(data);
+        return result;
+    }
+
+    toJSON(data?: any) {
+        data = typeof data === 'object' ? data : {};
+        data["claimId"] = this.claimId;
+        data["latitude"] = this.latitude;
+        data["longitude"] = this.longitude;
+        return data;
+    }
+}
+
+export interface IPowerupUseRequest {
+    claimId?: string;
+    latitude?: number;
+    longitude?: number;
+}
+
 export class ProfilePageResponseDto implements IProfilePageResponseDto {
     profile?: UserProfileDto;
     isCurrentUser?: boolean;
@@ -5717,70 +6261,6 @@ export interface ITerritoryPlayerDto {
     color?: string;
 }
 
-export class ProblemDetails implements IProblemDetails {
-    type?: string | undefined;
-    title?: string | undefined;
-    status?: number | undefined;
-    detail?: string | undefined;
-    instance?: string | undefined;
-
-    [key: string]: any;
-
-    constructor(data?: IProblemDetails) {
-        if (data) {
-            for (var property in data) {
-                if (data.hasOwnProperty(property))
-                    (<any>this)[property] = (<any>data)[property];
-            }
-        }
-    }
-
-    init(_data?: any) {
-        if (_data) {
-            for (var property in _data) {
-                if (_data.hasOwnProperty(property))
-                    this[property] = _data[property];
-            }
-            this.type = _data["type"];
-            this.title = _data["title"];
-            this.status = _data["status"];
-            this.detail = _data["detail"];
-            this.instance = _data["instance"];
-        }
-    }
-
-    static fromJS(data: any): ProblemDetails {
-        data = typeof data === 'object' ? data : {};
-        let result = new ProblemDetails();
-        result.init(data);
-        return result;
-    }
-
-    toJSON(data?: any) {
-        data = typeof data === 'object' ? data : {};
-        for (var property in this) {
-            if (this.hasOwnProperty(property))
-                data[property] = this[property];
-        }
-        data["type"] = this.type;
-        data["title"] = this.title;
-        data["status"] = this.status;
-        data["detail"] = this.detail;
-        data["instance"] = this.instance;
-        return data;
-    }
-}
-
-export interface IProblemDetails {
-    type?: string | undefined;
-    title?: string | undefined;
-    status?: number | undefined;
-    detail?: string | undefined;
-    instance?: string | undefined;
-
-    [key: string]: any;
-}
-
 export class TerritoryRegisterRequest implements ITerritoryRegisterRequest {
     color?: string;
 
@@ -5879,46 +6359,6 @@ export interface ITerritoryCellDto {
     claimedAt?: Date | undefined;
     city?: string | undefined;
     neighborhood?: string | undefined;
-}
-
-export class TerritoryClaimRequest implements ITerritoryClaimRequest {
-    latitude?: number;
-    longitude?: number;
-
-    constructor(data?: ITerritoryClaimRequest) {
-        if (data) {
-            for (var property in data) {
-                if (data.hasOwnProperty(property))
-                    (<any>this)[property] = (<any>data)[property];
-            }
-        }
-    }
-
-    init(_data?: any) {
-        if (_data) {
-            this.latitude = _data["latitude"];
-            this.longitude = _data["longitude"];
-        }
-    }
-
-    static fromJS(data: any): TerritoryClaimRequest {
-        data = typeof data === 'object' ? data : {};
-        let result = new TerritoryClaimRequest();
-        result.init(data);
-        return result;
-    }
-
-    toJSON(data?: any) {
-        data = typeof data === 'object' ? data : {};
-        data["latitude"] = this.latitude;
-        data["longitude"] = this.longitude;
-        return data;
-    }
-}
-
-export interface ITerritoryClaimRequest {
-    latitude?: number;
-    longitude?: number;
 }
 
 export class TerritoryCityLeaderboardDto implements ITerritoryCityLeaderboardDto {

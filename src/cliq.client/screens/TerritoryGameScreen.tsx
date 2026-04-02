@@ -17,11 +17,15 @@ const TerritoryGameScreen = ({ navigation }) => {
   const [activeTab, setActiveTab] = useState<Tab>('map');
   const [showColorPicker, setShowColorPicker] = useState(false);
   const [isChangingColor, setIsChangingColor] = useState(false);
+  const [powerupModal, setPowerupModal] = useState<{ claimId: string; name: string; description: string; emoji: string } | null>(null);
+  const [powerupResult, setPowerupResult] = useState<string | null>(null);
 
   const {
     gameState,
     cells,
     leaderboard,
+    powerups,
+    inventory,
     location,
     locationError,
     userCell,
@@ -30,13 +34,26 @@ const TerritoryGameScreen = ({ navigation }) => {
     cooldownSeconds,
     locationRequested,
     viewerMode,
+    debugMode,
     register,
     claimCell,
     changeColor,
+    claimPowerup,
+    usePowerup,
     requestLocation,
     enterViewerMode,
+    setDebugLocation,
     onMapBoundsChanged,
   } = useTerritoryGame();
+
+  // Detect dev environment for debug features
+  const isDev = typeof window !== 'undefined' && window.location &&
+    (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1');
+
+  // Check if user is standing on a powerup
+  const userOnPowerup = !!(userCell && powerups.some(
+    (p) => p.cellRow === userCell.row && p.cellCol === userCell.col
+  ));
 
   const handleChangeColor = async (color: string) => {
     setIsChangingColor(true);
@@ -126,6 +143,56 @@ const TerritoryGameScreen = ({ navigation }) => {
         </TouchableOpacity>
       </Modal>
 
+      {/* Powerup Use Modal */}
+      <Modal visible={!!powerupModal} transparent animationType="fade">
+        <TouchableOpacity
+          style={styles.modalOverlay}
+          activeOpacity={1}
+          onPress={() => { setPowerupModal(null); setPowerupResult(null); }}
+        >
+          <View style={styles.modalContent} onStartShouldSetResponder={() => true}>
+            {powerupResult ? (
+              <>
+                <Text style={styles.modalTitle}>{powerupResult}</Text>
+                <TouchableOpacity
+                  style={[styles.colorSwatch, { backgroundColor: theme.colors.primary, width: undefined, height: undefined, paddingVertical: 12, paddingHorizontal: 24, borderRadius: 12, marginTop: 16 }]}
+                  onPress={() => { setPowerupModal(null); setPowerupResult(null); }}
+                >
+                  <Text style={{ color: '#FFF', fontWeight: '700', fontSize: 15 }}>Nice!</Text>
+                </TouchableOpacity>
+              </>
+            ) : powerupModal ? (
+              <>
+                <Text style={{ fontSize: 48, textAlign: 'center' }}>{powerupModal.emoji}</Text>
+                <Text style={styles.modalTitle}>{powerupModal.name}</Text>
+                <Text style={[styles.modalHint, { fontSize: 15, marginTop: 8 }]}>{powerupModal.description}</Text>
+                <View style={{ flexDirection: 'row', gap: 12, marginTop: 20, justifyContent: 'center' }}>
+                  <TouchableOpacity
+                    style={[styles.colorSwatch, { backgroundColor: theme.colors.textMuted, width: undefined, height: undefined, paddingVertical: 12, paddingHorizontal: 24, borderRadius: 12, borderWidth: 0 }]}
+                    onPress={() => { setPowerupModal(null); setPowerupResult(null); }}
+                  >
+                    <Text style={{ color: '#FFF', fontWeight: '600' }}>Close</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={[styles.colorSwatch, { backgroundColor: '#FF9800', width: undefined, height: undefined, paddingVertical: 12, paddingHorizontal: 24, borderRadius: 12, borderWidth: 0 }]}
+                    onPress={async () => {
+                      try {
+                        const result = await usePowerup(powerupModal.claimId);
+                        setPowerupResult(result.message);
+                      } catch {
+                        setPowerupResult('Failed to use powerup');
+                      }
+                    }}
+                  >
+                    <Text style={{ color: '#FFF', fontWeight: '700' }}>Use Now</Text>
+                  </TouchableOpacity>
+                </View>
+              </>
+            ) : null}
+          </View>
+        </TouchableOpacity>
+      </Modal>
+
       {/* Tab Bar */}
       <View style={styles.tabBar}>
         <TouchableOpacity
@@ -168,10 +235,23 @@ const TerritoryGameScreen = ({ navigation }) => {
           locationRequested={locationRequested}
           location={location}
           viewerMode={viewerMode}
+          powerups={powerups}
+          inventory={inventory}
+          userOnPowerup={userOnPowerup}
           onClaimCell={claimCell}
+          onClaimPowerup={claimPowerup}
+          onUsePowerup={async (claimId) => {
+            const item = inventory.find((i) => i.claimId === claimId);
+            if (item) {
+              setPowerupModal({ claimId, name: item.name, description: item.description, emoji: item.emoji });
+            }
+            return { success: false, message: '', cellsAffected: 0 };
+          }}
           onBoundsChanged={onMapBoundsChanged}
           onRequestLocation={requestLocation}
           onEnterViewerMode={enterViewerMode}
+          debugMode={debugMode}
+          onDebugClick={isDev ? setDebugLocation : undefined}
         />
       ) : (
         <ScrollView style={styles.leaderboardScroll}>

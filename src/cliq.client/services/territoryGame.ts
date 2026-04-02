@@ -49,6 +49,31 @@ export interface TerritoryGameState {
   cooldownSeconds: number;
 }
 
+// ─── Powerup types ───
+
+export interface PowerupLocation {
+  cellRow: number;
+  cellCol: number;
+  powerupType: string;
+  name: string;
+  emoji: string;
+}
+
+export interface PowerupInventoryItem {
+  claimId: string;
+  powerupType: string;
+  name: string;
+  description: string;
+  emoji: string;
+  claimedAt: string;
+}
+
+export interface PowerupUseResult {
+  success: boolean;
+  message: string;
+  cellsAffected: number;
+}
+
 // Grid cell size in degrees (500 feet ≈ 152.4 meters per side)
 // Latitude: 152.4m / 111,320 m/deg ≈ 0.001369°
 // Longitude: varies by latitude; ~0.001785° at 40°N
@@ -161,6 +186,8 @@ function seedMockCells(centerRow: number, centerCol: number) {
         claimedByName: player.name,
         color: player.color,
         claimedAt: new Date(Date.now() - Math.random() * 3600000).toISOString(),
+        city: null,
+        neighborhood: null,
       });
     }
   }
@@ -220,6 +247,8 @@ export const TerritoryGameService = {
       claimedByName: 'You',
       color: mockRegistration.color,
       claimedAt: new Date().toISOString(),
+      city: null,
+      neighborhood: null,
     };
     mockCells.set(cellKey(row, col), cell);
     mockLastClaimTime = now;
