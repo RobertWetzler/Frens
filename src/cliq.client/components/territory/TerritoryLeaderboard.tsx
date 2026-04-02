@@ -7,14 +7,21 @@ import { Ionicons } from '@expo/vector-icons';
 
 interface TerritoryLeaderboardProps {
   leaderboard: CityLeaderboard;
+  onCityPress?: (city: string) => void;
+  onPlayerPress?: (userId: string, city: string) => void;
 }
 
-const PlayerRow: React.FC<{ player: TerritoryPlayer; index: number }> = ({ player, index }) => {
+const PlayerRow: React.FC<{ player: TerritoryPlayer; index: number; onPress?: () => void }> = ({ player, index, onPress }) => {
   const styles = useStyles();
   const isTop3 = index < 3;
   const rankEmoji = index === 0 ? '🥇' : index === 1 ? '🥈' : index === 2 ? '🥉' : null;
   return (
-    <View style={[styles.row, isTop3 && styles.rowTop3]}>
+    <TouchableOpacity
+      style={[styles.row, isTop3 && styles.rowTop3]}
+      onPress={onPress}
+      activeOpacity={onPress ? 0.7 : 1}
+      disabled={!onPress}
+    >
       <View style={styles.rankContainer}>
         {rankEmoji ? (
           <Text style={styles.rankEmoji}>{rankEmoji}</Text>
@@ -32,7 +39,7 @@ const PlayerRow: React.FC<{ player: TerritoryPlayer; index: number }> = ({ playe
         </Text>
         <Text style={styles.scoreLabel}>points</Text>
       </View>
-    </View>
+    </TouchableOpacity>
   );
 };
 
@@ -77,7 +84,7 @@ const NeighborhoodDropdown: React.FC<{ neighborhoods: NeighborhoodSection[] }> =
   );
 };
 
-const TerritoryLeaderboard: React.FC<TerritoryLeaderboardProps> = ({ leaderboard }) => {
+const TerritoryLeaderboard: React.FC<TerritoryLeaderboardProps> = ({ leaderboard, onCityPress, onPlayerPress }) => {
   const { theme } = useTheme();
   const styles = useStyles();
 
@@ -96,7 +103,11 @@ const TerritoryLeaderboard: React.FC<TerritoryLeaderboardProps> = ({ leaderboard
       <Text style={styles.pageTitle}>🏆 Leaderboard</Text>
       {leaderboard.cities.map((section) => (
         <View key={section.city} style={styles.citySection}>
-          <View style={styles.cityHeader}>
+          <TouchableOpacity
+            style={styles.cityHeader}
+            onPress={() => onCityPress?.(section.city)}
+            activeOpacity={onCityPress ? 0.7 : 1}
+          >
             <Ionicons name="location" size={16} color={theme.colors.primary} />
             <Text style={styles.cityName}>{section.city}</Text>
             {section.userHasClaims && (
@@ -104,9 +115,17 @@ const TerritoryLeaderboard: React.FC<TerritoryLeaderboardProps> = ({ leaderboard
                 <Text style={styles.yourCityText}>Your city</Text>
               </View>
             )}
-          </View>
+            {onCityPress && (
+              <Ionicons name="navigate-outline" size={14} color={theme.colors.textMuted} />
+            )}
+          </TouchableOpacity>
           {section.players.map((player, index) => (
-            <PlayerRow key={player.userId} player={player} index={index} />
+            <PlayerRow
+              key={player.userId}
+              player={player}
+              index={index}
+              onPress={onPlayerPress ? () => onPlayerPress(player.userId, section.city) : undefined}
+            />
           ))}
           {section.neighborhoods && section.neighborhoods.length > 0 && (
             <NeighborhoodDropdown neighborhoods={section.neighborhoods} />

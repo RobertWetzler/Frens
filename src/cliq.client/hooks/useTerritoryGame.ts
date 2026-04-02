@@ -419,6 +419,21 @@ export function useTerritoryGame() {
     setDebugMode(true);
   }, []);
 
+  // Fly the map to a region or user's most recent claim
+  const flyToRecentClaim = useCallback(async (opts: { region?: string; userId?: string }) => {
+    try {
+      const dto = await ApiClient.call((c) =>
+        c.territory_GetRecentClaimLocation(opts.region, opts.userId)
+      );
+      if (dto && 'lat' in dto && 'lng' in dto) {
+        return { lat: (dto as any).lat, lng: (dto as any).lng };
+      }
+      return null;
+    } catch {
+      return null;
+    }
+  }, []);
+
   const userCell = location ? coordsToCell(location.lat, location.lng) : null;
 
   return {
@@ -444,6 +459,7 @@ export function useTerritoryGame() {
     requestLocation,
     enterViewerMode,
     setDebugLocation,
+    flyToRecentClaim,
     onMapBoundsChanged,
     refresh: () => {
       const refreshes: Promise<any>[] = [loadLeaderboard(), loadGameState(), loadInventory()];

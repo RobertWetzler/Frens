@@ -3026,6 +3026,45 @@ export class Client {
         return Promise.resolve<TerritoryCellDto>(null as any);
     }
 
+    territory_GetRecentClaimLocation(region: string | null | undefined, userId: string | null | undefined, signal?: AbortSignal): Promise<RecentClaimLocationDto> {
+        let url_ = this.baseUrl + "/api/Territory/recent-location?";
+        if (region !== undefined && region !== null)
+            url_ += "region=" + encodeURIComponent("" + region) + "&";
+        if (userId !== undefined && userId !== null)
+            url_ += "userId=" + encodeURIComponent("" + userId) + "&";
+        url_ = url_.replace(/[?&]$/, "");
+
+        let options_: RequestInit = {
+            method: "GET",
+            signal,
+            headers: {
+                "Accept": "application/json"
+            }
+        };
+
+        return this.http.fetch(url_, options_).then((_response: Response) => {
+            return this.processTerritory_GetRecentClaimLocation(_response);
+        });
+    }
+
+    protected processTerritory_GetRecentClaimLocation(response: Response): Promise<RecentClaimLocationDto> {
+        const status = response.status;
+        let _headers: any = {}; if (response.headers && response.headers.forEach) { response.headers.forEach((v: any, k: any) => _headers[k] = v); };
+        if (status === 200) {
+            return response.text().then((_responseText) => {
+            let result200: any = null;
+            let resultData200 = _responseText === "" ? null : JSON.parse(_responseText, this.jsonParseReviver);
+            result200 = RecentClaimLocationDto.fromJS(resultData200);
+            return result200;
+            });
+        } else if (status !== 200 && status !== 204) {
+            return response.text().then((_responseText) => {
+            return throwException("An unexpected server error occurred.", status, _responseText, _headers);
+            });
+        }
+        return Promise.resolve<RecentClaimLocationDto>(null as any);
+    }
+
     territory_GetCellsInBounds(south: number | undefined, west: number | undefined, north: number | undefined, east: number | undefined, signal?: AbortSignal): Promise<TerritoryCellDto[]> {
         let url_ = this.baseUrl + "/api/Territory/cells?";
         if (south === null)
@@ -6359,6 +6398,54 @@ export interface ITerritoryCellDto {
     claimedAt?: Date | undefined;
     city?: string | undefined;
     neighborhood?: string | undefined;
+}
+
+export class RecentClaimLocationDto implements IRecentClaimLocationDto {
+    cellRow?: number;
+    cellCol?: number;
+    lat?: number;
+    lng?: number;
+
+    constructor(data?: IRecentClaimLocationDto) {
+        if (data) {
+            for (var property in data) {
+                if (data.hasOwnProperty(property))
+                    (<any>this)[property] = (<any>data)[property];
+            }
+        }
+    }
+
+    init(_data?: any) {
+        if (_data) {
+            this.cellRow = _data["cellRow"];
+            this.cellCol = _data["cellCol"];
+            this.lat = _data["lat"];
+            this.lng = _data["lng"];
+        }
+    }
+
+    static fromJS(data: any): RecentClaimLocationDto {
+        data = typeof data === 'object' ? data : {};
+        let result = new RecentClaimLocationDto();
+        result.init(data);
+        return result;
+    }
+
+    toJSON(data?: any) {
+        data = typeof data === 'object' ? data : {};
+        data["cellRow"] = this.cellRow;
+        data["cellCol"] = this.cellCol;
+        data["lat"] = this.lat;
+        data["lng"] = this.lng;
+        return data;
+    }
+}
+
+export interface IRecentClaimLocationDto {
+    cellRow?: number;
+    cellCol?: number;
+    lat?: number;
+    lng?: number;
 }
 
 export class TerritoryCityLeaderboardDto implements ITerritoryCityLeaderboardDto {

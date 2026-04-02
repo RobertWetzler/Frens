@@ -12,6 +12,7 @@ public interface ITerritoryService
     Task<List<TerritoryCellDto>> GetCellsInBoundsAsync(double southLat, double westLng, double northLat, double eastLng);
     Task<TerritoryCityLeaderboardDto> GetCityLeaderboardAsync(Guid userId, int topPerCity, bool includeNeighborhoods = false);
     Task ChangeColorAsync(Guid userId, string newColor);
+    Task<RecentClaimLocationDto?> GetRecentClaimLocationAsync(string? region, Guid? userId);
 }
 
 public class TerritoryService : ITerritoryService
@@ -351,6 +352,45 @@ public class TerritoryService : ITerritoryService
             $"UPDATE public.\"TerritoryClaims\" SET \"Color\" = {newColor} WHERE \"ClaimedByUserId\" = {userId}");
     }
 
+    public async Task<RecentClaimLocationDto?> GetRecentClaimLocationAsync(string? region, Guid? userId)
+    {
+        IQueryable<TerritoryClaim> query = _db.TerritoryClaims.AsNoTracking();
+
+        if (userId.HasValue)
+        {
+            query = query.Where(c => c.ClaimedByUserId == userId.Value);
+            // If region also specified, filter to that region's claims
+            if (!string.IsNullOrEmpty(region))
+            {
+                // For US cities the region is the city name, for non-US it's the country
+                query = query.Where(c => c.City == region || c.Country == region);
+            }
+        }
+        else if (!string.IsNullOrEmpty(region))
+        {
+            query = query.Where(c => c.City == region || c.Country == region);
+        }
+        else
+        {
+            return null;
+        }
+
+        var claim = await query
+            .OrderByDescending(c => c.ClaimedAt)
+            .Select(c => new { c.CellRow, c.CellCol })
+            .FirstOrDefaultAsync();
+
+        if (claim == null) return null;
+
+        return new RecentClaimLocationDto
+        {
+            CellRow = claim.CellRow,
+            CellCol = claim.CellCol,
+            Lat = (claim.CellRow + 0.5) * CellSizeLat,
+            Lng = (claim.CellCol + 0.5) * CellSizeLng,
+        };
+    }
+
     // ─── Spatial hashing helpers ───
 
     private static string ComputeBucket(long cellRow, long cellCol)
@@ -450,6 +490,14 @@ public class TerritoryCityLeaderboardDto
 public class TerritoryRegisterRequest
 {
     public required string Color { get; set; }
+}
+
+public class RecentClaimLocationDto
+{
+    public long CellRow { get; set; }
+    public long CellCol { get; set; }
+    public double Lat { get; set; }
+    public double Lng { get; set; }
 }
 
 public class TerritoryClaimRequest

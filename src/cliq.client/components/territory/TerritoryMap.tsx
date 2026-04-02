@@ -64,6 +64,7 @@ interface TerritoryMapProps {
   onEnterViewerMode: () => void;
   debugMode: boolean;
   onDebugClick?: (lat: number, lng: number) => void;
+  flyToTarget: { lat: number; lng: number } | null;
 }
 
 /** Re-center the map on first location fix only */
@@ -76,6 +77,19 @@ const RecenterOnce: React.FC<{ lat: number; lng: number }> = ({ lat, lng }) => {
       hasCentered.current = true;
     }
   }, [lat, lng]);
+  return null;
+};
+
+/** Fly to a target when the prop changes */
+const FlyToTarget: React.FC<{ target: { lat: number; lng: number } | null }> = ({ target }) => {
+  const map = useMap();
+  const prevTarget = React.useRef<{ lat: number; lng: number } | null>(null);
+  React.useEffect(() => {
+    if (target && (target.lat !== prevTarget.current?.lat || target.lng !== prevTarget.current?.lng)) {
+      map.flyTo([target.lat, target.lng], 16, { duration: 1.5 });
+      prevTarget.current = target;
+    }
+  }, [target?.lat, target?.lng]);
   return null;
 };
 
@@ -151,6 +165,7 @@ const TerritoryMap: React.FC<TerritoryMapProps> = ({
   onEnterViewerMode,
   debugMode,
   onDebugClick,
+  flyToTarget,
 }) => {
   const { theme } = useTheme();
   const styles = useStyles();
@@ -299,6 +314,7 @@ const TerritoryMap: React.FC<TerritoryMapProps> = ({
             maxZoom={20}
           />
           {location && <RecenterOnce lat={location.lat} lng={location.lng} />}
+          <FlyToTarget target={flyToTarget} />
           <BoundsWatcher onBoundsChanged={onBoundsChanged} />
           {(debugMode || viewerMode) && onDebugClick && (
             <DebugClickHandler onClick={onDebugClick} />

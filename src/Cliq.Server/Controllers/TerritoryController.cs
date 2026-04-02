@@ -94,6 +94,20 @@ public class TerritoryController : ControllerBase
         }
     }
 
+    /// <summary>Get the lat/lng of the most recent claim for a region or user. Use to fly the map there.</summary>
+    [HttpGet("recent-location")]
+    public async Task<ActionResult<RecentClaimLocationDto>> GetRecentClaimLocation(
+        [FromQuery] string? region = null,
+        [FromQuery] Guid? userId = null)
+    {
+        if (!AuthUtils.TryGetUserIdFromToken(HttpContext, out _))
+            return Unauthorized();
+
+        var location = await _territoryService.GetRecentClaimLocationAsync(region, userId);
+        if (location == null) return NotFound();
+        return Ok(location);
+    }
+
     /// <summary>Get claimed cells within the given lat/lng bounding box for map rendering.</summary>
     [HttpGet("cells")]
     public async Task<ActionResult<List<TerritoryCellDto>>> GetCellsInBounds(

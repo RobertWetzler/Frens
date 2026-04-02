@@ -19,6 +19,7 @@ const TerritoryGameScreen = ({ navigation }) => {
   const [isChangingColor, setIsChangingColor] = useState(false);
   const [powerupModal, setPowerupModal] = useState<{ claimId: string; name: string; description: string; emoji: string } | null>(null);
   const [powerupResult, setPowerupResult] = useState<string | null>(null);
+  const [flyToTarget, setFlyToTarget] = useState<{ lat: number; lng: number } | null>(null);
 
   const {
     gameState,
@@ -43,6 +44,7 @@ const TerritoryGameScreen = ({ navigation }) => {
     requestLocation,
     enterViewerMode,
     setDebugLocation,
+    flyToRecentClaim,
     onMapBoundsChanged,
   } = useTerritoryGame();
 
@@ -54,6 +56,14 @@ const TerritoryGameScreen = ({ navigation }) => {
   const userOnPowerup = !!(userCell && powerups.some(
     (p) => p.cellRow === userCell.row && p.cellCol === userCell.col
   ));
+
+  const handleFlyTo = async (opts: { region?: string; userId?: string }) => {
+    const loc = await flyToRecentClaim(opts);
+    if (loc) {
+      setFlyToTarget(loc);
+      setActiveTab('map');
+    }
+  };
 
   const handleChangeColor = async (color: string) => {
     setIsChangingColor(true);
@@ -252,10 +262,15 @@ const TerritoryGameScreen = ({ navigation }) => {
           onEnterViewerMode={enterViewerMode}
           debugMode={debugMode}
           onDebugClick={isDev ? setDebugLocation : undefined}
+          flyToTarget={flyToTarget}
         />
       ) : (
         <ScrollView style={styles.leaderboardScroll}>
-          <TerritoryLeaderboard leaderboard={leaderboard} />
+          <TerritoryLeaderboard
+            leaderboard={leaderboard}
+            onCityPress={(city) => handleFlyTo({ region: city })}
+            onPlayerPress={(userId, city) => handleFlyTo({ region: city, userId })}
+          />
         </ScrollView>
       )}
     </SafeAreaView>
