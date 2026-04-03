@@ -44,6 +44,7 @@ interface TerritoryMapProps {
   playerColor: string | null;
   cooldownSeconds: number;
   isClaiming: boolean;
+  claimError: string | null;
   locationError: string | null;
   locationRequested: boolean;
   location: { lat: number; lng: number } | null;
@@ -114,6 +115,7 @@ const TerritoryMap: React.FC<TerritoryMapProps> = ({
   playerColor,
   cooldownSeconds,
   isClaiming,
+  claimError,
   locationError,
   locationRequested,
   location,
@@ -346,6 +348,12 @@ const TerritoryMap: React.FC<TerritoryMapProps> = ({
               <Text style={styles.claimButtonText}>Claim This Zone</Text>
             </TouchableOpacity>
           )}
+
+          {!!claimError && (
+            <View style={styles.claimErrorBox}>
+              <Text style={styles.claimErrorText}>{claimError}</Text>
+            </View>
+          )}
         </View>
       )}
     </View>
@@ -456,6 +464,22 @@ const useStyles = makeStyles((theme) => ({
     fontSize: 16,
     fontWeight: '700',
     color: '#FFF',
+  },
+  claimErrorBox: {
+    marginTop: 10,
+    maxWidth: 340,
+    backgroundColor: theme.colors.card,
+    borderColor: theme.colors.danger,
+    borderWidth: 1,
+    borderRadius: 10,
+    paddingHorizontal: 10,
+    paddingVertical: 8,
+  },
+  claimErrorText: {
+    color: theme.colors.danger,
+    fontSize: 12,
+    textAlign: 'center',
+    lineHeight: 16,
   },
 }));
 

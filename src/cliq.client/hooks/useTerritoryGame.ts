@@ -20,11 +20,12 @@ export interface MapBounds {
 export function useTerritoryGame() {
   const [gameState, setGameState] = useState<TerritoryGameState | null>(null);
   const [cells, setCells] = useState<TerritoryCell[]>([]);
-  const [leaderboard, setLeaderboard] = useState<CityLeaderboard>({ cities: [] });
-  const [location, setLocation] = useState<{ lat: number; lng: number } | null>(null);
+  const [leaderboard, setLeaderboard] = useState<CityLeaderboard>({ cities: [], mostWanted: [] });
+  const [location, setLocation] = useState<{ lat: number; lng: number; accuracy: number } | null>(null);
   const [locationError, setLocationError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isClaiming, setIsClaiming] = useState(false);
+  const [claimError, setClaimError] = useState<string | null>(null);
   const [cooldownSeconds, setCooldownSeconds] = useState(0);
   const [locationRequested, setLocationRequested] = useState(false);
   const [viewerMode, setViewerMode] = useState(false);
@@ -35,6 +36,7 @@ export function useTerritoryGame() {
     setLocation({
       lat: position.coords.latitude,
       lng: position.coords.longitude,
+      accuracy: position.coords.accuracy,
     });
     setLocationError(null);
   }, []);
@@ -128,6 +130,12 @@ export function useTerritoryGame() {
             cellsClaimed: p.cellsClaimed,
           })),
         })),
+        mostWanted: (dto.mostWanted ?? []).map((mw) => ({
+          userId: mw.userId ?? '',
+          displayName: mw.displayName ?? 'Unknown',
+          profilePictureUrl: mw.profilePictureUrl ?? null,
+          spoofAttempts: mw.spoofAttempts,
+        })),
       });
     } catch (err) {
       console.error('Failed to load leaderboard:', err);
@@ -175,10 +183,11 @@ export function useTerritoryGame() {
   const claimCell = useCallback(async () => {
     if (!location || isClaiming) return;
     setIsClaiming(true);
+    setClaimError(null);
     try {
       await ApiClient.call((c) =>
         c.territory_ClaimCell(
-          new TerritoryClaimRequest({ latitude: location.lat, longitude: location.lng })
+          new TerritoryClaimRequest({ latitude: location.lat, longitude: location.lng, accuracyMeters: location.accuracy })
         )
       );
       setCooldownSeconds(Math.ceil(CLAIM_COOLDOWN_MS / 1000));
@@ -187,6 +196,8 @@ export function useTerritoryGame() {
       await Promise.all(refreshes);
     } catch (err) {
       console.error('Failed to claim cell:', err);
+      const message = err instanceof Error ? err.message : 'Could not claim zone. Please try again.';
+      setClaimError(message);
       throw err;
     } finally {
       setIsClaiming(false);
@@ -304,6 +315,7 @@ export function useTerritoryGame() {
     userCell,
     isLoading,
     isClaiming,
+    claimError,
     cooldownSeconds,
     locationRequested,
     viewerMode,

@@ -24,6 +24,14 @@ export interface CitySection {
 
 export interface CityLeaderboard {
   cities: CitySection[];
+  mostWanted: MostWantedEntry[];
+}
+
+export interface MostWantedEntry {
+  userId: string;
+  displayName: string;
+  profilePictureUrl: string | null;
+  spoofAttempts: number;
 }
 
 export interface TerritoryRegistration {

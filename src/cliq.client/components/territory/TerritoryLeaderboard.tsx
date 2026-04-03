@@ -2,8 +2,9 @@ import React from 'react';
 import { View, Text } from 'react-native';
 import { useTheme } from '../../theme/ThemeContext';
 import { makeStyles } from '../../theme/makeStyles';
-import { CityLeaderboard, TerritoryPlayer } from 'services/territoryGame';
+import { CityLeaderboard } from 'services/territoryGame';
 import { Ionicons } from '@expo/vector-icons';
+import { Avatar } from '../Avatar';
 
 interface TerritoryLeaderboardProps {
   leaderboard: CityLeaderboard;
@@ -13,7 +14,7 @@ const TerritoryLeaderboard: React.FC<TerritoryLeaderboardProps> = ({ leaderboard
   const { theme } = useTheme();
   const styles = useStyles();
 
-  if (leaderboard.cities.length === 0) {
+  if (leaderboard.cities.length === 0 && leaderboard.mostWanted.length === 0) {
     return (
       <View style={styles.emptyContainer}>
         <Ionicons name="trophy-outline" size={40} color={theme.colors.textMuted} />
@@ -26,6 +27,37 @@ const TerritoryLeaderboard: React.FC<TerritoryLeaderboardProps> = ({ leaderboard
   return (
     <View style={styles.container}>
       <Text style={styles.pageTitle}>🏆 Leaderboard</Text>
+
+      {leaderboard.mostWanted.length > 0 && (
+        <View style={styles.citySection}>
+          <View style={styles.cityHeader}>
+            <Ionicons name="warning" size={16} color={theme.colors.danger} />
+            <Text style={styles.cityName}>Most Wanted</Text>
+          </View>
+          {leaderboard.mostWanted.map((entry, index) => (
+            <View key={entry.userId} style={styles.row}>
+              <View style={styles.rankContainer}>
+                <Text style={styles.rankNumber}>{index + 1}</Text>
+              </View>
+              <Avatar
+                name={entry.displayName}
+                userId={entry.userId}
+                imageUrl={entry.profilePictureUrl || undefined}
+                simple
+                size={28}
+              />
+              <Text style={styles.playerName} numberOfLines={1}>
+                {entry.displayName}
+              </Text>
+              <View style={styles.scoreContainer}>
+                <Text style={[styles.score, { color: theme.colors.danger }]}>{entry.spoofAttempts}</Text>
+                <Text style={styles.scoreLabel}>spoof attempts</Text>
+              </View>
+            </View>
+          ))}
+        </View>
+      )}
+
       {leaderboard.cities.map((section) => (
         <View key={section.city} style={styles.citySection}>
           <View style={styles.cityHeader}>

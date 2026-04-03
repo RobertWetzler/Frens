@@ -27,6 +27,7 @@ const TerritoryGameScreen = ({ navigation }) => {
     userCell,
     isLoading,
     isClaiming,
+    claimError,
     cooldownSeconds,
     locationRequested,
     viewerMode,
@@ -164,6 +165,7 @@ const TerritoryGameScreen = ({ navigation }) => {
           playerColor={gameState?.playerColor ?? null}
           cooldownSeconds={cooldownSeconds}
           isClaiming={isClaiming}
+          claimError={claimError}
           locationError={locationError}
           locationRequested={locationRequested}
           location={location}

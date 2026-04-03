@@ -5801,6 +5801,7 @@ export interface ITerritoryCellDto {
 export class TerritoryClaimRequest implements ITerritoryClaimRequest {
     latitude?: number;
     longitude?: number;
+    accuracyMeters?: number;
 
     constructor(data?: ITerritoryClaimRequest) {
         if (data) {
@@ -5815,6 +5816,7 @@ export class TerritoryClaimRequest implements ITerritoryClaimRequest {
         if (_data) {
             this.latitude = _data["latitude"];
             this.longitude = _data["longitude"];
+            this.accuracyMeters = _data["accuracyMeters"];
         }
     }
 
@@ -5829,6 +5831,7 @@ export class TerritoryClaimRequest implements ITerritoryClaimRequest {
         data = typeof data === 'object' ? data : {};
         data["latitude"] = this.latitude;
         data["longitude"] = this.longitude;
+        data["accuracyMeters"] = this.accuracyMeters;
         return data;
     }
 }
@@ -5836,10 +5839,12 @@ export class TerritoryClaimRequest implements ITerritoryClaimRequest {
 export interface ITerritoryClaimRequest {
     latitude?: number;
     longitude?: number;
+    accuracyMeters?: number;
 }
 
 export class TerritoryCityLeaderboardDto implements ITerritoryCityLeaderboardDto {
     cities?: CitySectionDto[];
+    mostWanted?: MostWantedEntryDto[];
 
     constructor(data?: ITerritoryCityLeaderboardDto) {
         if (data) {
@@ -5856,6 +5861,11 @@ export class TerritoryCityLeaderboardDto implements ITerritoryCityLeaderboardDto
                 this.cities = [] as any;
                 for (let item of _data["cities"])
                     this.cities!.push(CitySectionDto.fromJS(item));
+            }
+            if (Array.isArray(_data["mostWanted"])) {
+                this.mostWanted = [] as any;
+                for (let item of _data["mostWanted"])
+                    this.mostWanted!.push(MostWantedEntryDto.fromJS(item));
             }
         }
     }
@@ -5874,12 +5884,66 @@ export class TerritoryCityLeaderboardDto implements ITerritoryCityLeaderboardDto
             for (let item of this.cities)
                 data["cities"].push(item.toJSON());
         }
+        if (Array.isArray(this.mostWanted)) {
+            data["mostWanted"] = [];
+            for (let item of this.mostWanted)
+                data["mostWanted"].push(item.toJSON());
+        }
         return data;
     }
 }
 
 export interface ITerritoryCityLeaderboardDto {
     cities?: CitySectionDto[];
+    mostWanted?: MostWantedEntryDto[];
+}
+
+export class MostWantedEntryDto implements IMostWantedEntryDto {
+    userId?: string;
+    displayName?: string;
+    profilePictureUrl?: string | undefined;
+    spoofAttempts?: number;
+
+    constructor(data?: IMostWantedEntryDto) {
+        if (data) {
+            for (var property in data) {
+                if (data.hasOwnProperty(property))
+                    (<any>this)[property] = (<any>data)[property];
+            }
+        }
+    }
+
+    init(_data?: any) {
+        if (_data) {
+            this.userId = _data["userId"];
+            this.displayName = _data["displayName"];
+            this.profilePictureUrl = _data["profilePictureUrl"];
+            this.spoofAttempts = _data["spoofAttempts"];
+        }
+    }
+
+    static fromJS(data: any): MostWantedEntryDto {
+        data = typeof data === 'object' ? data : {};
+        let result = new MostWantedEntryDto();
+        result.init(data);
+        return result;
+    }
+
+    toJSON(data?: any) {
+        data = typeof data === 'object' ? data : {};
+        data["userId"] = this.userId;
+        data["displayName"] = this.displayName;
+        data["profilePictureUrl"] = this.profilePictureUrl;
+        data["spoofAttempts"] = this.spoofAttempts;
+        return data;
+    }
+}
+
+export interface IMostWantedEntryDto {
+    userId?: string;
+    displayName?: string;
+    profilePictureUrl?: string | undefined;
+    spoofAttempts?: number;
 }
 
 export class CitySectionDto implements ICitySectionDto {
