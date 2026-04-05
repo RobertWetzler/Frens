@@ -1,5 +1,6 @@
 using System.Security.Cryptography;
 using System.Text;
+using System.Collections.Concurrent;
 
 namespace Cliq.Server.Services;
 
@@ -11,6 +12,7 @@ public static class PowerupRegistry
     public static readonly PowerupDefinition[] All =
     {
         new("blast", "💥 Blast", "Paint a 5×5 area around you in your color.", "💥", AvailableAfterDays: 4),
+        new("poison", "☠️ Poison", "Poison the current cell. The next claimer is blocked and gets doubled cooldown for 24 hours.", "☠️", AvailableAfterDays: 4),
         // Future powerups:
         // new("lightning", "⚡ Lightning", "No cooldown for 1 hour.", "⚡", AvailableAfterDays: 14),
         // new("shield", "🛡️ Shield", "Protect a 3×3 area for 24 hours.", "🛡️", AvailableAfterDays: 21),
@@ -54,6 +56,53 @@ public class PowerupSpawner
     /// <summary>Secret salt to prevent clients from predicting powerup locations.</summary>
     private const string Salt = "FrenZones-Powerup-Salt-2026";
 
+    // Temporary test override(s): forced spawns bypass normal procedural generation.
+    // Remove after testing poison behavior.
+    private static readonly ForcedPowerupSpawn[] ForcedSpawns =
+    {
+        // Centered around user-provided coordinate cell (30722, -49138)
+        // so poison is easy to spot during testing.
+        new(30722, -49138, "poison"),
+        new(30721, -49138, "poison"),
+        new(30723, -49138, "poison"),
+        new(30722, -49139, "poison"),
+        new(30721, -49139, "poison"),
+        new(30722, -49137, "poison"),
+    };
+
+    // Runtime-only overrides used by territory test tooling.
+    private static readonly ConcurrentDictionary<string, ForcedPowerupSpawn> TestForcedSpawns = new();
+
+    public static void SetTestForcedSpawn(long cellRow, long cellCol, string powerupType, string? dateKey = null)
+    {
+        var normalizedDateKey = string.IsNullOrWhiteSpace(dateKey) ? null : dateKey;
+        var key = BuildForcedSpawnKey(cellRow, cellCol, normalizedDateKey);
+        TestForcedSpawns[key] = new ForcedPowerupSpawn(cellRow, cellCol, powerupType, normalizedDateKey);
+    }
+
+    public static bool RemoveTestForcedSpawn(long cellRow, long cellCol, string? dateKey = null)
+    {
+        var normalizedDateKey = string.IsNullOrWhiteSpace(dateKey) ? null : dateKey;
+        var key = BuildForcedSpawnKey(cellRow, cellCol, normalizedDateKey);
+        return TestForcedSpawns.TryRemove(key, out _);
+    }
+
+    public static ForcedPowerupSpawn? GetTestForcedSpawnAtCell(long cellRow, long cellCol, string? dateKey = null)
+    {
+        var normalizedDateKey = string.IsNullOrWhiteSpace(dateKey) ? null : dateKey;
+        if (normalizedDateKey != null)
+        {
+            var datedKey = BuildForcedSpawnKey(cellRow, cellCol, normalizedDateKey);
+            if (TestForcedSpawns.TryGetValue(datedKey, out var datedMatch))
+                return datedMatch;
+        }
+
+        var wildcardKey = BuildForcedSpawnKey(cellRow, cellCol, null);
+        return TestForcedSpawns.TryGetValue(wildcardKey, out var wildcardMatch)
+            ? wildcardMatch
+            : null;
+    }
+
     /// <summary>
     /// Get today's date key in PDT (UTC-7). Daily reset at midnight PDT.
     /// </summary>
@@ -73,7 +122,12 @@ public class PowerupSpawner
     {
         var spawns = new List<PowerupSpawn>();
         var types = PowerupRegistry.GetSpawnableIds(gameStartUtc);
-        if (types.Length == 0) return spawns;
+        if (types.Length == 0)
+        {
+            // Even if procedural spawning is disabled (e.g., before unlock day),
+            // allow forced testing spawns to appear.
+            return GetForcedSpawnsInBounds(minRow, maxRow, minCol, maxCol, dateKey);
+        }
 
         // Find which super-cells overlap the bounds
         var minSuperRow = FloorDiv(minRow, SpacingCells);
@@ -103,6 +157,17 @@ public class PowerupSpawner
             }
         }
 
+        var proceduralCellKeys = spawns
+            .Select(s => $"{s.CellRow}:{s.CellCol}")
+            .ToHashSet(StringComparer.Ordinal);
+
+        foreach (var forced in GetForcedSpawnsInBounds(minRow, maxRow, minCol, maxCol, dateKey))
+        {
+            if (proceduralCellKeys.Contains($"{forced.CellRow}:{forced.CellCol}"))
+                continue;
+            spawns.Add(forced);
+        }
+
         return spawns;
     }
 
@@ -111,6 +176,13 @@ public class PowerupSpawner
     /// </summary>
     public static PowerupSpawn? GetPowerupAtCell(long cellRow, long cellCol, string dateKey, DateTime gameStartUtc)
     {
+        var forced = GetAllForcedSpawns().FirstOrDefault(f =>
+            f.CellRow == cellRow
+            && f.CellCol == cellCol
+            && (f.DateKey == null || string.Equals(f.DateKey, dateKey, StringComparison.Ordinal)));
+        if (forced != null)
+            return new PowerupSpawn(forced.CellRow, forced.CellCol, forced.PowerupType);
+
         var types = PowerupRegistry.GetSpawnableIds(gameStartUtc);
         if (types.Length == 0) return null;
 
@@ -142,6 +214,27 @@ public class PowerupSpawner
     {
         return a >= 0 ? a / b : (a - b + 1) / b;
     }
+
+    private static List<PowerupSpawn> GetForcedSpawnsInBounds(long minRow, long maxRow, long minCol, long maxCol, string dateKey)
+    {
+        return GetAllForcedSpawns()
+            .Where(f => f.CellRow >= minRow && f.CellRow <= maxRow
+                && f.CellCol >= minCol && f.CellCol <= maxCol
+                && (f.DateKey == null || string.Equals(f.DateKey, dateKey, StringComparison.Ordinal)))
+            .Select(f => new PowerupSpawn(f.CellRow, f.CellCol, f.PowerupType))
+            .ToList();
+    }
+
+    private static IEnumerable<ForcedPowerupSpawn> GetAllForcedSpawns()
+    {
+        return ForcedSpawns.Concat(TestForcedSpawns.Values);
+    }
+
+    private static string BuildForcedSpawnKey(long cellRow, long cellCol, string? dateKey)
+    {
+        return $"{dateKey ?? "*"}:{cellRow}:{cellCol}";
+    }
 }
 
 public record PowerupSpawn(long CellRow, long CellCol, string PowerupType);
+public record ForcedPowerupSpawn(long CellRow, long CellCol, string PowerupType, string? DateKey = null);

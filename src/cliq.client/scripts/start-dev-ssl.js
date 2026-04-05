@@ -14,7 +14,7 @@
  *   - Generate LAN certs once:  ../../scripts/gen-dev-cert.sh --trust
  *   - Install deps:             npm install
  */
-const { spawn } = require('child_process');
+const { spawn, execSync } = require('child_process');
 const path = require('path');
 const fs = require('fs');
 const os = require('os');
@@ -25,6 +25,38 @@ const EXPO_PORT = 8081;
 const CLIENT_DIR = path.join(__dirname, '..');
 const SERVER_DIR = path.join(CLIENT_DIR, '..', 'Cliq.Server');
 const CERT_DIR = path.join(SERVER_DIR, 'certs');
+
+// ─── Free occupied dev ports from stale processes ───────────────────────────
+function freePort(port) {
+  try {
+    const pidsRaw = execSync(`lsof -ti tcp:${port}`, { stdio: ['ignore', 'pipe', 'ignore'] })
+      .toString()
+      .trim();
+
+    if (!pidsRaw) return;
+
+    const pids = pidsRaw
+      .split('\n')
+      .map((s) => s.trim())
+      .filter(Boolean);
+
+    if (pids.length === 0) return;
+
+    console.log(`⚠️  Port ${port} is in use. Stopping stale process(es): ${pids.join(', ')}`);
+    for (const pid of pids) {
+      try {
+        process.kill(Number(pid), 'SIGTERM');
+      } catch {
+        // Ignore races where process exits between lsof and kill.
+      }
+    }
+  } catch {
+    // No listener found or lsof unavailable; continue startup.
+  }
+}
+
+freePort(EXPO_PORT);
+freePort(SSL_PROXY_PORT);
 
 // ─── Detect LAN IP (same logic as gen-dev-ip.js) ────────────────────────────
 function pickIp() {

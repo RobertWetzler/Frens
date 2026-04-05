@@ -16,6 +16,7 @@ public class PowerupService : IPowerupService
 {
     private const double CellSizeLat = 0.001369;
     private const double CellSizeLng = 0.001785;
+    private static readonly TimeSpan PoisonDuration = TimeSpan.FromHours(24);
 
     private readonly CliqDbContext _db;
     private readonly ICityLookupService _cityLookup;
@@ -157,6 +158,7 @@ public class PowerupService : IPowerupService
         var result = claim.PowerupType switch
         {
             "blast" => await ExecuteBlastAsync(userId, player.Color, latitude, longitude),
+            "poison" => await ExecutePoisonAsync(userId, latitude, longitude),
             _ => throw new InvalidOperationException($"Unknown powerup type: {claim.PowerupType}"),
         };
 
@@ -164,6 +166,50 @@ public class PowerupService : IPowerupService
         await _db.SaveChangesAsync();
 
         return result;
+    }
+
+    private async Task<PowerupUseResultDto> ExecutePoisonAsync(Guid userId, double latitude, double longitude)
+    {
+        var cellRow = (long)Math.Floor(latitude / CellSizeLat);
+        var cellCol = (long)Math.Floor(longitude / CellSizeLng);
+        var now = DateTime.UtcNow;
+
+        var alreadyActive = await _db.TerritoryCellPoisons
+            .AnyAsync(p => p.CellRow == cellRow
+                && p.CellCol == cellCol
+                && p.TriggeredAtUtc == null
+                && p.ExpiresAtUtc > now);
+
+        if (alreadyActive)
+            throw new InvalidOperationException("This zone is already poisoned.");
+
+        _db.TerritoryCellPoisons.Add(new TerritoryCellPoison
+        {
+            CellRow = cellRow,
+            CellCol = cellCol,
+            PoisonedByUserId = userId,
+            PoisonedAtUtc = now,
+            ExpiresAtUtc = now.Add(PoisonDuration),
+        });
+
+        _db.TerritoryClaimHistory.Add(new TerritoryClaimHistory
+        {
+            CellRow = cellRow,
+            CellCol = cellCol,
+            UserId = userId,
+            Color = "#7A7A7A",
+            Action = "poison",
+            Timestamp = now,
+        });
+
+        await _db.SaveChangesAsync();
+
+        return new PowerupUseResultDto
+        {
+            Success = true,
+            Message = "Poison armed. The next player who tries to claim this zone will be blocked and get doubled cooldown for 24 hours.",
+            CellsAffected = 1,
+        };
     }
 
     // ─── Powerup Effects ───

@@ -63,6 +63,7 @@ interface TerritoryMapProps {
   onRequestLocation: () => void;
   onEnterViewerMode: () => void;
   debugMode: boolean;
+  testSuiteClickMode?: boolean;
   onDebugClick?: (lat: number, lng: number) => void;
   flyToTarget: { lat: number; lng: number } | null;
 }
@@ -164,6 +165,7 @@ const TerritoryMap: React.FC<TerritoryMapProps> = ({
   onRequestLocation,
   onEnterViewerMode,
   debugMode,
+  testSuiteClickMode = false,
   onDebugClick,
   flyToTarget,
 }) => {
@@ -223,7 +225,7 @@ const TerritoryMap: React.FC<TerritoryMapProps> = ({
         <Text style={styles.errorTitle}>Location Required</Text>
         <Text style={styles.errorText}>
           {isDenied
-            ? 'Location access was denied. On iOS, go to Settings → Privacy → Location Services → Safari and set to "Allow". Then come back and try again.'
+            ? 'Location access was denied by your browser for this site. In Safari, open this page\'s Website Settings and set Location to Allow, then reload. On Mac, also confirm System Settings -> Privacy & Security -> Location Services allows Safari.'
             : 'Could not get your location. Make sure Location Services are enabled, or try on your phone.'}
         </Text>
         <Text style={[styles.errorText, { fontSize: 12, marginTop: 8 }]}>
@@ -316,7 +318,7 @@ const TerritoryMap: React.FC<TerritoryMapProps> = ({
           {location && <RecenterOnce lat={location.lat} lng={location.lng} />}
           <FlyToTarget target={flyToTarget} />
           <BoundsWatcher onBoundsChanged={onBoundsChanged} />
-          {(debugMode || viewerMode) && onDebugClick && (
+          {(debugMode || viewerMode || testSuiteClickMode) && onDebugClick && (
             <DebugClickHandler onClick={onDebugClick} />
           )}
 
@@ -334,6 +336,10 @@ const TerritoryMap: React.FC<TerritoryMapProps> = ({
               }}
               eventHandlers={{
                 click: (e: any) => {
+                  if ((debugMode || viewerMode || testSuiteClickMode) && onDebugClick) {
+                    onDebugClick(e.latlng.lat, e.latlng.lng);
+                    return;
+                  }
                   e.target.openTooltip();
                 },
               }}

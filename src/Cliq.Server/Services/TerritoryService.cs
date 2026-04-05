@@ -27,6 +27,7 @@ public class TerritoryService : ITerritoryService
     /// With 500ft cells, a bucket of 32 covers ~3 miles per side — a good query granularity.
     /// </summary>
     private const int BucketSize = 32;
+    private static readonly TimeSpan PoisonPenaltyDuration = TimeSpan.FromHours(24);
 
     private readonly CliqDbContext _db;
     private readonly ICityLookupService _cityLookup;
@@ -58,10 +59,11 @@ public class TerritoryService : ITerritoryService
         }
 
         var now = DateTime.UtcNow;
+        var cooldownSeconds = GetCooldownSeconds(player, now);
         var elapsed = player.LastClaimAt.HasValue
             ? (now - player.LastClaimAt.Value).TotalSeconds
             : double.MaxValue;
-        var remaining = Math.Max(0, CooldownSeconds - elapsed);
+        var remaining = Math.Max(0, cooldownSeconds - elapsed);
 
         return new TerritoryGameStateDto
         {
@@ -104,17 +106,47 @@ public class TerritoryService : ITerritoryService
         var player = await _db.TerritoryPlayers.FirstOrDefaultAsync(p => p.UserId == userId)
             ?? throw new InvalidOperationException("Not registered for Territory Wars");
 
+        var now = DateTime.UtcNow;
+        var cooldownSeconds = GetCooldownSeconds(player, now);
+
         // Enforce cooldown
         if (player.LastClaimAt.HasValue)
         {
-            var elapsed = (DateTime.UtcNow - player.LastClaimAt.Value).TotalSeconds;
-            if (elapsed < CooldownSeconds)
-                throw new InvalidOperationException($"Cooldown active. Wait {(int)Math.Ceiling(CooldownSeconds - elapsed)} seconds.");
+            var elapsed = (now - player.LastClaimAt.Value).TotalSeconds;
+            if (elapsed < cooldownSeconds)
+                throw new InvalidOperationException($"Cooldown active. Wait {(int)Math.Ceiling(cooldownSeconds - elapsed)} seconds.");
         }
 
         var cellRow = (long)Math.Floor(latitude / CellSizeLat);
         var cellCol = (long)Math.Floor(longitude / CellSizeLng);
         var bucket = ComputeBucket(cellRow, cellCol);
+
+        // Hidden poison check: if active poison exists on this cell,
+        // consume poison and apply doubled-cooldown penalty for 24 hours.
+        var activePoison = await _db.TerritoryCellPoisons
+            .Where(p => p.CellRow == cellRow
+                && p.CellCol == cellCol
+                && p.TriggeredAtUtc == null
+                && p.ExpiresAtUtc > now)
+            .OrderByDescending(p => p.PoisonedAtUtc)
+            .FirstOrDefaultAsync();
+
+        if (activePoison != null)
+        {
+            activePoison.TriggeredAtUtc = now;
+            activePoison.TriggeredByUserId = userId;
+
+            var newPenaltyUntil = now.Add(PoisonPenaltyDuration);
+            player.PoisonPenaltyUntilUtc = player.PoisonPenaltyUntilUtc.HasValue
+                ? (player.PoisonPenaltyUntilUtc.Value > newPenaltyUntil ? player.PoisonPenaltyUntilUtc.Value : newPenaltyUntil)
+                : newPenaltyUntil;
+
+            // Treat the failed attempt as a claim action for cooldown timing.
+            player.LastClaimAt = now;
+
+            await _db.SaveChangesAsync();
+            throw new InvalidOperationException("This zone is poisoned. Claim blocked. Your cooldown is now doubled for 24 hours.");
+        }
 
         var user = await _db.Users.AsNoTracking().FirstAsync(u => u.Id == userId);
 
@@ -138,7 +170,7 @@ public class TerritoryService : ITerritoryService
         {
             existing.ClaimedByUserId = userId;
             existing.Color = player.Color;
-            existing.ClaimedAt = DateTime.UtcNow;
+            existing.ClaimedAt = now;
             existing.Bucket = bucket;
             existing.City = city;
             existing.Country = country;
@@ -161,7 +193,7 @@ public class TerritoryService : ITerritoryService
         }
 
         // Update last claim time
-        player.LastClaimAt = DateTime.UtcNow;
+        player.LastClaimAt = now;
 
         // Append to history log (for timelapse replay)
         _db.TerritoryClaimHistory.Add(new TerritoryClaimHistory
@@ -171,6 +203,7 @@ public class TerritoryService : ITerritoryService
             UserId = userId,
             Color = player.Color,
             Action = "claim",
+            Timestamp = now,
         });
 
         await _db.SaveChangesAsync();
@@ -182,10 +215,16 @@ public class TerritoryService : ITerritoryService
             ClaimedBy = userId.ToString(),
             ClaimedByName = user.Name,
             Color = player.Color,
-            ClaimedAt = DateTime.UtcNow,
+            ClaimedAt = now,
             City = city,
             Neighborhood = neighborhood,
         };
+    }
+
+    private static int GetCooldownSeconds(TerritoryPlayer player, DateTime nowUtc)
+    {
+        var isPoisoned = player.PoisonPenaltyUntilUtc.HasValue && player.PoisonPenaltyUntilUtc.Value > nowUtc;
+        return isPoisoned ? CooldownSeconds * 2 : CooldownSeconds;
     }
 
     public async Task<List<TerritoryCellDto>> GetCellsInBoundsAsync(double southLat, double westLng, double northLat, double eastLng)

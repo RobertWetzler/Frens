@@ -37,14 +37,23 @@ export function useTerritoryGame() {
   const cooldownRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const cooldownEndRef = useRef<number>(0);
   const watchIdRef = useRef<number | null>(null);
+  const watchTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const clearWatchTimeout = useCallback(() => {
+    if (watchTimeoutRef.current) {
+      clearTimeout(watchTimeoutRef.current);
+      watchTimeoutRef.current = null;
+    }
+  }, []);
 
   const onPositionSuccess = useCallback((position: GeolocationPosition) => {
+    clearWatchTimeout();
     setLocation({
       lat: position.coords.latitude,
       lng: position.coords.longitude,
     });
     setLocationError(null);
-  }, []);
+  }, [clearWatchTimeout]);
 
   // Watch user location — tries high accuracy first, falls back to low accuracy
   const startWatchingLocation = useCallback(() => {
@@ -53,16 +62,32 @@ export function useTerritoryGame() {
       return;
     }
 
+    if (watchIdRef.current !== null) {
+      navigator.geolocation.clearWatch(watchIdRef.current);
+      watchIdRef.current = null;
+    }
+
+    clearWatchTimeout();
+    watchTimeoutRef.current = setTimeout(() => {
+      setLocationError('Timed out waiting for location. Check browser/site location permission and OS location services, then try again.');
+    }, 12000);
+
     const startWatch = (highAccuracy: boolean) => {
       watchIdRef.current = navigator.geolocation.watchPosition(
         onPositionSuccess,
         (error) => {
+          clearWatchTimeout();
           // If high accuracy failed, retry with low accuracy (helps on desktop Macs without GPS)
           if (highAccuracy && (error.code === error.POSITION_UNAVAILABLE || error.code === error.TIMEOUT)) {
             console.warn('High accuracy location failed, retrying with low accuracy');
             if (watchIdRef.current !== null) {
               navigator.geolocation.clearWatch(watchIdRef.current);
             }
+
+            watchTimeoutRef.current = setTimeout(() => {
+              setLocationError('Timed out waiting for location. Check browser/site location permission and OS location services, then try again.');
+            }, 12000);
+
             startWatch(false);
             return;
           }
@@ -73,14 +98,15 @@ export function useTerritoryGame() {
     };
 
     startWatch(true);
-  }, [onPositionSuccess]);
+  }, [clearWatchTimeout, onPositionSuccess]);
 
   const stopWatchingLocation = useCallback(() => {
+    clearWatchTimeout();
     if (watchIdRef.current !== null) {
       navigator.geolocation.clearWatch(watchIdRef.current);
       watchIdRef.current = null;
     }
-  }, []);
+  }, [clearWatchTimeout]);
 
   // Load game state from API
   const loadGameState = useCallback(async () => {
@@ -320,11 +346,45 @@ export function useTerritoryGame() {
   }, [cooldownSeconds > 0]); // only re-run when transitioning from 0 to >0
 
   // Request location — must be called from a user gesture for iOS Safari
-  const requestLocation = useCallback(() => {
+  const requestLocation = useCallback(async () => {
     setLocationRequested(true);
     setLocationError(null);
+
+    if (typeof window !== 'undefined') {
+      const host = window.location.hostname;
+      const isLocalhost = host === 'localhost' || host === '127.0.0.1';
+      if (!window.isSecureContext && !isLocalhost) {
+        setLocationError('Location requires a secure context (HTTPS or localhost). Open FrenZones on https://localhost:8443 and try again.');
+        return;
+      }
+    }
+
+    // Fast-fail for denied permission so users do not get stuck on an indefinite spinner.
+    try {
+      if (navigator.permissions) {
+        const status = await navigator.permissions.query({ name: 'geolocation' });
+        if (status.state === 'denied') {
+          setLocationError('Location permission is denied in your browser settings for this site.');
+          return;
+        }
+      }
+    } catch {
+      // Permissions API may be unavailable; continue to geolocation prompt.
+    }
+
+    // Trigger a one-time request first so browsers show a permission prompt immediately.
+    if (navigator.geolocation) {
+      navigator.geolocation.getCurrentPosition(
+        onPositionSuccess,
+        () => {
+          // Watch mode below will continue and provide richer fallback behavior.
+        },
+        { enableHighAccuracy: false, maximumAge: 0, timeout: 10000 }
+      );
+    }
+
     startWatchingLocation();
-  }, [startWatchingLocation]);
+  }, [onPositionSuccess, startWatchingLocation]);
 
   // Initial load — check if location is already granted and auto-start
   useEffect(() => {

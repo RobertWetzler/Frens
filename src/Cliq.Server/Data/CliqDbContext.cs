@@ -39,6 +39,7 @@ public class CliqDbContext : IdentityDbContext<User, CliqRole, Guid>
     public DbSet<TerritoryClaim> TerritoryClaims { get; set; }
     public DbSet<TerritoryClaimHistory> TerritoryClaimHistory { get; set; }
     public DbSet<PowerupClaim> PowerupClaims { get; set; }
+    public DbSet<TerritoryCellPoison> TerritoryCellPoisons { get; set; }
 
     public CliqDbContext(
             DbContextOptions<CliqDbContext> options,
@@ -426,6 +427,29 @@ public class CliqDbContext : IdentityDbContext<User, CliqRole, Guid>
             // Unique constraint: one RSVP per user per event
             entity.HasIndex(r => new { r.EventId, r.UserId })
                   .IsUnique();
+        });
+
+        // ========== TerritoryCellPoison ==========
+        modelBuilder.Entity<TerritoryCellPoison>(entity =>
+        {
+            entity.HasKey(p => p.Id);
+
+            entity.Property(p => p.PoisonedAtUtc)
+                .HasDefaultValueSql("NOW()");
+
+            entity.HasIndex(p => new { p.CellRow, p.CellCol });
+            entity.HasIndex(p => p.ExpiresAtUtc);
+            entity.HasIndex(p => p.TriggeredAtUtc);
+
+            entity.HasOne(p => p.PoisonedByUser)
+                .WithMany()
+                .HasForeignKey(p => p.PoisonedByUserId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            entity.HasOne(p => p.TriggeredByUser)
+                .WithMany()
+                .HasForeignKey(p => p.TriggeredByUserId)
+                .OnDelete(DeleteBehavior.SetNull);
         });
 
         modelBuilder.Entity<CalendarSubscription>(entity =>

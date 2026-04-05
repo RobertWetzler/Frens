@@ -16,6 +16,11 @@ public class TerritoryPlayer
 
     /// <summary>When the player last claimed a cell (for cooldown enforcement).</summary>
     public DateTime? LastClaimAt { get; set; }
+
+    /// <summary>
+    /// If set in the future, this player is poisoned and claim cooldown is doubled.
+    /// </summary>
+    public DateTime? PoisonPenaltyUntilUtc { get; set; }
 }
 
 /// <summary>
@@ -104,4 +109,27 @@ public class PowerupClaim
 
     /// <summary>When the powerup was used. Null if still in inventory.</summary>
     public DateTime? UsedAt { get; set; }
+}
+
+/// <summary>
+/// Hidden poisoned cells. If a different player tries to claim an active poisoned cell,
+/// the claim fails and that player receives a 24-hour doubled cooldown penalty.
+/// </summary>
+public class TerritoryCellPoison
+{
+    public Guid Id { get; set; } = Guid.NewGuid();
+
+    public long CellRow { get; set; }
+    public long CellCol { get; set; }
+
+    public Guid PoisonedByUserId { get; set; }
+    public User PoisonedByUser { get; set; } = null!;
+
+    public DateTime PoisonedAtUtc { get; set; } = DateTime.UtcNow;
+    public DateTime ExpiresAtUtc { get; set; }
+
+    /// <summary>Set when someone triggers the poison by attempting to claim this cell.</summary>
+    public DateTime? TriggeredAtUtc { get; set; }
+    public Guid? TriggeredByUserId { get; set; }
+    public User? TriggeredByUser { get; set; }
 }
