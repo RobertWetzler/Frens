@@ -56,19 +56,8 @@ public class PowerupSpawner
     /// <summary>Secret salt to prevent clients from predicting powerup locations.</summary>
     private const string Salt = "FrenZones-Powerup-Salt-2026";
 
-    // Temporary test override(s): forced spawns bypass normal procedural generation.
-    // Remove after testing poison behavior.
-    private static readonly ForcedPowerupSpawn[] ForcedSpawns =
-    {
-        // Centered around user-provided coordinate cell (30722, -49138)
-        // so poison is easy to spot during testing.
-        new(30722, -49138, "poison"),
-        new(30721, -49138, "poison"),
-        new(30723, -49138, "poison"),
-        new(30722, -49139, "poison"),
-        new(30721, -49139, "poison"),
-        new(30722, -49137, "poison"),
-    };
+    // Keep empty by default. Test tooling can still add runtime overrides via TestForcedSpawns.
+    private static readonly ForcedPowerupSpawn[] ForcedSpawns = Array.Empty<ForcedPowerupSpawn>();
 
     // Runtime-only overrides used by territory test tooling.
     private static readonly ConcurrentDictionary<string, ForcedPowerupSpawn> TestForcedSpawns = new();
